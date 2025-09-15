@@ -8,14 +8,18 @@
 
 // 跨平台睡眠函数
 // 参数单位：秒
-void sleep_seconds(int seconds);
+void sleepSeconds(int seconds);
 
 // 跨平台睡眠函数
 // 参数单位：毫秒
-void sleep_milliseconds(int milliseconds);
+void sleepMilliseconds(int milliseconds);
 
 // 跨平台睡眠函数
 // 参数单位：微秒
-void sleep_microseconds(int microseconds);
+void sleepMicroseconds(int microseconds);
+
+void setClientId(char** client_id);
+
+char* randomMacAddress();
 
 #endif // PLATFORMUTILS_H

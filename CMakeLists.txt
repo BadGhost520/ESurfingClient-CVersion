@@ -24,6 +24,9 @@ if(NOT CURL_FOUND)
     find_package(CURL REQUIRED)
 endif()
 
+# 查找OpenSSL库
+find_package(OpenSSL REQUIRED)
+
 add_executable(ESurfingClient
         DialerApp.c
         Client.c
@@ -41,6 +44,9 @@ else()
     # 使用vcpkg或标准find_package找到的curl
     target_link_libraries(ESurfingClient CURL::libcurl)
 endif()
+
+# 链接OpenSSL库
+target_link_libraries(ESurfingClient OpenSSL::SSL OpenSSL::Crypto)
 
 # Windows下需要的额外库
 if(WIN32)
