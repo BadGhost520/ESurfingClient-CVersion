@@ -2,38 +2,31 @@
 // Created by bad_g on 2025/9/14.
 //
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/PlatformUtils.h"
-
-struct States
-{
-    char* clientId;
-    char* algoId;
-    char* macAddress;
-} States;
+#include "headFiles/States.h"
 
 void Auth(void);
+void RefreshClientState(void);
 
 void NetWorkStatus(void)
 {
-    int NetWorkStatus;
+    ConnectivityStatus status;
     while (1)
     {
-        NetWorkStatus = checkNetworkStatus();
-        switch (NetWorkStatus)
+        status = detectConfig();
+        switch (status)
         {
-        case 0:
-            printf("连接成功\n");
+        case CONNECTIVITY_SUCCESS:
+            printf("网络已连接\n");
             break;
-        case 1:
+        case CONNECTIVITY_REQUIRE_AUTHORIZATION:
             printf("需要认证\n");
             Auth();
             break;
-        case 2:
-            printf("连接失败\n");
+        case CONNECTIVITY_REQUEST_ERROR:
+            printf("网络错误\n");
             sleepSeconds(5);
             break;
         default:
@@ -46,21 +39,17 @@ void NetWorkStatus(void)
 
 void Auth(void)
 {
-    // 刷新客户端状态
-    if (States.clientId)
-    {
-        free(States.clientId);
-    }
-    setClientId(&States.clientId);
-    printf("%s\n", States.clientId);
+    RefreshClientState();
+    printf("ClientId: %s\n", clientId);
+    printf("algoID: %s\n", algoId);
+    printf("macAddress: %s\n", macAddress);
+    printf("authUrl: %s\n", authUrl);
+    printf("ticketUrl: %s\n", ticketUrl);
+    printf("userIp: %s\n", userIp);
+    printf("acIp: %s\n", acIp);
+}
 
-    if (States.algoId)
-    {
-        free(States.algoId);
-    }
-    States.algoId = strdup("00000000-0000-0000-0000-000000000000");
-    printf("%s\n", States.algoId);
+void InitSession()
+{
 
-    States.macAddress = strdup(randomMacAddress());
-    printf("%s\n", States.macAddress);
 }

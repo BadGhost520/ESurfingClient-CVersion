@@ -6,7 +6,7 @@
 
 struct Options
 {
-    int usr;
+    char* usr;
     char* pwd;
 } Options;
 
@@ -20,7 +20,7 @@ int main(const int argc, char* argv[]) {
         {
         case 'u':
             username = true;
-            Options.usr = atoi(optarg);
+            Options.usr = optarg;
             break;
         case 'p':
             password = true;
@@ -36,7 +36,7 @@ int main(const int argc, char* argv[]) {
 
     if (username && password)
     {
-        printf("手机号：%d\n", Options.usr);
+        printf("手机号：%s\n", Options.usr);
         printf("密码：%s\n", Options.pwd);
         NetWorkStatus();
     }

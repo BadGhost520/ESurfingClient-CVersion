@@ -4,27 +4,27 @@ project(ESurfingClient C)
 set(CMAKE_C_STANDARD 11)
 set(CURL_DIR "D:/vcpkg/installed/x64-mingw-static/share/curl/")
 
-# ³¢ÊÔÊ¹ÓÃpkg-config²éÕÒcurl
+# ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½pkg-configï¿½ï¿½ï¿½ï¿½curl
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
     pkg_check_modules(CURL QUIET libcurl)
 endif()
 
-# Èç¹ûpkg-configÕÒ²»µ½£¬ÔòÊ¹ÓÃvcpkg
+# ï¿½ï¿½ï¿½pkg-configï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½vcpkg
 if(NOT CURL_FOUND)
-    # ÉèÖÃvcpkg¹¤¾ßÁ´ÎÄ¼þ
+    # ï¿½ï¿½ï¿½ï¿½vcpkgï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½
     if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         set(CMAKE_TOOLCHAIN_FILE "D:/vcpkg/scripts/buildsystems/vcpkg.cmake")
     endif()
     
-    # ÉèÖÃvcpkg triplet
+    # ï¿½ï¿½ï¿½ï¿½vcpkg triplet
     set(VCPKG_TARGET_TRIPLET "x64-mingw-static")
     
-    # Ê¹ÓÃvcpkgµÄcurl
+    # Ê¹ï¿½ï¿½vcpkgï¿½ï¿½curl
     find_package(CURL REQUIRED)
 endif()
 
-# ²éÕÒOpenSSL¿â
+# ï¿½ï¿½ï¿½ï¿½OpenSSLï¿½ï¿½
 find_package(OpenSSL REQUIRED)
 
 add_executable(ESurfingClient
@@ -32,23 +32,27 @@ add_executable(ESurfingClient
         Client.c
         NetworkStatus.c
         PlatformUtils.c
-        )
+        Constants.c
+        headFiles/Constants.h
+        States.c
+        headFiles/States.h
+)
 
-# Á´½Ócurl¿â
+# ï¿½ï¿½ï¿½ï¿½curlï¿½ï¿½
 if(CURL_FOUND AND PKG_CONFIG_FOUND)
-    # Ê¹ÓÃpkg-configÕÒµ½µÄcurl
+    # Ê¹ï¿½ï¿½pkg-configï¿½Òµï¿½ï¿½ï¿½curl
     target_link_libraries(ESurfingClient ${CURL_LIBRARIES})
     target_include_directories(ESurfingClient PRIVATE ${CURL_INCLUDE_DIRS})
     target_compile_options(ESurfingClient PRIVATE ${CURL_CFLAGS_OTHER})
 else()
-    # Ê¹ÓÃvcpkg»ò±ê×¼find_packageÕÒµ½µÄcurl
+    # Ê¹ï¿½ï¿½vcpkgï¿½ï¿½ï¿½×¼find_packageï¿½Òµï¿½ï¿½ï¿½curl
     target_link_libraries(ESurfingClient CURL::libcurl)
 endif()
 
-# Á´½ÓOpenSSL¿â
+# ï¿½ï¿½ï¿½ï¿½OpenSSLï¿½ï¿½
 target_link_libraries(ESurfingClient OpenSSL::SSL OpenSSL::Crypto)
 
-# WindowsÏÂÐèÒªµÄ¶îÍâ¿â
+# Windowsï¿½ï¿½ï¿½ï¿½Òªï¿½Ä¶ï¿½ï¿½ï¿½ï¿½
 if(WIN32)
     target_link_libraries(ESurfingClient
             ws2_32
@@ -60,7 +64,7 @@ if(WIN32)
             bcrypt
             iphlpapi
     )
-    # ½â¾öMinGWµÄ·ûºÅÎÊÌâ
+    # ï¿½ï¿½ï¿½MinGWï¿½Ä·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
     target_link_options(ESurfingClient PRIVATE -Wl,--allow-multiple-definition -Wl,--unresolved-symbols=ignore-all)
 endif()
