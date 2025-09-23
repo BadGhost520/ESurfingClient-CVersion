@@ -4,17 +4,9 @@
 #include <stdbool.h>
 #include "headFiles/States.h"
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "headFiles/PlatformUtils.h"
-
-// 内部辅助函数声明
-static unsigned int hash_function(const char* key, size_t capacity);
-static HashMapNode* create_node(const char* key, const char* value);
-static void free_node(HashMapNode* node);
-static int resize_hashmap(HashMap* map);
-static void free_bucket_chain(HashMapNode* head);
 
 char* clientId;
 char* algoId;

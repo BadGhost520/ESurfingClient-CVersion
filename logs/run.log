@@ -1,0 +1,37 @@
+时间：2025.9.24-0:30
+
+G:\C_Project\ESurfingClient\cmake-build-debug\ESurfingClient.exe -u 15361362230 -p A1234567
+手机号：15361362230
+密码：A1234567
+需要认证
+ClientId: 0000150b-3d31-453f-9408-21c500005b26
+algoID: 00000000-0000-0000-0000-000000000000
+macAddress: c4:26:08:3f:31:0b
+authUrl: http://14.146.227.141:7001/auth.cgi
+ticketUrl: http://14.146.227.141:7001/ticket.cgi?wlanuserip=172.19.237.72&wlanacip=14.148.0.67&portal_node=http://125.88.59.131:10002
+userIp: 172.19.237.72
+acIp: 14.148.0.67
+Add Header: User-Agent: CCTP/android64_vpn/2093
+Add Header: Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*
+Add Header: CDC-Checksum: 9f89c84a559f573636a47ff8daed0d33
+Add Header: Client-ID: 0000150b-3d31-453f-9408-21c500005b26
+Add Header: Algo-ID: 00000000-0000-0000-0000-000000000000
+extra header
+(null)
+(null)
+(null)
+if1
+if2
+if3
+请求成功!
+状态码: 200
+响应长度: 106 字符
+ClientId: 0000150b-3d31-453f-9408-21c500005b26
+algoID: 00000000-0000-0000-0000-000000000000
+macAddress: c4:26:08:3f:31:0b
+authUrl: http://14.146.227.141:7001/auth.cgi
+ticketUrl: http://14.146.227.141:7001/ticket.cgi?wlanuserip=172.19.237.72&wlanacip=14.148.0.67&portal_node=http://125.88.59.131:10002
+userIp: 172.19.237.72
+acIp: 14.148.0.67
+
+进程已结束，退出代码为 1

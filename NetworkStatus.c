@@ -14,7 +14,7 @@ typedef struct {
     size_t size;
 } HTTPResponse;
 
-// »Øµ÷º¯ÊýÓÃÓÚ½ÓÊÕÏìÓ¦Êý¾Ý
+// ï¿½Øµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, HTTPResponse *response) {
     size_t realsize = size * nmemb;
     char *ptr = realloc(response->memory, response->size + realsize + 1);
@@ -44,7 +44,7 @@ char* extract_between_tags(const char* text, const char* start_tag, const char* 
     return result;
 }
 
-// ÇåÀíCDATA±êÇ©µÄº¯Êý
+// ï¿½ï¿½ï¿½ï¿½CDATAï¿½ï¿½Ç©ï¿½Äºï¿½ï¿½ï¿½
 char* clean_cdata(const char* text) {
     if (!text) return NULL;
     
@@ -53,14 +53,14 @@ char* clean_cdata(const char* text) {
     
     char* start = strstr(text, cdata_start);
     if (!start) {
-        // Ã»ÓÐCDATA±êÇ©£¬Ö±½Ó¸´ÖÆÔ­ÎÄ±¾
+        // Ã»ï¿½ï¿½CDATAï¿½ï¿½Ç©ï¿½ï¿½Ö±ï¿½Ó¸ï¿½ï¿½ï¿½Ô­ï¿½Ä±ï¿½
         return strdup(text);
     }
     
     start += strlen(cdata_start);
     char* end = strstr(start, cdata_end);
     if (!end) {
-        // Ã»ÓÐÕÒµ½½áÊø±êÇ©£¬·µ»ØÔ­ÎÄ±¾
+        // Ã»ï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç©ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô­ï¿½Ä±ï¿½
         return strdup(text);
     }
     
@@ -112,13 +112,13 @@ ConnectivityStatus detectConfig(void) {
         return CONNECTIVITY_REQUEST_ERROR;
     }
 
-    // ÉèÖÃURLºÍ»ù±¾Ñ¡Ïî
+    // ï¿½ï¿½ï¿½ï¿½URLï¿½Í»ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);  // ¸úËæÖØ¶¨Ïò
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);      // ×î´óÖØ¶¨Ïò´ÎÊý
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);  // ï¿½ï¿½ï¿½ï¿½ï¿½Ø¶ï¿½ï¿½ï¿½
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);      // ï¿½ï¿½ï¿½ï¿½Ø¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-    // ÉèÖÃÇëÇóÍ·
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·
     struct curl_slist *headers = NULL;
     char header_buffer[256];
 
@@ -133,11 +133,11 @@ ConnectivityStatus detectConfig(void) {
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    // ÉèÖÃÏìÓ¦Êý¾Ý½ÓÊÕ
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½Ý½ï¿½ï¿½ï¿½
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
 
-    // Ö´ÐÐÇëÇó
+    // Ö´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     res = curl_easy_perform(curl);
     
     if (res != CURLE_OK) {
@@ -149,7 +149,7 @@ ConnectivityStatus detectConfig(void) {
 
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-    // ¼ì²éHTTP×´Ì¬Âë
+    // ï¿½ï¿½ï¿½HTTP×´Ì¬ï¿½ï¿½
     if (response_code == 204) {
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
@@ -164,9 +164,9 @@ ConnectivityStatus detectConfig(void) {
         return CONNECTIVITY_REQUEST_ERROR;
     }
 
-    // ½âÎöÏìÓ¦ÄÚÈÝ
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½
     if (response_data.memory && response_data.size > 0) {
-        // ÌáÈ¡ÃÅ»§ÅäÖÃ
+        // ï¿½ï¿½È¡ï¿½Å»ï¿½ï¿½ï¿½ï¿½ï¿½
         char* portal_config = extract_between_tags(response_data.memory,
             PORTAL_START_TAG, PORTAL_END_TAG);
 
@@ -174,27 +174,27 @@ ConnectivityStatus detectConfig(void) {
         }
 
         if (portal_config && strlen(portal_config) > 0) {
-            // ÌáÈ¡auth-urlºÍticket-url
+            // ï¿½ï¿½È¡auth-urlï¿½ï¿½ticket-url
             char* auth_url_raw = extract_xml_tag_content(portal_config, "auth-url");
             char* ticket_url_raw = extract_xml_tag_content(portal_config, "ticket-url");
             
-            // ÇåÀíCDATA±êÇ©
+            // ï¿½ï¿½ï¿½ï¿½CDATAï¿½ï¿½Ç©
             char* auth_url = clean_cdata(auth_url_raw);
             char* ticket_url = clean_cdata(ticket_url_raw);
             
-            // ÊÍ·ÅÔ­Ê¼Êý¾Ý
+            // ï¿½Í·ï¿½Ô­Ê¼ï¿½ï¿½ï¿½ï¿½
             if (auth_url_raw) free(auth_url_raw);
             if (ticket_url_raw) free(ticket_url_raw);
 
             if (auth_url && ticket_url && strlen(auth_url) > 0 && strlen(ticket_url) > 0) {
-                // ¸üÐÂÈ«¾Ö×´Ì¬ - Ê¹ÓÃ¶¯Ì¬ÄÚ´æ·ÖÅä
+                // ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½×´Ì¬ - Ê¹ï¿½Ã¶ï¿½Ì¬ï¿½Ú´ï¿½ï¿½ï¿½ï¿½
                 if (authUrl) free(authUrl);
                 authUrl = strdup(auth_url);
                 
                 if (ticketUrl) free(ticketUrl);
                 ticketUrl = strdup(ticket_url);
 
-                // ´Óticket_urlÖÐÌáÈ¡IP²ÎÊý
+                // ï¿½ï¿½ticket_urlï¿½ï¿½ï¿½ï¿½È¡IPï¿½ï¿½ï¿½ï¿½
                 char* user_ip = extract_url_parameter(ticket_url, "wlanuserip");
                 char* ac_ip = extract_url_parameter(ticket_url, "wlanacip");
 
@@ -205,7 +205,7 @@ ConnectivityStatus detectConfig(void) {
                     if (acIp) free(acIp);
                     acIp = strdup(ac_ip);
 
-                    // ÇåÀíÄÚ´æ
+                    // ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½
                     free(user_ip);
                     free(ac_ip);
                     free(auth_url);
@@ -229,7 +229,7 @@ ConnectivityStatus detectConfig(void) {
         }
     }
 
-    // ÇåÀí×ÊÔ´
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
     if (response_data.memory) free(response_data.memory);

@@ -1,31 +1,23 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 4.0)
 project(ESurfingClient C)
 
 set(CMAKE_C_STANDARD 11)
-set(CURL_DIR "D:/vcpkg/installed/x64-mingw-static/share/curl/")
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# ����ʹ��pkg-config����curl
-find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(CURL QUIET libcurl)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# ���pkg-config�Ҳ�������ʹ��vcpkg
-if(NOT CURL_FOUND)
-    # ����vcpkg�������ļ�
-    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-        set(CMAKE_TOOLCHAIN_FILE "D:/vcpkg/scripts/buildsystems/vcpkg.cmake")
-    endif()
-    
-    # ����vcpkg triplet
-    set(VCPKG_TARGET_TRIPLET "x64-mingw-static")
-    
-    # ʹ��vcpkg��curl
-    find_package(CURL REQUIRED)
-endif()
+set(CURL_DIR "G:/vcpkg/installed/x64-mingw-static/share/curl")
 
-# ����OpenSSL��
+set(CMAKE_TOOLCHAIN_FILE "G:/CLion 2025.2.1/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+
+set(VCPKG_TARGET_TRIPLET "x86-mingw-static" CACHE STRING "Vcpkg triplet")
+
+# 使用vcpkg的静态库
+find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(LibXml2 REQUIRED)
 
 add_executable(ESurfingClient
         DialerApp.c
@@ -36,25 +28,17 @@ add_executable(ESurfingClient
         headFiles/Constants.h
         States.c
         headFiles/States.h
+        NetClient.c
 )
 
-# ����curl��
-if(CURL_FOUND AND PKG_CONFIG_FOUND)
-    # ʹ��pkg-config�ҵ���curl
-    target_link_libraries(ESurfingClient ${CURL_LIBRARIES})
-    target_include_directories(ESurfingClient PRIVATE ${CURL_INCLUDE_DIRS})
-    target_compile_options(ESurfingClient PRIVATE ${CURL_CFLAGS_OTHER})
-else()
-    # ʹ��vcpkg���׼find_package�ҵ���curl
-    target_link_libraries(ESurfingClient CURL::libcurl)
-endif()
+# 链接静态库
+target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
+target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(ESurfingClient PRIVATE LibXml2::LibXml2)
 
-# ����OpenSSL��
-target_link_libraries(ESurfingClient OpenSSL::SSL OpenSSL::Crypto)
-
-# Windows����Ҫ�Ķ����
+# Windows需要的额外静态库
 if(WIN32)
-    target_link_libraries(ESurfingClient
+    target_link_libraries(ESurfingClient PRIVATE
             ws2_32
             wldap32
             winmm
@@ -64,7 +48,9 @@ if(WIN32)
             bcrypt
             iphlpapi
     )
-    # ���MinGW�ķ�������
+    # 设置MinGW的完全静态链接选项
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
-    target_link_options(ESurfingClient PRIVATE -Wl,--allow-multiple-definition -Wl,--unresolved-symbols=ignore-all)
+    set_target_properties(ESurfingClient PROPERTIES
+        LINK_FLAGS "-static -static-libgcc -static-libstdc++"
+    )
 endif()
