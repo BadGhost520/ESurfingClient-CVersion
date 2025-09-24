@@ -1,0 +1,16 @@
+时间：2025.9.25-2:43
+
+G:\C_Project\ESurfingClient\cmake-build-debug\ESurfingClient.exe -u 15361362230 -p A1234567
+手机号：15361362230
+密码：A1234567
+需要认证
+Initializing Session...
+ClientId: 00004c34-0269-4419-add8-566200004187
+algoID: C32C68F9-CA81-4260-A329-BBAFD1A9CCD1
+macAddress: 62:87:d8:19:69:34
+authUrl: http://14.146.227.141:7001/auth.cgi
+ticketUrl: http://14.146.227.141:7001/ticket.cgi?wlanuserip=172.19.215.35&wlanacip=14.148.0.67&portal_node=http://125.88.59.131:10002
+userIp: 172.19.215.35
+acIp: 14.148.0.67
+
+进程已结束，退出代码为 1

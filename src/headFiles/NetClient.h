@@ -5,8 +5,6 @@
 #ifndef ESURFINGCLIENT_NETCLIENT_H
 #define ESURFINGCLIENT_NETCLIENT_H
 
-#include <stdlib.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

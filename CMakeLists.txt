@@ -20,15 +20,33 @@ find_package(OpenSSL REQUIRED)
 find_package(LibXml2 REQUIRED)
 
 add_executable(ESurfingClient
-        DialerApp.c
-        Client.c
-        NetworkStatus.c
-        PlatformUtils.c
-        Constants.c
-        headFiles/Constants.h
-        States.c
-        headFiles/States.h
-        NetClient.c
+        src/DialerApp.c
+        src/Client.c
+        src/NetworkStatus.c
+        src/PlatformUtils.c
+        src/Constants.c
+        src/headFiles/Constants.h
+        src/States.c
+        src/headFiles/States.h
+        src/NetClient.c
+        src/headFiles/Session.h
+        src/Session.c
+        src/headFiles/cipher/Interface.h
+        src/headFiles/cipher/Utils.h
+        src/cipher/Utils.c
+        src/headFiles/cipher/impl/des.h
+        src/cipher/impl/des.c
+        src/headFiles/cipher/impl/aes.h
+        src/cipher/impl/aes.c
+        src/cipher/impl/MODXTEA.c
+        src/headFiles/cipher/impl/MODXTEA.h
+        src/headFiles/cipher/impl/ZUC128.h
+        src/cipher/impl/ZUC128.c
+        src/headFiles/cipher/impl/sm4.h
+        src/cipher/impl/sm4.c
+        src/headFiles/cipher/KeyData.h
+        src/cipher/KeyData.c
+        src/cipher/Factory.c
 )
 
 # 链接静态库

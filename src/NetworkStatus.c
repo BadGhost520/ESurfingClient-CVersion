@@ -1,20 +1,20 @@
 //
 // Created by bad_g on 2025/9/14.
 //
-#include "headFiles/NetworkStatus.h"
-#include "headFiles/Constants.h"
-#include "headFiles/States.h"
 #include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "headFiles/NetworkStatus.h"
+#include "headFiles/Constants.h"
+#include "headFiles/States.h"
 
 typedef struct {
     char* memory;
     size_t size;
 } HTTPResponse;
 
-// �ص��������ڽ�����Ӧ����
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, HTTPResponse *response) {
     size_t realsize = size * nmemb;
     char *ptr = realloc(response->memory, response->size + realsize + 1);
@@ -44,7 +44,6 @@ char* extract_between_tags(const char* text, const char* start_tag, const char* 
     return result;
 }
 
-// ����CDATA��ǩ�ĺ���
 char* clean_cdata(const char* text) {
     if (!text) return NULL;
     
@@ -53,14 +52,12 @@ char* clean_cdata(const char* text) {
     
     char* start = strstr(text, cdata_start);
     if (!start) {
-        // û��CDATA��ǩ��ֱ�Ӹ���ԭ�ı�
         return strdup(text);
     }
     
     start += strlen(cdata_start);
     char* end = strstr(start, cdata_end);
     if (!end) {
-        // û���ҵ�������ǩ������ԭ�ı�
         return strdup(text);
     }
     
@@ -112,13 +109,11 @@ ConnectivityStatus detectConfig(void) {
         return CONNECTIVITY_REQUEST_ERROR;
     }
 
-    // ����URL�ͻ���ѡ��
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);  // �����ض���
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);      // ����ض������
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
 
-    // ��������ͷ
     struct curl_slist *headers = NULL;
     char header_buffer[256];
 
@@ -133,11 +128,9 @@ ConnectivityStatus detectConfig(void) {
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    // ������Ӧ���ݽ���
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
 
-    // ִ������
     res = curl_easy_perform(curl);
     
     if (res != CURLE_OK) {
@@ -149,7 +142,6 @@ ConnectivityStatus detectConfig(void) {
 
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-    // ���HTTP״̬��
     if (response_code == 204) {
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
@@ -164,9 +156,7 @@ ConnectivityStatus detectConfig(void) {
         return CONNECTIVITY_REQUEST_ERROR;
     }
 
-    // ������Ӧ����
     if (response_data.memory && response_data.size > 0) {
-        // ��ȡ�Ż�����
         char* portal_config = extract_between_tags(response_data.memory,
             PORTAL_START_TAG, PORTAL_END_TAG);
 
@@ -174,27 +164,22 @@ ConnectivityStatus detectConfig(void) {
         }
 
         if (portal_config && strlen(portal_config) > 0) {
-            // ��ȡauth-url��ticket-url
             char* auth_url_raw = extract_xml_tag_content(portal_config, "auth-url");
             char* ticket_url_raw = extract_xml_tag_content(portal_config, "ticket-url");
-            
-            // ����CDATA��ǩ
+
             char* auth_url = clean_cdata(auth_url_raw);
             char* ticket_url = clean_cdata(ticket_url_raw);
-            
-            // �ͷ�ԭʼ����
+
             if (auth_url_raw) free(auth_url_raw);
             if (ticket_url_raw) free(ticket_url_raw);
 
             if (auth_url && ticket_url && strlen(auth_url) > 0 && strlen(ticket_url) > 0) {
-                // ����ȫ��״̬ - ʹ�ö�̬�ڴ����
                 if (authUrl) free(authUrl);
                 authUrl = strdup(auth_url);
                 
                 if (ticketUrl) free(ticketUrl);
                 ticketUrl = strdup(ticket_url);
 
-                // ��ticket_url����ȡIP����
                 char* user_ip = extract_url_parameter(ticket_url, "wlanuserip");
                 char* ac_ip = extract_url_parameter(ticket_url, "wlanacip");
 
@@ -205,7 +190,6 @@ ConnectivityStatus detectConfig(void) {
                     if (acIp) free(acIp);
                     acIp = strdup(ac_ip);
 
-                    // �����ڴ�
                     free(user_ip);
                     free(ac_ip);
                     free(auth_url);
@@ -229,7 +213,6 @@ ConnectivityStatus detectConfig(void) {
         }
     }
 
-    // ������Դ
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
     if (response_data.memory) free(response_data.memory);
