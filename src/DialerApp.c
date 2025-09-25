@@ -36,9 +36,9 @@ int main(const int argc, char* argv[]) {
 
     if (username && password)
     {
-        printf("手机号：%s\n", Options.usr);
-        printf("密码：%s\n", Options.pwd);
-        NetWorkStatus();
+        // printf("手机号：%s\n", Options.usr);
+        // printf("密码：%s\n", Options.pwd);
+        run();
     }
     else
     {

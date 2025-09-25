@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "headFiles/utils/ByteArray.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 #include "headFiles/cipher/Interface.h"
@@ -124,127 +125,86 @@ int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** bi
  * @return 1表示成功，0表示失败
  */
 int load(const ByteArray* zsm) {
-    printf("\n=== load_session 调试信息 (修复版) ===\n");
+    char* key;
+    char* algo_id;
+    // printf("接收到的zsm数据长度: %zu\n", zsm->length);
 
-    // 输入验证
-    if (zsm == NULL || zsm->data == NULL) {
-        printf("错误: zsm为NULL或data为NULL\n");
+    if (!zsm || !zsm->data || zsm->length == 0) {
+        key = NULL;
+        algo_id = NULL;
         return 0;
     }
 
-    printf("接收到的zsm数据长度: %zu\n", zsm->length);
-
-    // 检查数据是否为十六进制字符串格式
-    int is_hex_string = 1;
-    for (size_t i = 0; i < zsm->length && i < 10; i++) {
-        // 修复警告：使用unsigned char避免narrowing conversion
-        unsigned char c = zsm->data[i];
-        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
-            is_hex_string = 0;
-            break;
-        }
+    // 将字节数组转换为字符串
+    char* str = (char*)malloc(zsm->length + 1);
+    if (!str) {
+        key = NULL;
+        algo_id = NULL;
+        return 0;
     }
 
-    unsigned char* binary_data = NULL;
-    size_t binary_len = 0;
-    const unsigned char* data_to_parse = NULL;
+    memcpy(str, zsm->data, zsm->length);
+    str[zsm->length] = '\0';  // 添加字符串终止符
 
-    if (is_hex_string) {
-        printf("检测到十六进制字符串格式，正在转换为二进制数据...\n");
-        if (!hex_string_to_binary((const char*)zsm->data, zsm->length, &binary_data, &binary_len)) {
-            printf("错误: 十六进制字符串转换失败\n");
-            return 0;
+    // printf("原始字符串: %s\n", str);
+    // printf("字符串长度: %zu\n", strlen(str));
+
+    // 检查字符串长度是否足够
+    if (strlen(str) < 4 + 38) {
+        printf("错误: 字符串长度不足\n");
+        free(str);
+        key = NULL;
+        algo_id = NULL;
+        return 0;
+    }
+
+    // 提取 Key: 去掉左边4个字符，去掉右边38个字符
+    size_t key_length = strlen(str) - 4 - 38;
+    if (key_length <= 0) {
+        printf("错误: Key长度计算错误\n");
+        free(str);
+        key = NULL;
+        algo_id = NULL;
+        return 0;
+    }
+
+    key = (char*)malloc(key_length + 1);
+    if (key) {
+        strncpy(key, str + 4, key_length);
+        (key)[key_length] = '\0';
+        // printf("提取的Key: %s\n", key);
+        // printf("Key长度: %zu\n", key_length);
+    }
+
+    // 提取 algo_id: 从右往左数38个字符（去掉最后的']'）
+    size_t total_length = strlen(str);
+    if (total_length >= 38) {
+        size_t algo_id_length = 36;  // 38个字符去掉最后的']'
+        algo_id = (char*)malloc(algo_id_length + 1);
+        if (algo_id) {
+            // 从倒数第37个字符开始，取36个字符
+            strncpy(algo_id, str + total_length - 37, algo_id_length);
+            (algo_id)[algo_id_length] = '\0';
+            // printf("提取的algo_id: %s\n", algo_id);
         }
-        data_to_parse = binary_data;
-        printf("转换后的二进制数据长度: %zu\n", binary_len);
     } else {
-        printf("检测到二进制数据格式，直接解析\n");
-        data_to_parse = zsm->data;
-        binary_len = zsm->length;
-    }
-
-    // 验证数据长度 (对应: if (zsm.size < 4))
-    if (binary_len < 4) {
-        printf("错误: 数据长度不足4字节 (实际: %zu)\n", binary_len);
-        if (binary_data) free(binary_data);
+        algo_id = NULL;
+        printf("错误: 字符串长度不足以提取algo_id\n");
         return 0;
     }
-
-    // 解析头部信息 (对应: val header = zsm.sliceArray(0 until 3).decodeToString())
-    char header[4] = {0};
-    memcpy(header, data_to_parse, 3);
-    header[3] = '\0'; // 确保字符串结尾
-    printf("头部信息: '%s' (十六进制: %02X %02X %02X)\n", header, data_to_parse[0], data_to_parse[1], data_to_parse[2]);
-
-    // 获取密钥长度 (对应: val keyLen = zsm[3])
-    unsigned char key_len = data_to_parse[3];
-    printf("密钥长度: %d\n", key_len);
-
-    // 初始化位置指针 (对应: var pos = 4)
-    size_t pos = 4;
-
-    // 验证密钥长度是否合理 (对应: if (pos + keyLen > zsm.size))
-    if (pos + key_len > binary_len) {
-        printf("错误: 密钥长度超出数据范围 (需要: %zu, 可用: %zu)\n", pos + key_len, binary_len);
-        if (binary_data) free(binary_data);
-        return 0;
-    }
-
-    // 获取密钥数据 (对应: val key = zsm.sliceArray(pos until pos + keyLen).decodeToString())
-    char* key = malloc(key_len + 1);
-    if (key == NULL) {
-        printf("错误: 无法分配密钥内存\n");
-        if (binary_data) free(binary_data);
-        return 0;
-    }
-    memcpy(key, data_to_parse + pos, key_len);
-    key[key_len] = '\0';
-    printf("密钥: '%s'\n", key);
-    pos += key_len;
-
-    // 验证算法ID长度字段 (对应: if (pos >= zsm.size))
-    if (pos >= binary_len) {
-        printf("错误: 无法读取算法ID长度字段 (位置: %zu, 数据长度: %zu)\n", pos, binary_len);
-        free(key);
-        if (binary_data) free(binary_data);
-        return 0;
-    }
-
-    // 获取算法ID长度 (对应: val algoIdLen = zsm[pos])
-    unsigned char algo_id_len = data_to_parse[pos];
-    printf("算法ID长度: %d\n", algo_id_len);
-    pos += 1;
-
-    // 验证算法ID长度是否合理 (对应: if (pos + algoIdLen > zsm.size))
-    if (pos + algo_id_len > binary_len) {
-        printf("错误: 算法ID长度超出数据范围 (需要: %zu, 可用: %zu)\n", pos + algo_id_len, binary_len);
-        free(key);
-        if (binary_data) free(binary_data);
-        return 0;
-    }
-
-    // 获取算法ID (对应: val algoId = zsm.sliceArray(pos until pos + algoIdLen).decodeToString())
-    char* algo_id = malloc(algo_id_len + 1);
-    if (algo_id == NULL) {
-        printf("错误: 无法分配算法ID内存\n");
-        free(key);
-        if (binary_data) free(binary_data);
-        return 0;
-    }
-    memcpy(algo_id, data_to_parse + pos, algo_id_len);
-    algo_id[algo_id_len] = '\0';
-    printf("算法ID: '%s'\n", algo_id);
+    free(str);
+    printf("[Session.c/load] Algo ID: %s\n", algo_id);
+    printf("[Session.c/load] Key: %s\n", key);
 
     // 初始化加密器 (对应: cipher = CipherFactory.getInstance(algoId))
-    printf("正在初始化加密器...\n");
+    // printf("正在初始化加密器...\n");
     if (!init_cipher(algo_id)) {
         printf("错误: 无法初始化加密器\n");
         free(key);
         free(algo_id);
-        if (binary_data) free(binary_data);
         return 0;
     }
-    printf("加密器初始化成功\n");
+    // printf("加密器初始化成功\n");
 
     // 更新全局状态 (对应: States.algoId = algoId)
     // 释放旧的algoId内存（如果已分配）
@@ -258,19 +218,16 @@ int load(const ByteArray* zsm) {
         printf("错误: 无法分配全局algoId内存\n");
         free(key);
         free(algo_id);
-        if (binary_data) free(binary_data);
         return 0;
     }
     strcpy(algoId, algo_id);
-    printf("全局algoId已更新: '%s'\n", algoId);
+    // printf("全局algoId已更新: '%s'\n", algoId);
 
     // 清理内存
     free(key);
     free(algo_id);
-    if (binary_data) free(binary_data);
 
-    printf("Session加载成功!\n");
-    printf("========================\n\n");
+    // printf("Session加载成功!\n");
 
     // 成功返回 (对应: return true)
     return 1;
@@ -278,7 +235,7 @@ int load(const ByteArray* zsm) {
 
 void initialize(const ByteArray* zsm)
 {
-    printf("Initializing Session...\n");
+    printf("[Session.c/initialize] 正在初始化 Session\n");
     initialized = load(zsm);
 }
 

@@ -47,6 +47,8 @@ add_executable(ESurfingClient
         src/headFiles/cipher/KeyData.h
         src/cipher/KeyData.c
         src/cipher/Factory.c
+        src/utils/ByteArray.c
+        src/headFiles/utils/ByteArray.h
 )
 
 # 链接静态库

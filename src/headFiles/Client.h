@@ -7,6 +7,6 @@
 #define CLIENT_H
 
 // º¯ÊıÉùÃ÷
-void NetWorkStatus();
+void run();
 
 #endif // CLIENT_H
