@@ -10,7 +10,7 @@
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
 
-// libcurlå“åº”å›è°ƒå‡½æ•°
+// libcurlÏìÓ¦»Øµ÷º¯Êı
 size_t write_response_callback(void* contents, size_t size, size_t nmemb, ResponseData* response) {
     size_t real_size = size * nmemb;
     char* ptr = realloc(response->memory, response->size + real_size + 1);
@@ -28,51 +28,51 @@ size_t write_response_callback(void* contents, size_t size, size_t nmemb, Respon
     return real_size;
 }
 
-// MD5è®¡ç®—å‡½æ•° - ä½¿ç”¨OpenSSL 3.0+å…¼å®¹çš„EVP API
+// MD5¼ÆËãº¯Êı - Ê¹ÓÃOpenSSL 3.0+¼æÈİµÄEVP API
 char* calculate_md5(const char* data) {
     EVP_MD_CTX* mdctx;
     const EVP_MD* md;
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_len;
-    char* md5_string = malloc(33); // 32å­—ç¬¦ + nullç»ˆæ­¢ç¬¦
+    char* md5_string = malloc(33); // 32×Ö·û + nullÖÕÖ¹·û
 
     if (md5_string == NULL) return NULL;
 
-    // åˆå§‹åŒ–EVPä¸Šä¸‹æ–‡
+    // ³õÊ¼»¯EVPÉÏÏÂÎÄ
     mdctx = EVP_MD_CTX_new();
     if (mdctx == NULL) {
         free(md5_string);
         return NULL;
     }
 
-    // è·å–MD5ç®—æ³•
+    // »ñÈ¡MD5Ëã·¨
     md = EVP_md5();
 
-    // åˆå§‹åŒ–æ‘˜è¦æ“ä½œ
+    // ³õÊ¼»¯ÕªÒª²Ù×÷
     if (EVP_DigestInit_ex(mdctx, md, NULL) != 1) {
         EVP_MD_CTX_free(mdctx);
         free(md5_string);
         return NULL;
     }
 
-    // æ›´æ–°æ‘˜è¦æ•°æ®
+    // ¸üĞÂÕªÒªÊı¾İ
     if (EVP_DigestUpdate(mdctx, data, strlen(data)) != 1) {
         EVP_MD_CTX_free(mdctx);
         free(md5_string);
         return NULL;
     }
 
-    // å®Œæˆæ‘˜è¦è®¡ç®—
+    // Íê³ÉÕªÒª¼ÆËã
     if (EVP_DigestFinal_ex(mdctx, digest, &digest_len) != 1) {
         EVP_MD_CTX_free(mdctx);
         free(md5_string);
         return NULL;
     }
 
-    // æ¸…ç†ä¸Šä¸‹æ–‡
+    // ÇåÀíÉÏÏÂÎÄ
     EVP_MD_CTX_free(mdctx);
 
-    // è½¬æ¢ä¸ºåå…­è¿›åˆ¶å­—ç¬¦ä¸²
+    // ×ª»»ÎªÊ®Áù½øÖÆ×Ö·û´®
     for (unsigned int i = 0; i < digest_len; i++) {
         sprintf(&md5_string[i*2], "%02x", (unsigned int)digest[i]);
     }
@@ -80,7 +80,7 @@ char* calculate_md5(const char* data) {
     return md5_string;
 }
 
-// åˆå§‹åŒ–é¢å¤–è¯·æ±‚å¤´
+// ³õÊ¼»¯¶îÍâÇëÇóÍ·
 void init_extra_headers(ExtraHeaders* headers) {
     if (headers) {
         headers->count = 0;
@@ -88,7 +88,7 @@ void init_extra_headers(ExtraHeaders* headers) {
     }
 }
 
-// æ·»åŠ é¢å¤–è¯·æ±‚å¤´
+// Ìí¼Ó¶îÍâÇëÇóÍ·
 void add_extra_header(ExtraHeaders* headers, const char* key, const char* value) {
     if (headers && headers->count < MAX_HEADERS_COUNT && key && value) {
         strncpy(headers->headers[headers->count].key, key, MAX_HEADER_LENGTH - 1);
@@ -97,7 +97,7 @@ void add_extra_header(ExtraHeaders* headers, const char* key, const char* value)
     }
 }
 
-// è‡ªåŠ¨åˆå§‹åŒ–å’Œæ¸…ç†çš„å†…éƒ¨å‡½æ•°
+// ×Ô¶¯³õÊ¼»¯ºÍÇåÀíµÄÄÚ²¿º¯Êı
 static int ensure_curl_initialized(void) {
     static int initialized = 0;
     if (!initialized) {
@@ -105,24 +105,24 @@ static int ensure_curl_initialized(void) {
             return -1;
         }
         initialized = 1;
-        // æ³¨å†Œç¨‹åºé€€å‡ºæ—¶çš„æ¸…ç†å‡½æ•°
+        // ×¢²á³ÌĞòÍË³öÊ±µÄÇåÀíº¯Êı
         atexit(curl_global_cleanup);
     }
     return 0;
 }
 
-// åˆå§‹åŒ–POSTå®¢æˆ·ç«¯ (ä¿ç•™å…¼å®¹æ€§ï¼Œä½†ç°åœ¨æ˜¯å¯é€‰çš„)
+// ³õÊ¼»¯POST¿Í»§¶Ë (±£Áô¼æÈİĞÔ£¬µ«ÏÖÔÚÊÇ¿ÉÑ¡µÄ)
 int init_post_client(void) {
     return ensure_curl_initialized();
 }
 
-// æ¸…ç†POSTå®¢æˆ·ç«¯ (ä¿ç•™å…¼å®¹æ€§ï¼Œä½†ç°åœ¨æ˜¯å¯é€‰çš„)
+// ÇåÀíPOST¿Í»§¶Ë (±£Áô¼æÈİĞÔ£¬µ«ÏÖÔÚÊÇ¿ÉÑ¡µÄ)
 void cleanup_post_client(void) {
-    // ç”±äºä½¿ç”¨äº†atexitï¼Œè¿™ä¸ªå‡½æ•°ç°åœ¨æ˜¯å¯é€‰çš„
-    // ä¿ç•™æ˜¯ä¸ºäº†å‘åå…¼å®¹
+    // ÓÉÓÚÊ¹ÓÃÁËatexit£¬Õâ¸öº¯ÊıÏÖÔÚÊÇ¿ÉÑ¡µÄ
+    // ±£ÁôÊÇÎªÁËÏòºó¼æÈİ
 }
 
-// é‡Šæ”¾NetResultå†…å­˜
+// ÊÍ·ÅNetResultÄÚ´æ
 void free_net_result(NetResult* result) {
     if (result) {
         if (result->data) {
@@ -135,7 +135,7 @@ void free_net_result(NetResult* result) {
     }
 }
 
-// ä¸»è¦çš„POSTè¯·æ±‚å‡½æ•° - å¯¹åº”Kotlinçš„postå‡½æ•°
+// Ö÷ÒªµÄPOSTÇëÇóº¯Êı - ¶ÔÓ¦KotlinµÄpostº¯Êı
 NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_headers) {
     CURL* curl;
     CURLcode res;
@@ -146,7 +146,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
 
     if (!result) return NULL;
 
-    // è‡ªåŠ¨åˆå§‹åŒ–curl (å¦‚æœè¿˜æ²¡æœ‰åˆå§‹åŒ–)
+    // ×Ô¶¯³õÊ¼»¯curl (Èç¹û»¹Ã»ÓĞ³õÊ¼»¯)
     if (ensure_curl_initialized() != 0) {
         result->type = NET_RESULT_ERROR;
         result->data = NULL;
@@ -155,7 +155,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
         return result;
     }
 
-    // åˆå§‹åŒ–ç»“æœç»“æ„ä½“
+    // ³õÊ¼»¯½á¹û½á¹¹Ìå
     result->type = NET_RESULT_ERROR;
     result->data = NULL;
     result->error_message = NULL;
@@ -167,23 +167,20 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
         return result;
     }
 
-    // è®¾ç½®URL
+    // ÉèÖÃURL
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
-    // è®¾ç½®POSTæ•°æ®
+    // ÉèÖÃPOSTÊı¾İ
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
 
-    // è®¾ç½®Content-Type
+    // ÉèÖÃContent-Type
     headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
-
-    // è®¾ç½®åŸºæœ¬è¯·æ±‚å¤´ - å¯¹åº”Kotlinä»£ç ä¸­çš„åŸºæœ¬å¤´ä¿¡æ¯
     snprintf(header_buffer, sizeof(header_buffer), "User-Agent: %s", USER_AGENT);
     headers = curl_slist_append(headers, header_buffer);
-
     snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
     headers = curl_slist_append(headers, header_buffer);
 
-    // è®¡ç®—å¹¶æ·»åŠ CDC-Checksumå¤´ - å¯¹åº”DigestUtils.md5Hex(data)
+    // ¼ÆËã²¢Ìí¼ÓCDC-ChecksumÍ· - ¶ÔÓ¦DigestUtils.md5Hex(data)
     char* md5_hash = calculate_md5(data);
     if (md5_hash) {
         snprintf(header_buffer, sizeof(header_buffer), "CDC-Checksum: %s", md5_hash);
@@ -191,7 +188,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
         free(md5_hash);
     }
 
-    // æ·»åŠ Client-IDå’ŒAlgo-IDå¤´
+    // Ìí¼ÓClient-IDºÍAlgo-IDÍ·
     if (strlen(clientId) > 0) {
         snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", clientId);
         headers = curl_slist_append(headers, header_buffer);
@@ -201,8 +198,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
         snprintf(header_buffer, sizeof(header_buffer), "Algo-ID: %s", algoId);
         headers = curl_slist_append(headers, header_buffer);
     }
-
-    // æ·»åŠ é¢å¤–çš„è¯·æ±‚å¤´ - å¯¹åº”extraHeaders.forEach
+    // Ìí¼Ó¶îÍâµÄÇëÇóÍ· - ¶ÔÓ¦extraHeaders.forEach
     if (extra_headers) {
         for (int i = 0; i < extra_headers->count; i++) {
             snprintf(header_buffer, sizeof(header_buffer), "%s: %s",
@@ -210,7 +206,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
             headers = curl_slist_append(headers, header_buffer);
         }
     }
-    // æ·»åŠ æ¡ä»¶æ€§è¯·æ±‚å¤´ - å¯¹åº”Kotlinä¸­çš„æ¡ä»¶åˆ¤æ–­
+    // Ìí¼ÓÌõ¼şĞÔÇëÇóÍ· - ¶ÔÓ¦KotlinÖĞµÄÌõ¼şÅĞ¶Ï
     if (schoolId != NULL) {
         snprintf(header_buffer, sizeof(header_buffer), "CDC-SchoolId: %s", schoolId);
         headers = curl_slist_append(headers, header_buffer);
@@ -223,37 +219,33 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
         snprintf(header_buffer, sizeof(header_buffer), "CDC-Area: %s", area);
         headers = curl_slist_append(headers, header_buffer);
     }
-    // è®¾ç½®è¯·æ±‚å¤´
+    // ÉèÖÃÇëÇóÍ·
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-    // è®¾ç½®å“åº”å›è°ƒ
+    // ÉèÖÃÏìÓ¦»Øµ÷
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-
-    // è®¾ç½®è¶…æ—¶
+    // ÉèÖÃ³¬Ê±
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-
-    // æ‰§è¡Œè¯·æ±‚
+    // Ö´ĞĞÇëÇó
     res = curl_easy_perform(curl);
 
     if (res != CURLE_OK) {
-        // è¯·æ±‚å¤±è´¥ - å¯¹åº”Kotlinçš„catch (e: Throwable)
+        // ÇëÇóÊ§°Ü - ¶ÔÓ¦KotlinµÄcatch (e: Throwable)
         result->type = NET_RESULT_ERROR;
         result->error_message = strdup(curl_easy_strerror(res));
     } else {
-        // è·å–HTTPçŠ¶æ€ç 
+        // »ñÈ¡HTTP×´Ì¬Âë
         long response_code;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
         result->status_code = (int)response_code;
 
-        // è¯·æ±‚æˆåŠŸ - å¯¹åº”Kotlinçš„NetResult.Success
+        // ÇëÇó³É¹¦ - ¶ÔÓ¦KotlinµÄNetResult.Success
         result->type = NET_RESULT_SUCCESS;
         result->data = response.memory;
-        response.memory = NULL; // é˜²æ­¢è¢«é‡Šæ”¾
+        response.memory = NULL; // ·ÀÖ¹±»ÊÍ·Å
     }
-
-    // æ¸…ç†èµ„æº
+    // ÇåÀí×ÊÔ´
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
@@ -264,7 +256,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
     return result;
 }
 
-// ä¾¿æ·å‡½æ•°ï¼šä¸å¸¦é¢å¤–è¯·æ±‚å¤´çš„POSTè¯·æ±‚
+// ±ã½İº¯Êı£º²»´ø¶îÍâÇëÇóÍ·µÄPOSTÇëÇó
 NetResult* simple_post(const char* url, const char* data) {
     return post_request(url, data, NULL);
 }

@@ -52,7 +52,17 @@ char* clean_cdata(const char* text) {
     
     char* start = strstr(text, cdata_start);
     if (!start) {
-        return strdup(text);
+        // 如果没有CDATA标签，直接处理portal_node参数
+        char* cleaned_text = strdup(text);
+        if (!cleaned_text) return NULL;
+
+        // 查找并去除 "&portal_node" 及其后面的所有字符
+        char* portal_pos = strstr(cleaned_text, "&portal_node");
+        if (portal_pos) {
+            *portal_pos = '\0';  // 截断字符串
+        }
+
+        return cleaned_text;
     }
     
     start += strlen(cdata_start);
@@ -67,6 +77,13 @@ char* clean_cdata(const char* text) {
     
     strncpy(result, start, len);
     result[len] = '\0';
+
+    // 处理提取出的CDATA内容中的portal_node参数
+    char* portal_pos = strstr(result, "&portal_node");
+    if (portal_pos) {
+        *portal_pos = '\0';  // 截断字符串，去除portal_node及其后面的内容
+    }
+
     return result;
 }
 
@@ -159,9 +176,6 @@ ConnectivityStatus detectConfig(void) {
     if (response_data.memory && response_data.size > 0) {
         char* portal_config = extract_between_tags(response_data.memory,
             PORTAL_START_TAG, PORTAL_END_TAG);
-
-        if (portal_config) {
-        }
 
         if (portal_config && strlen(portal_config) > 0) {
             char* auth_url_raw = extract_xml_tag_content(portal_config, "auth-url");

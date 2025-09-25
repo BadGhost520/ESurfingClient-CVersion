@@ -17,4 +17,6 @@ typedef enum {
 // 返回值: 0-返回204, 1-返回304, 2-其他状态码或请求失败
 ConnectivityStatus detectConfig(void);
 
+char* extract_xml_tag_content(const char* xml, const char* tag);
+
 #endif // NETWORKSTATUS_H

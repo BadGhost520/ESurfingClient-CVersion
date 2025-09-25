@@ -459,11 +459,35 @@ int aes_double_encrypt_cbc(const uint8_t* key1, const uint8_t* key2, const uint8
     int result = aes_encrypt_cbc(key1, iv, plaintext, plaintext_len, &temp_ciphertext, &temp_len);
     if (result != 0) return result;
 
-    // 第二次加密（使用第一次加密结果的前16字节作为IV）
-    result = aes_encrypt_cbc(key2, temp_ciphertext, temp_ciphertext + AES_BLOCK_SIZE,
-                            temp_len - AES_BLOCK_SIZE, ciphertext, ciphertext_len);
+    // 构造第一次加密的完整结果（IV + 密文）
+    uint8_t* r1 = malloc(temp_len + AES_BLOCK_SIZE);
+    if (!r1) {
+        free(temp_ciphertext);
+        return -1;
+    }
+    memcpy(r1, iv, AES_BLOCK_SIZE);  // 前16字节是IV
+    memcpy(r1 + AES_BLOCK_SIZE, temp_ciphertext, temp_len);  // 后面是密文
     free(temp_ciphertext);
 
+    // 第二次加密（对整个r1进行加密）
+    result = aes_encrypt_cbc(key2, iv, r1, temp_len + AES_BLOCK_SIZE, ciphertext, ciphertext_len);
+
+    // 构造最终结果（IV + 第二次加密结果）
+    if (result == 0) {
+        uint8_t* final_result = malloc(*ciphertext_len + AES_BLOCK_SIZE);
+        if (!final_result) {
+            free(*ciphertext);
+            free(r1);
+            return -1;
+        }
+        memcpy(final_result, iv, AES_BLOCK_SIZE);  // 前16字节是IV
+        memcpy(final_result + AES_BLOCK_SIZE, *ciphertext, *ciphertext_len);  // 后面是密文
+        free(*ciphertext);
+        *ciphertext = final_result;
+        *ciphertext_len += AES_BLOCK_SIZE;
+    }
+
+    free(r1);
     return result;
 }
 
@@ -471,28 +495,26 @@ int aes_double_encrypt_cbc(const uint8_t* key1, const uint8_t* key2, const uint8
 int aes_double_decrypt_cbc(const uint8_t* key1, const uint8_t* key2, const uint8_t* iv,
                           const uint8_t* ciphertext, size_t ciphertext_len,
                           uint8_t** plaintext, size_t* plaintext_len) {
+    if (ciphertext_len < AES_BLOCK_SIZE) return -1;
+
     uint8_t* temp_plaintext;
     size_t temp_len;
 
-    // 第一次解密（使用key2，从第16字节开始解密）
-    int result = aes_decrypt_cbc(key2, ciphertext, ciphertext + AES_BLOCK_SIZE,
+    // 第一次解密（使用key2，跳过前16字节的IV）
+    int result = aes_decrypt_cbc(key2, iv, ciphertext + AES_BLOCK_SIZE,
                                 ciphertext_len - AES_BLOCK_SIZE, &temp_plaintext, &temp_len);
     if (result != 0) return result;
 
-    // 构造完整的中间结果
-    uint8_t* full_temp = malloc(temp_len + AES_BLOCK_SIZE);
-    if (!full_temp) {
+    // 检查第一次解密结果长度
+    if (temp_len < AES_BLOCK_SIZE) {
         free(temp_plaintext);
         return -1;
     }
 
-    memcpy(full_temp, ciphertext, AES_BLOCK_SIZE);
-    memcpy(full_temp + AES_BLOCK_SIZE, temp_plaintext, temp_len);
+    // 第二次解密（使用key1，跳过前16字节的IV）
+    result = aes_decrypt_cbc(key1, iv, temp_plaintext + AES_BLOCK_SIZE,
+                            temp_len - AES_BLOCK_SIZE, plaintext, plaintext_len);
     free(temp_plaintext);
-
-    // 第二次解密（使用key1）
-    result = aes_decrypt_cbc(key1, iv, full_temp, temp_len + AES_BLOCK_SIZE, plaintext, plaintext_len);
-    free(full_temp);
 
     return result;
 }

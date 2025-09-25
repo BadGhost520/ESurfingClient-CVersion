@@ -12,14 +12,59 @@
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/Constants.h"
 
-void initSession()
+void getTicket()
 {
-    NetResult* result = simple_post(ticketUrl, algoId);
-    if (result && result->type == NET_RESULT_SUCCESS) {
+    char* payload = createXMLPayload();
+    char* encry = encrypt(payload);
+    printf("加密后数据:\n%s\n", encry);
+    char* decry = decrypt(encry);
+    printf("解密后数据:\n%s\n", decry);
+    NetResult* result = simple_post(ticketUrl, encry);
+    if (result && result->type == NET_RESULT_SUCCESS && result->data != NULL)
+    {
+        // 首先尝试解密响应数据
+        char* decrypted_response = decrypt(result->data);
+        if (decrypted_response) {
+            printf("解密后的服务器响应:\n%s\n", decrypted_response);
+
+            // 提取result字段
+            char* result_value = extract_xml_tag_content(decrypted_response, "result");
+            if (result_value && strlen(result_value) > 0) {
+                printf("提取到result数据: %s\n", result_value);
+                free(result_value);
+            } else {
+                printf("result 数据为空！\n");
+
+                // 尝试提取ticket字段作为备选
+                char* ticket_value = extract_xml_tag_content(decrypted_response, "ticket");
+                if (ticket_value && strlen(ticket_value) > 0) {
+                    printf("提取到ticket数据: %s\n", ticket_value);
+                    free(ticket_value);
+                } else {
+                    printf("ticket 数据也为空！\n");
+                }
+            }
+
+            free(decrypted_response);
+        } else {
+            printf("解密服务器响应失败！\n");
+
+            // 如果解密失败，尝试直接解析原始响应
+            printf("尝试直接解析原始响应数据...\n");
+            char* result_value = extract_xml_tag_content(result->data, "result");
+            if (result_value && strlen(result_value) > 0) {
+                printf("从原始响应提取到result数据: %s\n", result_value);
+                free(result_value);
+            } else {
+                printf("原始响应中也没有找到result数据！\n");
+                printf("原始响应内容: %s\n", result->data);
+            }
+        }
+
         ByteArray zsm;
         zsm.data = (unsigned char*)result->data;
         zsm.length = strlen(result->data);
-
+        // char* data = decrypt(result->data);
         // 打印zsm数据的详细信息
         printf("=== ZSM数据分析 ===\n");
         printf("数据长度: %zu 字节\n", zsm.length);
@@ -47,51 +92,177 @@ void initSession()
             }
             printf("\n");
 
-            // 如果数据长度足够，解析结构
+            // 检查数据是否为十六进制字符串格式并进行结构解析
             if (zsm.length >= 4) {
                 printf("\n=== 数据结构解析 ===\n");
-                printf("头部 (前3字节): ");
-                for (int i = 0; i < 3; i++) {
-                    printf("%02X ", zsm.data[i]);
-                }
-                printf("('%c%c%c')\n", zsm.data[0], zsm.data[1], zsm.data[2]);
 
-                printf("密钥长度 (第4字节): %d\n", zsm.data[3]);
-
-                if (zsm.length > 4 + zsm.data[3]) {
-                    printf("密钥数据: ");
-                    for (int i = 4; i < 4 + zsm.data[3]; i++) {
-                        printf("%02X ", zsm.data[i]);
+                // 检查是否为十六进制字符串格式
+                int is_hex_string = 1;
+                for (size_t i = 0; i < zsm.length && i < 10; i++) {
+                    unsigned char c = zsm.data[i];
+                    if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
+                        is_hex_string = 0;
+                        break;
                     }
-                    printf("\n");
+                }
 
-                    size_t pos = 4 + zsm.data[3];
-                    if (pos < zsm.length) {
-                        printf("算法ID长度: %d\n", zsm.data[pos]);
-                        pos++;
-                        if (pos + zsm.data[pos-1] <= zsm.length) {
-                            printf("算法ID: ");
-                            for (size_t i = pos; i < pos + zsm.data[pos-1]; i++) {
-                                printf("%c", zsm.data[i]);
+                unsigned char* binary_data = NULL;
+                size_t binary_len = 0;
+                const unsigned char* data_to_parse = NULL;
+
+                if (is_hex_string) {
+                    printf("检测到十六进制字符串格式，正在转换为二进制数据进行解析...\n");
+                    if (hex_string_to_binary((const char*)zsm.data, zsm.length, &binary_data, &binary_len)) {
+                        data_to_parse = binary_data;
+                        printf("转换后的二进制数据长度: %zu\n", binary_len);
+                    } else {
+                        printf("错误: 十六进制字符串转换失败，使用原始数据解析\n");
+                        data_to_parse = zsm.data;
+                        binary_len = zsm.length;
+                    }
+                } else {
+                    printf("检测到二进制数据格式，直接解析\n");
+                    data_to_parse = zsm.data;
+                    binary_len = zsm.length;
+                }
+
+                if (data_to_parse && binary_len >= 4) {
+                    printf("头部 (前3字节): ");
+                    for (int i = 0; i < 3; i++) {
+                        printf("%02X ", data_to_parse[i]);
+                    }
+                    printf("('%c%c%c')\n", data_to_parse[0], data_to_parse[1], data_to_parse[2]);
+
+                    printf("密钥长度 (第4字节): %d\n", data_to_parse[3]);
+
+                    if (binary_len > 4 + data_to_parse[3]) {
+                        printf("密钥数据: ");
+                        for (int i = 4; i < 4 + data_to_parse[3]; i++) {
+                            printf("%02X ", data_to_parse[i]);
+                        }
+                        printf("\n");
+
+                        size_t pos = 4 + data_to_parse[3];
+                        if (pos < binary_len) {
+                            printf("算法ID长度: %d\n", data_to_parse[pos]);
+                            pos++;
+                            if (pos + data_to_parse[pos-1] <= binary_len) {
+                                printf("算法ID: ");
+                                for (size_t i = pos; i < pos + data_to_parse[pos-1]; i++) {
+                                    printf("%c", data_to_parse[i]);
+                                }
+                                printf("\n");
                             }
-                            printf("\n");
                         }
                     }
                 }
+
+                // 释放分配的内存
+                if (binary_data) {
+                    free(binary_data);
+                }
             }
+            printf("data: %s\n", decrypt(result->data));
         } else {
             printf("数据为空\n");
         }
         printf("==================\n\n");
-
-        SessionInitialize(&zsm);
     } else {
-        printf("请求失败: 无法创建结果对象\n");
+        printf("result 数据为空！\n");
+    }
+    session_free();
+    free(payload);
+}
+
+void initSession()
+{
+    NetResult* result = simple_post(ticketUrl, algoId);
+    if (result && result->type == NET_RESULT_SUCCESS && result->data != NULL) {
+        // 首先尝试解密响应数据
+        char* decrypted_response = decrypt(result->data);
+        if (decrypted_response) {
+            printf("解密后的服务器响应:\n%s\n", decrypted_response);
+
+            // 提取result字段
+            char* result_value = extract_xml_tag_content(decrypted_response, "result");
+            if (result_value && strlen(result_value) > 0) {
+                printf("提取到result数据: %s\n", result_value);
+
+                // 使用result数据初始化Session
+                ByteArray zsm;
+                zsm.data = (unsigned char*)result_value;
+                zsm.length = strlen(result_value);
+                initialize(&zsm);
+
+                free(result_value);
+            } else {
+                printf("result 数据为空！\n");
+
+                // 尝试提取其他可能的字段
+                char* session_value = extract_xml_tag_content(decrypted_response, "session");
+                if (session_value && strlen(session_value) > 0) {
+                    printf("提取到session数据: %s\n", session_value);
+
+                    ByteArray zsm;
+                    zsm.data = (unsigned char*)session_value;
+                    zsm.length = strlen(session_value);
+                    initialize(&zsm);
+
+                    free(session_value);
+                } else {
+                    printf("session 数据也为空！\n");
+
+                    // 如果XML解析失败，尝试直接使用解密后的数据
+                    printf("尝试直接使用解密后的数据初始化Session...\n");
+                    ByteArray zsm;
+                    zsm.data = (unsigned char*)decrypted_response;
+                    zsm.length = strlen(decrypted_response);
+                    initialize(&zsm);
+                }
+            }
+
+            free(decrypted_response);
+        } else {
+            printf("解密服务器响应失败！\n");
+
+            // 如果解密失败，尝试直接解析原始响应
+            printf("尝试直接解析原始响应数据...\n");
+            char* result_value = extract_xml_tag_content(result->data, "result");
+            if (result_value && strlen(result_value) > 0) {
+                printf("从原始响应提取到result数据: %s\n", result_value);
+
+                ByteArray zsm;
+                zsm.data = (unsigned char*)result_value;
+                zsm.length = strlen(result_value);
+                initialize(&zsm);
+
+                free(result_value);
+            } else {
+                printf("原始响应中也没有找到result数据！\n");
+                printf("原始响应内容: %s\n", result->data);
+
+                // 最后尝试直接使用原始响应数据
+                printf("尝试直接使用原始响应数据初始化Session...\n");
+                ByteArray zsm;
+                zsm.data = (unsigned char*)result->data;
+                zsm.length = strlen(result->data);
+                initialize(&zsm);
+            }
+        }
+    } else {
+        printf("获取Session数据失败\n");
+        if (result) {
+            if (result->type != NET_RESULT_SUCCESS) {
+                printf("网络请求失败: %s\n", result->error_message ? result->error_message : "未知错误");
+            } else if (result->data == NULL) {
+                printf("服务器返回的数据为空\n");
+            }
+        } else {
+            printf("网络请求返回NULL\n");
+        }
     }
 
-    if (result) {
-        free_net_result(result);
-    }
+    free_net_result(result);
 }
 
 void authorization(void)
@@ -111,15 +282,7 @@ void authorization(void)
     printf("Client IP: %s\n", userIp);
     printf("AC IP: %s\n", acIp);
 
-    // 测试createXMLPayload函数
-    char* xml_payload = createXMLPayload();
-    if (xml_payload) {
-        printf("生成的XML Payload:\n");
-        printf("%s\n", xml_payload);
-        free(xml_payload);
-    } else {
-        printf("创建XML Payload失败!\n");
-    }
+    getTicket();
 
     printf("ClientId: %s\n", clientId);
     printf("algoID: %s\n", algoId);
@@ -130,7 +293,7 @@ void authorization(void)
 
 }
 
-void NetWorkStatus(void)
+void NetWorkStatus()
 {
     while (1)
     {

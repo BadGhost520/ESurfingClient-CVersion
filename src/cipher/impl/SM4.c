@@ -104,13 +104,22 @@ static void sm4_expand_key(int for_encryption, const uint8_t* key, uint32_t* rk)
         K[i] = MK[i] ^ SM4_FK[i];
     }
 
-    // 生成轮密钥
-    for (int i = 0; i < 32; i++) {
-        K[(i + 4) % 4] = K[i % 4] ^ sm4_T_ap(K[(i + 1) % 4] ^ K[(i + 2) % 4] ^ K[(i + 3) % 4] ^ SM4_CK[i]);
-        if (for_encryption) {
-            rk[i] = K[(i + 4) % 4];
-        } else {
-            rk[31 - i] = K[(i + 4) % 4];
+    // 生成轮密钥（修复与Kotlin版本的差异）
+    if (for_encryption) {
+        rk[0] = K[0] ^ sm4_T_ap(K[1] ^ K[2] ^ K[3] ^ SM4_CK[0]);
+        rk[1] = K[1] ^ sm4_T_ap(K[2] ^ K[3] ^ rk[0] ^ SM4_CK[1]);
+        rk[2] = K[2] ^ sm4_T_ap(K[3] ^ rk[0] ^ rk[1] ^ SM4_CK[2]);
+        rk[3] = K[3] ^ sm4_T_ap(rk[0] ^ rk[1] ^ rk[2] ^ SM4_CK[3]);
+        for (int i = 4; i < 32; i++) {
+            rk[i] = rk[i - 4] ^ sm4_T_ap(rk[i - 3] ^ rk[i - 2] ^ rk[i - 1] ^ SM4_CK[i]);
+        }
+    } else {
+        rk[31] = K[0] ^ sm4_T_ap(K[1] ^ K[2] ^ K[3] ^ SM4_CK[0]);
+        rk[30] = K[1] ^ sm4_T_ap(K[2] ^ K[3] ^ rk[31] ^ SM4_CK[1]);
+        rk[29] = K[2] ^ sm4_T_ap(K[3] ^ rk[31] ^ rk[30] ^ SM4_CK[2]);
+        rk[28] = K[3] ^ sm4_T_ap(rk[31] ^ rk[30] ^ rk[29] ^ SM4_CK[3]);
+        for (int i = 27; i >= 0; i--) {
+            rk[i] = rk[i + 4] ^ sm4_T_ap(rk[i + 3] ^ rk[i + 2] ^ rk[i + 1] ^ SM4_CK[31 - i]);
         }
     }
 }
@@ -145,13 +154,17 @@ void sm4_process_block(sm4_context_t* ctx, const uint8_t* input, uint8_t* output
         X[i] = sm4_big_endian_to_int(input, i * 4);
     }
 
-    // 32轮迭代
-    for (int i = 0; i < 32; i++) {
-        uint32_t temp = sm4_F(X, ctx->rk[i], i);
-        X[0] = X[1];
-        X[1] = X[2];
-        X[2] = X[3];
-        X[3] = temp;
+    // 32轮迭代（修复与Kotlin版本的差异）
+    for (int i = 0; i < 32; i += 4) {
+        uint32_t temp0 = X[0] ^ sm4_T(X[1] ^ X[2] ^ X[3] ^ ctx->rk[i]);
+        uint32_t temp1 = X[1] ^ sm4_T(X[2] ^ X[3] ^ temp0 ^ ctx->rk[i + 1]);
+        uint32_t temp2 = X[2] ^ sm4_T(X[3] ^ temp0 ^ temp1 ^ ctx->rk[i + 2]);
+        uint32_t temp3 = X[3] ^ sm4_T(temp0 ^ temp1 ^ temp2 ^ ctx->rk[i + 3]);
+
+        X[0] = temp0;
+        X[1] = temp1;
+        X[2] = temp2;
+        X[3] = temp3;
     }
 
     // 输出转换（反序）
@@ -182,7 +195,14 @@ uint8_t* sm4_pkcs7_unpadding(const uint8_t* data, size_t data_len, size_t* unpad
     if (data_len == 0) return NULL;
 
     uint8_t padding_len = data[data_len - 1];
-    if (padding_len > SM4_BLOCK_SIZE || padding_len > data_len) return NULL;
+    if (padding_len < 1 || padding_len > SM4_BLOCK_SIZE || padding_len > data_len) return NULL;
+
+    // 验证所有填充字节是否正确（与Kotlin版本保持一致）
+    for (size_t i = 1; i <= padding_len; i++) {
+        if (data[data_len - i] != padding_len) {
+            return NULL; // 填充内容不正确
+        }
+    }
 
     *unpadded_len = data_len - padding_len;
     uint8_t* unpadded = malloc(*unpadded_len);
