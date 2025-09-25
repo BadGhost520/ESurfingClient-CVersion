@@ -23,6 +23,6 @@
     extern char* authUrl;
     extern bool isLogged;
 
-    void RefreshClientState(void);
+    void refreshStates(void);
 
 #endif //ESURFINGCLIENT_STATES_H

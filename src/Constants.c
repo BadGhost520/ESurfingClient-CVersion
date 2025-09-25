@@ -12,13 +12,6 @@ const char* PORTAL_START_TAG = "<!--//config.campus.js.chinatelecom.com";
 const char* AUTH_KEY = "Eshore!@#";
 const char* HOST_NAME;
 
-char* random_string(int length);
-
-void initConstants()
-{
-    HOST_NAME = random_string(10);
-}
-
 char* random_string(int length) {
     // 定义字符集：大写字母 + 小写字母 + 数字
     const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -52,4 +45,9 @@ char* random_string(int length) {
     result[length] = '\0';
 
     return result;
+}
+
+void initConstants()
+{
+    HOST_NAME = random_string(10);
 }

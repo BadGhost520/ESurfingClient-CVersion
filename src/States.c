@@ -24,7 +24,7 @@ char* ticketUrl;
 char* authUrl;
 bool isLogged = false;
 
-void RefreshClientState(void)
+void refreshStates(void)
 {
     // 刷新客户端状态
     if (clientId)

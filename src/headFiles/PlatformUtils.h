@@ -22,4 +22,7 @@ void setClientId(char** client_id);
 
 char* randomMacAddress();
 
+// ´´½¨XML payload×Ö·û´®
+char* createXMLPayload();
+
 #endif // PLATFORMUTILS_H
