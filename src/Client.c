@@ -12,27 +12,22 @@
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/Constants.h"
 #include "headFiles/utils/ByteArray.h"
+#include "headFiles/utils/XMLParser.h"
 
-void getTicket()
+void authorization();
+
+char* getTicket()
 {
     char* payload = createXMLPayload();
-    char* encry = encrypt(payload);
-    printf("[Client.c/getTicket] 加密后数据:\n%s\n", encry);
-    char* decry = decrypt(encry);
-    printf("[Client.c/getTicket] 解密后数据:\n%s\n", decry);
-    NetResult* result = simple_post(ticketUrl, encry);
+    NetResult* result = simple_post(ticketUrl, encrypt(payload));
     if (result && result->type == NET_RESULT_SUCCESS && result->data != NULL)
     {
-        printf("[Client.c/getTicket] result.data: %s\n", result->data);
-        char* data = decrypt(result->data);
-        printf("[Client.c/getTicket] data: %s\n", data);
+        // printf("[Client.c/getTicket] data: %s\n", decrypt(result->data));
+        return extract_ticket(decrypt(result->data));
     }
-    else
-    {
-        printf("[Client.c/getTicket] result 为空\n");
-    }
-    session_free();
+    printf("[Client.c/getTicket] result 为空\n");
     free(payload);
+    return NULL;
 }
 
 void initSession()
@@ -40,16 +35,23 @@ void initSession()
     NetResult* result = simple_post(ticketUrl, algoId);
     if (result && result->type == NET_RESULT_SUCCESS)
     {
-        ByteArray temp = string_to_bytes(result->data);
-        initialize(&temp);
-        free(temp.data);
+        const ByteArray zsm = string_to_bytes(result->data);
+        // printf("[Client.c/initSession] result.data: %s\n", result->data);
+        if (initialize(&zsm) == 2)
+        {
+            printf("[Client.c/initSession] AlgoID匹配失败，正在重新执行程序\n");
+            free_net_result(result);
+            free(zsm.data);
+            authorization();
+        }
+        free(zsm.data);
     } else {
-        printf("[Client.c/initSession] 初始化 Session 错误");
+        printf("[Client.c/initSession] 初始化 Session 错误\n");
     }
     free_net_result(result);
 }
 
-void authorization(void)
+void authorization()
 {
     initConstants();
     refreshStates();
@@ -66,7 +68,8 @@ void authorization(void)
     printf("[Client.c/authorization] Client IP: %s\n", userIp);
     printf("[Client.c/authorization] AC IP: %s\n", acIp);
 
-    getTicket();
+    ticket = getTicket();
+    printf("[Client.c/authorization] Ticket: %s\n", ticket);
 
     printf("[Client.c/authorization] ClientId: %s\n", clientId);
     printf("[Client.c/authorization] algoID: %s\n", algoId);

@@ -59,6 +59,8 @@ add_executable(ESurfingClient
         src/cipher/impl/aes_cbc.c
         src/utils/ShutdownHook.c
         src/headFiles/utils/ShutdownHook.h
+        src/utils/XMLParser.c
+        src/headFiles/utils/XMLParser.h
 
 )
 

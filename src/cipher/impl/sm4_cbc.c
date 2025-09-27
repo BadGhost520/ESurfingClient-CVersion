@@ -170,36 +170,36 @@ static uint8_t* sm4_encrypt_cbc(const uint8_t* key, const uint8_t* iv,
     size_t padded_len;
     uint8_t* padded_data = pkcs7_padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
     if (!padded_data) return NULL;
-    
+
     size_t blocks = padded_len / SM4_BLOCK_SIZE;
     uint8_t* output = safe_malloc(padded_len);
-    
+
     // 密钥扩展
     uint32_t rk[32];
     sm4_key_expansion(key, rk);
-    
+
     // 初始化前一个块为IV
     uint8_t prev_block[SM4_BLOCK_SIZE];
     memcpy(prev_block, iv, SM4_BLOCK_SIZE);
-    
+
     // 逐块加密
     for (size_t i = 0; i < blocks; i++) {
         uint8_t block[SM4_BLOCK_SIZE];
         uint8_t xored_block[SM4_BLOCK_SIZE];
-        
+
         // 获取当前块
         memcpy(block, padded_data + i * SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
-        
+
         // 与前一个密文块异或
         xor_bytes(block, prev_block, xored_block, SM4_BLOCK_SIZE);
-        
+
         // SM4加密
         sm4_encrypt_block(xored_block, output + i * SM4_BLOCK_SIZE, rk);
-        
+
         // 更新前一个块
         memcpy(prev_block, output + i * SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
     }
-    
+
     safe_free(padded_data);
     *output_len = padded_len;
     return output;
@@ -210,41 +210,41 @@ static uint8_t* sm4_decrypt_cbc(const uint8_t* key, const uint8_t* iv,
                                 const uint8_t* ciphertext, size_t ciphertext_len,
                                 size_t* output_len) {
     if (ciphertext_len % SM4_BLOCK_SIZE != 0) return NULL;
-    
+
     size_t blocks = ciphertext_len / SM4_BLOCK_SIZE;
     uint8_t* output = safe_malloc(ciphertext_len);
-    
+
     // 密钥扩展
     uint32_t rk[32];
     sm4_key_expansion(key, rk);
-    
+
     // 初始化前一个块为IV
     uint8_t prev_block[SM4_BLOCK_SIZE];
     memcpy(prev_block, iv, SM4_BLOCK_SIZE);
-    
+
     // 逐块解密
     for (size_t i = 0; i < blocks; i++) {
         uint8_t block[SM4_BLOCK_SIZE];
         uint8_t decrypted_block[SM4_BLOCK_SIZE];
-        
+
         // 获取当前密文块
         memcpy(block, ciphertext + i * SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
-        
+
         // SM4解密
         sm4_decrypt_block(block, decrypted_block, rk);
-        
-        // 与前一个密文块异或
+
+        // 与前一个密文块异或（注意：这里应该是与前一个密文块异或，不是解密后的块）
         xor_bytes(decrypted_block, prev_block, output + i * SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
-        
-        // 更新前一个块
+
+        // 更新前一个块为当前密文块
         memcpy(prev_block, block, SM4_BLOCK_SIZE);
     }
-    
+
     // PKCS7去填充
     size_t unpadded_len;
     uint8_t* unpadded_data = remove_pkcs7_padding(output, ciphertext_len, &unpadded_len);
     safe_free(output);
-    
+
     *output_len = unpadded_len;
     return unpadded_data;
 }
@@ -252,46 +252,51 @@ static uint8_t* sm4_decrypt_cbc(const uint8_t* key, const uint8_t* iv,
 // 加密实现 - 对应Kotlin: override fun encrypt(text: String): String
 static char* sm4_cbc_encrypt(cipher_interface_t* self, const char* text) {
     if (!self || !text) return NULL;
-    
+
     sm4_cbc_data_t* data = (sm4_cbc_data_t*)self->private_data;
     if (!data) return NULL;
-    
+
     size_t text_len = strlen(text);
     size_t output_len;
-    
+
     // SM4-CBC加密
     uint8_t* encrypted = sm4_encrypt_cbc(data->key, data->iv,
                                          (const uint8_t*)text, text_len,
                                          &output_len);
     if (!encrypted) return NULL;
-    
+
     // 转换为大写十六进制字符串
     char* hex_result = bytes_to_hex_upper(encrypted, output_len);
     safe_free(encrypted);
-    
+
     return hex_result;
 }
 
 // 解密实现 - 对应Kotlin: override fun decrypt(hex: String): String
 static char* sm4_cbc_decrypt(cipher_interface_t* self, const char* hex) {
     if (!self || !hex) return NULL;
-    
+
     sm4_cbc_data_t* data = (sm4_cbc_data_t*)self->private_data;
     if (!data) return NULL;
-    
+
     // 将十六进制字符串转换为字节数组
     size_t bytes_len;
     uint8_t* bytes = hex_to_bytes(hex, &bytes_len);
     if (!bytes) return NULL;
-    
+
     size_t output_len;
-    
+
     // SM4-CBC解密
     uint8_t* decrypted = sm4_decrypt_cbc(data->key, data->iv, bytes, bytes_len, &output_len);
     safe_free(bytes);
-    
+
     if (!decrypted) return NULL;
-    
+
+    // 与Kotlin版本一致：去除尾部零字节（dropLastWhile { it == 0.toByte() }）
+    while (output_len > 0 && decrypted[output_len - 1] == 0) {
+        output_len--;
+    }
+
     // 转换为字符串
     char* result = safe_malloc(output_len + 1);
     memcpy(result, decrypted, output_len);

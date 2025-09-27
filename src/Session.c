@@ -14,6 +14,9 @@
 bool initialized = false;
 cipher_interface_t* cipher = NULL;  // 全局加密实例
 
+const char* check1 = "B809531F-0007-4B5B-923B-4BD560398113";
+const char* check2 = "F3974434-C0DD-4C20-9E87-DDB6814A1C48";
+
 // 加密 (对应fun encrypt(text: String): String)
 char* encrypt(const char* text)
 {
@@ -88,7 +91,7 @@ int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** bi
  * 修复版本：正确处理服务器返回的十六进制字符串格式数据
  *
  * @param zsm 字节数组指针（可能包含十六进制字符串）
- * @return 1表示成功，0表示失败
+ * @return 1表示成功，0表示失败，2表示需要重新获取
  */
 int load(const ByteArray* zsm) {
     char* key;
@@ -152,6 +155,12 @@ int load(const ByteArray* zsm) {
             strncpy(algo_id, str + total_length - 37, algo_id_length);
             (algo_id)[algo_id_length] = '\0';
             // printf("提取的algo_id: %s\n", algo_id);
+            if (!strcmp(algo_id, check1) || !strcmp(algo_id, check2))
+            {
+                free(key);
+                free(algo_id);
+                return 2;
+            }
         }
     } else {
         algo_id = NULL;
@@ -199,10 +208,22 @@ int load(const ByteArray* zsm) {
     return 1;
 }
 
-void initialize(const ByteArray* zsm)
+int initialize(const ByteArray* zsm)
 {
     printf("[Session.c/initialize] 正在初始化 Session\n");
-    initialized = load(zsm);
+    switch (load(zsm))
+    {
+    case 0:
+        initialized = false;
+        return 0;
+    case 1:
+        initialized = true;
+        return 1;
+    case 2:
+        return 2;
+    default:
+        return 0;
+    }
 }
 
 bool isInitialized(void)

@@ -54,6 +54,12 @@ static const uint8_t S1[256] = {
     0x64, 0xbe, 0x85, 0x9b, 0x2f, 0x59, 0x8a, 0xd7, 0xb0, 0x25, 0xac, 0xaf, 0x12, 0x03, 0xe2, 0xf2
 };
 
+// 常数D - 与Java版本EK_d一致
+static const uint16_t EK_d[16] = {
+    0x44D7, 0x26BC, 0x626B, 0x135E, 0x5789, 0x35E2, 0x7135, 0x09AF,
+    0x4D78, 0x2F13, 0x6BC4, 0x1AF1, 0x5E26, 0x3C4D, 0x789A, 0x47AC
+};
+
 // ZUC-128状态结构
 typedef struct {
     uint32_t LFSR[16];  // 线性反馈移位寄存器
@@ -82,98 +88,153 @@ static uint32_t L2(uint32_t x) {
     return x ^ ROL(x, 8) ^ ROL(x, 14) ^ ROL(x, 22) ^ ROL(x, 30);
 }
 
-// ZUC初始化
-static void zuc_init(zuc_state_t* state, const uint8_t* key, const uint8_t* iv) {
-    // 常数D
-    static const uint16_t D[16] = {
-        0x44D7, 0x26BC, 0x626B, 0x135E, 0x5789, 0x35E2, 0x7135, 0x09AF,
-        0x4D78, 0x2F13, 0x6BC4, 0x1AF1, 0x5E26, 0x3C4D, 0x789A, 0x47AC
-    };
-    
-    // 初始化LFSR
-    for (int i = 0; i < 16; i++) {
-        state->LFSR[i] = (key[i] << 23) | (D[i] << 8) | iv[i];
-    }
-    
-    state->R1 = 0;
-    state->R2 = 0;
-    
-    // 初始化阶段：运行32次
-    for (int i = 0; i < 32; i++) {
-        // BitReorganization
-        state->X0 = state->LFSR[15] & 0x7FFFFFFF;
-        state->X1 = (state->LFSR[14] & 0xFFFF) | ((state->LFSR[15] & 0xFFFF0000) >> 16);
-        state->X2 = (state->LFSR[11] & 0xFFFF) | ((state->LFSR[9] & 0xFFFF0000) >> 16);
-        state->X3 = (state->LFSR[7] & 0xFFFF) | ((state->LFSR[5] & 0xFFFF0000) >> 16);
-        
-        // F函数
-        uint32_t W = (state->X0 ^ state->R1) + state->R2;
-        uint32_t W1 = state->R1 + state->X1;
-        uint32_t W2 = state->R2 ^ state->X2;
-        
-        state->R1 = S(L1((W1 << 16) | (W2 >> 16)));
-        state->R2 = S(L2((W2 << 16) | (W1 >> 16)));
-        
-        // LFSR更新
-        uint32_t f = state->LFSR[0] ^ (state->LFSR[0] >> 8) ^ (state->LFSR[4] >> 20) ^
-                     (state->LFSR[10] >> 22) ^ (state->LFSR[13] >> 7) ^ (state->LFSR[15] >> 5);
-        f = (f + W) & 0x7FFFFFFF;
-        
-        // 移位
-        for (int j = 0; j < 15; j++) {
-            state->LFSR[j] = state->LFSR[j + 1];
-        }
-        state->LFSR[15] = f;
-    }
+// 构造32位整数 - 与Java版本MAKEU32一致
+static uint32_t MAKEU32(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
+    return ((a & 0xFF) << 24) | ((b & 0xFF) << 16) | ((c & 0xFF) << 8) | (d & 0xFF);
 }
 
-// 生成密钥流字
-static uint32_t zuc_generate(zuc_state_t* state) {
-    // BitReorganization
-    state->X0 = state->LFSR[15] & 0x7FFFFFFF;
-    state->X1 = (state->LFSR[14] & 0xFFFF) | ((state->LFSR[15] & 0xFFFF0000) >> 16);
-    state->X2 = (state->LFSR[11] & 0xFFFF) | ((state->LFSR[9] & 0xFFFF0000) >> 16);
-    state->X3 = (state->LFSR[7] & 0xFFFF) | ((state->LFSR[5] & 0xFFFF0000) >> 16);
-    
-    // F函数
-    uint32_t W = (state->X0 ^ state->R1) + state->R2;
-    uint32_t W1 = state->R1 + state->X1;
-    uint32_t W2 = state->R2 ^ state->X2;
-    
-    state->R1 = S(L1((W1 << 16) | (W2 >> 16)));
-    state->R2 = S(L2((W2 << 16) | (W1 >> 16)));
-    
-    // LFSR更新
-    uint32_t f = state->LFSR[0] ^ (state->LFSR[0] >> 8) ^ (state->LFSR[4] >> 20) ^
-                 (state->LFSR[10] >> 22) ^ (state->LFSR[13] >> 7) ^ (state->LFSR[15] >> 5);
-    f = f & 0x7FFFFFFF;
-    
-    // 移位
-    for (int j = 0; j < 15; j++) {
-        state->LFSR[j] = state->LFSR[j + 1];
+// 构造31位整数 - 与Java版本MAKEU31一致
+static uint32_t MAKEU31(uint8_t a, uint16_t b, uint8_t c) {
+    return ((a & 0xFF) << 23) | ((b & 0xFFFF) << 8) | (c & 0xFF);
+}
+
+// 模运算加法 c = a + b mod (2^31 - 1)
+static uint32_t AddM(uint32_t a, uint32_t b) {
+    uint32_t c = a + b;
+    return (c & 0x7FFFFFFF) + (c >> 31);
+}
+
+// 乘以2的k次方 mod (2^31 - 1)
+static uint32_t MulByPow2(uint32_t x, int k) {
+    return ((x << k) | (x >> (31 - k))) & 0x7FFFFFFF;
+}
+
+// BitReorganization - 与Java版本一致
+static void BitReorganization(zuc_state_t* state) {
+    state->X0 = ((state->LFSR[15] & 0x7FFF8000) << 1) | (state->LFSR[14] & 0xFFFF);
+    state->X1 = ((state->LFSR[11] & 0xFFFF) << 16) | (state->LFSR[9] >> 15);
+    state->X2 = ((state->LFSR[7] & 0xFFFF) << 16) | (state->LFSR[5] >> 15);
+    state->X3 = ((state->LFSR[2] & 0xFFFF) << 16) | (state->LFSR[0] >> 15);
+}
+
+// LFSR初始化模式更新
+static void LFSRWithInitialisationMode(zuc_state_t* state, uint32_t u) {
+    uint32_t f = state->LFSR[0];
+    uint32_t v = MulByPow2(state->LFSR[0], 8);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[4], 20);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[10], 21);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[13], 17);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[15], 15);
+    f = AddM(f, v);
+    f = AddM(f, u);
+
+    // 移位更新
+    for (int i = 0; i < 15; i++) {
+        state->LFSR[i] = state->LFSR[i + 1];
     }
     state->LFSR[15] = f;
-    
-    return state->X3 ^ state->X0;
 }
 
-// ZUC处理数据
+// LFSR工作模式更新
+static void LFSRWithWorkMode(zuc_state_t* state) {
+    uint32_t f = state->LFSR[0];
+    uint32_t v = MulByPow2(state->LFSR[0], 8);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[4], 20);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[10], 21);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[13], 17);
+    f = AddM(f, v);
+    v = MulByPow2(state->LFSR[15], 15);
+    f = AddM(f, v);
+
+    // 移位更新
+    for (int i = 0; i < 15; i++) {
+        state->LFSR[i] = state->LFSR[i + 1];
+    }
+    state->LFSR[15] = f;
+}
+
+// F函数 - 与Java版本F()一致
+static uint32_t F_function(zuc_state_t* state) {
+    uint32_t W, W1, W2, u, v;
+
+    // 与Java版本完全一致的计算
+    W = (state->X0 ^ state->R1) + state->R2;
+    W1 = state->R1 + state->X1;
+    W2 = state->R2 ^ state->X2;
+
+    u = L1((W1 << 16) | (W2 >> 16));
+    v = L2((W2 << 16) | (W1 >> 16));
+
+    // 更新R1和R2状态
+    state->R1 = MAKEU32(S0[u >> 24], S1[(u >> 16) & 0xFF],
+                        S0[(u >> 8) & 0xFF], S1[u & 0xFF]);
+    state->R2 = MAKEU32(S0[v >> 24], S1[(v >> 16) & 0xFF],
+                        S0[(v >> 8) & 0xFF], S1[v & 0xFF]);
+
+    return W;
+}
+
+// ZUC初始化 - 与Java版本setKeyAndIV一致
+static void zuc_init(zuc_state_t* state, const uint8_t* key, const uint8_t* iv) {
+    // 初始化LFSR - 与Java版本完全一致
+    for (int i = 0; i < 16; i++) {
+        state->LFSR[i] = MAKEU31(key[i], EK_d[i], iv[i]);
+    }
+
+    // 初始化R1和R2为0
+    state->R1 = 0;
+    state->R2 = 0;
+
+    // 初始化模式运行32轮 - 与Java版本一致
+    for (int i = 0; i < 32; i++) {
+        BitReorganization(state);
+        uint32_t w = F_function(state);
+        LFSRWithInitialisationMode(state, w >> 1);
+    }
+
+    // 工作模式准备 - 与Java版本一致
+    BitReorganization(state);
+    F_function(state); // 丢弃输出
+    LFSRWithWorkMode(state);
+}
+
+// 生成密钥流字 - 与Java版本makeKeyStreamWord一致
+static uint32_t zuc_generate(zuc_state_t* state) {
+    BitReorganization(state);
+    uint32_t result = F_function(state) ^ state->X3;
+    LFSRWithWorkMode(state);
+    return result;
+}
+
+// ZUC处理数据 - 与Java版本processBytes一致
 static void zuc_process_bytes(const uint8_t* key, const uint8_t* iv,
                               const uint8_t* input, uint8_t* output, size_t len) {
     zuc_state_t state;
     zuc_init(&state, key, iv);
-    
-    // 丢弃第一个密钥流字
-    zuc_generate(&state);
-    
-    // 处理数据
-    for (size_t i = 0; i < len; i += 4) {
-        uint32_t keystream = zuc_generate(&state);
-        
-        // 将密钥流转换为字节序列并与输入异或
-        for (int j = 0; j < 4 && i + j < len; j++) {
-            output[i + j] = input[i + j] ^ ((keystream >> (24 - j * 8)) & 0xFF);
+
+    // 按字节处理，与Java版本returnByte一致
+    uint8_t keystream[4];
+    int keystream_index = 0;
+
+    for (size_t i = 0; i < len; i++) {
+        if (keystream_index == 0) {
+            // 生成新的密钥流字
+            uint32_t word = zuc_generate(&state);
+            keystream[0] = (word >> 24) & 0xFF;
+            keystream[1] = (word >> 16) & 0xFF;
+            keystream[2] = (word >> 8) & 0xFF;
+            keystream[3] = word & 0xFF;
         }
+
+        output[i] = input[i] ^ keystream[keystream_index];
+        keystream_index = (keystream_index + 1) % 4;
     }
 }
 

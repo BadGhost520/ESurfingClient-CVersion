@@ -13,7 +13,13 @@ struct Options
 
 void shutdownHook()
 {
-    printf("关闭中...");
+    exit(0);
+}
+
+void setShutdownHook()
+{
+    user_cleanup_function = shutdownHook;
+    addShutdownHook();
 }
 
 int main(const int argc, char* argv[]) {
@@ -44,8 +50,7 @@ int main(const int argc, char* argv[]) {
     {
         // printf("[DialerApp.c/main] 手机号：%s\n", Options.usr);
         // printf("[DialerApp.c/main] 密码：%s\n", Options.pwd);
-        user_cleanup_function = shutdownHook;
-        addShutdownHook();
+        setShutdownHook();
         run();
     }
     else

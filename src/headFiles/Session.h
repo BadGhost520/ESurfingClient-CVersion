@@ -7,7 +7,7 @@
 #include "utils/ByteArray.h"
 
 // Session初始化和状态检查
-void initialize(const ByteArray* zsm);
+int initialize(const ByteArray* zsm);
 
 bool isInitialized();
 

@@ -9,6 +9,7 @@
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
+#include "headFiles/utils/XMLParser.h"
 
 typedef struct {
     char* memory;
@@ -85,14 +86,6 @@ char* clean_cdata(const char* text) {
     }
 
     return result;
-}
-
-char* extract_xml_tag_content(const char* xml, const char* tag) {
-    char start_tag[256], end_tag[256];
-    snprintf(start_tag, sizeof(start_tag), "<%s>", tag);
-    snprintf(end_tag, sizeof(end_tag), "</%s>", tag);
-
-    return extract_between_tags(xml, start_tag, end_tag);
 }
 
 char* extract_url_parameter(const char* url, const char* param_name) {
