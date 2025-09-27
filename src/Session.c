@@ -30,7 +30,7 @@ char* decrypt(const char* text)
 }
 
 // 释放Session资源 (对应Kotlin: fun free())
-void session_free(void) {
+void sessionFree() {
     initialized = false;
 }
 
@@ -226,7 +226,7 @@ int initialize(const ByteArray* zsm)
     }
 }
 
-bool isInitialized(void)
+bool isInitialized()
 {
     return initialized;
 }

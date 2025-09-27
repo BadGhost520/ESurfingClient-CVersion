@@ -8,6 +8,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <sys/time.h>
+#include <stdint.h>
 
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
@@ -19,12 +21,190 @@
     #include <windows.h>
     #include <wincrypt.h>
     #include <process.h>
+    #include <sysinfoapi.h>
 #else
     #include <unistd.h>
     #include <time.h>
     #include <fcntl.h>
     #include <sys/types.h>
+
 #endif
+
+/**
+ * 将字符串转换为64位长整型
+ * 等价于 Kotlin 的 String.toLong()（64位版本）
+ *
+ * @param str 要转换的字符串
+ * @param result 转换结果的指针
+ * @return 转换是否成功 (1=成功, 0=失败)
+ */
+int stringToLongLong(const char* str, long long* result)
+{
+    if (!str || !result) {
+        return 0; // 参数无效
+    }
+
+    // 跳过前导空白字符
+    while (isspace(*str)) {
+        str++;
+    }
+
+    // 检查空字符串
+    if (*str == '\0') {
+        return 0; // 空字符串
+    }
+
+    char* endptr;
+    errno = 0;
+
+    long long value = strtoll(str, &endptr, 10);
+
+    // 检查转换是否成功
+    if (errno == ERANGE) {
+        return 0; // 数值超出范围
+    }
+
+    if (endptr == str) {
+        return 0; // 没有有效数字
+    }
+
+    // 跳过尾部空白字符
+    while (isspace(*endptr)) {
+        endptr++;
+    }
+
+    if (*endptr != '\0') {
+        return 0; // 字符串包含非数字字符
+    }
+
+    *result = value;
+    return 1; // 转换成功
+}
+
+/**
+ * 获取当前时间的毫秒时间戳
+ * 等价于 Java 的 System.currentTimeMillis()
+ *
+ * @return 自1970年1月1日00:00:00 UTC以来的毫秒数
+ */
+int64_t currentTimeMillis() {
+#ifdef _WIN32
+    // Windows 平台实现
+    FILETIME ft;
+    ULARGE_INTEGER uli;
+
+    // 获取当前时间（100纳秒为单位，从1601年1月1日开始）
+    GetSystemTimeAsFileTime(&ft);
+
+    // 转换为64位整数
+    uli.LowPart = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+
+    // 转换为毫秒：
+    // 1. 除以10000将100纳秒转换为毫秒
+    // 2. 减去从1601年到1970年的毫秒数 (11644473600000LL)
+    return (int64_t)(uli.QuadPart / 10000LL - 11644473600000LL);
+
+#else
+    // Unix/Linux 平台实现
+    struct timeval tv;
+
+    // 获取当前时间
+    if (gettimeofday(&tv, NULL) != 0) {
+        return -1; // 错误情况
+    }
+
+    // 转换为毫秒：秒数 * 1000 + 微秒数 / 1000
+    return (int64_t)(tv.tv_sec * 1000LL + tv.tv_usec / 1000LL);
+#endif
+}
+
+/**
+ * 获取高精度时间戳（纳秒）
+ * 用于更精确的时间测量
+ *
+ * @return 纳秒时间戳
+ */
+int64_t currentTimeNanos() {
+#ifdef _WIN32
+    // Windows 平台使用 QueryPerformanceCounter
+    LARGE_INTEGER frequency, counter;
+
+    if (!QueryPerformanceFrequency(&frequency) || !QueryPerformanceCounter(&counter)) {
+        return -1;
+    }
+
+    // 转换为纳秒
+    return (int64_t)((counter.QuadPart * 1000000000LL) / frequency.QuadPart);
+
+#else
+    // Unix/Linux 平台使用 clock_gettime
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+        return -1;
+    }
+
+    // 转换为纳秒：秒数 * 10^9 + 纳秒数
+    return (int64_t)(ts.tv_sec * 1000000000LL + ts.tv_nsec);
+#endif
+}
+
+/**
+ * 获取单调时间戳（毫秒）
+ * 不受系统时间调整影响，适用于计算时间间隔
+ *
+ * @return 单调时间戳（毫秒）
+ */
+int64_t monotonicTimeMillis() {
+#ifdef _WIN32
+    // Windows 平台使用 GetTickCount64
+    return (int64_t)GetTickCount64();
+
+#else
+    // Unix/Linux 平台使用 CLOCK_MONOTONIC
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        return -1;
+    }
+
+    // 转换为毫秒
+    return (int64_t)(ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL);
+#endif
+}
+
+/**
+ * 格式化时间戳为可读字符串
+ *
+ * @param timestamp_ms 毫秒时间戳
+ * @param buffer 输出缓冲区
+ * @param buffer_size 缓冲区大小
+ * @return 格式化后的字符串长度，失败返回-1
+ */
+int formatTimestamp(int64_t timestamp_ms, char* buffer, size_t buffer_size) {
+    if (!buffer || buffer_size < 32) {
+        return -1;
+    }
+
+    time_t seconds = (time_t)(timestamp_ms / 1000);
+    int milliseconds = (int)(timestamp_ms % 1000);
+
+    struct tm* tm_info = localtime(&seconds);
+    if (!tm_info) {
+        return -1;
+    }
+
+    return snprintf(buffer, buffer_size,
+                   "%04d-%02d-%02d %02d:%02d:%02d.%03d",
+                   tm_info->tm_year + 1900,
+                   tm_info->tm_mon + 1,
+                   tm_info->tm_mday,
+                   tm_info->tm_hour,
+                   tm_info->tm_min,
+                   tm_info->tm_sec,
+                   milliseconds);
+}
 
 // 安全的随机数生成函数
 static int secure_random_bytes(unsigned char* buffer, size_t length) {
@@ -263,8 +443,8 @@ static int format_login_xml(char* buffer, size_t size, const char* time_str) {
         "    <client-id>%s</client-id>\n"
         "    <ticket>%s</ticket>\n"
         "    <local-time>%s</local-time>\n"
-        "    <userid>%s</userid>"
-        "    <passwd>%s</passwd>"
+        "    <userid>%s</userid>\n"
+        "    <passwd>%s</passwd>\n"
         "</request>",
         USER_AGENT ? USER_AGENT : "",
         clientId ? clientId : "",
@@ -272,6 +452,31 @@ static int format_login_xml(char* buffer, size_t size, const char* time_str) {
         time_str,
         usr,
         pwd
+    );
+}
+
+static int format_heartbeat_xml(char* buffer, size_t size, const char* time_str) {
+    return snprintf(buffer, size,
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+        "<request>\n"
+        "    <user-agent>%s</user-agent>\n"
+        "    <client-id>%s</client-id>\n"
+        "    <local-time>%s</local-time>\n"
+        "    <host-name>%s</host-name>\n"
+        "    <ipv4>%s</ipv4>\n"
+        "    <ticket>%s</ticket>\n"
+        "    <ipv6></ipv6>\n"
+        "    <mac>%s</mac>\n"
+        "    <ostag>%s</ostag>\n"
+        "</request>",
+        USER_AGENT ? USER_AGENT : "",
+        clientId ? clientId : "",
+        time_str,
+        HOST_NAME ? HOST_NAME : "",
+        userIp ? userIp : "",
+        ticket ? ticket : "",
+        macAddress ? macAddress : "",
+        HOST_NAME ? HOST_NAME : ""
     );
 }
 
@@ -296,9 +501,13 @@ char* createXMLPayload(const char* choose) {
     {
         result = format_getTicket_xml(payload, buffer_size, current_time);
     }
-    else
+    else if (!strcmp(choose, "login"))
     {
         result = format_login_xml(payload, buffer_size, current_time);
+    }
+    else
+    {
+        result = format_heartbeat_xml(payload, buffer_size, current_time);
     }
 
     // 检查是否需要更大的缓冲区
@@ -317,9 +526,13 @@ char* createXMLPayload(const char* choose) {
         {
             result = format_getTicket_xml(payload, buffer_size, current_time);
         }
-        else
+        else if (!strcmp(choose, "login"))
         {
             result = format_login_xml(payload, buffer_size, current_time);
+        }
+        else
+        {
+            result = format_heartbeat_xml(payload, buffer_size, current_time);
         }
     }
 

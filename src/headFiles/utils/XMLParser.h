@@ -9,14 +9,14 @@
 extern "C" {
 #endif
 
-    // ä»XMLå­—ç¬¦ä¸²ä¸­æå–ticketå€¼
-    // å‚æ•°: xml_data - XMLå­—ç¬¦ä¸²
-    // è¿”å›: ticketå€¼çš„å­—ç¬¦ä¸²ï¼Œéœ€è¦è°ƒç”¨è€…é‡Šæ”¾å†…å­˜ï¼Œå¤±è´¥è¿”å›NULL
+    // ´ÓXML×Ö·û´®ÖĞÌáÈ¡ticketÖµ
+    // ²ÎÊı: xml_data - XML×Ö·û´®
+    // ·µ»Ø: ticketÖµµÄ×Ö·û´®£¬ĞèÒªµ÷ÓÃÕßÊÍ·ÅÄÚ´æ£¬Ê§°Ü·µ»ØNULL
     char* XML_Parser(const char* xml_data, const char* tag);
 
-    // ä»XMLå­—ç¬¦ä¸²ä¸­æå–expireå€¼
-    // å‚æ•°: xml_data - XMLå­—ç¬¦ä¸²
-    // è¿”å›: expireå€¼çš„å­—ç¬¦ä¸²ï¼Œéœ€è¦è°ƒç”¨è€…é‡Šæ”¾å†…å­˜ï¼Œå¤±è´¥è¿”å›NULL
+    // ´ÓXML×Ö·û´®ÖĞÌáÈ¡expireÖµ
+    // ²ÎÊı: xml_data - XML×Ö·û´®
+    // ·µ»Ø: expireÖµµÄ×Ö·û´®£¬ĞèÒªµ÷ÓÃÕßÊÍ·ÅÄÚ´æ£¬Ê§°Ü·µ»ØNULL
     char* extract_expire(const char* xml_data);
 
 #ifdef __cplusplus

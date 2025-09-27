@@ -53,7 +53,7 @@ extern "C" {
     void add_extra_header(ExtraHeaders* headers, const char* key, const char* value);
     char* calculate_md5(const char* data);
     size_t write_response_callback(void* contents, size_t size, size_t nmemb, ResponseData* response);
-    NetResult* simple_post(const char* url, const char* data);
+    NetResult* simplePost(const char* url, const char* data);
 
     // 初始化和清理函数 (现在是可选的，POST函数会自动处理)
     int init_post_client(void);           // 可选：手动初始化客户端

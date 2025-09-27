@@ -257,6 +257,6 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
 }
 
 // 便捷函数：不带额外请求头的POST请求
-NetResult* simple_post(const char* url, const char* data) {
+NetResult* simplePost(const char* url, const char* data) {
     return post_request(url, data, NULL);
 }

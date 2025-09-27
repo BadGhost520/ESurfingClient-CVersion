@@ -6,39 +6,39 @@
 #include <stdlib.h>
 #include <string.h>
 
-// é€šç”¨XMLæ ‡ç­¾å†…å®¹æå–å‡½æ•°
+// Í¨ÓÃXML±êÇ©ÄÚÈİÌáÈ¡º¯Êı
 char* extract_xml_tag_content(const char* xml_data, const char* tag_name) {
     if (!xml_data || !tag_name) {
         return NULL;
     }
 
-    // æ„é€ å¼€å§‹æ ‡ç­¾ <tag_name>
+    // ¹¹Ôì¿ªÊ¼±êÇ© <tag_name>
     char start_tag[256];
     snprintf(start_tag, sizeof(start_tag), "<%s>", tag_name);
 
-    // æ„é€ ç»“æŸæ ‡ç­¾ </tag_name>
+    // ¹¹Ôì½áÊø±êÇ© </tag_name>
     char end_tag[256];
     snprintf(end_tag, sizeof(end_tag), "</%s>", tag_name);
 
-    // æŸ¥æ‰¾å¼€å§‹æ ‡ç­¾
+    // ²éÕÒ¿ªÊ¼±êÇ©
     const char* start_pos = strstr(xml_data, start_tag);
     if (!start_pos) {
         return NULL;
     }
 
-    // ç§»åŠ¨åˆ°å¼€å§‹æ ‡ç­¾åé¢
+    // ÒÆ¶¯µ½¿ªÊ¼±êÇ©ºóÃæ
     start_pos += strlen(start_tag);
 
-    // æŸ¥æ‰¾ç»“æŸæ ‡ç­¾
+    // ²éÕÒ½áÊø±êÇ©
     const char* end_pos = strstr(start_pos, end_tag);
     if (!end_pos) {
         return NULL;
     }
 
-    // è®¡ç®—å†…å®¹é•¿åº¦
+    // ¼ÆËãÄÚÈİ³¤¶È
     size_t content_length = end_pos - start_pos;
 
-    // åˆ†é…å†…å­˜å¹¶å¤åˆ¶å†…å®¹
+    // ·ÖÅäÄÚ´æ²¢¸´ÖÆÄÚÈİ
     char* content = (char*)malloc(content_length + 1);
     if (!content) {
         return NULL;
@@ -50,7 +50,7 @@ char* extract_xml_tag_content(const char* xml_data, const char* tag_name) {
     return content;
 }
 
-// ä»XMLå­—ç¬¦ä¸²ä¸­æå–ticketå€¼
+// ´ÓXML×Ö·û´®ÖĞÌáÈ¡ticketÖµ
 char* XML_Parser(const char* xml_data, const char* tag) {
     return extract_xml_tag_content(xml_data, tag);
 }
