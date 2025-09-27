@@ -8,6 +8,8 @@
 #include "headFiles/Options.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
+#include "headFiles/cipher/cipher_interface.h"
+#include "headFiles/utils/Logger.h"
 
 void shutdownHook()
 {
@@ -23,6 +25,7 @@ void shutdownHook()
         }
         sessionFree();
     }
+    logger_cleanup();
 }
 
 void initShutdownHook()
@@ -35,7 +38,8 @@ int main(const int argc, char* argv[]) {
     int opt;
     bool username = false;
     bool password = false;
-    while ((opt = getopt(argc, argv, "u:p:")) != -1)
+    bool debugMode = false;
+    while ((opt = getopt(argc, argv, "u:p:d")) != -1)
     {
         switch (opt)
         {
@@ -47,6 +51,10 @@ int main(const int argc, char* argv[]) {
             password = true;
             pwd = optarg;
             break;
+        case 'd':
+            debugMode = true;
+            printf("Debug模式已开启\n");
+            break;
         case '?':
             printf("参数错误：%c\n", optopt);
             return 1;
@@ -55,10 +63,19 @@ int main(const int argc, char* argv[]) {
         }
     }
 
+    if (debugMode)
+    {
+        logger_init(LOG_LEVEL_DEBUG, LOG_TARGET_BOTH, "run.log");
+    }
+    else
+    {
+        logger_init(LOG_LEVEL_INFO, LOG_TARGET_BOTH, "run.log");
+    }
+
     if (username && password)
     {
-        // printf("[DialerApp.c/main] 手机号：%s\n", Options.usr);
-        // printf("[DialerApp.c/main] 密码：%s\n", Options.pwd);
+        LOG_DEBUG("手机号：%s", usr);
+        LOG_DEBUG("密码：%s", pwd);
         initShutdownHook();
         while (isRunning) {
             // 你的业务逻辑
@@ -73,8 +90,8 @@ int main(const int argc, char* argv[]) {
     }
     else
     {
-        printf("请使用正确的格式运行\n");
-        printf("格式：ESurfingClient -u <手机号> -p <密码>");
+        LOG_INFO("请使用正确的格式运行");
+        LOG_INFO("格式：ESurfingClient -u <手机号> -p <密码>");
     }
     graceful_exit(0);
     return 0;

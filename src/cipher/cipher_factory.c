@@ -26,7 +26,6 @@ extern cipher_interface_t* create_mod_xtea_iv_cipher(const uint32_t* key1, const
                                                      const uint32_t* key3, const uint32_t* iv);
 cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
     if (!algorithm_id) {
-        fprintf(stderr, "Algorithm ID cannot be NULL\n");
         return NULL;
     }
 
@@ -116,8 +115,6 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
             iv_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1
         );
     }
-    
-    fprintf(stderr, "Unknown algorithm ID: %s\n", algorithm_id);
     return NULL;
 }
 

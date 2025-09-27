@@ -16,7 +16,6 @@ size_t write_response_callback(void* contents, size_t size, size_t nmemb, Respon
     char* ptr = realloc(response->memory, response->size + real_size + 1);
 
     if (ptr == NULL) {
-        printf("Not enough memory (realloc returned NULL)\n");
         return 0;
     }
 

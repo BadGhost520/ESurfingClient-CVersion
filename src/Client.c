@@ -12,11 +12,14 @@
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/utils/ByteArray.h"
 #include "headFiles/utils/XMLParser.h"
+#include "headFiles/utils/Logger.h"
+#include "headFiles/utils/ShutdownHook.h"
 
 char* keepRetry;
 char* keepUrl;
 char* termUrl;
 long long tick;
+int retry = 0;
 
 void authorization();
 
@@ -25,7 +28,7 @@ void term()
     NetResult* result = simplePost(termUrl, encrypt(createXMLPayload("term")));
     if (result->type == NET_RESULT_ERROR)
     {
-        printf("登出错误\n");
+        LOG_ERROR("登出错误");
     }
     free_net_result(result);
 }
@@ -40,7 +43,7 @@ void heartbeat()
     }
     else
     {
-        printf("[Client.c/heartbeat] result 为空");
+        LOG_ERROR("result 为空");
     }
     free_net_result(result);
 }
@@ -53,13 +56,13 @@ void login()
         keepRetry = XML_Parser(decrypt(result->data), "keep-retry");
         keepUrl = cleanCDATA(XML_Parser(decrypt(result->data), "keep-url"));
         termUrl = cleanCDATA(XML_Parser(decrypt(result->data), "term-url"));
-        printf("[Client.c/login] Keep Url: %s\n", keepUrl);
-        printf("[Client.c/login] Term Url: %s\n", termUrl);
-        printf("[Client.c/login] Keep Retry: %s\n", keepRetry);
+        LOG_INFO("Keep Url: %s", keepUrl);
+        LOG_INFO("Term Url: %s", termUrl);
+        LOG_INFO("Keep Retry: %s", keepRetry);
     }
     else
     {
-        printf("[Client.c/login] result 为空\n");
+        LOG_ERROR("result 为空");
     }
     free_net_result(result);
 }
@@ -69,11 +72,10 @@ char* getTicket()
     NetResult* result = simplePost(ticketUrl, encrypt(createXMLPayload("getTicket")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
-        // printf("[Client.c/getTicket] data: %s\n", decrypt(result->data));
         free_net_result(result);
         return XML_Parser(decrypt(result->data), "ticket");
     }
-    printf("[Client.c/getTicket] result 为空\n");
+    LOG_ERROR("result 为空");
     free_net_result(result);
     return NULL;
 }
@@ -84,17 +86,24 @@ void initSession()
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         const ByteArray zsm = string_to_bytes(result->data);
-        // printf("[Client.c/initSession] result.data: %s\n", result->data);
-        if (initialize(&zsm) == 2)
+        if (retry == 5)
         {
-            printf("[Client.c/initSession] AlgoID匹配失败，正在重新执行程序\n");
+            LOG_ERROR("程序多次匹配失败，请重新获取校园网IP地址，然后再打开本程序");
+            graceful_exit(1);
+        }
+        if (initialize(&zsm) == 2 && retry < 5)
+        {
+            LOG_WARN("AlgoID匹配失败，正在重启程序");
+            retry++;
             free_net_result(result);
             free(zsm.data);
+            sleepSeconds(1);
             authorization();
         }
+        retry = 0;
         free(zsm.data);
     } else {
-        printf("[Client.c/initSession] 初始化 Session 错误\n");
+        LOG_ERROR("初始化 Session 错误");
     }
     free_net_result(result);
 }
@@ -105,22 +114,22 @@ void authorization()
 
     if (!isInitialized())
     {
-        printf("[Client.c/authorization] 初始化 Session 失败，请重启应用或从 Release 重新获取应用\n");
-        printf("[Client.c/authorization] Release地址: https://github.com/BadGhost520/ESurfingClient-CVersion/releases\n");
+        LOG_ERROR("初始化 Session 失败，请重启应用或从 Release 重新获取应用");
+        LOG_ERROR("Release地址: https://github.com/BadGhost520/ESurfingClient-CVersion/releases");
         isRunning = false;
         return;
     }
 
-    printf("[Client.c/authorization] Client IP: %s\n", userIp);
-    printf("[Client.c/authorization] AC IP: %s\n", acIp);
+    LOG_INFO("Client IP: %s", userIp);
+    LOG_INFO("AC IP: %s", acIp);
 
     ticket = getTicket();
-    printf("[Client.c/authorization] Ticket: %s\n", ticket);
+    LOG_INFO("Ticket: %s", ticket);
 
     login();
     if (keepUrl == NULL)
     {
-        printf("[Client.c/authorization] Keep Url 为空\n");
+        LOG_ERROR("Keep Url 为空");
         sessionFree();
         isRunning = false;
         return;
@@ -128,7 +137,7 @@ void authorization()
 
     tick = currentTimeMillis();
     isLogged = true;
-    printf("[Client.c/authorization] 已认证登录\n");
+    LOG_INFO("已认证登录");
 }
 
 void run()
@@ -146,34 +155,34 @@ void run()
                 {
                     if (currentTimeMillis() - tick >= keep_retry * 1000)
                     {
-                        printf("[Client.c/run] 发送心跳包\n");
+                        LOG_INFO("发送心跳包");
                         heartbeat();
-                        printf("[Client.c/run] 下一次重试: %ss后\n", keepRetry);
+                        LOG_INFO("下一次重试: %ss后", keepRetry);
                         tick = currentTimeMillis();
                     }
                 }
                 else
                 {
-                    printf("[Client.c/run] 字符串转int64错误");
+                    LOG_ERROR("字符串转int64错误");
                 }
             }
             else
             {
-                printf("[Client.c/run] 网络已连接\n");
+                LOG_INFO("网络已连接");
             }
             sleepSeconds(1);
             break;
         case CONNECTIVITY_REQUIRE_AUTHORIZATION:
-            printf("[Client.c/run] 需要认证\n");
+            LOG_INFO("需要认证");
             isLogged = false;
             authorization();
             break;
         case CONNECTIVITY_REQUEST_ERROR:
-            printf("[Client.c/run] 网络错误\n");
+            LOG_ERROR("网络错误");
             sleepSeconds(5);
             break;
         default:
-            printf("[Client.c/run] 未知错误\n");
+            LOG_ERROR("未知错误");
             sleepSeconds(5);
         }
     }

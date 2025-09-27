@@ -10,6 +10,7 @@
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 #include "headFiles/cipher/cipher_interface.h"
+#include "headFiles/utils/Logger.h"
 
 bool initialized = false;
 cipher_interface_t* cipher = NULL;  // 全局加密实例
@@ -45,7 +46,6 @@ int init_cipher(const char* algo_id) {
     // 使用crypto_factory创建加密实例
     cipher = cipher_factory_create(algo_id);
     if (cipher == NULL) {
-        printf("[CIPHER] Failed to create cipher for algo_id: %s\n", algo_id);
         return 0; // 失败
     }
     return 1; // 成功
@@ -96,7 +96,7 @@ int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** bi
 int load(const ByteArray* zsm) {
     char* key;
     char* algo_id;
-    // printf("接收到的zsm数据长度: %zu\n", zsm->length);
+    LOG_DEBUG("接收到的zsm数据长度: %zu", zsm->length);
 
     if (!zsm || !zsm->data || zsm->length == 0) {
         key = NULL;
@@ -115,12 +115,12 @@ int load(const ByteArray* zsm) {
     memcpy(str, zsm->data, zsm->length);
     str[zsm->length] = '\0';  // 添加字符串终止符
 
-    // printf("原始字符串: %s\n", str);
-    // printf("字符串长度: %zu\n", strlen(str));
+    LOG_DEBUG("原始字符串: %s", str);
+    LOG_DEBUG("字符串长度: %zu", strlen(str));
 
     // 检查字符串长度是否足够
     if (strlen(str) < 4 + 38) {
-        printf("错误: 字符串长度不足\n");
+        LOG_ERROR("错误: 字符串长度不足");
         free(str);
         key = NULL;
         algo_id = NULL;
@@ -130,7 +130,7 @@ int load(const ByteArray* zsm) {
     // 提取 Key: 去掉左边4个字符，去掉右边38个字符
     size_t key_length = strlen(str) - 4 - 38;
     if (key_length <= 0) {
-        printf("错误: Key长度计算错误\n");
+        LOG_ERROR("错误: Key长度计算错误");
         free(str);
         key = NULL;
         algo_id = NULL;
@@ -141,8 +141,8 @@ int load(const ByteArray* zsm) {
     if (key) {
         strncpy(key, str + 4, key_length);
         (key)[key_length] = '\0';
-        // printf("提取的Key: %s\n", key);
-        // printf("Key长度: %zu\n", key_length);
+        LOG_DEBUG("提取的Key: %s", key);
+        LOG_DEBUG("Key长度: %zu", key_length);
     }
 
     // 提取 algo_id: 从右往左数38个字符（去掉最后的']'）
@@ -154,7 +154,7 @@ int load(const ByteArray* zsm) {
             // 从倒数第37个字符开始，取36个字符
             strncpy(algo_id, str + total_length - 37, algo_id_length);
             (algo_id)[algo_id_length] = '\0';
-            // printf("提取的algo_id: %s\n", algo_id);
+            LOG_DEBUG("提取的algo_id: %s", algo_id);
             if (!strcmp(algo_id, check1) || !strcmp(algo_id, check2))
             {
                 free(key);
@@ -164,22 +164,22 @@ int load(const ByteArray* zsm) {
         }
     } else {
         algo_id = NULL;
-        printf("错误: 字符串长度不足以提取algo_id\n");
+        LOG_ERROR("错误: 字符串长度不足以提取algo_id");
         return 0;
     }
     free(str);
-    printf("[Session.c/load] Algo ID: %s\n", algo_id);
-    printf("[Session.c/load] Key: %s\n", key);
+    LOG_INFO("Algo ID: %s", algo_id);
+    LOG_INFO("Key: %s", key);
 
     // 初始化加密器 (对应: cipher = CipherFactory.getInstance(algoId))
-    // printf("正在初始化加密器...\n");
+    LOG_DEBUG("正在初始化加密器...");
     if (!init_cipher(algo_id)) {
-        printf("错误: 无法初始化加密器\n");
+        LOG_ERROR("错误: 无法初始化加密器");
         free(key);
         free(algo_id);
         return 0;
     }
-    // printf("加密器初始化成功\n");
+    LOG_DEBUG("加密器初始化成功");
 
     // 更新全局状态 (对应: States.algoId = algoId)
     // 释放旧的algoId内存（如果已分配）
@@ -190,19 +190,19 @@ int load(const ByteArray* zsm) {
     // 分配新内存并复制算法ID
     algoId = malloc(strlen(algo_id) + 1);
     if (algoId == NULL) {
-        printf("错误: 无法分配全局algoId内存\n");
+        LOG_ERROR("错误: 无法分配全局algoId内存");
         free(key);
         free(algo_id);
         return 0;
     }
     strcpy(algoId, algo_id);
-    // printf("全局algoId已更新: '%s'\n", algoId);
+    LOG_DEBUG("全局algoId已更新: '%s'", algoId);
 
     // 清理内存
     free(key);
     free(algo_id);
 
-    // printf("Session加载成功!\n");
+    LOG_DEBUG("Session加载成功!");
 
     // 成功返回 (对应: return true)
     return 1;
@@ -210,7 +210,7 @@ int load(const ByteArray* zsm) {
 
 int initialize(const ByteArray* zsm)
 {
-    // printf("[Session.c/initialize] 正在初始化 Session\n");
+    LOG_DEBUG("正在初始化 Session");
     switch (load(zsm))
     {
     case 0:

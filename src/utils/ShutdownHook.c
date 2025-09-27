@@ -7,6 +7,8 @@
 #include <signal.h>
 #include <stdbool.h>
 
+#include "../headFiles/utils/Logger.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -30,7 +32,7 @@ BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
         case CTRL_CLOSE_EVENT:
         case CTRL_LOGOFF_EVENT:
         case CTRL_SHUTDOWN_EVENT:
-            printf("程序关闭中...\n");
+            LOG_INFO("程序关闭中...");
 
             // 执行清理操作
             execute_cleanup();
@@ -51,8 +53,6 @@ BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
  * 对应Kotlin版本shutdown hook的run()方法
  */
 void signal_handler(int sig) {
-    // printf("\n收到信号 %d，正在执行清理操作...\n", sig);
-
     // 执行清理操作
     execute_cleanup();
 
@@ -67,8 +67,6 @@ void init_shutdown_hook(void) {
     if (shutdown_hook_initialized) {
         return;
     }
-
-    // printf("初始化shutdown hook...\n");
 
 #ifdef _WIN32
     // Windows平台：注册控制台事件处理函数
@@ -86,7 +84,6 @@ void init_shutdown_hook(void) {
     atexit(execute_cleanup);
 
     shutdown_hook_initialized = true;
-    // printf("shutdown hook初始化完成\n");
 }
 
 /**
@@ -112,24 +109,19 @@ void execute_cleanup(void) {
     }
     cleanup_executed = true;
 
-    // printf("=== 开始执行清理操作 ===\n");
-
     // 然后执行所有注册的清理函数
     for (int i = 0; i < cleanup_count; i++) {
         if (cleanup_functions[i]) {
-            // printf("执行清理函数 %d...\n", i + 1);
             cleanup_functions[i]();
         }
     }
-
-    // printf("=== 清理操作完成 ===\n");
 }
 
 /**
  * 优雅退出程序
  */
 void graceful_exit(int exit_code) {
-    printf("程序准备退出，退出码: %d\n", exit_code);
+    LOG_INFO("程序准备退出，退出码: %d", exit_code);
 
     // 执行清理操作
     execute_cleanup();

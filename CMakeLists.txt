@@ -63,6 +63,8 @@ add_executable(ESurfingClient
         src/headFiles/utils/XMLParser.h
         src/headFiles/Options.h
         src/Options.c
+        src/utils/Logger.c
+        src/headFiles/utils/Logger.h
 
 )
 
