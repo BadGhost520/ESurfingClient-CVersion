@@ -5,15 +5,15 @@
 #include <stdint.h>
 
 /**
- * ZUC-128 åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
- * å¯¹åº”Kotlinçš„ZUCç±»
+ * ZUC-128 ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
+ * ¶ÔÓ¦KotlinµÄZUCÀà
  */
 
 /**
- * åˆ›å»ºZUC-128åŠ è§£å¯†å®ä¾‹
- * @param key ZUCå¯†é’¥ (16å­—èŠ‚)
- * @param iv åˆå§‹åŒ–å‘é‡ (16å­—èŠ‚)
- * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
+ * ´´½¨ZUC-128¼Ó½âÃÜÊµÀı
+ * @param key ZUCÃÜÔ¿ (16×Ö½Ú)
+ * @param iv ³õÊ¼»¯ÏòÁ¿ (16×Ö½Ú)
+ * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
  */
 cipher_interface_t* create_zuc_cipher(const uint8_t* key, const uint8_t* iv);
 

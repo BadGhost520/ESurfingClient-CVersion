@@ -5,15 +5,15 @@
 #include <stdint.h>
 
 /**
- * 3DES-ECB åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
- * å¯¹åº”Kotlinçš„DESedeECBç±»
+ * 3DES-ECB ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
+ * ¶ÔÓ¦KotlinµÄDESedeECBÀà
  */
 
 /**
- * åˆ›å»º3DES-ECBåŠ è§£å¯†å®ä¾‹
- * @param key1 ç¬¬ä¸€ä¸ª3DESå¯†é’¥ (24å­—èŠ‚)
- * @param key2 ç¬¬äºŒä¸ª3DESå¯†é’¥ (24å­—èŠ‚)
- * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
+ * ´´½¨3DES-ECB¼Ó½âÃÜÊµÀı
+ * @param key1 µÚÒ»¸ö3DESÃÜÔ¿ (24×Ö½Ú)
+ * @param key2 µÚ¶ş¸ö3DESÃÜÔ¿ (24×Ö½Ú)
+ * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
  */
 cipher_interface_t* create_desede_ecb_cipher(const uint8_t* key1, const uint8_t* key2);
 

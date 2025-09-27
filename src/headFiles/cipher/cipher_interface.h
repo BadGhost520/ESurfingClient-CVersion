@@ -6,31 +6,31 @@ extern "C" {
 #endif
 
 /**
- * åŠ è§£å¯†æ¥å£ - å¯¹åº”Kotlinçš„CipherInterface
+ * ¼Ó½âÃÜ½Ó¿Ú - ¶ÔÓ¦KotlinµÄCipherInterface
  * 
- * è¿™ä¸ªæ¥å£å®šä¹‰äº†æ‰€æœ‰åŠ è§£å¯†ç®—æ³•å¿…é¡»å®ç°çš„åŸºæœ¬æ–¹æ³•ï¼š
- * - encrypt: åŠ å¯†æ˜æ–‡å­—ç¬¦ä¸²ï¼Œè¿”å›åå…­è¿›åˆ¶å­—ç¬¦ä¸²
- * - decrypt: è§£å¯†åå…­è¿›åˆ¶å­—ç¬¦ä¸²ï¼Œè¿”å›æ˜æ–‡å­—ç¬¦ä¸²
+ * Õâ¸ö½Ó¿Ú¶¨ÒåÁËËùÓĞ¼Ó½âÃÜËã·¨±ØĞëÊµÏÖµÄ»ù±¾·½·¨£º
+ * - encrypt: ¼ÓÃÜÃ÷ÎÄ×Ö·û´®£¬·µ»ØÊ®Áù½øÖÆ×Ö·û´®
+ * - decrypt: ½âÃÜÊ®Áù½øÖÆ×Ö·û´®£¬·µ»ØÃ÷ÎÄ×Ö·û´®
  */
 
 typedef struct cipher_interface {
-    // åŠ å¯†å‡½æ•°æŒ‡é’ˆ - å¯¹åº”Kotlin: fun encrypt(text: String): String
+    // ¼ÓÃÜº¯ÊıÖ¸Õë - ¶ÔÓ¦Kotlin: fun encrypt(text: String): String
     char* (*encrypt)(struct cipher_interface* self, const char* text);
     
-    // è§£å¯†å‡½æ•°æŒ‡é’ˆ - å¯¹åº”Kotlin: fun decrypt(hex: String): String  
+    // ½âÃÜº¯ÊıÖ¸Õë - ¶ÔÓ¦Kotlin: fun decrypt(hex: String): String  
     char* (*decrypt)(struct cipher_interface* self, const char* hex);
     
-    // é‡Šæ”¾èµ„æºå‡½æ•°æŒ‡é’ˆ
+    // ÊÍ·Å×ÊÔ´º¯ÊıÖ¸Õë
     void (*destroy)(struct cipher_interface* self);
     
-    // ç§æœ‰æ•°æ®æŒ‡é’ˆï¼Œç”¨äºå­˜å‚¨å…·ä½“å®ç°çš„æ•°æ®
+    // Ë½ÓĞÊı¾İÖ¸Õë£¬ÓÃÓÚ´æ´¢¾ßÌåÊµÏÖµÄÊı¾İ
     void* private_data;
 } cipher_interface_t;
 
 /**
- * åŠ è§£å¯†å·¥å‚ - å¯¹åº”Kotlinçš„CipherFactory
+ * ¼Ó½âÃÜ¹¤³§ - ¶ÔÓ¦KotlinµÄCipherFactory
  * 
- * æ”¯æŒçš„ç®—æ³•IDï¼ˆä¸Kotlinç‰ˆæœ¬å®Œå…¨ä¸€è‡´ï¼‰ï¼š
+ * Ö§³ÖµÄËã·¨ID£¨ÓëKotlin°æ±¾ÍêÈ«Ò»ÖÂ£©£º
  * - CAFBCBAD-B6E7-4CAB-8A67-14D39F00CE1E: AES-CBC
  * - A474B1C2-3DE0-4EA2-8C5F-7093409CE6C4: AES-ECB  
  * - 5BFBA864-BBA9-42DB-8EAD-49B5F412BD81: 3DES-CBC
@@ -42,10 +42,10 @@ typedef struct cipher_interface {
  * - C32C68F9-CA81-4260-A329-BBAFD1A9CCD1: ModXTEAIV
  */
 
-// åˆ›å»ºåŠ è§£å¯†å®ä¾‹ - å¯¹åº”Kotlin: CipherFactory.getInstance(type: String)
+// ´´½¨¼Ó½âÃÜÊµÀı - ¶ÔÓ¦Kotlin: CipherFactory.getInstance(type: String)
 cipher_interface_t* cipher_factory_create(const char* algorithm_id);
 
-// é”€æ¯åŠ è§£å¯†å®ä¾‹
+// Ïú»Ù¼Ó½âÃÜÊµÀı
 void cipher_factory_destroy(cipher_interface_t* cipher);
 
 #ifdef __cplusplus

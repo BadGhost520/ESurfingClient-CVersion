@@ -3,12 +3,18 @@
 #include <unistd.h>
 
 #include "headFiles/Client.h"
+#include "headFiles/utils/ShutdownHook.h"
 
 struct Options
 {
     char* usr;
     char* pwd;
 } Options;
+
+void shutdownHook()
+{
+    printf("关闭中...");
+}
 
 int main(const int argc, char* argv[]) {
     int opt;
@@ -36,8 +42,10 @@ int main(const int argc, char* argv[]) {
 
     if (username && password)
     {
-        // printf("手机号：%s\n", Options.usr);
-        // printf("密码：%s\n", Options.pwd);
+        // printf("[DialerApp.c/main] 手机号：%s\n", Options.usr);
+        // printf("[DialerApp.c/main] 密码：%s\n", Options.pwd);
+        user_cleanup_function = shutdownHook;
+        addShutdownHook();
         run();
     }
     else

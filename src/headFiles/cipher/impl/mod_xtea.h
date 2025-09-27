@@ -5,16 +5,16 @@
 #include <stdint.h>
 
 /**
- * ModXTEA åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
- * å¯¹åº”Kotlinçš„ModXTEAç±»
+ * ModXTEA ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
+ * ¶ÔÓ¦KotlinµÄModXTEAÀà
  */
 
 /**
- * åˆ›å»ºModXTEAåŠ è§£å¯†å®ä¾‹
- * @param key1 ç¬¬ä¸€ä¸ªXTEAå¯†é’¥ (4ä¸ª32ä½æ•´æ•°)
- * @param key2 ç¬¬äºŒä¸ªXTEAå¯†é’¥ (4ä¸ª32ä½æ•´æ•°)
- * @param key3 ç¬¬ä¸‰ä¸ªXTEAå¯†é’¥ (4ä¸ª32ä½æ•´æ•°)
- * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
+ * ´´½¨ModXTEA¼Ó½âÃÜÊµÀı
+ * @param key1 µÚÒ»¸öXTEAÃÜÔ¿ (4¸ö32Î»ÕûÊı)
+ * @param key2 µÚ¶ş¸öXTEAÃÜÔ¿ (4¸ö32Î»ÕûÊı)
+ * @param key3 µÚÈı¸öXTEAÃÜÔ¿ (4¸ö32Î»ÕûÊı)
+ * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
  */
 cipher_interface_t* create_mod_xtea_cipher(const uint32_t* key1, const uint32_t* key2, 
                                            const uint32_t* key3);

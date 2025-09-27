@@ -5,12 +5,12 @@
 #include <string.h>
 
 /**
- * åŠ è§£å¯†å·¥åŽ‚å®žçŽ° - å¯¹åº”Kotlinçš„CipherFactory
+ * ¼Ó½âÃÜ¹¤³§ÊµÏÖ - ¶ÔÓ¦KotlinµÄCipherFactory
  * 
- * æ ¹æ®ç®—æ³•IDï¼ˆUUIDï¼‰åˆ›å»ºå¯¹åº”çš„åŠ è§£å¯†å®žä¾‹
+ * ¸ù¾ÝËã·¨ID£¨UUID£©´´½¨¶ÔÓ¦µÄ¼Ó½âÃÜÊµÀý
  */
 
-// å„ç®—æ³•å®žçŽ°çš„åˆ›å»ºå‡½æ•°å£°æ˜Ž
+// ¸÷Ëã·¨ÊµÏÖµÄ´´½¨º¯ÊýÉùÃ÷
 extern cipher_interface_t* create_aes_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
                                                  const uint8_t* iv1, const uint8_t* iv2);
 extern cipher_interface_t* create_aes_ecb_cipher(const uint8_t* key1, const uint8_t* key2);
@@ -113,7 +113,7 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
 }
 
 /**
- * é”€æ¯åŠ è§£å¯†å®žä¾‹
+ * Ïú»Ù¼Ó½âÃÜÊµÀý
  */
 void cipher_factory_destroy(cipher_interface_t* cipher) {
     if (cipher && cipher->destroy) {

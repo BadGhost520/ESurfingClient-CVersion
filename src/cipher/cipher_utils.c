@@ -4,10 +4,10 @@
 #include <string.h>
 
 /**
- * é€šç”¨å·¥å…·å‡½æ•°å®ç°
+ * Í¨ÓÃ¹¤¾ßº¯ÊıÊµÏÖ
  */
 
-// å°†å­—èŠ‚æ•°ç»„è½¬æ¢ä¸ºå¤§å†™åå…­è¿›åˆ¶å­—ç¬¦ä¸²
+// ½«×Ö½ÚÊı×é×ª»»Îª´óĞ´Ê®Áù½øÖÆ×Ö·û´®
 char* bytes_to_hex_upper(const uint8_t* bytes, size_t len) {
     if (!bytes || len == 0) return NULL;
     
@@ -21,7 +21,7 @@ char* bytes_to_hex_upper(const uint8_t* bytes, size_t len) {
     return hex;
 }
 
-// å°†å­—èŠ‚æ•°ç»„è½¬æ¢ä¸ºå°å†™åå…­è¿›åˆ¶å­—ç¬¦ä¸²
+// ½«×Ö½ÚÊı×é×ª»»ÎªĞ¡Ğ´Ê®Áù½øÖÆ×Ö·û´®
 char* bytes_to_hex_lower(const uint8_t* bytes, size_t len) {
     if (!bytes || len == 0) return NULL;
     
@@ -35,12 +35,12 @@ char* bytes_to_hex_lower(const uint8_t* bytes, size_t len) {
     return hex;
 }
 
-// å°†åå…­è¿›åˆ¶å­—ç¬¦ä¸²è½¬æ¢ä¸ºå­—èŠ‚æ•°ç»„
+// ½«Ê®Áù½øÖÆ×Ö·û´®×ª»»Îª×Ö½ÚÊı×é
 uint8_t* hex_to_bytes(const char* hex, size_t* out_len) {
     if (!hex || !out_len) return NULL;
     
     size_t hex_len = strlen(hex);
-    if (hex_len % 2 != 0) return NULL; // åå…­è¿›åˆ¶å­—ç¬¦ä¸²é•¿åº¦å¿…é¡»æ˜¯å¶æ•°
+    if (hex_len % 2 != 0) return NULL; // Ê®Áù½øÖÆ×Ö·û´®³¤¶È±ØĞëÊÇÅ¼Êı
     
     size_t byte_len = hex_len / 2;
     uint8_t* bytes = safe_malloc(byte_len);
@@ -55,7 +55,7 @@ uint8_t* hex_to_bytes(const char* hex, size_t* out_len) {
     return bytes;
 }
 
-// å®‰å…¨çš„å†…å­˜åˆ†é…
+// °²È«µÄÄÚ´æ·ÖÅä
 void* safe_malloc(size_t size) {
     if (size == 0) return NULL;
     void* ptr = malloc(size);
@@ -66,7 +66,7 @@ void* safe_malloc(size_t size) {
     return ptr;
 }
 
-// å®‰å…¨çš„å†…å­˜åˆ†é…å¹¶æ¸…é›¶
+// °²È«µÄÄÚ´æ·ÖÅä²¢ÇåÁã
 void* safe_calloc(size_t count, size_t size) {
     if (count == 0 || size == 0) return NULL;
     void* ptr = calloc(count, size);
@@ -77,14 +77,14 @@ void* safe_calloc(size_t count, size_t size) {
     return ptr;
 }
 
-// å®‰å…¨çš„å†…å­˜é‡Šæ”¾
+// °²È«µÄÄÚ´æÊÍ·Å
 void safe_free(void* ptr) {
     if (ptr) {
         free(ptr);
     }
 }
 
-// å®‰å…¨çš„å­—ç¬¦ä¸²å¤åˆ¶
+// °²È«µÄ×Ö·û´®¸´ÖÆ
 char* safe_strdup(const char* str) {
     if (!str) return NULL;
     
@@ -94,12 +94,12 @@ char* safe_strdup(const char* str) {
     return copy;
 }
 
-// å®‰å…¨çš„å­—ç¬¦ä¸²é•¿åº¦è®¡ç®—
+// °²È«µÄ×Ö·û´®³¤¶È¼ÆËã
 size_t safe_strlen(const char* str) {
     return str ? strlen(str) : 0;
 }
 
-// PKCS7å¡«å……
+// PKCS7Ìî³ä
 uint8_t* pkcs7_padding(const uint8_t* data, size_t data_len, size_t block_size, size_t* out_len) {
     if (!data || !out_len || block_size == 0) return NULL;
     
@@ -116,14 +116,14 @@ uint8_t* pkcs7_padding(const uint8_t* data, size_t data_len, size_t block_size, 
     return padded;
 }
 
-// ç§»é™¤PKCS7å¡«å……
+// ÒÆ³ıPKCS7Ìî³ä
 uint8_t* remove_pkcs7_padding(const uint8_t* data, size_t data_len, size_t* out_len) {
     if (!data || !out_len || data_len == 0) return NULL;
     
     uint8_t padding = data[data_len - 1];
     if (padding == 0 || padding > data_len) return NULL;
     
-    // éªŒè¯å¡«å……æ˜¯å¦æ­£ç¡®
+    // ÑéÖ¤Ìî³äÊÇ·ñÕıÈ·
     for (size_t i = data_len - padding; i < data_len; i++) {
         if (data[i] != padding) return NULL;
     }
@@ -136,7 +136,7 @@ uint8_t* remove_pkcs7_padding(const uint8_t* data, size_t data_len, size_t* out_
     return unpadded;
 }
 
-// æ•°æ®å¯¹é½å¡«å……ï¼ˆç”¨äºXTEAç­‰ç®—æ³•ï¼‰
+// Êı¾İ¶ÔÆëÌî³ä£¨ÓÃÓÚXTEAµÈËã·¨£©
 uint8_t* pad_to_multiple(const uint8_t* data, size_t data_len, size_t multiple, size_t* out_len) {
     if (!data || !out_len || multiple == 0) return NULL;
     
@@ -145,13 +145,13 @@ uint8_t* pad_to_multiple(const uint8_t* data, size_t data_len, size_t multiple, 
     
     uint8_t* padded = safe_calloc(padded_len, 1);
     memcpy(padded, data, data_len);
-    // å‰©ä½™éƒ¨åˆ†å·²ç»è¢«callocæ¸…é›¶
+    // Ê£Óà²¿·ÖÒÑ¾­±»callocÇåÁã
     
     *out_len = padded_len;
     return padded;
 }
 
-// å¤§ç«¯å­—èŠ‚åºè½¬uint32
+// ´ó¶Ë×Ö½ÚĞò×ªuint32
 uint32_t bytes_to_uint32_be(const uint8_t* bytes) {
     if (!bytes) return 0;
     return ((uint32_t)bytes[0] << 24) | 
@@ -160,7 +160,7 @@ uint32_t bytes_to_uint32_be(const uint8_t* bytes) {
            ((uint32_t)bytes[3]);
 }
 
-// å°ç«¯å­—èŠ‚åºè½¬uint32
+// Ğ¡¶Ë×Ö½ÚĞò×ªuint32
 uint32_t bytes_to_uint32_le(const uint8_t* bytes) {
     if (!bytes) return 0;
     return ((uint32_t)bytes[3] << 24) | 
@@ -169,7 +169,7 @@ uint32_t bytes_to_uint32_le(const uint8_t* bytes) {
            ((uint32_t)bytes[0]);
 }
 
-// uint32è½¬å¤§ç«¯å­—èŠ‚åº
+// uint32×ª´ó¶Ë×Ö½ÚĞò
 void uint32_to_bytes_be(uint32_t value, uint8_t* bytes) {
     if (!bytes) return;
     bytes[0] = (uint8_t)(value >> 24);
@@ -178,7 +178,7 @@ void uint32_to_bytes_be(uint32_t value, uint8_t* bytes) {
     bytes[3] = (uint8_t)(value);
 }
 
-// uint32è½¬å°ç«¯å­—èŠ‚åº
+// uint32×ªĞ¡¶Ë×Ö½ÚĞò
 void uint32_to_bytes_le(uint32_t value, uint8_t* bytes) {
     if (!bytes) return;
     bytes[0] = (uint8_t)(value);
@@ -187,7 +187,7 @@ void uint32_to_bytes_le(uint32_t value, uint8_t* bytes) {
     bytes[3] = (uint8_t)(value >> 24);
 }
 
-// XORæ“ä½œ
+// XOR²Ù×÷
 void xor_bytes(const uint8_t* a, const uint8_t* b, uint8_t* result, size_t len) {
     if (!a || !b || !result) return;
     for (size_t i = 0; i < len; i++) {

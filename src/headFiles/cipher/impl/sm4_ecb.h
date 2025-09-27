@@ -5,14 +5,14 @@
 #include <stdint.h>
 
 /**
- * SM4-ECB åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
- * å¯¹åº”Kotlinçš„SM4ECBç±»
+ * SM4-ECB ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
+ * ¶ÔÓ¦KotlinµÄSM4ECBÀà
  */
 
 /**
- * åˆ›å»ºSM4-ECBåŠ è§£å¯†å®ä¾‹
- * @param key SM4å¯†é’¥ (16å­—èŠ‚)
- * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
+ * ´´½¨SM4-ECB¼Ó½âÃÜÊµÀı
+ * @param key SM4ÃÜÔ¿ (16×Ö½Ú)
+ * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
  */
 cipher_interface_t* create_sm4_ecb_cipher(const uint8_t* key);
 
