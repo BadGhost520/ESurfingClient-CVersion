@@ -16,16 +16,39 @@
 
 void authorization();
 
+void login()
+{
+    char* payload = createXMLPayload("login");
+    NetResult* result = simple_post(authUrl, encrypt(payload));
+    if (result && result->type == NET_RESULT_SUCCESS && result->data != NULL)
+    {
+        char* keepRetry = XML_Parser(decrypt(result->data), "keep-retry");
+        char* keepUrl = cleanCDATA(XML_Parser(decrypt(result->data), "keep-url"));
+        char* termUrl = cleanCDATA(XML_Parser(decrypt(result->data), "term-url"));
+        printf("Keep Url: %s\n", keepUrl);
+        printf("Term Url: %s\n", termUrl);
+        printf("Keep Retry: %s\n", keepRetry);
+    }
+    else
+    {
+        printf("[Client.c/login] result ЮЊПе\n");
+    }
+    free_net_result(result);
+    free(payload);
+}
+
 char* getTicket()
 {
-    char* payload = createXMLPayload();
+    char* payload = createXMLPayload("getTicket");
     NetResult* result = simple_post(ticketUrl, encrypt(payload));
     if (result && result->type == NET_RESULT_SUCCESS && result->data != NULL)
     {
         // printf("[Client.c/getTicket] data: %s\n", decrypt(result->data));
-        return extract_ticket(decrypt(result->data));
+        free_net_result(result);
+        return XML_Parser(decrypt(result->data), "ticket");
     }
     printf("[Client.c/getTicket] result ЮЊПе\n");
+    free_net_result(result);
     free(payload);
     return NULL;
 }
@@ -70,6 +93,8 @@ void authorization()
 
     ticket = getTicket();
     printf("[Client.c/authorization] Ticket: %s\n", ticket);
+
+    login();
 
     printf("[Client.c/authorization] ClientId: %s\n", clientId);
     printf("[Client.c/authorization] algoID: %s\n", algoId);

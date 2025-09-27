@@ -12,6 +12,7 @@
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
 #include "headFiles/PlatformUtils.h"
+#include "headFiles/Options.h"
 
 // 平台特定的头文件
 #ifdef _WIN32
@@ -229,7 +230,7 @@ char* getTime() {
 }
 
 // 格式化XML字符串的辅助函数
-static int format_xml(char* buffer, size_t size, const char* time_str) {
+static int format_getTicket_xml(char* buffer, size_t size, const char* time_str) {
     return snprintf(buffer, size,
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
         "<request>\n"
@@ -254,11 +255,32 @@ static int format_xml(char* buffer, size_t size, const char* time_str) {
     );
 }
 
+static int format_login_xml(char* buffer, size_t size, const char* time_str) {
+    return snprintf(buffer, size,
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+        "<request>\n"
+        "    <user-agent>%s</user-agent>\n"
+        "    <client-id>%s</client-id>\n"
+        "    <ticket>%s</ticket>\n"
+        "    <local-time>%s</local-time>\n"
+        "    <userid>%s</userid>"
+        "    <passwd>%s</passwd>"
+        "</request>",
+        USER_AGENT ? USER_AGENT : "",
+        clientId ? clientId : "",
+        ticket ? ticket : "",
+        time_str,
+        usr,
+        pwd
+    );
+}
+
 // 创建XML payload字符串
-char* createXMLPayload() {
+char* createXMLPayload(const char* choose) {
     // 计算所需的缓冲区大小
     size_t buffer_size = 1024; // 初始大小，如果不够会动态扩展
     char* payload = (char*)malloc(buffer_size);
+    int result;
     if (payload == NULL) {
         return NULL;
     }
@@ -269,9 +291,15 @@ char* createXMLPayload() {
         free(payload);
         return NULL;
     }
-
     // 第一次尝试构建XML字符串
-    int result = format_xml(payload, buffer_size, current_time);
+    if (!strcmp(choose, "getTicket"))
+    {
+        result = format_getTicket_xml(payload, buffer_size, current_time);
+    }
+    else
+    {
+        result = format_login_xml(payload, buffer_size, current_time);
+    }
 
     // 检查是否需要更大的缓冲区
     if (result >= buffer_size) {
@@ -285,11 +313,42 @@ char* createXMLPayload() {
         payload = new_payload;
 
         // 重新格式化到更大的缓冲区
-        format_xml(payload, buffer_size, current_time);
+        if (!strcmp(choose, "getTicket"))
+        {
+            result = format_getTicket_xml(payload, buffer_size, current_time);
+        }
+        else
+        {
+            result = format_login_xml(payload, buffer_size, current_time);
+        }
     }
 
     // 释放时间字符串内存
     free(current_time);
 
     return payload;
+}
+
+char* cleanCDATA(const char* text) {
+    if (!text) return NULL;
+
+    const char* cdata_start = "<![CDATA[";
+    const char* cdata_end = "]]>";
+
+    char* start = strstr(text, cdata_start);
+
+    start += strlen(cdata_start);
+    char* end = strstr(start, cdata_end);
+    if (!end) {
+        return strdup(text);
+    }
+
+    size_t len = end - start;
+    char* result = malloc(len + 1);
+    if (!result) return NULL;
+
+    strncpy(result, start, len);
+    result[len] = '\0';
+
+    return result;
 }

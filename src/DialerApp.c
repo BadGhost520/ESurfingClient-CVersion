@@ -4,12 +4,7 @@
 
 #include "headFiles/Client.h"
 #include "headFiles/utils/ShutdownHook.h"
-
-struct Options
-{
-    char* usr;
-    char* pwd;
-} Options;
+#include "headFiles/Options.h"
 
 void shutdownHook()
 {
@@ -32,11 +27,11 @@ int main(const int argc, char* argv[]) {
         {
         case 'u':
             username = true;
-            Options.usr = optarg;
+            usr = optarg;
             break;
         case 'p':
             password = true;
-            Options.pwd = optarg;
+            pwd = optarg;
             break;
         case '?':
             printf("²ÎÊý´íÎó£º%c\n", optopt);

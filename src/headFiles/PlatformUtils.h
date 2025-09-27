@@ -23,6 +23,9 @@ void setClientId(char** client_id);
 char* randomMacAddress();
 
 // 创建XML payload字符串
-char* createXMLPayload();
+char* createXMLPayload(const char* choose);
+
+// 清除 CDATA 数据
+char* cleanCDATA(const char* text);
 
 #endif // PLATFORMUTILS_H

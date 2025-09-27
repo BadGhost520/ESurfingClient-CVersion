@@ -61,6 +61,8 @@ add_executable(ESurfingClient
         src/headFiles/utils/ShutdownHook.h
         src/utils/XMLParser.c
         src/headFiles/utils/XMLParser.h
+        src/headFiles/Options.h
+        src/Options.c
 
 )
 

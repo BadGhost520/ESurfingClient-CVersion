@@ -51,6 +51,6 @@ char* extract_xml_tag_content(const char* xml_data, const char* tag_name) {
 }
 
 // 从XML字符串中提取ticket值
-char* extract_ticket(const char* xml_data) {
-    return extract_xml_tag_content(xml_data, "ticket");
+char* XML_Parser(const char* xml_data, const char* tag) {
+    return extract_xml_tag_content(xml_data, tag);
 }

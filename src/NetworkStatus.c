@@ -9,6 +9,7 @@
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
+#include "headFiles/PlatformUtils.h"
 #include "headFiles/utils/XMLParser.h"
 
 typedef struct {
@@ -42,49 +43,6 @@ char* extract_between_tags(const char* text, const char* start_tag, const char* 
 
     strncpy(result, start, len);
     result[len] = '\0';
-    return result;
-}
-
-char* clean_cdata(const char* text) {
-    if (!text) return NULL;
-    
-    const char* cdata_start = "<![CDATA[";
-    const char* cdata_end = "]]>";
-    
-    char* start = strstr(text, cdata_start);
-    if (!start) {
-        // 如果没有CDATA标签，直接处理portal_node参数
-        char* cleaned_text = strdup(text);
-        if (!cleaned_text) return NULL;
-
-        // 查找并去除 "&portal_node" 及其后面的所有字符
-        char* portal_pos = strstr(cleaned_text, "&portal_node");
-        if (portal_pos) {
-            *portal_pos = '\0';  // 截断字符串
-        }
-
-        return cleaned_text;
-    }
-    
-    start += strlen(cdata_start);
-    char* end = strstr(start, cdata_end);
-    if (!end) {
-        return strdup(text);
-    }
-    
-    size_t len = end - start;
-    char* result = malloc(len + 1);
-    if (!result) return NULL;
-    
-    strncpy(result, start, len);
-    result[len] = '\0';
-
-    // 处理提取出的CDATA内容中的portal_node参数
-    char* portal_pos = strstr(result, "&portal_node");
-    if (portal_pos) {
-        *portal_pos = '\0';  // 截断字符串，去除portal_node及其后面的内容
-    }
-
     return result;
 }
 
@@ -171,11 +129,11 @@ ConnectivityStatus detectConfig(void) {
             PORTAL_START_TAG, PORTAL_END_TAG);
 
         if (portal_config && strlen(portal_config) > 0) {
-            char* auth_url_raw = extract_xml_tag_content(portal_config, "auth-url");
-            char* ticket_url_raw = extract_xml_tag_content(portal_config, "ticket-url");
+            char* auth_url_raw = XML_Parser(portal_config, "auth-url");
+            char* ticket_url_raw = XML_Parser(portal_config, "ticket-url");
 
-            char* auth_url = clean_cdata(auth_url_raw);
-            char* ticket_url = clean_cdata(ticket_url_raw);
+            char* auth_url = cleanCDATA(auth_url_raw);
+            char* ticket_url = cleanCDATA(ticket_url_raw);
 
             if (auth_url_raw) free(auth_url_raw);
             if (ticket_url_raw) free(ticket_url_raw);
