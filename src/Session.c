@@ -9,55 +9,21 @@
 #include "headFiles/utils/ByteArray.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
-#include "headFiles/cipher/Interface.h"
+#include "headFiles/cipher/cipher_interface.h"
 
 bool initialized = false;
 cipher_interface_t* cipher = NULL;  // 全局加密实例
 
-// 加密函数 (对应Kotlin: fun encrypt(text: String): String)
-char* encrypt(const char* text) {
-    if (!initialized || cipher == NULL) {
-        printf("[CIPHER] Session not initialized or cipher is NULL\n");
-        return NULL;
-    }
-
-    if (text == NULL) {
-        printf("[CIPHER] Input text is NULL\n");
-        return NULL;
-    }
-
-    char* ciphertext = NULL;
-    int result = cipher->encrypt(cipher, text, &ciphertext);
-
-    if (result != 0) {
-        printf("[CIPHER] Encryption failed with error code: %d\n", result);
-        return NULL;
-    }
-
-    return ciphertext;
+// 加密 (对应fun encrypt(text: String): String)
+char* encrypt(const char* text)
+{
+    return cipher->encrypt(cipher, text);
 }
 
-// 解密函数 (对应Kotlin: fun decrypt(hex: String): String)
-char* decrypt(const char* hex) {
-    if (!initialized || cipher == NULL) {
-        printf("[CIPHER] Session not initialized or cipher is NULL\n");
-        return NULL;
-    }
-
-    if (hex == NULL) {
-        printf("[CIPHER] Input hex is NULL\n");
-        return NULL;
-    }
-
-    char* plaintext = NULL;
-    int result = cipher->decrypt(cipher, hex, &plaintext);
-
-    if (result != 0) {
-        printf("[CIPHER] Decryption failed with error code: %d\n", result);
-        return NULL;
-    }
-
-    return plaintext;
+// 解密 (对应fun encrypt(text: String): String)
+char* decrypt(const char* text)
+{
+    return cipher->decrypt(cipher, text);
 }
 
 // 释放Session资源 (对应Kotlin: fun free())

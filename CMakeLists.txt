@@ -31,24 +31,33 @@ add_executable(ESurfingClient
         src/NetClient.c
         src/headFiles/Session.h
         src/Session.c
-        src/headFiles/cipher/Interface.h
-        src/headFiles/cipher/Utils.h
-        src/cipher/Utils.c
-        src/headFiles/cipher/impl/des.h
-        src/cipher/impl/des.c
-        src/headFiles/cipher/impl/aes.h
-        src/cipher/impl/aes.c
-        src/cipher/impl/MODXTEA.c
-        src/headFiles/cipher/impl/MODXTEA.h
-        src/headFiles/cipher/impl/ZUC128.h
-        src/cipher/impl/ZUC128.c
-        src/headFiles/cipher/impl/sm4.h
-        src/cipher/impl/sm4.c
-        src/headFiles/cipher/KeyData.h
-        src/cipher/KeyData.c
-        src/cipher/Factory.c
         src/utils/ByteArray.c
         src/headFiles/utils/ByteArray.h
+        src/headFiles/cipher/key_data.h
+        src/headFiles/cipher/cipher_utils.h
+        src/headFiles/cipher/cipher_interface.h
+        src/headFiles/cipher/impl/zuc.h
+        src/headFiles/cipher/impl/sm4_ecb.h
+        src/headFiles/cipher/impl/sm4_cbc.h
+        src/headFiles/cipher/impl/mod_xtea_iv.h
+        src/headFiles/cipher/impl/mod_xtea.h
+        src/headFiles/cipher/impl/desede_ecb.h
+        src/headFiles/cipher/impl/desede_cbc.h
+        src/headFiles/cipher/impl/aes_ecb.h
+        src/headFiles/cipher/impl/aes_cbc.h
+        src/cipher/key_data.c
+        src/cipher/cipher_utils.c
+        src/cipher/cipher_factory.c
+        src/cipher/impl/zuc.c
+        src/cipher/impl/sm4_ecb.c
+        src/cipher/impl/sm4_cbc.c
+        src/cipher/impl/mod_xtea_iv.c
+        src/cipher/impl/mod_xtea.c
+        src/cipher/impl/desede_ecb.c
+        src/cipher/impl/desede_cbc.c
+        src/cipher/impl/aes_ecb.c
+        src/cipher/impl/aes_cbc.c
+
 )
 
 # 链接静态库

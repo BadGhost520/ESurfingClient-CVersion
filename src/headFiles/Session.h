@@ -11,14 +11,14 @@ void initialize(const ByteArray* zsm);
 
 bool isInitialized();
 
-// 加密解密接口 (对应Kotlin Session类的方法)
-char* encrypt(const char* text);
-char* decrypt(const char* hex);
-
 // 十六进制字符串转换函数
 int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** binary_data, size_t* binary_len);
 
 // 资源管理
 void session_free();
+
+// 加解密
+char* encrypt(const char* text);
+char* decrypt(const char* text);
 
 #endif //ESURFINGCLIENT_SESSION_H
