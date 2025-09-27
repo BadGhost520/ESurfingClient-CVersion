@@ -10,7 +10,6 @@
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 #include "headFiles/NetworkStatus.h"
-#include "headFiles/Constants.h"
 #include "headFiles/utils/ByteArray.h"
 #include "headFiles/utils/XMLParser.h"
 
@@ -21,10 +20,20 @@ long long tick;
 
 void authorization();
 
+void term()
+{
+    NetResult* result = simplePost(termUrl, encrypt(createXMLPayload("term")));
+    if (result->type == NET_RESULT_ERROR)
+    {
+        printf("µÇ³ö´íÎó\n");
+    }
+    free_net_result(result);
+}
+
 void heartbeat()
 {
     NetResult* result = simplePost(keepUrl, encrypt(createXMLPayload("heartbeat")));
-    if (result && result->type == NET_RESULT_SUCCESS && result->data)
+    if (result && result->type == NET_RESULT_SUCCESS)
     {
         free(keepRetry);
         keepRetry = XML_Parser(decrypt(result->data), "interval");
@@ -39,7 +48,7 @@ void heartbeat()
 void login()
 {
     NetResult* result = simplePost(authUrl, encrypt(createXMLPayload("login")));
-    if (result && result->type == NET_RESULT_SUCCESS && result->data != NULL)
+    if (result && result->type == NET_RESULT_SUCCESS)
     {
         keepRetry = XML_Parser(decrypt(result->data), "keep-retry");
         keepUrl = cleanCDATA(XML_Parser(decrypt(result->data), "keep-url"));
@@ -58,7 +67,7 @@ void login()
 char* getTicket()
 {
     NetResult* result = simplePost(ticketUrl, encrypt(createXMLPayload("getTicket")));
-    if (result && result->type == NET_RESULT_SUCCESS && result->data != NULL)
+    if (result && result->type == NET_RESULT_SUCCESS)
     {
         // printf("[Client.c/getTicket] data: %s\n", decrypt(result->data));
         free_net_result(result);
@@ -92,8 +101,6 @@ void initSession()
 
 void authorization()
 {
-    initConstants();
-    refreshStates();
     initSession();
 
     if (!isInitialized())

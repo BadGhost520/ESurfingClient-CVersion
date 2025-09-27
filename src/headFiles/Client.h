@@ -8,5 +8,6 @@
 
 // º¯ÊıÉùÃ÷
 void run();
+void term();
 
 #endif // CLIENT_H

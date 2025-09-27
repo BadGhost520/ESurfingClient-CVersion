@@ -480,6 +480,31 @@ static int format_heartbeat_xml(char* buffer, size_t size, const char* time_str)
     );
 }
 
+static int format_term_xml(char* buffer, size_t size, const char* time_str) {
+    return snprintf(buffer, size,
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+        "<request>\n"
+        "    <user-agent>%s</user-agent>\n"
+        "    <client-id>%s</client-id>\n"
+        "    <local-time>%s</local-time>\n"
+        "    <host-name>%s</host-name>\n"
+        "    <ipv4>%s</ipv4>\n"
+        "    <ticket>%s</ticket>\n"
+        "    <ipv6></ipv6>\n"
+        "    <mac>%s</mac>\n"
+        "    <ostag>%s</ostag>\n"
+        "</request>",
+        USER_AGENT ? USER_AGENT : "",
+        clientId ? clientId : "",
+        time_str,
+        HOST_NAME ? HOST_NAME : "",
+        userIp ? userIp : "",
+        ticket ? ticket : "",
+        macAddress ? macAddress : "",
+        HOST_NAME ? HOST_NAME : ""
+    );
+}
+
 // 创建XML payload字符串
 char* createXMLPayload(const char* choose) {
     // 计算所需的缓冲区大小
@@ -505,9 +530,13 @@ char* createXMLPayload(const char* choose) {
     {
         result = format_login_xml(payload, buffer_size, current_time);
     }
-    else
+    else if (!strcmp(choose, "heartbeat"))
     {
         result = format_heartbeat_xml(payload, buffer_size, current_time);
+    }
+    else
+    {
+        result = format_term_xml(payload, buffer_size, current_time);
     }
 
     // 检查是否需要更大的缓冲区
@@ -530,9 +559,13 @@ char* createXMLPayload(const char* choose) {
         {
             result = format_login_xml(payload, buffer_size, current_time);
         }
-        else
+        else if (!strcmp(choose, "heartbeat"))
         {
             result = format_heartbeat_xml(payload, buffer_size, current_time);
+        }
+        else
+        {
+            result = format_term_xml(payload, buffer_size, current_time);
         }
     }
 

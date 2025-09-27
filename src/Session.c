@@ -210,7 +210,7 @@ int load(const ByteArray* zsm) {
 
 int initialize(const ByteArray* zsm)
 {
-    printf("[Session.c/initialize] 正在初始化 Session\n");
+    // printf("[Session.c/initialize] 正在初始化 Session\n");
     switch (load(zsm))
     {
     case 0:
