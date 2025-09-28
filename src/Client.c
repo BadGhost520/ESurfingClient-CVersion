@@ -25,7 +25,7 @@ void authorization();
 
 void term()
 {
-    NetResult* result = simplePost(termUrl, encrypt(createXMLPayload("term")));
+    NetResult* result = simplePost(termUrl, sessionEncrypt(createXMLPayload("term")));
     if (result->type == NET_RESULT_ERROR)
     {
         LOG_ERROR("Log out error");
@@ -35,11 +35,11 @@ void term()
 
 void heartbeat()
 {
-    NetResult* result = simplePost(keepUrl, encrypt(createXMLPayload("heartbeat")));
+    NetResult* result = simplePost(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         free(keepRetry);
-        keepRetry = XML_Parser(decrypt(result->data), "interval");
+        keepRetry = XML_Parser(sessionDecrypt(result->data), "interval");
     }
     else
     {
@@ -50,12 +50,12 @@ void heartbeat()
 
 void login()
 {
-    NetResult* result = simplePost(authUrl, encrypt(createXMLPayload("login")));
+    NetResult* result = simplePost(authUrl, sessionEncrypt(createXMLPayload("login")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
-        keepRetry = XML_Parser(decrypt(result->data), "keep-retry");
-        keepUrl = cleanCDATA(XML_Parser(decrypt(result->data), "keep-url"));
-        termUrl = cleanCDATA(XML_Parser(decrypt(result->data), "term-url"));
+        keepRetry = XML_Parser(sessionDecrypt(result->data), "keep-retry");
+        keepUrl = cleanCDATA(XML_Parser(sessionDecrypt(result->data), "keep-url"));
+        termUrl = cleanCDATA(XML_Parser(sessionDecrypt(result->data), "term-url"));
         LOG_INFO("Keep Url: %s", keepUrl);
         LOG_INFO("Term Url: %s", termUrl);
         LOG_INFO("Keep Retry: %s", keepRetry);
@@ -69,11 +69,11 @@ void login()
 
 char* getTicket()
 {
-    NetResult* result = simplePost(ticketUrl, encrypt(createXMLPayload("getTicket")));
+    NetResult* result = simplePost(ticketUrl, sessionEncrypt(createXMLPayload("getTicket")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         free_net_result(result);
-        return XML_Parser(decrypt(result->data), "ticket");
+        return XML_Parser(sessionDecrypt(result->data), "ticket");
     }
     LOG_ERROR("Result is empty");
     free_net_result(result);

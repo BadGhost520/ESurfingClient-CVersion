@@ -19,13 +19,13 @@ const char* check1 = "B809531F-0007-4B5B-923B-4BD560398113";
 const char* check2 = "F3974434-C0DD-4C20-9E87-DDB6814A1C48";
 
 // 加密 (对应fun encrypt(text: String): String)
-char* encrypt(const char* text)
+char* sessionEncrypt(const char* text)
 {
     return cipher->encrypt(cipher, text);
 }
 
 // 解密 (对应fun encrypt(text: String): String)
-char* decrypt(const char* text)
+char* sessionDecrypt(const char* text)
 {
     return cipher->decrypt(cipher, text);
 }
