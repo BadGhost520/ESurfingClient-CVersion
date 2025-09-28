@@ -53,13 +53,13 @@ int main(const int argc, char* argv[]) {
             break;
         case 'd':
             debugMode = true;
-            printf("Debug模式已开启\n");
+            printf("Debug mode is enabled\n");
             break;
         case '?':
-            printf("参数错误：%c\n", optopt);
+            printf("Parameter error：%c\n", optopt);
             return 1;
         default:
-            printf("未知错误\n");
+            printf("Unknown error\n");
         }
     }
 
