@@ -2,17 +2,17 @@
 // Created by bad_g on 2025/9/28.
 //
 /**
- * ? CÓïÑÔÈÕÖ¾ÏµÍ³ - ÊµÏÖÎÄ¼ş
+ * ? Cè¯­è¨€æ—¥å¿—ç³»ç»Ÿ - å®ç°æ–‡ä»¶
  *
- * ÊµÏÖÁËÍêÕûµÄÈÕÖ¾¹¦ÄÜ£º
- * - ¶à¼¶±ğÈÕÖ¾Êä³ö
- * - ÎÄ¼şºÍ¿ØÖÆÌ¨Êä³ö
- * - Ê±¼ä´ÁºÍÑÕÉ«Ö§³Ö
- * - ÎÄ¼ş´óĞ¡ÂÖ×ª
- * - Ïß³Ì°²È«£¨»ù´¡°æ±¾£©
+ * å®ç°äº†å®Œæ•´çš„æ—¥å¿—åŠŸèƒ½ï¼š
+ * - å¤šçº§åˆ«æ—¥å¿—è¾“å‡º
+ * - æ–‡ä»¶å’Œæ§åˆ¶å°è¾“å‡º
+ * - æ—¶é—´æˆ³å’Œé¢œè‰²æ”¯æŒ
+ * - æ–‡ä»¶å¤§å°è½®è½¬
+ * - çº¿ç¨‹å®‰å…¨ï¼ˆåŸºç¡€ç‰ˆæœ¬ï¼‰
  *
- * ×÷Õß: ESurfingDialerÏîÄ¿
- * °æ±¾: 1.0
+ * ä½œè€…: ESurfingDialeré¡¹ç›®
+ * ç‰ˆæœ¬: 1.0
  */
 #include <string.h>
 #include <time.h>
@@ -29,7 +29,7 @@
 
 #include "../headFiles/utils/Logger.h"
 
-// ========== È«¾Ö±äÁ¿ ==========
+// ========== å…¨å±€å˜é‡ ==========
 LoggerConfig g_logger_config = {
     .level = LOG_LEVEL_INFO,
     .target = LOG_TARGET_CONSOLE,
@@ -42,7 +42,7 @@ LoggerConfig g_logger_config = {
     .max_backup_files = 5
 };
 
-// ========== ÄÚ²¿º¯ÊıÉùÃ÷ ==========
+// ========== å†…éƒ¨å‡½æ•°å£°æ˜ ==========
 static void logger_write_to_console(const char* message);
 static void logger_write_to_file(const char* message);
 static void logger_format_timestamp(char* buffer, size_t size);
@@ -54,117 +54,117 @@ static void logger_set_console_color(LogLevel level);
 static void logger_reset_console_color(void);
 #endif
 
-// ========== ºËĞÄº¯ÊıÊµÏÖ ==========
+// ========== æ ¸å¿ƒå‡½æ•°å®ç° ==========
 
 /**
- * ³õÊ¼»¯ÈÕÖ¾ÏµÍ³
+ * åˆå§‹åŒ–æ—¥å¿—ç³»ç»Ÿ
  */
 int logger_init(LogLevel level, LogTarget target, const char* log_file) {
     g_logger_config.level = level;
     g_logger_config.target = target;
 
-    // Èç¹ûĞèÒªÎÄ¼şÊä³ö£¬ÉèÖÃÎÄ¼şÂ·¾¶
+    // å¦‚æœéœ€è¦æ–‡ä»¶è¾“å‡ºï¼Œè®¾ç½®æ–‡ä»¶è·¯å¾„
     if (target == LOG_TARGET_FILE || target == LOG_TARGET_BOTH) {
         if (log_file == NULL || strlen(log_file) == 0) {
-            fprintf(stderr, "´íÎó: ÎÄ¼şÊä³öĞèÒªÖ¸¶¨ÈÕÖ¾ÎÄ¼şÂ·¾¶\n");
+            fprintf(stderr, "Error: File output requires specifying log file path\n");
             return -1;
         }
 
         strncpy(g_logger_config.log_file, log_file, sizeof(g_logger_config.log_file) - 1);
         g_logger_config.log_file[sizeof(g_logger_config.log_file) - 1] = '\0';
 
-        // ³¢ÊÔ´ò¿ªÈÕÖ¾ÎÄ¼ş
+        // å°è¯•æ‰“å¼€æ—¥å¿—æ–‡ä»¶
         g_logger_config.file_handle = fopen(g_logger_config.log_file, "a");
         if (g_logger_config.file_handle == NULL) {
-            fprintf(stderr, "´íÎó: ÎŞ·¨´ò¿ªÈÕÖ¾ÎÄ¼ş %s\n", g_logger_config.log_file);
+            fprintf(stderr, "Error: Unable to open log file %s\n", g_logger_config.log_file);
             return -1;
         }
     }
 
-    // Êä³ö³õÊ¼»¯³É¹¦ĞÅÏ¢
-    LOG_DEBUG("ÈÕÖ¾ÏµÍ³³õÊ¼»¯³É¹¦ - ¼¶±ğ: %s, Ä¿±ê: %s",
+    // è¾“å‡ºåˆå§‹åŒ–æˆåŠŸä¿¡æ¯
+    LOG_DEBUG("Log System Initialization Successful - Level: %s, target: %s",
              logger_level_string(level),
-             (target == LOG_TARGET_CONSOLE) ? "¿ØÖÆÌ¨" :
-             (target == LOG_TARGET_FILE) ? "ÎÄ¼ş" : "¿ØÖÆÌ¨+ÎÄ¼ş");
+             (target == LOG_TARGET_CONSOLE) ? "console" :
+             (target == LOG_TARGET_FILE) ? "file" : "console+file");
 
     return 0;
 }
 
 /**
- * ÇåÀíÈÕÖ¾ÏµÍ³×ÊÔ´
+ * æ¸…ç†æ—¥å¿—ç³»ç»Ÿèµ„æº
  */
 void logger_cleanup(void) {
     if (g_logger_config.file_handle != NULL) {
-        LOG_DEBUG("¹Ø±ÕÈÕÖ¾ÏµÍ³");
+        LOG_DEBUG("Shut down the logging system");
         fclose(g_logger_config.file_handle);
         g_logger_config.file_handle = NULL;
     }
 }
 
 /**
- * ÉèÖÃÈÕÖ¾¼¶±ğ
+ * è®¾ç½®æ—¥å¿—çº§åˆ«
  */
 void logger_set_level(LogLevel level) {
     LogLevel old_level = g_logger_config.level;
     g_logger_config.level = level;
-    LOG_INFO("ÈÕÖ¾¼¶±ğÒÑ¸ü¸Ä: %s -> %s",
+    LOG_INFO("The log level has been changed: %s -> %s",
              logger_level_string(old_level),
              logger_level_string(level));
 }
 
 /**
- * ÉèÖÃÑÕÉ«Êä³ö
+ * è®¾ç½®é¢œè‰²è¾“å‡º
  */
 void logger_set_color(bool enable) {
     g_logger_config.enable_color = enable;
-    LOG_INFO("ÑÕÉ«Êä³ö: %s", enable ? "ÆôÓÃ" : "½ûÓÃ");
+    LOG_INFO("Color output: %s", enable ? "enable" : "disable");
 }
 
 /**
- * ÉèÖÃÊ±¼ä´Á
+ * è®¾ç½®æ—¶é—´æˆ³
  */
 void logger_set_timestamp(bool enable) {
     g_logger_config.enable_timestamp = enable;
-    LOG_INFO("Ê±¼ä´Á: %s", enable ? "ÆôÓÃ" : "½ûÓÃ");
+    LOG_INFO("timestamp: %s", enable ? "enable" : "disable");
 }
 
 /**
- * ÉèÖÃÎÄ¼şÂÖ×ª
+ * è®¾ç½®æ–‡ä»¶è½®è½¬
  */
 void logger_set_rotation(size_t max_size, int max_backups) {
     g_logger_config.max_file_size = max_size;
     g_logger_config.max_backup_files = max_backups;
-    LOG_INFO("ÎÄ¼şÂÖ×ªÉèÖÃ: ×î´ó %zu ×Ö½Ú, %d ¸ö±¸·İÎÄ¼ş", max_size, max_backups);
+    LOG_INFO("File rotation setting: maximum %zu bytes, %d backup files", max_size, max_backups);
 }
 
 /**
- * ºËĞÄÈÕÖ¾Êä³öº¯Êı
+ * æ ¸å¿ƒæ—¥å¿—è¾“å‡ºå‡½æ•°
  */
 void logger_log(LogLevel level, const char* file, int line, const char* func, const char* format, ...) {
-    // ¼ì²éÈÕÖ¾¼¶±ğ
+    // æ£€æŸ¥æ—¥å¿—çº§åˆ«
     if (level < g_logger_config.level) {
         return;
     }
 
-    // ×¼±¸±äÁ¿
+    // å‡†å¤‡å˜é‡
     va_list args;
     char message[2048];
     char timestamp[64];
     char final_message[2560];
 
-    // ¸ñÊ½»¯ÓÃ»§ÏûÏ¢
+    // æ ¼å¼åŒ–ç”¨æˆ·æ¶ˆæ¯
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
     va_end(args);
 
-    // Éú³ÉÊ±¼ä´Á
+    // ç”Ÿæˆæ—¶é—´æˆ³
     if (g_logger_config.enable_timestamp) {
         logger_format_timestamp(timestamp, sizeof(timestamp));
     } else {
         timestamp[0] = '\0';
     }
 
-    // ¹¹½¨×îÖÕÏûÏ¢
+    // æ„å»ºæœ€ç»ˆæ¶ˆæ¯
     if (g_logger_config.enable_timestamp) {
         snprintf(final_message, sizeof(final_message),
                 "[%s] [%s] [%s:%d] %s\n",
@@ -184,7 +184,7 @@ void logger_log(LogLevel level, const char* file, int line, const char* func, co
                 message);
     }
 
-    // Êä³öµ½Ö¸¶¨Ä¿±ê
+    // è¾“å‡ºåˆ°æŒ‡å®šç›®æ ‡
     if (g_logger_config.target == LOG_TARGET_CONSOLE || g_logger_config.target == LOG_TARGET_BOTH) {
         logger_write_to_console(final_message);
     }
@@ -196,7 +196,7 @@ void logger_log(LogLevel level, const char* file, int line, const char* func, co
 }
 
 /**
- * »ñÈ¡ÈÕÖ¾¼¶±ğ×Ö·û´®
+ * è·å–æ—¥å¿—çº§åˆ«å­—ç¬¦ä¸²
  */
 const char* logger_level_string(LogLevel level) {
     switch (level) {
@@ -211,7 +211,7 @@ const char* logger_level_string(LogLevel level) {
 }
 
 /**
- * »ñÈ¡ÈÕÖ¾¼¶±ğÑÕÉ«
+ * è·å–æ—¥å¿—çº§åˆ«é¢œè‰²
  */
 const char* logger_level_color(LogLevel level) {
     if (!g_logger_config.enable_color) {
@@ -229,7 +229,7 @@ const char* logger_level_color(LogLevel level) {
 }
 
 /**
- * ¼ì²é²¢Ö´ĞĞÎÄ¼şÂÖ×ª
+ * æ£€æŸ¥å¹¶æ‰§è¡Œæ–‡ä»¶è½®è½¬
  */
 void logger_rotate_if_needed(void) {
     if (g_logger_config.file_handle == NULL || strlen(g_logger_config.log_file) == 0) {
@@ -242,24 +242,24 @@ void logger_rotate_if_needed(void) {
     }
 }
 
-// ========== ÄÚ²¿º¯ÊıÊµÏÖ ==========
+// ========== å†…éƒ¨å‡½æ•°å®ç° ==========
 
 /**
- * Êä³öµ½¿ØÖÆÌ¨
+ * è¾“å‡ºåˆ°æ§åˆ¶å°
  */
 static void logger_write_to_console(const char* message) {
 #ifdef _WIN32
-    // Windows¿ØÖÆÌ¨ÑÕÉ«´¦Àí
+    // Windowsæ§åˆ¶å°é¢œè‰²å¤„ç†
     printf("%s", message);
 #else
-    // Unix/Linux¿ØÖÆÌ¨ÑÕÉ«´¦Àí
+    // Unix/Linuxæ§åˆ¶å°é¢œè‰²å¤„ç†
     printf("%s", message);
 #endif
     fflush(stdout);
 }
 
 /**
- * Êä³öµ½ÎÄ¼ş
+ * è¾“å‡ºåˆ°æ–‡ä»¶
  */
 static void logger_write_to_file(const char* message) {
     if (g_logger_config.file_handle != NULL) {
@@ -269,7 +269,7 @@ static void logger_write_to_file(const char* message) {
 }
 
 /**
- * ¸ñÊ½»¯Ê±¼ä´Á
+ * æ ¼å¼åŒ–æ—¶é—´æˆ³
  */
 static void logger_format_timestamp(char* buffer, size_t size) {
     time_t now;
@@ -282,46 +282,46 @@ static void logger_format_timestamp(char* buffer, size_t size) {
 }
 
 /**
- * Ö´ĞĞÎÄ¼şÂÖ×ª
+ * æ‰§è¡Œæ–‡ä»¶è½®è½¬
  */
 static void logger_rotate_file(void) {
     if (g_logger_config.file_handle == NULL) {
         return;
     }
 
-    // ¹Ø±Õµ±Ç°ÎÄ¼ş
+    // å…³é—­å½“å‰æ–‡ä»¶
     fclose(g_logger_config.file_handle);
     g_logger_config.file_handle = NULL;
 
-    // ÂÖ×ª±¸·İÎÄ¼ş
+    // è½®è½¬å¤‡ä»½æ–‡ä»¶
     char old_name[512];
     char new_name[512];
 
-    // É¾³ı×îÀÏµÄ±¸·İÎÄ¼ş
+    // åˆ é™¤æœ€è€çš„å¤‡ä»½æ–‡ä»¶
     snprintf(old_name, sizeof(old_name), "%s.%d",
              g_logger_config.log_file, g_logger_config.max_backup_files);
     remove(old_name);
 
-    // ÖØÃüÃûÏÖÓĞ±¸·İÎÄ¼ş
+    // é‡å‘½åç°æœ‰å¤‡ä»½æ–‡ä»¶
     for (int i = g_logger_config.max_backup_files - 1; i >= 1; i--) {
         snprintf(old_name, sizeof(old_name), "%s.%d", g_logger_config.log_file, i);
         snprintf(new_name, sizeof(new_name), "%s.%d", g_logger_config.log_file, i + 1);
         rename(old_name, new_name);
     }
 
-    // ÖØÃüÃûµ±Ç°ÈÕÖ¾ÎÄ¼ş
+    // é‡å‘½åå½“å‰æ—¥å¿—æ–‡ä»¶
     snprintf(new_name, sizeof(new_name), "%s.1", g_logger_config.log_file);
     rename(g_logger_config.log_file, new_name);
 
-    // ÖØĞÂ´ò¿ªÈÕÖ¾ÎÄ¼ş
+    // é‡æ–°æ‰“å¼€æ—¥å¿—æ–‡ä»¶
     g_logger_config.file_handle = fopen(g_logger_config.log_file, "w");
     if (g_logger_config.file_handle == NULL) {
-        fprintf(stderr, "´íÎó: ÎÄ¼şÂÖ×ªºóÎŞ·¨ÖØĞÂ´ò¿ªÈÕÖ¾ÎÄ¼ş\n");
+        fprintf(stderr, "Error: Unable to reopen log file after file rotation\n");
     }
 }
 
 /**
- * »ñÈ¡ÎÄ¼ş´óĞ¡
+ * è·å–æ–‡ä»¶å¤§å°
  */
 static long logger_get_file_size(const char* filename) {
     FILE* file = fopen(filename, "r");
@@ -338,7 +338,7 @@ static long logger_get_file_size(const char* filename) {
 
 #ifdef _WIN32
 /**
- * Windows¿ØÖÆÌ¨ÑÕÉ«ÉèÖÃ
+ * Windowsæ§åˆ¶å°é¢œè‰²è®¾ç½®
  */
 static void logger_set_console_color(LogLevel level) {
     if (!g_logger_config.enable_color) {
@@ -349,11 +349,11 @@ static void logger_set_console_color(LogLevel level) {
     WORD color;
 
     switch (level) {
-        case LOG_LEVEL_DEBUG: color = FOREGROUND_BLUE | FOREGROUND_GREEN; break;  // ÇàÉ«
-        case LOG_LEVEL_INFO:  color = FOREGROUND_GREEN; break;                    // ÂÌÉ«
-        case LOG_LEVEL_WARN:  color = FOREGROUND_RED | FOREGROUND_GREEN; break;   // »ÆÉ«
-        case LOG_LEVEL_ERROR: color = FOREGROUND_RED; break;                      // ºìÉ«
-        case LOG_LEVEL_FATAL: color = FOREGROUND_RED | FOREGROUND_BLUE; break;    // ×ÏÉ«
+        case LOG_LEVEL_DEBUG: color = FOREGROUND_BLUE | FOREGROUND_GREEN; break;  // é’è‰²
+        case LOG_LEVEL_INFO:  color = FOREGROUND_GREEN; break;                    // ç»¿è‰²
+        case LOG_LEVEL_WARN:  color = FOREGROUND_RED | FOREGROUND_GREEN; break;   // é»„è‰²
+        case LOG_LEVEL_ERROR: color = FOREGROUND_RED; break;                      // çº¢è‰²
+        case LOG_LEVEL_FATAL: color = FOREGROUND_RED | FOREGROUND_BLUE; break;    // ç´«è‰²
         default:              color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE; break;
     }
 
@@ -361,7 +361,7 @@ static void logger_set_console_color(LogLevel level) {
 }
 
 /**
- * Windows¿ØÖÆÌ¨ÑÕÉ«ÖØÖÃ
+ * Windowsæ§åˆ¶å°é¢œè‰²é‡ç½®
  */
 static void logger_reset_console_color(void) {
     if (!g_logger_config.enable_color) {

@@ -1,5 +1,5 @@
 //
-// NetworkStatus.h - ÍøÂç×´Ì¬¼ì²éº¯ÊýÉùÃ÷
+// NetworkStatus.h - ç½‘ç»œçŠ¶æ€æ£€æŸ¥å‡½æ•°å£°æ˜Ž
 // Created by bad_g on 2025/9/14.
 //
 
@@ -7,14 +7,14 @@
 #define NETWORKSTATUS_H
 
 typedef enum {
-    CONNECTIVITY_SUCCESS = 0,                // ÍøÂçÒÑÁ¬½Ó£¬ÎÞÐèÈÏÖ¤
-    CONNECTIVITY_REQUIRE_AUTHORIZATION = 1,   // ÐèÒª½øÐÐÐ£Ô°ÍøÈÏÖ¤
-    CONNECTIVITY_REQUEST_ERROR = 2            // ÇëÇóÊ§°Ü»òÍøÂç´íÎó
+    CONNECTIVITY_SUCCESS = 0,                // ç½‘ç»œå·²è¿žæŽ¥ï¼Œæ— éœ€è®¤è¯
+    CONNECTIVITY_REQUIRE_AUTHORIZATION = 1,   // éœ€è¦è¿›è¡Œæ ¡å›­ç½‘è®¤è¯
+    CONNECTIVITY_REQUEST_ERROR = 2            // è¯·æ±‚å¤±è´¥æˆ–ç½‘ç»œé”™è¯¯
 } ConnectivityStatus;
 
-// ÍøÂç×´Ì¬¼ì²éº¯Êý
-// ·ÃÎÊ http://connect.rom.miui.com/generate_204
-// ·µ»ØÖµ: 0-·µ»Ø204, 1-·µ»Ø304, 2-ÆäËû×´Ì¬Âë»òÇëÇóÊ§°Ü
+// ç½‘ç»œçŠ¶æ€æ£€æŸ¥å‡½æ•°
+// è®¿é—® http://connect.rom.miui.com/generate_204
+// è¿”å›žå€¼: 0-è¿”å›ž204, 1-è¿”å›ž304, 2-å…¶ä»–çŠ¶æ€ç æˆ–è¯·æ±‚å¤±è´¥
 ConnectivityStatus detectConfig(void);
 
 #endif // NETWORKSTATUS_H

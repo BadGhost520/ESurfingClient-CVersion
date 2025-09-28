@@ -1,12 +1,12 @@
 //
-// Client.h - HTTP¿Í»§¶Ëº¯ÊıÉùÃ÷
+// Client.h - HTTPå®¢æˆ·ç«¯å‡½æ•°å£°æ˜
 // Created by bad_g on 2025/9/14.
 //
 
 #ifndef CLIENT_H
 #define CLIENT_H
 
-// º¯ÊıÉùÃ÷
+// å‡½æ•°å£°æ˜
 void run();
 void term();
 

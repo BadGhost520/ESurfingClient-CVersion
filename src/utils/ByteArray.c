@@ -13,7 +13,7 @@ ByteArray string_to_bytes(const char* str) {
     ByteArray ba = {0};
     if (!str) return ba;
 
-    ba.length = strlen(str);  // ×¢Òâ£ºÕâ»áÔÚµÚÒ»¸önull×Ö½Ú´¦Í£Ö¹
+    ba.length = strlen(str);  // æ³¨æ„ï¼šè¿™ä¼šåœ¨ç¬¬ä¸€ä¸ªnullå­—èŠ‚å¤„åœæ­¢
     ba.data = (unsigned char*)malloc(ba.length);
     if (ba.data) {
         memcpy(ba.data, str, ba.length);
@@ -23,48 +23,48 @@ ByteArray string_to_bytes(const char* str) {
 
 void print_byte_array(const ByteArray* ba, const char* name) {
     if (!ba || !ba->data) {
-        printf("%s: NULL »ò¿ÕÊı¾İ\n", name);
+        printf("%s: NULL or empty data\n", name);
         return;
     }
 
-    printf("=== %s (³¤¶È: %zu ×Ö½Ú) ===\n", name, ba->length);
+    printf("=== %s (length: %zu bytes) ===\n", name, ba->length);
 
-    // 1. Ê®Áù½øÖÆ¸ñÊ½
-    printf("Ê®Áù½øÖÆ: ");
+    // 1. åå…­è¿›åˆ¶æ ¼å¼
+    printf("hexadecimal: ");
     for (size_t i = 0; i < ba->length; i++) {
         printf("%02X ", ba->data[i]);
-        if ((i + 1) % 16 == 0) printf("\n         "); // Ã¿16×Ö½Ú»»ĞĞ
+        if ((i + 1) % 16 == 0) printf("\n         "); // æ¯16å­—èŠ‚æ¢è¡Œ
     }
     printf("\n");
 
-    // 2. Ê®½øÖÆ¸ñÊ½
-    printf("Ê®½øÖÆ:   ");
+    // 2. åè¿›åˆ¶æ ¼å¼
+    printf("decimal:   ");
     for (size_t i = 0; i < (ba->length < 20 ? ba->length : 20); i++) {
         printf("%3d ", ba->data[i]);
     }
     if (ba->length > 20) printf("...");
     printf("\n");
 
-    // 3. ×Ö·û¸ñÊ½£¨¿É´òÓ¡×Ö·û£©
-    printf("×Ö·ûÏÔÊ¾: ");
+    // 3. å­—ç¬¦æ ¼å¼ï¼ˆå¯æ‰“å°å­—ç¬¦ï¼‰
+    printf("Character display: ");
     for (size_t i = 0; i < ba->length; i++) {
         if (isprint(ba->data[i])) {
             printf("%c ", ba->data[i]);
         } else {
-            printf(". "); // ²»¿É´òÓ¡×Ö·ûÏÔÊ¾Îªµã
+            printf(". "); // ä¸å¯æ‰“å°å­—ç¬¦æ˜¾ç¤ºä¸ºç‚¹
         }
     }
     printf("\n");
 
-    // 4. ³¢ÊÔ×÷Îª×Ö·û´®´òÓ¡
-    printf("×÷Îª×Ö·û´®: \"");
+    // 4. å°è¯•ä½œä¸ºå­—ç¬¦ä¸²æ‰“å°
+    printf("As a string: \"");
     for (size_t i = 0; i < ba->length; i++) {
         if (ba->data[i] == '\0') {
-            printf("\\0"); // ÏÔÊ¾null×Ö½Ú
+            printf("\\0"); // æ˜¾ç¤ºnullå­—èŠ‚
         } else if (isprint(ba->data[i])) {
             printf("%c", ba->data[i]);
         } else {
-            printf("\\x%02X", ba->data[i]); // ×ªÒå²»¿É´òÓ¡×Ö·û
+            printf("\\x%02X", ba->data[i]); // è½¬ä¹‰ä¸å¯æ‰“å°å­—ç¬¦
         }
     }
     printf("\"\n\n");

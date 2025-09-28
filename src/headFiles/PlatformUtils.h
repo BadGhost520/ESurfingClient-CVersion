@@ -1,5 +1,5 @@
 //
-// PlatformUtils.h - ¿çÆ½Ì¨¹¤¾ßº¯Êı
+// PlatformUtils.h - è·¨å¹³å°å·¥å…·å‡½æ•°
 // Created by bad_g on 2025/9/14.
 //
 
@@ -13,27 +13,27 @@ extern "C" {
 #endif
 
 /**
- * ½«×Ö·û´®×ª»»Îª64Î»³¤ÕûĞÍ
- * µÈ¼ÛÓÚ Kotlin µÄ String.toLong()£¨64Î»°æ±¾£©
+ * å°†å­—ç¬¦ä¸²è½¬æ¢ä¸º64ä½é•¿æ•´å‹
+ * ç­‰ä»·äº Kotlin çš„ String.toLong()ï¼ˆ64ä½ç‰ˆæœ¬ï¼‰
  *
- * @param str Òª×ª»»µÄ×Ö·û´®
- * @param result ×ª»»½á¹ûµÄÖ¸Õë
- * @return ×ª»»ÊÇ·ñ³É¹¦ (1=³É¹¦, 0=Ê§°Ü)
+ * @param str è¦è½¬æ¢çš„å­—ç¬¦ä¸²
+ * @param result è½¬æ¢ç»“æœçš„æŒ‡é’ˆ
+ * @return è½¬æ¢æ˜¯å¦æˆåŠŸ (1=æˆåŠŸ, 0=å¤±è´¥)
  *
- * Ê¾Àı:
+ * ç¤ºä¾‹:
  *   long long value;
  *   if (string_to_long_long("1234567890", &value)) {
- *       printf("×ª»»³É¹¦: %lld\n", value);
+ *       printf("è½¬æ¢æˆåŠŸ: %lld\n", value);
  *   }
  */
 int stringToLongLong(const char* str, long long* result);
 
 /**
- * ±ãÀûºê¶¨Òå
- * Ìá¹©¸ü¼ò½àµÄµ÷ÓÃ·½Ê½
+ * ä¾¿åˆ©å®å®šä¹‰
+ * æä¾›æ›´ç®€æ´çš„è°ƒç”¨æ–¹å¼
  */
 
-// µÈ¼ÛÓÚ Kotlin: keepRetry.toLong()
+// ç­‰ä»·äº Kotlin: keepRetry.toLong()
 #define TO_LONG_LONG(str, result) string_to_long_long(str, result)
 
 #ifdef __cplusplus
@@ -45,51 +45,51 @@ extern "C" {
 #endif
 
     /**
-     * Ê±¼ä¹¤¾ßº¯Êı
-     * Ìá¹©ÓëJavaÊ±¼äÏà¹Øº¯ÊıµÈ¼ÛµÄCÓïÑÔÊµÏÖ
+     * æ—¶é—´å·¥å…·å‡½æ•°
+     * æä¾›ä¸Javaæ—¶é—´ç›¸å…³å‡½æ•°ç­‰ä»·çš„Cè¯­è¨€å®ç°
      */
 
     /**
-     * »ñÈ¡µ±Ç°Ê±¼äµÄºÁÃëÊ±¼ä´Á
-     * µÈ¼ÛÓÚ Java µÄ System.currentTimeMillis()
+     * è·å–å½“å‰æ—¶é—´çš„æ¯«ç§’æ—¶é—´æˆ³
+     * ç­‰ä»·äº Java çš„ System.currentTimeMillis()
      *
-     * ·µ»Ø×Ô1970Äê1ÔÂ1ÈÕ00:00:00 UTCÒÔÀ´µÄºÁÃëÊı
-     * ÕâÓëJavaµÄSystem.currentTimeMillis()·µ»ØÖµÍêÈ«Ò»ÖÂ
+     * è¿”å›è‡ª1970å¹´1æœˆ1æ—¥00:00:00 UTCä»¥æ¥çš„æ¯«ç§’æ•°
+     * è¿™ä¸Javaçš„System.currentTimeMillis()è¿”å›å€¼å®Œå…¨ä¸€è‡´
      *
-     * @return ºÁÃëÊ±¼ä´Á£¬Ê§°Ü·µ»Ø-1
+     * @return æ¯«ç§’æ—¶é—´æˆ³ï¼Œå¤±è´¥è¿”å›-1
      */
     int64_t currentTimeMillis();
 
     /**
-     * »ñÈ¡¸ß¾«¶ÈÊ±¼ä´Á£¨ÄÉÃë£©
-     * µÈ¼ÛÓÚ Java µÄ System.nanoTime()
+     * è·å–é«˜ç²¾åº¦æ—¶é—´æˆ³ï¼ˆçº³ç§’ï¼‰
+     * ç­‰ä»·äº Java çš„ System.nanoTime()
      *
-     * @return ÄÉÃëÊ±¼ä´Á£¬Ê§°Ü·µ»Ø-1
+     * @return çº³ç§’æ—¶é—´æˆ³ï¼Œå¤±è´¥è¿”å›-1
      */
     int64_t currentTimeNanos();
 
     /**
-     * »ñÈ¡µ¥µ÷Ê±¼ä´Á£¨ºÁÃë£©
-     * ²»ÊÜÏµÍ³Ê±¼äµ÷ÕûÓ°Ïì£¬ÊÊÓÃÓÚ¼ÆËãÊ±¼ä¼ä¸ô
-     * ÀàËÆÓÚJavaµÄSystem.nanoTime()µ«·µ»ØºÁÃë
+     * è·å–å•è°ƒæ—¶é—´æˆ³ï¼ˆæ¯«ç§’ï¼‰
+     * ä¸å—ç³»ç»Ÿæ—¶é—´è°ƒæ•´å½±å“ï¼Œé€‚ç”¨äºè®¡ç®—æ—¶é—´é—´éš”
+     * ç±»ä¼¼äºJavaçš„System.nanoTime()ä½†è¿”å›æ¯«ç§’
      *
-     * @return µ¥µ÷Ê±¼ä´Á£¨ºÁÃë£©£¬Ê§°Ü·µ»Ø-1
+     * @return å•è°ƒæ—¶é—´æˆ³ï¼ˆæ¯«ç§’ï¼‰ï¼Œå¤±è´¥è¿”å›-1
      */
     int64_t monotonicTimeMillis();
 
     /**
-     * ¸ñÊ½»¯Ê±¼ä´ÁÎª¿É¶Á×Ö·û´®
-     * ¸ñÊ½£ºYYYY-MM-DD HH:MM:SS.mmm
+     * æ ¼å¼åŒ–æ—¶é—´æˆ³ä¸ºå¯è¯»å­—ç¬¦ä¸²
+     * æ ¼å¼ï¼šYYYY-MM-DD HH:MM:SS.mmm
      *
-     * @param timestamp_ms ºÁÃëÊ±¼ä´Á
-     * @param buffer Êä³ö»º³åÇø£¨ÖÁÉÙ32×Ö½Ú£©
-     * @param buffer_size »º³åÇø´óĞ¡
-     * @return ¸ñÊ½»¯ºóµÄ×Ö·û´®³¤¶È£¬Ê§°Ü·µ»Ø-1
+     * @param timestamp_ms æ¯«ç§’æ—¶é—´æˆ³
+     * @param buffer è¾“å‡ºç¼“å†²åŒºï¼ˆè‡³å°‘32å­—èŠ‚ï¼‰
+     * @param buffer_size ç¼“å†²åŒºå¤§å°
+     * @return æ ¼å¼åŒ–åçš„å­—ç¬¦ä¸²é•¿åº¦ï¼Œå¤±è´¥è¿”å›-1
      */
     int formatTimestamp(int64_t timestamp_ms, char* buffer, size_t buffer_size);
 
     /**
-     * ±ãÀûºê¶¨Òå
+     * ä¾¿åˆ©å®å®šä¹‰
      */
 #define GET_CURRENT_TIME_MILLIS() current_time_millis()
 #define GET_TICK_COUNT() current_time_millis()
@@ -98,26 +98,26 @@ extern "C" {
 }
 #endif
 
-// ¿çÆ½Ì¨Ë¯Ãßº¯Êı
-// ²ÎÊıµ¥Î»£ºÃë
+// è·¨å¹³å°ç¡çœ å‡½æ•°
+// å‚æ•°å•ä½ï¼šç§’
 void sleepSeconds(int seconds);
 
-// ¿çÆ½Ì¨Ë¯Ãßº¯Êı
-// ²ÎÊıµ¥Î»£ººÁÃë
+// è·¨å¹³å°ç¡çœ å‡½æ•°
+// å‚æ•°å•ä½ï¼šæ¯«ç§’
 void sleepMilliseconds(int milliseconds);
 
-// ¿çÆ½Ì¨Ë¯Ãßº¯Êı
-// ²ÎÊıµ¥Î»£ºÎ¢Ãë
+// è·¨å¹³å°ç¡çœ å‡½æ•°
+// å‚æ•°å•ä½ï¼šå¾®ç§’
 void sleepMicroseconds(int microseconds);
 
 void setClientId(char** client_id);
 
 char* randomMacAddress();
 
-// ´´½¨XML payload×Ö·û´®
+// åˆ›å»ºXML payloadå­—ç¬¦ä¸²
 char* createXMLPayload(const char* choose);
 
-// Çå³ı CDATA Êı¾İ
+// æ¸…é™¤ CDATA æ•°æ®
 char* cleanCDATA(const char* text);
 
 #endif // PLATFORMUTILS_H

@@ -13,51 +13,51 @@
 #include "headFiles/utils/Logger.h"
 
 bool initialized = false;
-cipher_interface_t* cipher = NULL;  // È«¾Ö¼ÓÃÜÊµÀı
+cipher_interface_t* cipher = NULL;  // å…¨å±€åŠ å¯†å®ä¾‹
 
 const char* check1 = "B809531F-0007-4B5B-923B-4BD560398113";
 const char* check2 = "F3974434-C0DD-4C20-9E87-DDB6814A1C48";
 
-// ¼ÓÃÜ (¶ÔÓ¦fun encrypt(text: String): String)
+// åŠ å¯† (å¯¹åº”fun encrypt(text: String): String)
 char* encrypt(const char* text)
 {
     return cipher->encrypt(cipher, text);
 }
 
-// ½âÃÜ (¶ÔÓ¦fun encrypt(text: String): String)
+// è§£å¯† (å¯¹åº”fun encrypt(text: String): String)
 char* decrypt(const char* text)
 {
     return cipher->decrypt(cipher, text);
 }
 
-// ÊÍ·ÅSession×ÊÔ´ (¶ÔÓ¦Kotlin: fun free())
+// é‡Šæ”¾Sessionèµ„æº (å¯¹åº”Kotlin: fun free())
 void sessionFree() {
     initialized = false;
 }
 
-// ³õÊ¼»¯¼ÓÃÜ×é¼ş (¶ÔÓ¦CipherFactory.getInstance)
+// åˆå§‹åŒ–åŠ å¯†ç»„ä»¶ (å¯¹åº”CipherFactory.getInstance)
 int init_cipher(const char* algo_id) {
-    // Èç¹ûÒÑ¾­ÓĞcipherÊµÀı£¬ÏÈÊÍ·Å
+    // å¦‚æœå·²ç»æœ‰cipherå®ä¾‹ï¼Œå…ˆé‡Šæ”¾
     if (cipher != NULL) {
         cipher_factory_destroy(cipher);
         cipher = NULL;
     }
 
-    // Ê¹ÓÃcrypto_factory´´½¨¼ÓÃÜÊµÀı
+    // ä½¿ç”¨crypto_factoryåˆ›å»ºåŠ å¯†å®ä¾‹
     cipher = cipher_factory_create(algo_id);
     if (cipher == NULL) {
-        return 0; // Ê§°Ü
+        return 0; // å¤±è´¥
     }
-    return 1; // ³É¹¦
+    return 1; // æˆåŠŸ
 }
 
 /**
- * ½«Ê®Áù½øÖÆ×Ö·û´®×ª»»Îª¶ş½øÖÆÊı¾İ
+ * å°†åå…­è¿›åˆ¶å­—ç¬¦ä¸²è½¬æ¢ä¸ºäºŒè¿›åˆ¶æ•°æ®
  */
 int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** binary_data, size_t* binary_len) {
-    // ²ÎÊıÑéÖ¤£ºÔÚµ±Ç°µ÷ÓÃÉÏÏÂÎÄÖĞhex_strÒÑ¾­¹ıNULL¼ì²é£¬µ«±£ÁôÑéÖ¤ÒÔÈ·±£º¯ÊıµÄÍ¨ÓÃĞÔ
+    // å‚æ•°éªŒè¯ï¼šåœ¨å½“å‰è°ƒç”¨ä¸Šä¸‹æ–‡ä¸­hex_strå·²ç»è¿‡NULLæ£€æŸ¥ï¼Œä½†ä¿ç•™éªŒè¯ä»¥ç¡®ä¿å‡½æ•°çš„é€šç”¨æ€§
     if (hex_len == 0 || hex_len % 2 != 0) {
-        return 0; // Ê®Áù½øÖÆ×Ö·û´®³¤¶È±ØĞëÊÇÅ¼ÊıÇÒ·Ç¿Õ
+        return 0; // åå…­è¿›åˆ¶å­—ç¬¦ä¸²é•¿åº¦å¿…é¡»æ˜¯å¶æ•°ä¸”éç©º
     }
 
     *binary_len = hex_len / 2;
@@ -70,10 +70,10 @@ int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** bi
         char hex_byte[3] = {hex_str[i*2], hex_str[i*2+1], '\0'};
         char* endptr;
 
-        // ĞŞ¸´¾¯¸æ£ºÊ¹ÓÃstrtoulÌæ´ússcanf½øĞĞ¸ü°²È«µÄ×ª»»
+        // ä¿®å¤è­¦å‘Šï¼šä½¿ç”¨strtoulæ›¿ä»£sscanfè¿›è¡Œæ›´å®‰å…¨çš„è½¬æ¢
         unsigned long byte_val = strtoul(hex_byte, &endptr, 16);
 
-        // ¼ì²é×ª»»ÊÇ·ñ³É¹¦£ºendptrÓ¦¸ÃÖ¸Ïò×Ö·û´®Ä©Î²£¬ÇÒÖµÔÚÓĞĞ§·¶Î§ÄÚ
+        // æ£€æŸ¥è½¬æ¢æ˜¯å¦æˆåŠŸï¼šendptråº”è¯¥æŒ‡å‘å­—ç¬¦ä¸²æœ«å°¾ï¼Œä¸”å€¼åœ¨æœ‰æ•ˆèŒƒå›´å†…
         if (*endptr != '\0' || byte_val > 255) {
             free(*binary_data);
             *binary_data = NULL;
@@ -86,17 +86,17 @@ int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** bi
 }
 
 /**
- * CÓïÑÔ°æ±¾µÄloadº¯Êı
- * ¶ÔÓ¦Kotlin: private fun load(zsm: ByteArray): Boolean
- * ĞŞ¸´°æ±¾£ºÕıÈ·´¦Àí·şÎñÆ÷·µ»ØµÄÊ®Áù½øÖÆ×Ö·û´®¸ñÊ½Êı¾İ
+ * Cè¯­è¨€ç‰ˆæœ¬çš„loadå‡½æ•°
+ * å¯¹åº”Kotlin: private fun load(zsm: ByteArray): Boolean
+ * ä¿®å¤ç‰ˆæœ¬ï¼šæ­£ç¡®å¤„ç†æœåŠ¡å™¨è¿”å›çš„åå…­è¿›åˆ¶å­—ç¬¦ä¸²æ ¼å¼æ•°æ®
  *
- * @param zsm ×Ö½ÚÊı×éÖ¸Õë£¨¿ÉÄÜ°üº¬Ê®Áù½øÖÆ×Ö·û´®£©
- * @return 1±íÊ¾³É¹¦£¬0±íÊ¾Ê§°Ü£¬2±íÊ¾ĞèÒªÖØĞÂ»ñÈ¡
+ * @param zsm å­—èŠ‚æ•°ç»„æŒ‡é’ˆï¼ˆå¯èƒ½åŒ…å«åå…­è¿›åˆ¶å­—ç¬¦ä¸²ï¼‰
+ * @return 1è¡¨ç¤ºæˆåŠŸï¼Œ0è¡¨ç¤ºå¤±è´¥ï¼Œ2è¡¨ç¤ºéœ€è¦é‡æ–°è·å–
  */
 int load(const ByteArray* zsm) {
     char* key;
     char* algo_id;
-    LOG_DEBUG("½ÓÊÕµ½µÄzsmÊı¾İ³¤¶È: %zu", zsm->length);
+    LOG_DEBUG("Received zsm data length: %zu", zsm->length);
 
     if (!zsm || !zsm->data || zsm->length == 0) {
         key = NULL;
@@ -104,7 +104,7 @@ int load(const ByteArray* zsm) {
         return 0;
     }
 
-    // ½«×Ö½ÚÊı×é×ª»»Îª×Ö·û´®
+    // å°†å­—èŠ‚æ•°ç»„è½¬æ¢ä¸ºå­—ç¬¦ä¸²
     char* str = (char*)malloc(zsm->length + 1);
     if (!str) {
         key = NULL;
@@ -113,24 +113,24 @@ int load(const ByteArray* zsm) {
     }
 
     memcpy(str, zsm->data, zsm->length);
-    str[zsm->length] = '\0';  // Ìí¼Ó×Ö·û´®ÖÕÖ¹·û
+    str[zsm->length] = '\0';  // æ·»åŠ å­—ç¬¦ä¸²ç»ˆæ­¢ç¬¦
 
-    LOG_DEBUG("Ô­Ê¼×Ö·û´®: %s", str);
-    LOG_DEBUG("×Ö·û´®³¤¶È: %zu", strlen(str));
+    LOG_DEBUG("Original string: %s", str);
+    LOG_DEBUG("String length: %zu", strlen(str));
 
-    // ¼ì²é×Ö·û´®³¤¶ÈÊÇ·ñ×ã¹»
+    // æ£€æŸ¥å­—ç¬¦ä¸²é•¿åº¦æ˜¯å¦è¶³å¤Ÿ
     if (strlen(str) < 4 + 38) {
-        LOG_ERROR("´íÎó: ×Ö·û´®³¤¶È²»×ã");
+        LOG_ERROR("Insufficient string length");
         free(str);
         key = NULL;
         algo_id = NULL;
         return 0;
     }
 
-    // ÌáÈ¡ Key: È¥µô×ó±ß4¸ö×Ö·û£¬È¥µôÓÒ±ß38¸ö×Ö·û
+    // æå– Key: å»æ‰å·¦è¾¹4ä¸ªå­—ç¬¦ï¼Œå»æ‰å³è¾¹38ä¸ªå­—ç¬¦
     size_t key_length = strlen(str) - 4 - 38;
     if (key_length <= 0) {
-        LOG_ERROR("´íÎó: Key³¤¶È¼ÆËã´íÎó");
+        LOG_ERROR("Key length calculation error");
         free(str);
         key = NULL;
         algo_id = NULL;
@@ -141,20 +141,20 @@ int load(const ByteArray* zsm) {
     if (key) {
         strncpy(key, str + 4, key_length);
         (key)[key_length] = '\0';
-        LOG_DEBUG("ÌáÈ¡µÄKey: %s", key);
-        LOG_DEBUG("Key³¤¶È: %zu", key_length);
+        LOG_DEBUG("Extracted Key: %s", key);
+        LOG_DEBUG("Key length: %zu", key_length);
     }
 
-    // ÌáÈ¡ algo_id: ´ÓÓÒÍù×óÊı38¸ö×Ö·û£¨È¥µô×îºóµÄ']'£©
+    // æå– algo_id: ä»å³å¾€å·¦æ•°38ä¸ªå­—ç¬¦ï¼ˆå»æ‰æœ€åçš„']'ï¼‰
     size_t total_length = strlen(str);
     if (total_length >= 38) {
-        size_t algo_id_length = 36;  // 38¸ö×Ö·ûÈ¥µô×îºóµÄ']'
+        size_t algo_id_length = 36;  // 38ä¸ªå­—ç¬¦å»æ‰æœ€åçš„']'
         algo_id = (char*)malloc(algo_id_length + 1);
         if (algo_id) {
-            // ´Óµ¹ÊıµÚ37¸ö×Ö·û¿ªÊ¼£¬È¡36¸ö×Ö·û
+            // ä»å€’æ•°ç¬¬37ä¸ªå­—ç¬¦å¼€å§‹ï¼Œå–36ä¸ªå­—ç¬¦
             strncpy(algo_id, str + total_length - 37, algo_id_length);
             (algo_id)[algo_id_length] = '\0';
-            LOG_DEBUG("ÌáÈ¡µÄalgo_id: %s", algo_id);
+            LOG_DEBUG("Extracted Algo ID: %s", algo_id);
             if (!strcmp(algo_id, check1) || !strcmp(algo_id, check2))
             {
                 free(key);
@@ -164,53 +164,53 @@ int load(const ByteArray* zsm) {
         }
     } else {
         algo_id = NULL;
-        LOG_ERROR("´íÎó: ×Ö·û´®³¤¶È²»×ãÒÔÌáÈ¡algo_id");
+        LOG_ERROR("The string length is not sufficient to extract the Algo ID");
         return 0;
     }
     free(str);
     LOG_INFO("Algo ID: %s", algo_id);
     LOG_INFO("Key: %s", key);
 
-    // ³õÊ¼»¯¼ÓÃÜÆ÷ (¶ÔÓ¦: cipher = CipherFactory.getInstance(algoId))
-    LOG_DEBUG("ÕıÔÚ³õÊ¼»¯¼ÓÃÜÆ÷...");
+    // åˆå§‹åŒ–åŠ å¯†å™¨ (å¯¹åº”: cipher = CipherFactory.getInstance(algoId))
+    LOG_DEBUG("Initializing encryptor...");
     if (!init_cipher(algo_id)) {
-        LOG_ERROR("´íÎó: ÎŞ·¨³õÊ¼»¯¼ÓÃÜÆ÷");
+        LOG_ERROR("Unable to initialize encryptor");
         free(key);
         free(algo_id);
         return 0;
     }
-    LOG_DEBUG("¼ÓÃÜÆ÷³õÊ¼»¯³É¹¦");
+    LOG_DEBUG("Encryptor initialization successful");
 
-    // ¸üĞÂÈ«¾Ö×´Ì¬ (¶ÔÓ¦: States.algoId = algoId)
-    // ÊÍ·Å¾ÉµÄalgoIdÄÚ´æ£¨Èç¹ûÒÑ·ÖÅä£©
+    // æ›´æ–°å…¨å±€çŠ¶æ€ (å¯¹åº”: States.algoId = algoId)
+    // é‡Šæ”¾æ—§çš„algoIdå†…å­˜ï¼ˆå¦‚æœå·²åˆ†é…ï¼‰
     if (algoId != NULL) {
         free(algoId);
     }
 
-    // ·ÖÅäĞÂÄÚ´æ²¢¸´ÖÆËã·¨ID
+    // åˆ†é…æ–°å†…å­˜å¹¶å¤åˆ¶ç®—æ³•ID
     algoId = malloc(strlen(algo_id) + 1);
     if (algoId == NULL) {
-        LOG_ERROR("´íÎó: ÎŞ·¨·ÖÅäÈ«¾ÖalgoIdÄÚ´æ");
+        LOG_ERROR("Unable to allocate global Algo ID memory");
         free(key);
         free(algo_id);
         return 0;
     }
     strcpy(algoId, algo_id);
-    LOG_DEBUG("È«¾ÖalgoIdÒÑ¸üĞÂ: '%s'", algoId);
+    LOG_DEBUG("Global Algo ID has been updated: '%s'", algoId);
 
-    // ÇåÀíÄÚ´æ
+    // æ¸…ç†å†…å­˜
     free(key);
     free(algo_id);
 
-    LOG_DEBUG("Session¼ÓÔØ³É¹¦!");
+    LOG_DEBUG("Session loaded successfully");
 
-    // ³É¹¦·µ»Ø (¶ÔÓ¦: return true)
+    // æˆåŠŸè¿”å› (å¯¹åº”: return true)
     return 1;
 }
 
 int initialize(const ByteArray* zsm)
 {
-    LOG_DEBUG("ÕıÔÚ³õÊ¼»¯ Session");
+    LOG_DEBUG("Initializing session");
     switch (load(zsm))
     {
     case 0:

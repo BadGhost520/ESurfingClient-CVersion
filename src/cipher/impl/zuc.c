@@ -4,18 +4,18 @@
 #include <stdint.h>
 
 /**
- * ZUC-128ÊµÏÖ - ¶ÔÓ¦KotlinµÄZUCÀà
+ * ZUC-128å®ç° - å¯¹åº”Kotlinçš„ZUCç±»
  * 
- * ZUC-128ÊÇÖĞ¹úµÄÁ÷ÃÜÂëËã·¨£¬ÓÃÓÚ4G/5GÍ¨ĞÅ¼ÓÃÜ
- * ÕâÀïÊµÏÖ»ù±¾µÄZUC-128Ëã·¨
+ * ZUC-128æ˜¯ä¸­å›½çš„æµå¯†ç ç®—æ³•ï¼Œç”¨äº4G/5Gé€šä¿¡åŠ å¯†
+ * è¿™é‡Œå®ç°åŸºæœ¬çš„ZUC-128ç®—æ³•
  */
 
 typedef struct {
-    uint8_t key[16];   // ZUC-128ÃÜÔ¿³¤¶ÈÎª16×Ö½Ú
-    uint8_t iv[16];    // ZUC-128 IV³¤¶ÈÎª16×Ö½Ú
+    uint8_t key[16];   // ZUC-128å¯†é’¥é•¿åº¦ä¸º16å­—èŠ‚
+    uint8_t iv[16];    // ZUC-128 IVé•¿åº¦ä¸º16å­—èŠ‚
 } zuc_data_t;
 
-// ZUC-128Ëã·¨µÄSºĞ
+// ZUC-128ç®—æ³•çš„Sç›’
 static const uint8_t S0[256] = {
     0x3e, 0x72, 0x5b, 0x47, 0xca, 0xe0, 0x00, 0x33, 0x04, 0xd1, 0x54, 0x98, 0x09, 0xb9, 0x6d, 0xcb,
     0x7b, 0x1b, 0xf9, 0x32, 0xaf, 0x9d, 0x6a, 0xa5, 0xb8, 0x2d, 0xfc, 0x1d, 0x08, 0x53, 0x03, 0x90,
@@ -54,62 +54,62 @@ static const uint8_t S1[256] = {
     0x64, 0xbe, 0x85, 0x9b, 0x2f, 0x59, 0x8a, 0xd7, 0xb0, 0x25, 0xac, 0xaf, 0x12, 0x03, 0xe2, 0xf2
 };
 
-// ³£ÊıD - ÓëJava°æ±¾EK_dÒ»ÖÂ
+// å¸¸æ•°D - ä¸Javaç‰ˆæœ¬EK_dä¸€è‡´
 static const uint16_t EK_d[16] = {
     0x44D7, 0x26BC, 0x626B, 0x135E, 0x5789, 0x35E2, 0x7135, 0x09AF,
     0x4D78, 0x2F13, 0x6BC4, 0x1AF1, 0x5E26, 0x3C4D, 0x789A, 0x47AC
 };
 
-// ZUC-128×´Ì¬½á¹¹
+// ZUC-128çŠ¶æ€ç»“æ„
 typedef struct {
-    uint32_t LFSR[16];  // ÏßĞÔ·´À¡ÒÆÎ»¼Ä´æÆ÷
-    uint32_t R1, R2;    // ·ÇÏßĞÔº¯Êı¼Ä´æÆ÷
-    uint32_t X0, X1, X2, X3;  // ¹¤×÷±äÁ¿
+    uint32_t LFSR[16];  // çº¿æ€§åé¦ˆç§»ä½å¯„å­˜å™¨
+    uint32_t R1, R2;    // éçº¿æ€§å‡½æ•°å¯„å­˜å™¨
+    uint32_t X0, X1, X2, X3;  // å·¥ä½œå˜é‡
 } zuc_state_t;
 
-// ¸¨Öúº¯Êı£ºÑ­»·×óÒÆ
+// è¾…åŠ©å‡½æ•°ï¼šå¾ªç¯å·¦ç§»
 static uint32_t ROL(uint32_t x, int n) {
     return (x << n) | (x >> (32 - n));
 }
 
-// ¸¨Öúº¯Êı£º×Ö½ÚÌæ»»
+// è¾…åŠ©å‡½æ•°ï¼šå­—èŠ‚æ›¿æ¢
 static uint32_t S(uint32_t x) {
     return (S0[x >> 24] << 24) | (S1[(x >> 16) & 0xFF] << 16) |
            (S0[(x >> 8) & 0xFF] << 8) | (S1[x & 0xFF]);
 }
 
-// ÏßĞÔ±ä»»L1
+// çº¿æ€§å˜æ¢L1
 static uint32_t L1(uint32_t x) {
     return x ^ ROL(x, 2) ^ ROL(x, 10) ^ ROL(x, 18) ^ ROL(x, 24);
 }
 
-// ÏßĞÔ±ä»»L2
+// çº¿æ€§å˜æ¢L2
 static uint32_t L2(uint32_t x) {
     return x ^ ROL(x, 8) ^ ROL(x, 14) ^ ROL(x, 22) ^ ROL(x, 30);
 }
 
-// ¹¹Ôì32Î»ÕûÊı - ÓëJava°æ±¾MAKEU32Ò»ÖÂ
+// æ„é€ 32ä½æ•´æ•° - ä¸Javaç‰ˆæœ¬MAKEU32ä¸€è‡´
 static uint32_t MAKEU32(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
     return ((a & 0xFF) << 24) | ((b & 0xFF) << 16) | ((c & 0xFF) << 8) | (d & 0xFF);
 }
 
-// ¹¹Ôì31Î»ÕûÊı - ÓëJava°æ±¾MAKEU31Ò»ÖÂ
+// æ„é€ 31ä½æ•´æ•° - ä¸Javaç‰ˆæœ¬MAKEU31ä¸€è‡´
 static uint32_t MAKEU31(uint8_t a, uint16_t b, uint8_t c) {
     return ((a & 0xFF) << 23) | ((b & 0xFFFF) << 8) | (c & 0xFF);
 }
 
-// Ä£ÔËËã¼Ó·¨ c = a + b mod (2^31 - 1)
+// æ¨¡è¿ç®—åŠ æ³• c = a + b mod (2^31 - 1)
 static uint32_t AddM(uint32_t a, uint32_t b) {
     uint32_t c = a + b;
     return (c & 0x7FFFFFFF) + (c >> 31);
 }
 
-// ³ËÒÔ2µÄk´Î·½ mod (2^31 - 1)
+// ä¹˜ä»¥2çš„kæ¬¡æ–¹ mod (2^31 - 1)
 static uint32_t MulByPow2(uint32_t x, int k) {
     return ((x << k) | (x >> (31 - k))) & 0x7FFFFFFF;
 }
 
-// BitReorganization - ÓëJava°æ±¾Ò»ÖÂ
+// BitReorganization - ä¸Javaç‰ˆæœ¬ä¸€è‡´
 static void BitReorganization(zuc_state_t* state) {
     state->X0 = ((state->LFSR[15] & 0x7FFF8000) << 1) | (state->LFSR[14] & 0xFFFF);
     state->X1 = ((state->LFSR[11] & 0xFFFF) << 16) | (state->LFSR[9] >> 15);
@@ -117,7 +117,7 @@ static void BitReorganization(zuc_state_t* state) {
     state->X3 = ((state->LFSR[2] & 0xFFFF) << 16) | (state->LFSR[0] >> 15);
 }
 
-// LFSR³õÊ¼»¯Ä£Ê½¸üĞÂ
+// LFSRåˆå§‹åŒ–æ¨¡å¼æ›´æ–°
 static void LFSRWithInitialisationMode(zuc_state_t* state, uint32_t u) {
     uint32_t f = state->LFSR[0];
     uint32_t v = MulByPow2(state->LFSR[0], 8);
@@ -132,14 +132,14 @@ static void LFSRWithInitialisationMode(zuc_state_t* state, uint32_t u) {
     f = AddM(f, v);
     f = AddM(f, u);
 
-    // ÒÆÎ»¸üĞÂ
+    // ç§»ä½æ›´æ–°
     for (int i = 0; i < 15; i++) {
         state->LFSR[i] = state->LFSR[i + 1];
     }
     state->LFSR[15] = f;
 }
 
-// LFSR¹¤×÷Ä£Ê½¸üĞÂ
+// LFSRå·¥ä½œæ¨¡å¼æ›´æ–°
 static void LFSRWithWorkMode(zuc_state_t* state) {
     uint32_t f = state->LFSR[0];
     uint32_t v = MulByPow2(state->LFSR[0], 8);
@@ -153,18 +153,18 @@ static void LFSRWithWorkMode(zuc_state_t* state) {
     v = MulByPow2(state->LFSR[15], 15);
     f = AddM(f, v);
 
-    // ÒÆÎ»¸üĞÂ
+    // ç§»ä½æ›´æ–°
     for (int i = 0; i < 15; i++) {
         state->LFSR[i] = state->LFSR[i + 1];
     }
     state->LFSR[15] = f;
 }
 
-// Fº¯Êı - ÓëJava°æ±¾F()Ò»ÖÂ
+// Få‡½æ•° - ä¸Javaç‰ˆæœ¬F()ä¸€è‡´
 static uint32_t F_function(zuc_state_t* state) {
     uint32_t W, W1, W2, u, v;
 
-    // ÓëJava°æ±¾ÍêÈ«Ò»ÖÂµÄ¼ÆËã
+    // ä¸Javaç‰ˆæœ¬å®Œå…¨ä¸€è‡´çš„è®¡ç®—
     W = (state->X0 ^ state->R1) + state->R2;
     W1 = state->R1 + state->X1;
     W2 = state->R2 ^ state->X2;
@@ -172,7 +172,7 @@ static uint32_t F_function(zuc_state_t* state) {
     u = L1((W1 << 16) | (W2 >> 16));
     v = L2((W2 << 16) | (W1 >> 16));
 
-    // ¸üĞÂR1ºÍR2×´Ì¬
+    // æ›´æ–°R1å’ŒR2çŠ¶æ€
     state->R1 = MAKEU32(S0[u >> 24], S1[(u >> 16) & 0xFF],
                         S0[(u >> 8) & 0xFF], S1[u & 0xFF]);
     state->R2 = MAKEU32(S0[v >> 24], S1[(v >> 16) & 0xFF],
@@ -181,31 +181,31 @@ static uint32_t F_function(zuc_state_t* state) {
     return W;
 }
 
-// ZUC³õÊ¼»¯ - ÓëJava°æ±¾setKeyAndIVÒ»ÖÂ
+// ZUCåˆå§‹åŒ– - ä¸Javaç‰ˆæœ¬setKeyAndIVä¸€è‡´
 static void zuc_init(zuc_state_t* state, const uint8_t* key, const uint8_t* iv) {
-    // ³õÊ¼»¯LFSR - ÓëJava°æ±¾ÍêÈ«Ò»ÖÂ
+    // åˆå§‹åŒ–LFSR - ä¸Javaç‰ˆæœ¬å®Œå…¨ä¸€è‡´
     for (int i = 0; i < 16; i++) {
         state->LFSR[i] = MAKEU31(key[i], EK_d[i], iv[i]);
     }
 
-    // ³õÊ¼»¯R1ºÍR2Îª0
+    // åˆå§‹åŒ–R1å’ŒR2ä¸º0
     state->R1 = 0;
     state->R2 = 0;
 
-    // ³õÊ¼»¯Ä£Ê½ÔËĞĞ32ÂÖ - ÓëJava°æ±¾Ò»ÖÂ
+    // åˆå§‹åŒ–æ¨¡å¼è¿è¡Œ32è½® - ä¸Javaç‰ˆæœ¬ä¸€è‡´
     for (int i = 0; i < 32; i++) {
         BitReorganization(state);
         uint32_t w = F_function(state);
         LFSRWithInitialisationMode(state, w >> 1);
     }
 
-    // ¹¤×÷Ä£Ê½×¼±¸ - ÓëJava°æ±¾Ò»ÖÂ
+    // å·¥ä½œæ¨¡å¼å‡†å¤‡ - ä¸Javaç‰ˆæœ¬ä¸€è‡´
     BitReorganization(state);
-    F_function(state); // ¶ªÆúÊä³ö
+    F_function(state); // ä¸¢å¼ƒè¾“å‡º
     LFSRWithWorkMode(state);
 }
 
-// Éú³ÉÃÜÔ¿Á÷×Ö - ÓëJava°æ±¾makeKeyStreamWordÒ»ÖÂ
+// ç”Ÿæˆå¯†é’¥æµå­— - ä¸Javaç‰ˆæœ¬makeKeyStreamWordä¸€è‡´
 static uint32_t zuc_generate(zuc_state_t* state) {
     BitReorganization(state);
     uint32_t result = F_function(state) ^ state->X3;
@@ -213,19 +213,19 @@ static uint32_t zuc_generate(zuc_state_t* state) {
     return result;
 }
 
-// ZUC´¦ÀíÊı¾İ - ÓëJava°æ±¾processBytesÒ»ÖÂ
+// ZUCå¤„ç†æ•°æ® - ä¸Javaç‰ˆæœ¬processBytesä¸€è‡´
 static void zuc_process_bytes(const uint8_t* key, const uint8_t* iv,
                               const uint8_t* input, uint8_t* output, size_t len) {
     zuc_state_t state;
     zuc_init(&state, key, iv);
 
-    // °´×Ö½Ú´¦Àí£¬ÓëJava°æ±¾returnByteÒ»ÖÂ
+    // æŒ‰å­—èŠ‚å¤„ç†ï¼Œä¸Javaç‰ˆæœ¬returnByteä¸€è‡´
     uint8_t keystream[4];
     int keystream_index = 0;
 
     for (size_t i = 0; i < len; i++) {
         if (keystream_index == 0) {
-            // Éú³ÉĞÂµÄÃÜÔ¿Á÷×Ö
+            // ç”Ÿæˆæ–°çš„å¯†é’¥æµå­—
             uint32_t word = zuc_generate(&state);
             keystream[0] = (word >> 24) & 0xFF;
             keystream[1] = (word >> 16) & 0xFF;
@@ -238,7 +238,7 @@ static void zuc_process_bytes(const uint8_t* key, const uint8_t* iv,
     }
 }
 
-// ¼ÓÃÜÊµÏÖ - ¶ÔÓ¦Kotlin: override fun encrypt(text: String): String
+// åŠ å¯†å®ç° - å¯¹åº”Kotlin: override fun encrypt(text: String): String
 static char* zuc_encrypt(cipher_interface_t* self, const char* text) {
     if (!self || !text) return NULL;
     
@@ -247,52 +247,52 @@ static char* zuc_encrypt(cipher_interface_t* self, const char* text) {
     
     size_t text_len = strlen(text);
     
-    // 4×Ö½Ú¶ÔÆëÌî³ä£¨¶ÔÓ¦KotlinÖĞµÄ4×Ö½Ú¶ÔÆë£©
+    // 4å­—èŠ‚å¯¹é½å¡«å……ï¼ˆå¯¹åº”Kotlinä¸­çš„4å­—èŠ‚å¯¹é½ï¼‰
     size_t padded_len;
     uint8_t* padded_data = pad_to_multiple((const uint8_t*)text, text_len, 4, &padded_len);
     if (!padded_data) return NULL;
     
-    // ·ÖÅäÊä³ö»º³åÇø
+    // åˆ†é…è¾“å‡ºç¼“å†²åŒº
     uint8_t* output = safe_malloc(padded_len);
     
-    // Ö´ĞĞZUC¼ÓÃÜ
+    // æ‰§è¡ŒZUCåŠ å¯†
     zuc_process_bytes(data->key, data->iv, padded_data, output, padded_len);
     
     safe_free(padded_data);
     
-    // ×ª»»Îª´óĞ´Ê®Áù½øÖÆ×Ö·û´®
+    // è½¬æ¢ä¸ºå¤§å†™åå…­è¿›åˆ¶å­—ç¬¦ä¸²
     char* hex_result = bytes_to_hex_upper(output, padded_len);
     safe_free(output);
     
     return hex_result;
 }
 
-// ½âÃÜÊµÏÖ - ¶ÔÓ¦Kotlin: override fun decrypt(hex: String): String
+// è§£å¯†å®ç° - å¯¹åº”Kotlin: override fun decrypt(hex: String): String
 static char* zuc_decrypt(cipher_interface_t* self, const char* hex) {
     if (!self || !hex) return NULL;
     
     zuc_data_t* data = (zuc_data_t*)self->private_data;
     if (!data) return NULL;
     
-    // ½«Ê®Áù½øÖÆ×Ö·û´®×ª»»Îª×Ö½ÚÊı×é
+    // å°†åå…­è¿›åˆ¶å­—ç¬¦ä¸²è½¬æ¢ä¸ºå­—èŠ‚æ•°ç»„
     size_t bytes_len;
     uint8_t* bytes = hex_to_bytes(hex, &bytes_len);
     if (!bytes) return NULL;
     
-    // ·ÖÅäÊä³ö»º³åÇø
+    // åˆ†é…è¾“å‡ºç¼“å†²åŒº
     uint8_t* output = safe_malloc(bytes_len);
     
-    // Ö´ĞĞZUC½âÃÜ£¨ZUCÊÇÁ÷ÃÜÂë£¬¼ÓÃÜºÍ½âÃÜ²Ù×÷ÏàÍ¬£©
+    // æ‰§è¡ŒZUCè§£å¯†ï¼ˆZUCæ˜¯æµå¯†ç ï¼ŒåŠ å¯†å’Œè§£å¯†æ“ä½œç›¸åŒï¼‰
     zuc_process_bytes(data->key, data->iv, bytes, output, bytes_len);
     
     safe_free(bytes);
     
-    // ÒÆ³ıÎ²²¿µÄÁã×Ö½ÚÌî³ä£¨¶ÔÓ¦KotlinÖĞµÄdropLastWhile£©
+    // ç§»é™¤å°¾éƒ¨çš„é›¶å­—èŠ‚å¡«å……ï¼ˆå¯¹åº”Kotlinä¸­çš„dropLastWhileï¼‰
     while (bytes_len > 0 && output[bytes_len - 1] == 0) {
         bytes_len--;
     }
     
-    // ×ª»»Îª×Ö·û´®
+    // è½¬æ¢ä¸ºå­—ç¬¦ä¸²
     char* result = safe_malloc(bytes_len + 1);
     memcpy(result, output, bytes_len);
     result[bytes_len] = '\0';
@@ -301,7 +301,7 @@ static char* zuc_decrypt(cipher_interface_t* self, const char* hex) {
     return result;
 }
 
-// Ïú»Ùº¯Êı
+// é”€æ¯å‡½æ•°
 static void zuc_destroy(cipher_interface_t* self) {
     if (self) {
         safe_free(self->private_data);
@@ -309,18 +309,18 @@ static void zuc_destroy(cipher_interface_t* self) {
     }
 }
 
-// ´´½¨ZUC¼Ó½âÃÜÊµÀı
+// åˆ›å»ºZUCåŠ è§£å¯†å®ä¾‹
 cipher_interface_t* create_zuc_cipher(const uint8_t* key, const uint8_t* iv) {
     if (!key || !iv) return NULL;
     
     cipher_interface_t* cipher = safe_malloc(sizeof(cipher_interface_t));
     zuc_data_t* data = safe_malloc(sizeof(zuc_data_t));
     
-    // ¸´ÖÆÃÜÔ¿ºÍIV
+    // å¤åˆ¶å¯†é’¥å’ŒIV
     memcpy(data->key, key, 16);
     memcpy(data->iv, iv, 16);
     
-    // ÉèÖÃº¯ÊıÖ¸Õë
+    // è®¾ç½®å‡½æ•°æŒ‡é’ˆ
     cipher->encrypt = zuc_encrypt;
     cipher->decrypt = zuc_decrypt;
     cipher->destroy = zuc_destroy;

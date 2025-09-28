@@ -6,18 +6,18 @@
 #define ESURFINGCLIENT_LOGGER_H
 
 /**
- * CÓïÑÔÈÕÖ¾ÏµÍ³ - Í·ÎÄ¼ş
+ * Cè¯­è¨€æ—¥å¿—ç³»ç»Ÿ - å¤´æ–‡ä»¶
  *
- * ¹¦ÄÜÌØĞÔ£º
- * - Ö§³Ö¶àÖÖÈÕÖ¾¼¶±ğ (DEBUG, INFO, WARN, ERROR, FATAL)
- * - Ö§³Ö¿ØÖÆÌ¨ºÍÎÄ¼şÊä³ö
- * - ×Ô¶¯Ìí¼ÓÊ±¼ä´Á
- * - Ïß³Ì°²È«£¨¿ÉÑ¡£©
- * - ÈÕÖ¾ÎÄ¼şÂÖ×ª
- * - ÑÕÉ«Êä³öÖ§³Ö
+ * åŠŸèƒ½ç‰¹æ€§ï¼š
+ * - æ”¯æŒå¤šç§æ—¥å¿—çº§åˆ« (DEBUG, INFO, WARN, ERROR, FATAL)
+ * - æ”¯æŒæ§åˆ¶å°å’Œæ–‡ä»¶è¾“å‡º
+ * - è‡ªåŠ¨æ·»åŠ æ—¶é—´æˆ³
+ * - çº¿ç¨‹å®‰å…¨ï¼ˆå¯é€‰ï¼‰
+ * - æ—¥å¿—æ–‡ä»¶è½®è½¬
+ * - é¢œè‰²è¾“å‡ºæ”¯æŒ
  *
- * ×÷Õß: ESurfingDialerÏîÄ¿
- * °æ±¾: 1.0
+ * ä½œè€…: ESurfingDialeré¡¹ç›®
+ * ç‰ˆæœ¬: 1.0
  */
 
 #ifndef LOGGER_H
@@ -26,37 +26,37 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-// ========== ÈÕÖ¾¼¶±ğ¶¨Òå ==========
+// ========== æ—¥å¿—çº§åˆ«å®šä¹‰ ==========
 typedef enum {
-    LOG_LEVEL_DEBUG = 0,    // µ÷ÊÔĞÅÏ¢
-    LOG_LEVEL_INFO  = 1,    // Ò»°ãĞÅÏ¢
-    LOG_LEVEL_WARN  = 2,    // ¾¯¸æĞÅÏ¢
-    LOG_LEVEL_ERROR = 3,    // ´íÎóĞÅÏ¢
-    LOG_LEVEL_FATAL = 4,    // ÖÂÃü´íÎó
-    LOG_LEVEL_OFF   = 5     // ¹Ø±ÕÈÕÖ¾
+    LOG_LEVEL_DEBUG = 0,    // è°ƒè¯•ä¿¡æ¯
+    LOG_LEVEL_INFO  = 1,    // ä¸€èˆ¬ä¿¡æ¯
+    LOG_LEVEL_WARN  = 2,    // è­¦å‘Šä¿¡æ¯
+    LOG_LEVEL_ERROR = 3,    // é”™è¯¯ä¿¡æ¯
+    LOG_LEVEL_FATAL = 4,    // è‡´å‘½é”™è¯¯
+    LOG_LEVEL_OFF   = 5     // å…³é—­æ—¥å¿—
 } LogLevel;
 
-// ========== ÈÕÖ¾Êä³öÄ¿±ê ==========
+// ========== æ—¥å¿—è¾“å‡ºç›®æ ‡ ==========
 typedef enum {
-    LOG_TARGET_CONSOLE = 1,     // ¿ØÖÆÌ¨Êä³ö
-    LOG_TARGET_FILE    = 2,     // ÎÄ¼şÊä³ö
-    LOG_TARGET_BOTH    = 3      // Í¬Ê±Êä³öµ½¿ØÖÆÌ¨ºÍÎÄ¼ş
+    LOG_TARGET_CONSOLE = 1,     // æ§åˆ¶å°è¾“å‡º
+    LOG_TARGET_FILE    = 2,     // æ–‡ä»¶è¾“å‡º
+    LOG_TARGET_BOTH    = 3      // åŒæ—¶è¾“å‡ºåˆ°æ§åˆ¶å°å’Œæ–‡ä»¶
 } LogTarget;
 
-// ========== ÈÕÖ¾ÅäÖÃ½á¹¹Ìå ==========
+// ========== æ—¥å¿—é…ç½®ç»“æ„ä½“ ==========
 typedef struct {
-    LogLevel    level;              // µ±Ç°ÈÕÖ¾¼¶±ğ
-    LogTarget   target;             // Êä³öÄ¿±ê
-    char        log_file[256];      // ÈÕÖ¾ÎÄ¼şÂ·¾¶
-    FILE*       file_handle;        // ÎÄ¼ş¾ä±ú
-    bool        enable_color;       // ÊÇ·ñÆôÓÃÑÕÉ«Êä³ö
-    bool        enable_timestamp;   // ÊÇ·ñÆôÓÃÊ±¼ä´Á
-    bool        enable_thread_safe; // ÊÇ·ñÆôÓÃÏß³Ì°²È«
-    size_t      max_file_size;      // ×î´óÎÄ¼ş´óĞ¡£¨×Ö½Ú£©
-    int         max_backup_files;   // ×î´ó±¸·İÎÄ¼şÊı
+    LogLevel    level;              // å½“å‰æ—¥å¿—çº§åˆ«
+    LogTarget   target;             // è¾“å‡ºç›®æ ‡
+    char        log_file[256];      // æ—¥å¿—æ–‡ä»¶è·¯å¾„
+    FILE*       file_handle;        // æ–‡ä»¶å¥æŸ„
+    bool        enable_color;       // æ˜¯å¦å¯ç”¨é¢œè‰²è¾“å‡º
+    bool        enable_timestamp;   // æ˜¯å¦å¯ç”¨æ—¶é—´æˆ³
+    bool        enable_thread_safe; // æ˜¯å¦å¯ç”¨çº¿ç¨‹å®‰å…¨
+    size_t      max_file_size;      // æœ€å¤§æ–‡ä»¶å¤§å°ï¼ˆå­—èŠ‚ï¼‰
+    int         max_backup_files;   // æœ€å¤§å¤‡ä»½æ–‡ä»¶æ•°
 } LoggerConfig;
 
-// ========== ÑÕÉ«´úÂë¶¨Òå ==========
+// ========== é¢œè‰²ä»£ç å®šä¹‰ ==========
 #ifdef _WIN32
     #define COLOR_RESET     ""
     #define COLOR_DEBUG     ""
@@ -66,88 +66,88 @@ typedef struct {
     #define COLOR_FATAL     ""
 #else
     #define COLOR_RESET     "\033[0m"
-    #define COLOR_DEBUG     "\033[36m"      // ÇàÉ«
-    #define COLOR_INFO      "\033[32m"      // ÂÌÉ«
-    #define COLOR_WARN      "\033[33m"      // »ÆÉ«
-    #define COLOR_ERROR     "\033[31m"      // ºìÉ«
-    #define COLOR_FATAL     "\033[35m"      // ×ÏÉ«
+    #define COLOR_DEBUG     "\033[36m"      // é’è‰²
+    #define COLOR_INFO      "\033[32m"      // ç»¿è‰²
+    #define COLOR_WARN      "\033[33m"      // é»„è‰²
+    #define COLOR_ERROR     "\033[31m"      // çº¢è‰²
+    #define COLOR_FATAL     "\033[35m"      // ç´«è‰²
 #endif
 
-// ========== È«¾ÖÈÕÖ¾ÅäÖÃ ==========
+// ========== å…¨å±€æ—¥å¿—é…ç½® ==========
 extern LoggerConfig g_logger_config;
 
-// ========== ºËĞÄº¯ÊıÉùÃ÷ ==========
+// ========== æ ¸å¿ƒå‡½æ•°å£°æ˜ ==========
 
 /**
- * ³õÊ¼»¯ÈÕÖ¾ÏµÍ³
- * @param level ÈÕÖ¾¼¶±ğ
- * @param target Êä³öÄ¿±ê
- * @param log_file ÈÕÖ¾ÎÄ¼şÂ·¾¶£¨Èç¹ûÊä³öµ½ÎÄ¼ş£©
- * @return 0³É¹¦£¬-1Ê§°Ü
+ * åˆå§‹åŒ–æ—¥å¿—ç³»ç»Ÿ
+ * @param level æ—¥å¿—çº§åˆ«
+ * @param target è¾“å‡ºç›®æ ‡
+ * @param log_file æ—¥å¿—æ–‡ä»¶è·¯å¾„ï¼ˆå¦‚æœè¾“å‡ºåˆ°æ–‡ä»¶ï¼‰
+ * @return 0æˆåŠŸï¼Œ-1å¤±è´¥
  */
 int logger_init(LogLevel level, LogTarget target, const char* log_file);
 
 /**
- * ÇåÀíÈÕÖ¾ÏµÍ³×ÊÔ´
+ * æ¸…ç†æ—¥å¿—ç³»ç»Ÿèµ„æº
  */
 void logger_cleanup(void);
 
 /**
- * ÉèÖÃÈÕÖ¾¼¶±ğ
- * @param level ĞÂµÄÈÕÖ¾¼¶±ğ
+ * è®¾ç½®æ—¥å¿—çº§åˆ«
+ * @param level æ–°çš„æ—¥å¿—çº§åˆ«
  */
 void logger_set_level(LogLevel level);
 
 /**
- * ÉèÖÃÊÇ·ñÆôÓÃÑÕÉ«Êä³ö
- * @param enable trueÆôÓÃ£¬false½ûÓÃ
+ * è®¾ç½®æ˜¯å¦å¯ç”¨é¢œè‰²è¾“å‡º
+ * @param enable trueå¯ç”¨ï¼Œfalseç¦ç”¨
  */
 void logger_set_color(bool enable);
 
 /**
- * ÉèÖÃÊÇ·ñÆôÓÃÊ±¼ä´Á
- * @param enable trueÆôÓÃ£¬false½ûÓÃ
+ * è®¾ç½®æ˜¯å¦å¯ç”¨æ—¶é—´æˆ³
+ * @param enable trueå¯ç”¨ï¼Œfalseç¦ç”¨
  */
 void logger_set_timestamp(bool enable);
 
 /**
- * ÉèÖÃÎÄ¼ş´óĞ¡ÏŞÖÆºÍ±¸·İÊıÁ¿
- * @param max_size ×î´óÎÄ¼ş´óĞ¡£¨×Ö½Ú£©
- * @param max_backups ×î´ó±¸·İÎÄ¼şÊı
+ * è®¾ç½®æ–‡ä»¶å¤§å°é™åˆ¶å’Œå¤‡ä»½æ•°é‡
+ * @param max_size æœ€å¤§æ–‡ä»¶å¤§å°ï¼ˆå­—èŠ‚ï¼‰
+ * @param max_backups æœ€å¤§å¤‡ä»½æ–‡ä»¶æ•°
  */
 void logger_set_rotation(size_t max_size, int max_backups);
 
 /**
- * ºËĞÄÈÕÖ¾Êä³öº¯Êı
- * @param level ÈÕÖ¾¼¶±ğ
- * @param file Ô´ÎÄ¼şÃû
- * @param line ĞĞºÅ
- * @param func º¯ÊıÃû
- * @param format ¸ñÊ½»¯×Ö·û´®
- * @param ... ¿É±ä²ÎÊı
+ * æ ¸å¿ƒæ—¥å¿—è¾“å‡ºå‡½æ•°
+ * @param level æ—¥å¿—çº§åˆ«
+ * @param file æºæ–‡ä»¶å
+ * @param line è¡Œå·
+ * @param func å‡½æ•°å
+ * @param format æ ¼å¼åŒ–å­—ç¬¦ä¸²
+ * @param ... å¯å˜å‚æ•°
  */
 void logger_log(LogLevel level, const char* file, int line, const char* func, const char* format, ...);
 
 /**
- * »ñÈ¡ÈÕÖ¾¼¶±ğ×Ö·û´®
- * @param level ÈÕÖ¾¼¶±ğ
- * @return ¼¶±ğ×Ö·û´®
+ * è·å–æ—¥å¿—çº§åˆ«å­—ç¬¦ä¸²
+ * @param level æ—¥å¿—çº§åˆ«
+ * @return çº§åˆ«å­—ç¬¦ä¸²
  */
 const char* logger_level_string(LogLevel level);
 
 /**
- * »ñÈ¡ÈÕÖ¾¼¶±ğÑÕÉ«
- * @param level ÈÕÖ¾¼¶±ğ
- * @return ÑÕÉ«´úÂë×Ö·û´®
+ * è·å–æ—¥å¿—çº§åˆ«é¢œè‰²
+ * @param level æ—¥å¿—çº§åˆ«
+ * @return é¢œè‰²ä»£ç å­—ç¬¦ä¸²
  */
 const char* logger_level_color(LogLevel level);
 
 /**
- * ¼ì²éÎÄ¼ş´óĞ¡²¢Ö´ĞĞÂÖ×ª
+ * æ£€æŸ¥æ–‡ä»¶å¤§å°å¹¶æ‰§è¡Œè½®è½¬
  */
 void logger_rotate_if_needed(void);
 
-// ========== ±ã½İºê¶¨Òå ==========
+// ========== ä¾¿æ·å®å®šä¹‰ ==========
 
 #define LOG_DEBUG(format, ...) \
     logger_log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
@@ -164,7 +164,7 @@ void logger_rotate_if_needed(void);
 #define LOG_FATAL(format, ...) \
     logger_log(LOG_LEVEL_FATAL, __FILE__, __LINE__, __func__, format, ##__VA_ARGS__)
 
-// ========== Ìõ¼şÈÕÖ¾ºê ==========
+// ========== æ¡ä»¶æ—¥å¿—å® ==========
 
 #define LOG_DEBUG_IF(condition, format, ...) \
     do { if (condition) LOG_DEBUG(format, ##__VA_ARGS__); } while(0)
@@ -181,13 +181,13 @@ void logger_rotate_if_needed(void);
 #define LOG_FATAL_IF(condition, format, ...) \
     do { if (condition) LOG_FATAL(format, ##__VA_ARGS__); } while(0)
 
-// ========== ÌØÊâÓÃÍ¾ºê ==========
+// ========== ç‰¹æ®Šç”¨é€”å® ==========
 
-// º¯Êı½øÈë/ÍË³ö¸ú×Ù
-#define LOG_FUNCTION_ENTER() LOG_DEBUG("½øÈëº¯Êı: %s", __func__)
-#define LOG_FUNCTION_EXIT()  LOG_DEBUG("ÍË³öº¯Êı: %s", __func__)
+// å‡½æ•°è¿›å…¥/é€€å‡ºè·Ÿè¸ª
+#define LOG_FUNCTION_ENTER() LOG_DEBUG("è¿›å…¥å‡½æ•°: %s", __func__)
+#define LOG_FUNCTION_EXIT()  LOG_DEBUG("é€€å‡ºå‡½æ•°: %s", __func__)
 
-// ±äÁ¿Öµ´òÓ¡
+// å˜é‡å€¼æ‰“å°
 #define LOG_VAR_INT(var)    LOG_DEBUG(#var " = %d", var)
 #define LOG_VAR_STR(var)    LOG_DEBUG(#var " = %s", var)
 #define LOG_VAR_PTR(var)    LOG_DEBUG(#var " = %p", var)

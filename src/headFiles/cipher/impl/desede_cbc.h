@@ -5,17 +5,17 @@
 #include <stdint.h>
 
 /**
- * 3DES-CBC ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
- * ¶ÔÓ¦KotlinµÄDESedeCBCÀà
+ * 3DES-CBC åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
+ * å¯¹åº”Kotlinçš„DESedeCBCç±»
  */
 
 /**
- * ´´½¨3DES-CBC¼Ó½âÃÜÊµÀı
- * @param key1 µÚÒ»¸ö3DESÃÜÔ¿ (24×Ö½Ú)
- * @param key2 µÚ¶ş¸ö3DESÃÜÔ¿ (24×Ö½Ú)
- * @param iv1 µÚÒ»¸ö³õÊ¼»¯ÏòÁ¿ (8×Ö½Ú)
- * @param iv2 µÚ¶ş¸ö³õÊ¼»¯ÏòÁ¿ (8×Ö½Ú)
- * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
+ * åˆ›å»º3DES-CBCåŠ è§£å¯†å®ä¾‹
+ * @param key1 ç¬¬ä¸€ä¸ª3DESå¯†é’¥ (24å­—èŠ‚)
+ * @param key2 ç¬¬äºŒä¸ª3DESå¯†é’¥ (24å­—èŠ‚)
+ * @param iv1 ç¬¬ä¸€ä¸ªåˆå§‹åŒ–å‘é‡ (8å­—èŠ‚)
+ * @param iv2 ç¬¬äºŒä¸ªåˆå§‹åŒ–å‘é‡ (8å­—èŠ‚)
+ * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
  */
 cipher_interface_t* create_desede_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
                                              const uint8_t* iv1, const uint8_t* iv2);

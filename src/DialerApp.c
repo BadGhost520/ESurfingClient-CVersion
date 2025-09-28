@@ -53,13 +53,13 @@ int main(const int argc, char* argv[]) {
             break;
         case 'd':
             debugMode = true;
-            printf("DebugÄ£Ê½ÒÑ¿ªÆô\n");
+            printf("Debugæ¨¡å¼å·²å¼€å¯\n");
             break;
         case '?':
-            printf("²ÎÊı´íÎó£º%c\n", optopt);
+            printf("å‚æ•°é”™è¯¯ï¼š%c\n", optopt);
             return 1;
         default:
-            printf("Î´Öª´íÎó\n");
+            printf("æœªçŸ¥é”™è¯¯\n");
         }
     }
 
@@ -74,15 +74,15 @@ int main(const int argc, char* argv[]) {
 
     if (username && password)
     {
-        LOG_DEBUG("ÊÖ»úºÅ£º%s", usr);
-        LOG_DEBUG("ÃÜÂë£º%s", pwd);
+        LOG_DEBUG("usernameï¼š%s", usr);
+        LOG_DEBUG("passwordï¼š%s", pwd);
         initShutdownHook();
         while (isRunning) {
-            // ÄãµÄÒµÎñÂß¼­
+            // ä½ çš„ä¸šåŠ¡é€»è¾‘
             initConstants();
             refreshStates();
             run();
-            // ÖØÒª£º¼ì²éÍË³öÌõ¼ş
+            // é‡è¦ï¼šæ£€æŸ¥é€€å‡ºæ¡ä»¶
             if (!isRunning) {
                 break;
             }
@@ -90,8 +90,8 @@ int main(const int argc, char* argv[]) {
     }
     else
     {
-        LOG_INFO("ÇëÊ¹ÓÃÕıÈ·µÄ¸ñÊ½ÔËĞĞ");
-        LOG_INFO("¸ñÊ½£ºESurfingClient -u <ÊÖ»úºÅ> -p <ÃÜÂë>");
+        LOG_INFO("Please run in the correct format");
+        LOG_INFO("Formatï¼šESurfingClient -u <username> -p <password>");
     }
     graceful_exit(0);
     return 0;

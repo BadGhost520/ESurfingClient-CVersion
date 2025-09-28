@@ -11,47 +11,47 @@ extern "C" {
 #endif
 
     /**
-     * CÓïÑÔ°æ±¾µÄshutdown hookÊµÏÖ
-     * ¶ÔÓ¦Kotlin/JavaµÄRuntime.getRuntime().addShutdownHook()
+     * Cè¯­è¨€ç‰ˆæœ¬çš„shutdown hookå®ç°
+     * å¯¹åº”Kotlin/Javaçš„Runtime.getRuntime().addShutdownHook()
      *
-     * ¹¦ÄÜ£º
-     * 1. ²¶»ñ³ÌĞòÍË³öĞÅºÅ£¨SIGINT, SIGTERMµÈ£©
-     * 2. ÔÚ³ÌĞòÍË³öÇ°Ö´ĞĞÇåÀí²Ù×÷
-     * 3. È·±£×ÊÔ´ÕıÈ·ÊÍ·Å
+     * åŠŸèƒ½ï¼š
+     * 1. æ•è·ç¨‹åºé€€å‡ºä¿¡å·ï¼ˆSIGINT, SIGTERMç­‰ï¼‰
+     * 2. åœ¨ç¨‹åºé€€å‡ºå‰æ‰§è¡Œæ¸…ç†æ“ä½œ
+     * 3. ç¡®ä¿èµ„æºæ­£ç¡®é‡Šæ”¾
      */
 
-    // ÇåÀíº¯ÊıÀàĞÍ¶¨Òå
+    // æ¸…ç†å‡½æ•°ç±»å‹å®šä¹‰
     typedef void (*cleanup_function_t)(void);
 
     /**
-     * ³õÊ¼»¯shutdown hook
-     * ×¢²áĞÅºÅ´¦Àíº¯Êı£¬ÉèÖÃ³ÌĞòÍË³öÊ±µÄÇåÀí»úÖÆ
+     * åˆå§‹åŒ–shutdown hook
+     * æ³¨å†Œä¿¡å·å¤„ç†å‡½æ•°ï¼Œè®¾ç½®ç¨‹åºé€€å‡ºæ—¶çš„æ¸…ç†æœºåˆ¶
      */
     void init_shutdown_hook(void);
 
     /**
-     * ×¢²áÇåÀíº¯Êı
-     * @param cleanup_func ÒªÔÚ³ÌĞòÍË³öÊ±Ö´ĞĞµÄÇåÀíº¯Êı
-     * @return 0³É¹¦£¬-1Ê§°Ü
+     * æ³¨å†Œæ¸…ç†å‡½æ•°
+     * @param cleanup_func è¦åœ¨ç¨‹åºé€€å‡ºæ—¶æ‰§è¡Œçš„æ¸…ç†å‡½æ•°
+     * @return 0æˆåŠŸï¼Œ-1å¤±è´¥
      */
     int register_cleanup_function(cleanup_function_t cleanup_func);
 
     /**
-     * ĞÅºÅ´¦Àíº¯Êı
-     * ´¦ÀíSIGINT (Ctrl+C), SIGTERMµÈÍË³öĞÅºÅ
-     * @param sig ĞÅºÅ±àºÅ
+     * ä¿¡å·å¤„ç†å‡½æ•°
+     * å¤„ç†SIGINT (Ctrl+C), SIGTERMç­‰é€€å‡ºä¿¡å·
+     * @param sig ä¿¡å·ç¼–å·
      */
     void signal_handler(int sig);
 
     /**
-     * Ö´ĞĞËùÓĞ×¢²áµÄÇåÀíº¯Êı
-     * ¶ÔÓ¦Kotlin°æ±¾shutdown hookÖĞµÄÇåÀíÂß¼­
+     * æ‰§è¡Œæ‰€æœ‰æ³¨å†Œçš„æ¸…ç†å‡½æ•°
+     * å¯¹åº”Kotlinç‰ˆæœ¬shutdown hookä¸­çš„æ¸…ç†é€»è¾‘
      */
     void execute_cleanup(void);
 
     /**
-     * ÓÅÑÅÍË³ö³ÌĞò
-     * @param exit_code ÍË³öÂë
+     * ä¼˜é›…é€€å‡ºç¨‹åº
+     * @param exit_code é€€å‡ºç 
      */
     void graceful_exit(int exit_code);
 

@@ -5,17 +5,17 @@
 #include <stdint.h>
 
 /**
- * ModXTEAIV ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
- * ¶ÔÓ¦KotlinµÄModXTEAIVÀà
+ * ModXTEAIV åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
+ * å¯¹åº”Kotlinçš„ModXTEAIVç±»
  */
 
 /**
- * ´´½¨ModXTEAIV¼Ó½âÃÜÊµÀı
- * @param key1 µÚÒ»¸öXTEAÃÜÔ¿ (4¸ö32Î»ÕûÊı)
- * @param key2 µÚ¶ş¸öXTEAÃÜÔ¿ (4¸ö32Î»ÕûÊı)
- * @param key3 µÚÈı¸öXTEAÃÜÔ¿ (4¸ö32Î»ÕûÊı)
- * @param iv ³õÊ¼»¯ÏòÁ¿ (2¸ö32Î»ÕûÊı)
- * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
+ * åˆ›å»ºModXTEAIVåŠ è§£å¯†å®ä¾‹
+ * @param key1 ç¬¬ä¸€ä¸ªXTEAå¯†é’¥ (4ä¸ª32ä½æ•´æ•°)
+ * @param key2 ç¬¬äºŒä¸ªXTEAå¯†é’¥ (4ä¸ª32ä½æ•´æ•°)
+ * @param key3 ç¬¬ä¸‰ä¸ªXTEAå¯†é’¥ (4ä¸ª32ä½æ•´æ•°)
+ * @param iv åˆå§‹åŒ–å‘é‡ (2ä¸ª32ä½æ•´æ•°)
+ * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
  */
 cipher_interface_t* create_mod_xtea_iv_cipher(const uint32_t* key1, const uint32_t* key2, 
                                               const uint32_t* key3, const uint32_t* iv);

@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <sys/time.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"

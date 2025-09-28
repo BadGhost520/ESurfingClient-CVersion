@@ -5,11 +5,11 @@
 #include <string.h>
 
 /**
- * AES-CBCÊµÏÖ - ¶ÔÓ¦KotlinµÄAESCBCÀà
+ * AES-CBCå®ç° - å¯¹åº”Kotlinçš„AESCBCç±»
  * 
- * ÊµÏÖË«ÖØAES-CBC¼ÓÃÜ£º
- * 1. Ê¹ÓÃkey1½øĞĞµÚÒ»´ÎAES-CBC¼ÓÃÜ
- * 2. Ê¹ÓÃkey2½øĞĞµÚ¶ş´ÎAES-CBC¼ÓÃÜ
+ * å®ç°åŒé‡AES-CBCåŠ å¯†ï¼š
+ * 1. ä½¿ç”¨key1è¿›è¡Œç¬¬ä¸€æ¬¡AES-CBCåŠ å¯†
+ * 2. ä½¿ç”¨key2è¿›è¡Œç¬¬äºŒæ¬¡AES-CBCåŠ å¯†
  */
 
 typedef struct {
@@ -18,23 +18,23 @@ typedef struct {
     uint8_t iv[16];
 } aes_cbc_data_t;
 
-// AES¼ÓÃÜº¯Êı
+// AESåŠ å¯†å‡½æ•°
 static uint8_t* aes_encrypt_cbc(const uint8_t* data, size_t data_len, 
                                 const uint8_t* key, const uint8_t* iv, 
                                 size_t* out_len) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx) return NULL;
     
-    // ³õÊ¼»¯¼ÓÃÜÉÏÏÂÎÄ
+    // åˆå§‹åŒ–åŠ å¯†ä¸Šä¸‹æ–‡
     if (EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         return NULL;
     }
     
-    // ½ûÓÃ×Ô¶¯Ìî³ä£¬ÎÒÃÇÊÖ¶¯´¦ÀíÌî³ä
+    // ç¦ç”¨è‡ªåŠ¨å¡«å……ï¼Œæˆ‘ä»¬æ‰‹åŠ¨å¤„ç†å¡«å……
     EVP_CIPHER_CTX_set_padding(ctx, 0);
     
-    // ÊÖ¶¯½øĞĞ16×Ö½Ú¶ÔÆëÌî³ä
+    // æ‰‹åŠ¨è¿›è¡Œ16å­—èŠ‚å¯¹é½å¡«å……
     size_t padded_len;
     uint8_t* padded_data = pad_to_multiple(data, data_len, 16, &padded_len);
     if (!padded_data) {
@@ -42,14 +42,14 @@ static uint8_t* aes_encrypt_cbc(const uint8_t* data, size_t data_len,
         return NULL;
     }
     
-    // ·ÖÅäÊä³ö»º³åÇø£¨IV + ÃÜÎÄ£©
+    // åˆ†é…è¾“å‡ºç¼“å†²åŒºï¼ˆIV + å¯†æ–‡ï¼‰
     uint8_t* output = safe_malloc(16 + padded_len);
-    memcpy(output, iv, 16); // Ç°16×Ö½ÚÊÇIV
+    memcpy(output, iv, 16); // å‰16å­—èŠ‚æ˜¯IV
     
     int len;
     int ciphertext_len = 0;
     
-    // Ö´ĞĞ¼ÓÃÜ
+    // æ‰§è¡ŒåŠ å¯†
     if (EVP_EncryptUpdate(ctx, output + 16, &len, padded_data, padded_len) != 1) {
         safe_free(padded_data);
         safe_free(output);
@@ -58,7 +58,7 @@ static uint8_t* aes_encrypt_cbc(const uint8_t* data, size_t data_len,
     }
     ciphertext_len = len;
     
-    // Íê³É¼ÓÃÜ
+    // å®ŒæˆåŠ å¯†
     if (EVP_EncryptFinal_ex(ctx, output + 16 + len, &len) != 1) {
         safe_free(padded_data);
         safe_free(output);
@@ -74,31 +74,31 @@ static uint8_t* aes_encrypt_cbc(const uint8_t* data, size_t data_len,
     return output;
 }
 
-// AES½âÃÜº¯Êı
+// AESè§£å¯†å‡½æ•°
 static uint8_t* aes_decrypt_cbc(const uint8_t* data, size_t data_len, 
                                 const uint8_t* key, const uint8_t* iv, 
                                 size_t* out_len) {
-    if (data_len < 16) return NULL; // ÖÁÉÙĞèÒª16×Ö½Ú£¨²»°üº¬IV£©
+    if (data_len < 16) return NULL; // è‡³å°‘éœ€è¦16å­—èŠ‚ï¼ˆä¸åŒ…å«IVï¼‰
     
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx) return NULL;
     
-    // ³õÊ¼»¯½âÃÜÉÏÏÂÎÄ
+    // åˆå§‹åŒ–è§£å¯†ä¸Šä¸‹æ–‡
     if (EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key, iv) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         return NULL;
     }
     
-    // ½ûÓÃ×Ô¶¯Ìî³ä
+    // ç¦ç”¨è‡ªåŠ¨å¡«å……
     EVP_CIPHER_CTX_set_padding(ctx, 0);
     
-    // ·ÖÅäÊä³ö»º³åÇø
+    // åˆ†é…è¾“å‡ºç¼“å†²åŒº
     uint8_t* output = safe_malloc(data_len);
     
     int len;
     int plaintext_len = 0;
     
-    // Ö´ĞĞ½âÃÜ
+    // æ‰§è¡Œè§£å¯†
     if (EVP_DecryptUpdate(ctx, output, &len, data, data_len) != 1) {
         safe_free(output);
         EVP_CIPHER_CTX_free(ctx);
@@ -106,7 +106,7 @@ static uint8_t* aes_decrypt_cbc(const uint8_t* data, size_t data_len,
     }
     plaintext_len = len;
     
-    // Íê³É½âÃÜ
+    // å®Œæˆè§£å¯†
     if (EVP_DecryptFinal_ex(ctx, output + len, &len) != 1) {
         safe_free(output);
         EVP_CIPHER_CTX_free(ctx);
@@ -120,7 +120,7 @@ static uint8_t* aes_decrypt_cbc(const uint8_t* data, size_t data_len,
     return output;
 }
 
-// ¼ÓÃÜÊµÏÖ - ¶ÔÓ¦Kotlin: override fun encrypt(text: String): String
+// åŠ å¯†å®ç° - å¯¹åº”Kotlin: override fun encrypt(text: String): String
 static char* aes_cbc_encrypt(cipher_interface_t* self, const char* text) {
     if (!self || !text) return NULL;
     
@@ -129,42 +129,42 @@ static char* aes_cbc_encrypt(cipher_interface_t* self, const char* text) {
     
     size_t text_len = strlen(text);
     
-    // µÚÒ»´ÎAES-CBC¼ÓÃÜ
+    // ç¬¬ä¸€æ¬¡AES-CBCåŠ å¯†
     size_t r1_len;
     uint8_t* r1 = aes_encrypt_cbc((const uint8_t*)text, text_len, 
                                   data->key1, data->iv, &r1_len);
     if (!r1) return NULL;
     
-    // µÚ¶ş´ÎAES-CBC¼ÓÃÜ
+    // ç¬¬äºŒæ¬¡AES-CBCåŠ å¯†
     size_t r2_len;
     uint8_t* r2 = aes_encrypt_cbc(r1, r1_len, data->key2, data->iv, &r2_len);
     safe_free(r1);
     
     if (!r2) return NULL;
     
-    // ×ª»»Îª´óĞ´Ê®Áù½øÖÆ×Ö·û´®
+    // è½¬æ¢ä¸ºå¤§å†™åå…­è¿›åˆ¶å­—ç¬¦ä¸²
     char* hex_result = bytes_to_hex_upper(r2, r2_len);
     safe_free(r2);
     
     return hex_result;
 }
 
-// ½âÃÜÊµÏÖ - ¶ÔÓ¦Kotlin: override fun decrypt(hex: String): String
+// è§£å¯†å®ç° - å¯¹åº”Kotlin: override fun decrypt(hex: String): String
 static char* aes_cbc_decrypt(cipher_interface_t* self, const char* hex) {
     if (!self || !hex) return NULL;
     
     aes_cbc_data_t* data = (aes_cbc_data_t*)self->private_data;
     if (!data) return NULL;
     
-    // ½«Ê®Áù½øÖÆ×Ö·û´®×ª»»Îª×Ö½ÚÊı×é
+    // å°†åå…­è¿›åˆ¶å­—ç¬¦ä¸²è½¬æ¢ä¸ºå­—èŠ‚æ•°ç»„
     size_t bytes_len;
     uint8_t* bytes = hex_to_bytes(hex, &bytes_len);
-    if (!bytes || bytes_len < 32) { // ÖÁÉÙĞèÒª32×Ö½Ú£¨Á½¸öIV£©
+    if (!bytes || bytes_len < 32) { // è‡³å°‘éœ€è¦32å­—èŠ‚ï¼ˆä¸¤ä¸ªIVï¼‰
         safe_free(bytes);
         return NULL;
     }
     
-    // µÚÒ»´Î½âÃÜ£ºÌø¹ıÇ°16×Ö½ÚµÄIV
+    // ç¬¬ä¸€æ¬¡è§£å¯†ï¼šè·³è¿‡å‰16å­—èŠ‚çš„IV
     size_t r1_len;
     uint8_t* r1 = aes_decrypt_cbc(bytes + 16, bytes_len - 16, 
                                   data->key2, data->iv, &r1_len);
@@ -175,7 +175,7 @@ static char* aes_cbc_decrypt(cipher_interface_t* self, const char* hex) {
         return NULL;
     }
     
-    // µÚ¶ş´Î½âÃÜ£ºÌø¹ıÇ°16×Ö½ÚµÄIV
+    // ç¬¬äºŒæ¬¡è§£å¯†ï¼šè·³è¿‡å‰16å­—èŠ‚çš„IV
     size_t r2_len;
     uint8_t* r2 = aes_decrypt_cbc(r1 + 16, r1_len - 16, 
                                   data->key1, data->iv, &r2_len);
@@ -183,12 +183,12 @@ static char* aes_cbc_decrypt(cipher_interface_t* self, const char* hex) {
     
     if (!r2) return NULL;
     
-    // ÒÆ³ıÎ²²¿µÄÁã×Ö½ÚÌî³ä
+    // ç§»é™¤å°¾éƒ¨çš„é›¶å­—èŠ‚å¡«å……
     while (r2_len > 0 && r2[r2_len - 1] == 0) {
         r2_len--;
     }
     
-    // ×ª»»Îª×Ö·û´®
+    // è½¬æ¢ä¸ºå­—ç¬¦ä¸²
     char* result = safe_malloc(r2_len + 1);
     memcpy(result, r2, r2_len);
     result[r2_len] = '\0';
@@ -197,7 +197,7 @@ static char* aes_cbc_decrypt(cipher_interface_t* self, const char* hex) {
     return result;
 }
 
-// Ïú»Ùº¯Êı
+// é”€æ¯å‡½æ•°
 static void aes_cbc_destroy(cipher_interface_t* self) {
     if (self) {
         safe_free(self->private_data);
@@ -205,19 +205,19 @@ static void aes_cbc_destroy(cipher_interface_t* self) {
     }
 }
 
-// ´´½¨AES-CBC¼Ó½âÃÜÊµÀı
+// åˆ›å»ºAES-CBCåŠ è§£å¯†å®ä¾‹
 cipher_interface_t* create_aes_cbc_cipher(const uint8_t* key1, const uint8_t* key2, const uint8_t* iv) {
     if (!key1 || !key2 || !iv) return NULL;
     
     cipher_interface_t* cipher = safe_malloc(sizeof(cipher_interface_t));
     aes_cbc_data_t* data = safe_malloc(sizeof(aes_cbc_data_t));
     
-    // ¸´ÖÆÃÜÔ¿ºÍIV
+    // å¤åˆ¶å¯†é’¥å’ŒIV
     memcpy(data->key1, key1, 16);
     memcpy(data->key2, key2, 16);
     memcpy(data->iv, iv, 16);
     
-    // ÉèÖÃº¯ÊıÖ¸Õë
+    // è®¾ç½®å‡½æ•°æŒ‡é’ˆ
     cipher->encrypt = aes_cbc_encrypt;
     cipher->decrypt = aes_cbc_decrypt;
     cipher->destroy = aes_cbc_destroy;

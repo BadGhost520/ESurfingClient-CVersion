@@ -9,37 +9,37 @@ extern "C" {
 #endif
 
 /**
- * Í¨ÓÃ¹¤¾ßº¯Êı - ÓÃÓÚ¼Ó½âÃÜËã·¨µÄ¸¨Öú¹¦ÄÜ
+ * é€šç”¨å·¥å…·å‡½æ•° - ç”¨äºåŠ è§£å¯†ç®—æ³•çš„è¾…åŠ©åŠŸèƒ½
  */
 
-// Ê®Áù½øÖÆ×Ö·û´®×ª»»
+// åå…­è¿›åˆ¶å­—ç¬¦ä¸²è½¬æ¢
 char* bytes_to_hex_upper(const uint8_t* bytes, size_t len);
 char* bytes_to_hex_lower(const uint8_t* bytes, size_t len);
 uint8_t* hex_to_bytes(const char* hex, size_t* out_len);
 
-// ÄÚ´æ²Ù×÷
+// å†…å­˜æ“ä½œ
 void* safe_malloc(size_t size);
 void* safe_calloc(size_t count, size_t size);
 void safe_free(void* ptr);
 
-// ×Ö·û´®²Ù×÷
+// å­—ç¬¦ä¸²æ“ä½œ
 char* safe_strdup(const char* str);
 size_t safe_strlen(const char* str);
 
-// Êı¾İÌî³ä
+// æ•°æ®å¡«å……
 uint8_t* pkcs7_padding(const uint8_t* data, size_t data_len, size_t block_size, size_t* out_len);
 uint8_t* remove_pkcs7_padding(const uint8_t* data, size_t data_len, size_t* out_len);
 
-// Êı¾İ¶ÔÆëÌî³ä£¨ÓÃÓÚXTEAµÈËã·¨£©
+// æ•°æ®å¯¹é½å¡«å……ï¼ˆç”¨äºXTEAç­‰ç®—æ³•ï¼‰
 uint8_t* pad_to_multiple(const uint8_t* data, size_t data_len, size_t multiple, size_t* out_len);
 
-// ×Ö½ÚĞò×ª»»
+// å­—èŠ‚åºè½¬æ¢
 uint32_t bytes_to_uint32_be(const uint8_t* bytes);
 uint32_t bytes_to_uint32_le(const uint8_t* bytes);
 void uint32_to_bytes_be(uint32_t value, uint8_t* bytes);
 void uint32_to_bytes_le(uint32_t value, uint8_t* bytes);
 
-// XOR²Ù×÷
+// XORæ“ä½œ
 void xor_bytes(const uint8_t* a, const uint8_t* b, uint8_t* result, size_t len);
 
 #ifdef __cplusplus

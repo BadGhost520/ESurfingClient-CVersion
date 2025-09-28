@@ -6,18 +6,18 @@
 
 #include "utils/ByteArray.h"
 
-// Session³õÊ¼»¯ºÍ×´Ì¬¼ì²é
+// Sessionåˆå§‹åŒ–å’ŒçŠ¶æ€æ£€æŸ¥
 int initialize(const ByteArray* zsm);
 
 bool isInitialized();
 
-// Ê®Áù½øÖÆ×Ö·û´®×ª»»º¯Êı
+// åå…­è¿›åˆ¶å­—ç¬¦ä¸²è½¬æ¢å‡½æ•°
 int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** binary_data, size_t* binary_len);
 
-// ×ÊÔ´¹ÜÀí
+// èµ„æºç®¡ç†
 void sessionFree();
 
-// ¼Ó½âÃÜ
+// åŠ è§£å¯†
 char* encrypt(const char* text);
 char* decrypt(const char* text);
 

@@ -4,12 +4,12 @@
 #include <stdint.h>
 
 /**
- * ModXTEAÊµÏÖ - ¶ÔÓ¦KotlinµÄModXTEAÀà
+ * ModXTEAå®ç° - å¯¹åº”Kotlinçš„ModXTEAç±»
  * 
- * ModXTEAÊÇĞŞ¸Ä°æµÄXTEAËã·¨£¬Ê¹ÓÃÈıÂÖ¼ÓÃÜ£º
- * 1. Ê¹ÓÃkey1½øĞĞµÚÒ»ÂÖXTEA¼ÓÃÜ
- * 2. Ê¹ÓÃkey2½øĞĞµÚ¶şÂÖXTEA¼ÓÃÜ
- * 3. Ê¹ÓÃkey3½øĞĞµÚÈıÂÖXTEA¼ÓÃÜ
+ * ModXTEAæ˜¯ä¿®æ”¹ç‰ˆçš„XTEAç®—æ³•ï¼Œä½¿ç”¨ä¸‰è½®åŠ å¯†ï¼š
+ * 1. ä½¿ç”¨key1è¿›è¡Œç¬¬ä¸€è½®XTEAåŠ å¯†
+ * 2. ä½¿ç”¨key2è¿›è¡Œç¬¬äºŒè½®XTEAåŠ å¯†
+ * 3. ä½¿ç”¨key3è¿›è¡Œç¬¬ä¸‰è½®XTEAåŠ å¯†
  */
 
 #define XTEA_NUM_ROUNDS 32
@@ -21,13 +21,13 @@ typedef struct {
     uint32_t key3[4];
 } mod_xtea_data_t;
 
-// ´Ó×Ö½ÚÊı×éÖĞ¶ÁÈ¡32Î»ÕûÊı£¨´ó¶ËĞò£©
+// ä»å­—èŠ‚æ•°ç»„ä¸­è¯»å–32ä½æ•´æ•°ï¼ˆå¤§ç«¯åºï¼‰
 static uint32_t get_uint32_be(const uint8_t* data, size_t offset) {
     return (data[offset] << 24) | (data[offset + 1] << 16) |
            (data[offset + 2] << 8) | data[offset + 3];
 }
 
-// ½«32Î»ÕûÊıĞ´Èë×Ö½ÚÊı×é£¨´ó¶ËĞò£©
+// å°†32ä½æ•´æ•°å†™å…¥å­—èŠ‚æ•°ç»„ï¼ˆå¤§ç«¯åºï¼‰
 static void set_uint32_be(uint8_t* data, size_t offset, uint32_t value) {
     data[offset] = (value >> 24) & 0xFF;
     data[offset + 1] = (value >> 16) & 0xFF;
@@ -35,7 +35,7 @@ static void set_uint32_be(uint8_t* data, size_t offset, uint32_t value) {
     data[offset + 3] = value & 0xFF;
 }
 
-// XTEA¼ÓÃÜÒ»¸ö¿é£¨8×Ö½Ú£©
+// XTEAåŠ å¯†ä¸€ä¸ªå—ï¼ˆ8å­—èŠ‚ï¼‰
 static void xtea_encrypt_block(uint32_t* v0, uint32_t* v1, const uint32_t* key) {
     uint32_t sum = 0;
     
@@ -46,7 +46,7 @@ static void xtea_encrypt_block(uint32_t* v0, uint32_t* v1, const uint32_t* key) 
     }
 }
 
-// XTEA½âÃÜÒ»¸ö¿é£¨8×Ö½Ú£©
+// XTEAè§£å¯†ä¸€ä¸ªå—ï¼ˆ8å­—èŠ‚ï¼‰
 static void xtea_decrypt_block(uint32_t* v0, uint32_t* v1, const uint32_t* key) {
     uint32_t sum = XTEA_DELTA * XTEA_NUM_ROUNDS;
     
@@ -57,7 +57,7 @@ static void xtea_decrypt_block(uint32_t* v0, uint32_t* v1, const uint32_t* key) 
     }
 }
 
-// ¼ÓÃÜÊµÏÖ - ¶ÔÓ¦Kotlin: override fun encrypt(text: String): String
+// åŠ å¯†å®ç° - å¯¹åº”Kotlin: override fun encrypt(text: String): String
 static char* mod_xtea_encrypt(cipher_interface_t* self, const char* text) {
     if (!self || !text) return NULL;
     
@@ -66,84 +66,84 @@ static char* mod_xtea_encrypt(cipher_interface_t* self, const char* text) {
     
     size_t text_len = strlen(text);
     
-    // 8×Ö½Ú¶ÔÆëÌî³ä
+    // 8å­—èŠ‚å¯¹é½å¡«å……
     size_t padded_len;
     uint8_t* padded_data = pad_to_multiple((const uint8_t*)text, text_len, 8, &padded_len);
     if (!padded_data) return NULL;
     
-    // ·ÖÅäÊä³ö»º³åÇø
+    // åˆ†é…è¾“å‡ºç¼“å†²åŒº
     uint8_t* output = safe_malloc(padded_len);
     memcpy(output, padded_data, padded_len);
     safe_free(padded_data);
     
-    // Öğ¿é´¦Àí£¨Ã¿¿é8×Ö½Ú£©
+    // é€å—å¤„ç†ï¼ˆæ¯å—8å­—èŠ‚ï¼‰
     for (size_t i = 0; i < padded_len; i += 8) {
         uint32_t v0 = get_uint32_be(output, i);
         uint32_t v1 = get_uint32_be(output, i + 4);
         
-        // µÚÒ»ÂÖ¼ÓÃÜ£¨Ê¹ÓÃkey1£©
+        // ç¬¬ä¸€è½®åŠ å¯†ï¼ˆä½¿ç”¨key1ï¼‰
         xtea_encrypt_block(&v0, &v1, data->key1);
         
-        // µÚ¶şÂÖ¼ÓÃÜ£¨Ê¹ÓÃkey2£©
+        // ç¬¬äºŒè½®åŠ å¯†ï¼ˆä½¿ç”¨key2ï¼‰
         xtea_encrypt_block(&v0, &v1, data->key2);
         
-        // µÚÈıÂÖ¼ÓÃÜ£¨Ê¹ÓÃkey3£©
+        // ç¬¬ä¸‰è½®åŠ å¯†ï¼ˆä½¿ç”¨key3ï¼‰
         xtea_encrypt_block(&v0, &v1, data->key3);
         
-        // Ğ´»Ø½á¹û
+        // å†™å›ç»“æœ
         set_uint32_be(output, i, v0);
         set_uint32_be(output, i + 4, v1);
     }
     
-    // ×ª»»Îª´óĞ´Ê®Áù½øÖÆ×Ö·û´®
+    // è½¬æ¢ä¸ºå¤§å†™åå…­è¿›åˆ¶å­—ç¬¦ä¸²
     char* hex_result = bytes_to_hex_upper(output, padded_len);
     safe_free(output);
     
     return hex_result;
 }
 
-// ½âÃÜÊµÏÖ - ¶ÔÓ¦Kotlin: override fun decrypt(hex: String): String
+// è§£å¯†å®ç° - å¯¹åº”Kotlin: override fun decrypt(hex: String): String
 static char* mod_xtea_decrypt(cipher_interface_t* self, const char* hex) {
     if (!self || !hex) return NULL;
     
     mod_xtea_data_t* data = (mod_xtea_data_t*)self->private_data;
     if (!data) return NULL;
     
-    // ½«Ê®Áù½øÖÆ×Ö·û´®×ª»»Îª×Ö½ÚÊı×é
+    // å°†åå…­è¿›åˆ¶å­—ç¬¦ä¸²è½¬æ¢ä¸ºå­—èŠ‚æ•°ç»„
     size_t bytes_len;
     uint8_t* bytes = hex_to_bytes(hex, &bytes_len);
     if (!bytes) return NULL;
     
-    // ·ÖÅäÊä³ö»º³åÇø
+    // åˆ†é…è¾“å‡ºç¼“å†²åŒº
     uint8_t* output = safe_malloc(bytes_len);
     memcpy(output, bytes, bytes_len);
     safe_free(bytes);
     
-    // Öğ¿é´¦Àí£¨Ã¿¿é8×Ö½Ú£©
+    // é€å—å¤„ç†ï¼ˆæ¯å—8å­—èŠ‚ï¼‰
     for (size_t i = 0; i < bytes_len; i += 8) {
         uint32_t v0 = get_uint32_be(output, i);
         uint32_t v1 = get_uint32_be(output, i + 4);
         
-        // µÚÒ»ÂÖ½âÃÜ£¨Ê¹ÓÃkey3£¬ÄæĞò£©
+        // ç¬¬ä¸€è½®è§£å¯†ï¼ˆä½¿ç”¨key3ï¼Œé€†åºï¼‰
         xtea_decrypt_block(&v0, &v1, data->key3);
         
-        // µÚ¶şÂÖ½âÃÜ£¨Ê¹ÓÃkey2£©
+        // ç¬¬äºŒè½®è§£å¯†ï¼ˆä½¿ç”¨key2ï¼‰
         xtea_decrypt_block(&v0, &v1, data->key2);
         
-        // µÚÈıÂÖ½âÃÜ£¨Ê¹ÓÃkey1£©
+        // ç¬¬ä¸‰è½®è§£å¯†ï¼ˆä½¿ç”¨key1ï¼‰
         xtea_decrypt_block(&v0, &v1, data->key1);
         
-        // Ğ´»Ø½á¹û
+        // å†™å›ç»“æœ
         set_uint32_be(output, i, v0);
         set_uint32_be(output, i + 4, v1);
     }
     
-    // ÒÆ³ıÎ²²¿µÄÁã×Ö½ÚÌî³ä£¨¶ÔÓ¦KotlinÖĞµÄdropLastWhile£©
+    // ç§»é™¤å°¾éƒ¨çš„é›¶å­—èŠ‚å¡«å……ï¼ˆå¯¹åº”Kotlinä¸­çš„dropLastWhileï¼‰
     while (bytes_len > 0 && output[bytes_len - 1] == 0) {
         bytes_len--;
     }
     
-    // ×ª»»Îª×Ö·û´®
+    // è½¬æ¢ä¸ºå­—ç¬¦ä¸²
     char* result = safe_malloc(bytes_len + 1);
     memcpy(result, output, bytes_len);
     result[bytes_len] = '\0';
@@ -152,7 +152,7 @@ static char* mod_xtea_decrypt(cipher_interface_t* self, const char* hex) {
     return result;
 }
 
-// Ïú»Ùº¯Êı
+// é”€æ¯å‡½æ•°
 static void mod_xtea_destroy(cipher_interface_t* self) {
     if (self) {
         safe_free(self->private_data);
@@ -160,7 +160,7 @@ static void mod_xtea_destroy(cipher_interface_t* self) {
     }
 }
 
-// ´´½¨ModXTEA¼Ó½âÃÜÊµÀı
+// åˆ›å»ºModXTEAåŠ è§£å¯†å®ä¾‹
 cipher_interface_t* create_mod_xtea_cipher(const uint32_t* key1, const uint32_t* key2, 
                                            const uint32_t* key3) {
     if (!key1 || !key2 || !key3) return NULL;
@@ -168,12 +168,12 @@ cipher_interface_t* create_mod_xtea_cipher(const uint32_t* key1, const uint32_t*
     cipher_interface_t* cipher = safe_malloc(sizeof(cipher_interface_t));
     mod_xtea_data_t* data = safe_malloc(sizeof(mod_xtea_data_t));
     
-    // ¸´ÖÆÃÜÔ¿
+    // å¤åˆ¶å¯†é’¥
     memcpy(data->key1, key1, 4 * sizeof(uint32_t));
     memcpy(data->key2, key2, 4 * sizeof(uint32_t));
     memcpy(data->key3, key3, 4 * sizeof(uint32_t));
     
-    // ÉèÖÃº¯ÊıÖ¸Õë
+    // è®¾ç½®å‡½æ•°æŒ‡é’ˆ
     cipher->encrypt = mod_xtea_encrypt;
     cipher->decrypt = mod_xtea_decrypt;
     cipher->destroy = mod_xtea_destroy;

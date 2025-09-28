@@ -5,15 +5,15 @@
 #include <stdint.h>
 
 /**
- * AES-ECB ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
- * ¶ÔÓ¦KotlinµÄAESECBÀà
+ * AES-ECB åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
+ * å¯¹åº”Kotlinçš„AESECBç±»
  */
 
 /**
- * ´´½¨AES-ECB¼Ó½âÃÜÊµÀı
- * @param key1 µÚÒ»¸öAESÃÜÔ¿ (16×Ö½Ú)
- * @param key2 µÚ¶ş¸öAESÃÜÔ¿ (16×Ö½Ú)
- * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
+ * åˆ›å»ºAES-ECBåŠ è§£å¯†å®ä¾‹
+ * @param key1 ç¬¬ä¸€ä¸ªAESå¯†é’¥ (16å­—èŠ‚)
+ * @param key2 ç¬¬äºŒä¸ªAESå¯†é’¥ (16å­—èŠ‚)
+ * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
  */
 cipher_interface_t* create_aes_ecb_cipher(const uint8_t* key1, const uint8_t* key2);
 

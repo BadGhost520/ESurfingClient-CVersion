@@ -9,14 +9,14 @@
 extern "C" {
 #endif
 
-    // ×î´ó³¤¶È¶¨Òå
+    // æœ€å¤§é•¿åº¦å®šä¹‰
 #define MAX_URL_LENGTH 512
 #define MAX_HEADER_LENGTH 256
 #define MAX_DATA_LENGTH 4096
 #define MAX_RESPONSE_LENGTH 8192
 #define MAX_HEADERS_COUNT 20
 
-    // NetResult½á¹¹Ìå - ¶ÔÓ¦KotlinµÄNetResult
+    // NetResultç»“æ„ä½“ - å¯¹åº”Kotlinçš„NetResult
     typedef enum {
         NET_RESULT_SUCCESS,
         NET_RESULT_ERROR
@@ -24,12 +24,12 @@ extern "C" {
 
     typedef struct {
         NetResultType type;
-        char* data;           // ³É¹¦Ê±µÄÏìÓ¦Êı¾İ
-        char* error_message;  // Ê§°ÜÊ±µÄ´íÎóĞÅÏ¢
-        int status_code;      // HTTP×´Ì¬Âë
+        char* data;           // æˆåŠŸæ—¶çš„å“åº”æ•°æ®
+        char* error_message;  // å¤±è´¥æ—¶çš„é”™è¯¯ä¿¡æ¯
+        int status_code;      // HTTPçŠ¶æ€ç 
     } NetResult;
 
-    // ¶îÍâÇëÇóÍ·½á¹¹Ìå - ¶ÔÓ¦KotlinµÄHashMap<String, String>
+    // é¢å¤–è¯·æ±‚å¤´ç»“æ„ä½“ - å¯¹åº”Kotlinçš„HashMap<String, String>
     typedef struct {
         char key[MAX_HEADER_LENGTH];
         char value[MAX_HEADER_LENGTH];
@@ -40,13 +40,13 @@ extern "C" {
         int count;
     } ExtraHeaders;
 
-    // ÏìÓ¦Êı¾İ½á¹¹Ìå
+    // å“åº”æ•°æ®ç»“æ„ä½“
     typedef struct {
         char* memory;
         size_t size;
     } ResponseData;
 
-    // º¯ÊıÉùÃ÷
+    // å‡½æ•°å£°æ˜
     NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_headers);
     void free_net_result(NetResult* result);
     void init_extra_headers(ExtraHeaders* headers);
@@ -55,9 +55,9 @@ extern "C" {
     size_t write_response_callback(void* contents, size_t size, size_t nmemb, ResponseData* response);
     NetResult* simplePost(const char* url, const char* data);
 
-    // ³õÊ¼»¯ºÍÇåÀíº¯Êı (ÏÖÔÚÊÇ¿ÉÑ¡µÄ£¬POSTº¯Êı»á×Ô¶¯´¦Àí)
-    int init_post_client(void);           // ¿ÉÑ¡£ºÊÖ¶¯³õÊ¼»¯¿Í»§¶Ë
-    void cleanup_post_client(void);       // ¿ÉÑ¡£ºÊÖ¶¯ÇåÀí¿Í»§¶Ë (³ÌĞòÍË³öÊ±×Ô¶¯ÇåÀí)
+    // åˆå§‹åŒ–å’Œæ¸…ç†å‡½æ•° (ç°åœ¨æ˜¯å¯é€‰çš„ï¼ŒPOSTå‡½æ•°ä¼šè‡ªåŠ¨å¤„ç†)
+    int init_post_client(void);           // å¯é€‰ï¼šæ‰‹åŠ¨åˆå§‹åŒ–å®¢æˆ·ç«¯
+    void cleanup_post_client(void);       // å¯é€‰ï¼šæ‰‹åŠ¨æ¸…ç†å®¢æˆ·ç«¯ (ç¨‹åºé€€å‡ºæ—¶è‡ªåŠ¨æ¸…ç†)
 
 #ifdef __cplusplus
 }

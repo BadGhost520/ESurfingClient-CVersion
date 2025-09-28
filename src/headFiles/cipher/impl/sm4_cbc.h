@@ -5,15 +5,15 @@
 #include <stdint.h>
 
 /**
- * SM4-CBC ¼Ó½âÃÜËã·¨Í·ÎÄ¼ş
- * ¶ÔÓ¦KotlinµÄSM4CBCÀà
+ * SM4-CBC åŠ è§£å¯†ç®—æ³•å¤´æ–‡ä»¶
+ * å¯¹åº”Kotlinçš„SM4CBCç±»
  */
 
 /**
- * ´´½¨SM4-CBC¼Ó½âÃÜÊµÀı
- * @param key SM4ÃÜÔ¿ (16×Ö½Ú)
- * @param iv ³õÊ¼»¯ÏòÁ¿ (16×Ö½Ú)
- * @return ¼Ó½âÃÜ½Ó¿ÚÊµÀı£¬Ê§°Ü·µ»ØNULL
+ * åˆ›å»ºSM4-CBCåŠ è§£å¯†å®ä¾‹
+ * @param key SM4å¯†é’¥ (16å­—èŠ‚)
+ * @param iv åˆå§‹åŒ–å‘é‡ (16å­—èŠ‚)
+ * @return åŠ è§£å¯†æ¥å£å®ä¾‹ï¼Œå¤±è´¥è¿”å›NULL
  */
 cipher_interface_t* create_sm4_cbc_cipher(const uint8_t* key, const uint8_t* iv);
 

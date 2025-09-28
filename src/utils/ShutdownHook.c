@@ -15,15 +15,15 @@
 #include <unistd.h>
 #endif
 
-// ×î´óÇåÀíº¯ÊıÊıÁ¿
+// æœ€å¤§æ¸…ç†å‡½æ•°æ•°é‡
 #define MAX_CLEANUP_FUNCTIONS 10
 
-// ÇåÀíº¯ÊıÊı×é
+// æ¸…ç†å‡½æ•°æ•°ç»„
 static cleanup_function_t cleanup_functions[MAX_CLEANUP_FUNCTIONS];
 static int cleanup_count = 0;
 static bool shutdown_hook_initialized = false;
 
-// Windows¿ØÖÆÌ¨ÊÂ¼ş´¦Àíº¯Êı
+// Windowsæ§åˆ¶å°äº‹ä»¶å¤„ç†å‡½æ•°
 #ifdef _WIN32
 BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
     switch (ctrl_type) {
@@ -32,16 +32,16 @@ BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
         case CTRL_CLOSE_EVENT:
         case CTRL_LOGOFF_EVENT:
         case CTRL_SHUTDOWN_EVENT:
-            LOG_INFO("³ÌĞò¹Ø±ÕÖĞ...");
+            LOG_INFO("Program is closing...");
 
-            // Ö´ĞĞÇåÀí²Ù×÷
+            // æ‰§è¡Œæ¸…ç†æ“ä½œ
             execute_cleanup();
 
-            // Ç¿ÖÆÍË³ö³ÌĞò
-            // printf("ÇåÀíÍê³É£¬³ÌĞò¼´½«ÍË³ö...\n");
+            // å¼ºåˆ¶é€€å‡ºç¨‹åº
+            // printf("æ¸…ç†å®Œæˆï¼Œç¨‹åºå³å°†é€€å‡º...\n");
             exit(0);
 
-            return TRUE;  // ÕâĞĞÊµ¼ÊÉÏ²»»áÖ´ĞĞµ½£¬µ«±£ÁôÒÔ·ûºÏº¯ÊıÇ©Ãû
+            return TRUE;  // è¿™è¡Œå®é™…ä¸Šä¸ä¼šæ‰§è¡Œåˆ°ï¼Œä½†ä¿ç•™ä»¥ç¬¦åˆå‡½æ•°ç­¾å
         default:
             return FALSE;
     }
@@ -49,19 +49,19 @@ BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
 #endif
 
 /**
- * ĞÅºÅ´¦Àíº¯Êı
- * ¶ÔÓ¦Kotlin°æ±¾shutdown hookµÄrun()·½·¨
+ * ä¿¡å·å¤„ç†å‡½æ•°
+ * å¯¹åº”Kotlinç‰ˆæœ¬shutdown hookçš„run()æ–¹æ³•
  */
 void signal_handler(int sig) {
-    // Ö´ĞĞÇåÀí²Ù×÷
+    // æ‰§è¡Œæ¸…ç†æ“ä½œ
     execute_cleanup();
 
-    // ÍË³ö³ÌĞò
+    // é€€å‡ºç¨‹åº
     exit(0);
 }
 
 /**
- * ³õÊ¼»¯shutdown hook
+ * åˆå§‹åŒ–shutdown hook
  */
 void init_shutdown_hook(void) {
     if (shutdown_hook_initialized) {
@@ -69,25 +69,25 @@ void init_shutdown_hook(void) {
     }
 
 #ifdef _WIN32
-    // WindowsÆ½Ì¨£º×¢²á¿ØÖÆÌ¨ÊÂ¼ş´¦Àíº¯Êı
+    // Windowså¹³å°ï¼šæ³¨å†Œæ§åˆ¶å°äº‹ä»¶å¤„ç†å‡½æ•°
     if (!SetConsoleCtrlHandler(console_ctrl_handler, TRUE)) {
-        fprintf(stderr, "¾¯¸æ: ÎŞ·¨×¢²áWindows¿ØÖÆÌ¨ÊÂ¼ş´¦Àíº¯Êı\n");
+        fprintf(stderr, "è­¦å‘Š: æ— æ³•æ³¨å†ŒWindowsæ§åˆ¶å°äº‹ä»¶å¤„ç†å‡½æ•°\n");
     }
 #else
-    // Unix/LinuxÆ½Ì¨£º×¢²áĞÅºÅ´¦Àíº¯Êı
+    // Unix/Linuxå¹³å°ï¼šæ³¨å†Œä¿¡å·å¤„ç†å‡½æ•°
     signal(SIGINT, signal_handler);   // Ctrl+C
-    signal(SIGTERM, signal_handler);  // ÖÕÖ¹ĞÅºÅ
-    signal(SIGQUIT, signal_handler);  // ÍË³öĞÅºÅ
+    signal(SIGTERM, signal_handler);  // ç»ˆæ­¢ä¿¡å·
+    signal(SIGQUIT, signal_handler);  // é€€å‡ºä¿¡å·
 #endif
 
-    // ×¢²áatexitÇåÀíº¯Êı
+    // æ³¨å†Œatexitæ¸…ç†å‡½æ•°
     atexit(execute_cleanup);
 
     shutdown_hook_initialized = true;
 }
 
 /**
- * ×¢²áÇåÀíº¯Êı
+ * æ³¨å†Œæ¸…ç†å‡½æ•°
  */
 int register_cleanup_function(cleanup_function_t cleanup_func) {
     if (!cleanup_func || cleanup_count >= MAX_CLEANUP_FUNCTIONS) {
@@ -98,18 +98,18 @@ int register_cleanup_function(cleanup_function_t cleanup_func) {
     return 0;
 }
 /**
- * Ö´ĞĞËùÓĞ×¢²áµÄÇåÀíº¯Êı
+ * æ‰§è¡Œæ‰€æœ‰æ³¨å†Œçš„æ¸…ç†å‡½æ•°
  */
 void execute_cleanup(void) {
     static bool cleanup_executed = false;
 
-    // ·ÀÖ¹ÖØ¸´Ö´ĞĞÇåÀí
+    // é˜²æ­¢é‡å¤æ‰§è¡Œæ¸…ç†
     if (cleanup_executed) {
         return;
     }
     cleanup_executed = true;
 
-    // È»ºóÖ´ĞĞËùÓĞ×¢²áµÄÇåÀíº¯Êı
+    // ç„¶åæ‰§è¡Œæ‰€æœ‰æ³¨å†Œçš„æ¸…ç†å‡½æ•°
     for (int i = 0; i < cleanup_count; i++) {
         if (cleanup_functions[i]) {
             cleanup_functions[i]();
@@ -118,14 +118,14 @@ void execute_cleanup(void) {
 }
 
 /**
- * ÓÅÑÅÍË³ö³ÌĞò
+ * ä¼˜é›…é€€å‡ºç¨‹åº
  */
 void graceful_exit(int exit_code) {
-    LOG_INFO("³ÌĞò×¼±¸ÍË³ö£¬ÍË³öÂë: %d", exit_code);
+    LOG_INFO("Program ready to exit, exit code: %d", exit_code);
 
-    // Ö´ĞĞÇåÀí²Ù×÷
+    // æ‰§è¡Œæ¸…ç†æ“ä½œ
     execute_cleanup();
 
-    // ÍË³ö³ÌĞò
+    // é€€å‡ºç¨‹åº
     exit(exit_code);
 }
