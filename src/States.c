@@ -1,7 +1,6 @@
 //
 // Created by bad_g on 2025/9/22.
 //
-#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -15,14 +14,14 @@ char* ticket;
 char* userIp;
 char* acIp;
 
-bool isRunning = true;
+int isRunning = 1;
 
 char* schoolId;
 char* domain;
 char* area;
 char* ticketUrl;
 char* authUrl;
-bool isLogged = false;
+int isLogged = 0;
 
 void refreshStates(void)
 {

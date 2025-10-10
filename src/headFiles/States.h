@@ -14,14 +14,14 @@
     extern char* userIp;
     extern char* acIp;
 
-    extern bool isRunning;
+    extern int isRunning;
 
     extern char* schoolId;
     extern char* domain;
     extern char* area;
     extern char* ticketUrl;
     extern char* authUrl;
-    extern bool isLogged;
+    extern int isLogged;
 
     void refreshStates(void);
 

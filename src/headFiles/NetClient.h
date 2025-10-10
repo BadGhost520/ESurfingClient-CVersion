@@ -16,7 +16,7 @@ extern "C" {
 #define MAX_RESPONSE_LENGTH 8192
 #define MAX_HEADERS_COUNT 20
 
-    // NetResult结构体 - 对应Kotlin的NetResult
+    // NetResult结构体 - 对应Kotlin的NetResult，支持二进制数据
     typedef enum {
         NET_RESULT_SUCCESS,
         NET_RESULT_ERROR
@@ -24,7 +24,8 @@ extern "C" {
 
     typedef struct {
         NetResultType type;
-        char* data;           // 成功时的响应数据
+        char* data;           // 响应数据（可能包含二进制数据）
+        size_t data_size;     // 数据大小（字节数）
         char* error_message;  // 失败时的错误信息
         int status_code;      // HTTP状态码
     } NetResult;

@@ -7,5 +7,6 @@
 
 extern char* usr;
 extern char* pwd;
+extern char* chn;
 
 #endif //ESURFINGCLIENT_OPTIONS_H

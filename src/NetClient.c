@@ -10,19 +10,20 @@
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
 
-// libcurl响应回调函数
+// libcurl响应回调函数 - 修复二进制数据处理
 size_t write_response_callback(void* contents, size_t size, size_t nmemb, ResponseData* response) {
     size_t real_size = size * nmemb;
-    char* ptr = realloc(response->memory, response->size + real_size + 1);
+    char* ptr = realloc(response->memory, response->size + real_size);
 
     if (ptr == NULL) {
+        printf("Not enough memory (realloc returned NULL)\n");
         return 0;
     }
 
     response->memory = ptr;
     memcpy(&(response->memory[response->size]), contents, real_size);
     response->size += real_size;
-    response->memory[response->size] = 0;
+    // 不添加null终止符，保持原始二进制数据完整性
 
     return real_size;
 }
@@ -157,6 +158,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
     // 初始化结果结构体
     result->type = NET_RESULT_ERROR;
     result->data = NULL;
+    result->data_size = 0;
     result->error_message = NULL;
     result->status_code = 0;
 
@@ -242,6 +244,7 @@ NetResult* post_request(const char* url, const char* data, ExtraHeaders* extra_h
         // 请求成功 - 对应Kotlin的NetResult.Success
         result->type = NET_RESULT_SUCCESS;
         result->data = response.memory;
+        result->data_size = response.size;
         response.memory = NULL; // 防止被释放
     }
     // 清理资源

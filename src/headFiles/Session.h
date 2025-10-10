@@ -9,7 +9,7 @@
 // Session初始化和状态检查
 int initialize(const ByteArray* zsm);
 
-bool isInitialized();
+int isInitialized();
 
 // 十六进制字符串转换函数
 int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** binary_data, size_t* binary_len);

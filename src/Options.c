@@ -3,3 +3,4 @@
 //
 char* usr;
 char* pwd;
+char* chn;

@@ -1,7 +1,6 @@
 //
 // Created by bad_g on 2025/9/24.
 //
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +11,7 @@
 #include "headFiles/cipher/cipher_interface.h"
 #include "headFiles/utils/Logger.h"
 
-bool initialized = false;
+int initialized = 0;
 cipher_interface_t* cipher = NULL;  // 全局加密实例
 
 const char* check1 = "B809531F-0007-4B5B-923B-4BD560398113";
@@ -32,7 +31,7 @@ char* sessionDecrypt(const char* text)
 
 // 释放Session资源 (对应Kotlin: fun free())
 void sessionFree() {
-    initialized = false;
+    initialized = 0;
 }
 
 // 初始化加密组件 (对应CipherFactory.getInstance)
@@ -98,7 +97,7 @@ int load(const ByteArray* zsm) {
     char* algo_id;
     LOG_DEBUG("Received zsm data length: %zu", zsm->length);
 
-    if (!zsm || !zsm->data || zsm->length == 0) {
+    if (!zsm->data || zsm->length == 0) {
         key = NULL;
         algo_id = NULL;
         return 0;
@@ -214,10 +213,10 @@ int initialize(const ByteArray* zsm)
     switch (load(zsm))
     {
     case 0:
-        initialized = false;
+        initialized = 0;
         return 0;
     case 1:
-        initialized = true;
+        initialized = 1;
         return 1;
     case 2:
         return 2;
@@ -226,7 +225,7 @@ int initialize(const ByteArray* zsm)
     }
 }
 
-bool isInitialized()
+int isInitialized()
 {
     return initialized;
 }

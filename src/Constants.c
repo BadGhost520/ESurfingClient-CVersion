@@ -4,7 +4,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-const char* USER_AGENT = "CCTP/android64_vpn/2093";
+#include "headFiles/utils/Logger.h"
+
+const char* USER_LINUX_AGENT = "CCTP/Linux64/1003";
+const char* USER_ANDROID_AGENT = "CCTP/android64_vpn/2093";
+const char* USER_AGENT;
 const char* REQUEST_ACCEPT = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
 const char* CAPTIVE_URL = "http://connect.rom.miui.com/generate_204";
 const char* PORTAL_END_TAG = "//config.campus.js.chinatelecom.com-->";
@@ -47,7 +51,20 @@ char* random_string(int length) {
     return result;
 }
 
-void initConstants()
+void initConstants(int channel)
 {
     HOST_NAME = random_string(10);
+    if (channel == 1)
+    {
+        USER_AGENT = USER_LINUX_AGENT;
+    }
+    else if (channel == 2)
+    {
+        USER_AGENT = USER_ANDROID_AGENT;
+    }
+    else
+    {
+        LOG_ERROR("Error device\n");
+        exit(1);
+    }
 }
