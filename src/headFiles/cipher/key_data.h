@@ -74,6 +74,14 @@ extern const uint32_t key2_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1[4];
 extern const uint32_t key3_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1[4];
 extern const uint32_t iv_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1[2];
 
+// ----------------------------------------------------------------
+// Algo Id: 1A7343EC-7F9B-4570-BF58-16279A81116B (DESede/CBC/Two-Layer, PC)
+// ----------------------------------------------------------------
+extern const uint8_t key1_1A7343EC_7F9B_4570_BF58_16279A81116B[24];
+extern const uint8_t key2_1A7343EC_7F9B_4570_BF58_16279A81116B[24];
+extern const uint8_t iv1_1A7343EC_7F9B_4570_BF58_16279A81116B[8];
+extern const uint8_t iv2_1A7343EC_7F9B_4570_BF58_16279A81116B[8];
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,6 +1,5 @@
 #include "../headFiles/cipher/cipher_interface.h"
 #include "../headFiles/cipher/key_data.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,6 +23,8 @@ extern cipher_interface_t* create_mod_xtea_cipher(const uint32_t* key1, const ui
                                                   const uint32_t* key3);
 extern cipher_interface_t* create_mod_xtea_iv_cipher(const uint32_t* key1, const uint32_t* key2, 
                                                      const uint32_t* key3, const uint32_t* iv);
+extern cipher_interface_t* create_desede_cbc_pc_cipher(const uint8_t* key1, const uint8_t* key2,
+                                                       const uint8_t* iv1, const uint8_t* iv2);
 cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
     if (!algorithm_id) {
         return NULL;
@@ -113,6 +114,16 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
             key2_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1,
             key3_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1,
             iv_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1
+        );
+    }
+
+    // 自实现 3DES-CBC 两层（PC）
+    if (strcmp(algorithm_id, "1A7343EC-7F9B-4570-BF58-16279A81116B") == 0) {
+        return create_desede_cbc_pc_cipher(
+            key1_1A7343EC_7F9B_4570_BF58_16279A81116B,
+            key2_1A7343EC_7F9B_4570_BF58_16279A81116B,
+            iv1_1A7343EC_7F9B_4570_BF58_16279A81116B,
+            iv2_1A7343EC_7F9B_4570_BF58_16279A81116B
         );
     }
     return NULL;
