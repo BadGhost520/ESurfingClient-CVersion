@@ -35,9 +35,9 @@ LoggerConfig g_logger_config = {
     .target = LOG_TARGET_CONSOLE,
     .log_file = "",
     .file_handle = NULL,
-    .enable_color = true,
-    .enable_timestamp = true,
-    .enable_thread_safe = false,
+    .enable_color = 1,
+    .enable_timestamp = 1,
+    .enable_thread_safe = 0,
     .max_file_size = 10 * 1024 * 1024,  // 10MB
     .max_backup_files = 5
 };
@@ -115,7 +115,7 @@ void logger_set_level(LogLevel level) {
 /**
  * 设置颜色输出
  */
-void logger_set_color(bool enable) {
+void logger_set_color(int enable) {
     g_logger_config.enable_color = enable;
     LOG_INFO("Color output: %s", enable ? "enable" : "disable");
 }
@@ -123,7 +123,7 @@ void logger_set_color(bool enable) {
 /**
  * 设置时间戳
  */
-void logger_set_timestamp(bool enable) {
+void logger_set_timestamp(int enable) {
     g_logger_config.enable_timestamp = enable;
     LOG_INFO("timestamp: %s", enable ? "enable" : "disable");
 }

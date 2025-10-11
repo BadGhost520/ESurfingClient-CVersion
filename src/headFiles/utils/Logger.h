@@ -24,7 +24,6 @@
 #define LOGGER_H
 
 #include <stdio.h>
-#include <stdbool.h>
 
 // ========== 日志级别定义 ==========
 typedef enum {
@@ -49,9 +48,9 @@ typedef struct {
     LogTarget   target;             // 输出目标
     char        log_file[256];      // 日志文件路径
     FILE*       file_handle;        // 文件句柄
-    bool        enable_color;       // 是否启用颜色输出
-    bool        enable_timestamp;   // 是否启用时间戳
-    bool        enable_thread_safe; // 是否启用线程安全
+    int        enable_color;       // 是否启用颜色输出
+    int        enable_timestamp;   // 是否启用时间戳
+    int        enable_thread_safe; // 是否启用线程安全
     size_t      max_file_size;      // 最大文件大小（字节）
     int         max_backup_files;   // 最大备份文件数
 } LoggerConfig;
@@ -102,13 +101,13 @@ void logger_set_level(LogLevel level);
  * 设置是否启用颜色输出
  * @param enable true启用，false禁用
  */
-void logger_set_color(bool enable);
+void logger_set_color(int enable);
 
 /**
  * 设置是否启用时间戳
  * @param enable true启用，false禁用
  */
-void logger_set_timestamp(bool enable);
+void logger_set_timestamp(int enable);
 
 /**
  * 设置文件大小限制和备份数量

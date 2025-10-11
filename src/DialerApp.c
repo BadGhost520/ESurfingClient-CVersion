@@ -5,12 +5,14 @@
 #include "headFiles/Constants.h"
 #include "headFiles/utils/ShutdownHook.h"
 #include "headFiles/Options.h"
+#include "headFiles/PlatformUtils.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 #include "headFiles/utils/Logger.h"
 
 void shutdownHook()
 {
+    sleepSeconds(1);
     if (isRunning)
     {
         isRunning = 0;

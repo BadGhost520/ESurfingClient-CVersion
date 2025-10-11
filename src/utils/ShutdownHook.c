@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <stdbool.h>
 
 #include "../headFiles/utils/Logger.h"
 
@@ -21,7 +20,7 @@
 // 清理函数数组
 static cleanup_function_t cleanup_functions[MAX_CLEANUP_FUNCTIONS];
 static int cleanup_count = 0;
-static bool shutdown_hook_initialized = false;
+static int shutdown_hook_initialized = 0;
 
 // Windows控制台事件处理函数
 #ifdef _WIN32
@@ -83,7 +82,7 @@ void init_shutdown_hook(void) {
     // 注册atexit清理函数
     atexit(execute_cleanup);
 
-    shutdown_hook_initialized = true;
+    shutdown_hook_initialized = 1;
 }
 
 /**
@@ -101,13 +100,13 @@ int register_cleanup_function(cleanup_function_t cleanup_func) {
  * 执行所有注册的清理函数
  */
 void execute_cleanup(void) {
-    static bool cleanup_executed = false;
+    static int cleanup_executed = 0;
 
     // 防止重复执行清理
     if (cleanup_executed) {
         return;
     }
-    cleanup_executed = true;
+    cleanup_executed = 1;
 
     // 然后执行所有注册的清理函数
     for (int i = 0; i < cleanup_count; i++) {

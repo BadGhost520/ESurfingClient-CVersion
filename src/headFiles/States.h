@@ -5,9 +5,7 @@
 #ifndef ESURFINGCLIENT_STATES_H
 #define ESURFINGCLIENT_STATES_H
 
-#include <stdbool.h>
-
-    extern char* clientId;
+extern char* clientId;
     extern char* algoId;
     extern char* macAddress;
     extern char* ticket;

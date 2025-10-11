@@ -4,7 +4,6 @@
 
 #ifndef ESURFINGCLIENT_SHUTDOWNHOOK_H
 #define ESURFINGCLIENT_SHUTDOWNHOOK_H
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

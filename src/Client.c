@@ -1,7 +1,6 @@
 //
 // Created by bad_g on 2025/9/14.
 //
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +13,6 @@
 #include "headFiles/utils/ByteArray.h"
 #include "headFiles/utils/XMLParser.h"
 #include "headFiles/utils/Logger.h"
-#include "headFiles/utils/ShutdownHook.h"
 
 char* keepRetry;
 char* keepUrl;
@@ -112,7 +110,7 @@ void authorization()
     {
         LOG_ERROR("Session initialization failed, please restart the application or retrieve the application from Release again");
         LOG_ERROR("Release Url: https://github.com/liu23zhi/ESurfingClient-CVersion/releases");
-        isRunning = false;
+        isRunning = 0;
         return;
     }
 
@@ -127,12 +125,12 @@ void authorization()
     {
         LOG_ERROR("Keep Url is empty");
         sessionFree();
-        isRunning = false;
+        isRunning = 0;
         return;
     }
 
     tick = currentTimeMillis();
-    isLogged = true;
+    isLogged = 1;
     LOG_INFO("Authorized login");
 }
 
@@ -170,7 +168,7 @@ void run()
             break;
         case CONNECTIVITY_REQUIRE_AUTHORIZATION:
             LOG_INFO("authentication required");
-            isLogged = false;
+            isLogged = 0;
             authorization();
             break;
         case CONNECTIVITY_REQUEST_ERROR:
