@@ -87,6 +87,13 @@ extern const uint32_t key3_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1[4];
 extern const uint32_t iv_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1[2];
 
 // ----------------------------------------------------------------
+//  Algo Id: 60639D8B-272E-4A4D-976E-AA270987A169 (XTEA Triple-Layer)
+// ----------------------------------------------------------------
+extern const uint32_t key1_60639D8B_272E_4A4D_976E_AA270987A169[4];
+extern const uint32_t key2_60639D8B_272E_4A4D_976E_AA270987A169[4];
+extern const uint32_t key3_60639D8B_272E_4A4D_976E_AA270987A169[4];
+
+// ----------------------------------------------------------------
 // Algo Id: 1A7343EC-7F9B-4570-BF58-16279A81116B (DESede/CBC/Two-Layer, PC)
 // ----------------------------------------------------------------
 extern const uint8_t key1_1A7343EC_7F9B_4570_BF58_16279A81116B[24];

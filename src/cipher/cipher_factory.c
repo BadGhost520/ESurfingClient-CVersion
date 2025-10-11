@@ -27,6 +27,8 @@ extern cipher_interface_t* create_mod_xtea_cipher(const uint32_t* key1, const ui
                                                   const uint32_t* key3);
 extern cipher_interface_t* create_mod_xtea_iv_cipher(const uint32_t* key1, const uint32_t* key2, 
                                                      const uint32_t* key3, const uint32_t* iv);
+extern cipher_interface_t* create_mod_xtea_pc_cipher(const uint32_t* key1, const uint32_t* key2,
+                                                     const uint32_t* key3);
 extern cipher_interface_t* create_desede_cbc_pc_cipher(const uint8_t* key1, const uint8_t* key2,
                                                        const uint8_t* iv1, const uint8_t* iv2);
 cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
@@ -156,6 +158,16 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
         return create_aes_cbc_pc_cipher(
             key1_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291,
             key2_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291
+        );
+    }
+    
+    // XTEA 三层（PC变体）60639D8B-272E-4A4D-976E-AA270987A169
+    if (strcmp(algorithm_id, "60639D8B-272E-4A4D-976E-AA270987A169") == 0) {
+        LOG_DEBUG("Hit 60639D8B-272E-4A4D-976E-AA270987A169");
+        return create_mod_xtea_pc_cipher(
+            key1_60639D8B_272E_4A4D_976E_AA270987A169,
+            key2_60639D8B_272E_4A4D_976E_AA270987A169,
+            key3_60639D8B_272E_4A4D_976E_AA270987A169
         );
     }
     return NULL;
