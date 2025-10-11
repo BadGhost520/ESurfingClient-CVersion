@@ -28,6 +28,18 @@ extern const uint8_t iv2_CAFBCBAD_B6E7_4CAB_8A67_14D39F00CE1E[16];
 extern const uint8_t key1_A474B1C2_3DE0_4EA2_8C5F_7093409CE6C4[16];
 extern const uint8_t key2_A474B1C2_3DE0_4EA2_8C5F_7093409CE6C4[16];
 
+// -----------------------------------------------------------------
+// Algo Id: 4BA5496A-2123-46A7-85F2-35956EA7BE39 (AES/ECB/Two-Layer, PC)
+// -----------------------------------------------------------------
+extern const uint8_t key1_4BA5496A_2123_46A7_85F2_35956EA7BE39[16];
+extern const uint8_t key2_4BA5496A_2123_46A7_85F2_35956EA7BE39[16];
+
+// -----------------------------------------------------------------
+// Algo Id: 45433DCF-9ECA-4BE5-83F2-F92BA0B4F291 (AES/CBC/Two-Layer, PC)
+// -----------------------------------------------------------------
+extern const uint8_t key1_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291[16];
+extern const uint8_t key2_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291[16];
+
 // ----------------------------------------------------------------
 // Algo Id: 5BFBA864-BBA9-42DB-8EAD-49B5F412BD81 (DESede/CBC/NoPadding)
 // -----------------------------------------------------------------

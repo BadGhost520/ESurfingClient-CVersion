@@ -67,6 +67,8 @@ add_executable(ESurfingClient
         src/headFiles/utils/Logger.h
         src/cipher/impl/desede_cbc_pc.c
         src/headFiles/cipher/impl/desede_cbc_pc.h
+        src/cipher/impl/aes_ecb_pc.c
+        src/cipher/impl/aes_cbc_pc.c
 
 )
 
