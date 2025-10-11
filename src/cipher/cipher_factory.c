@@ -31,6 +31,8 @@ extern cipher_interface_t* create_mod_xtea_pc_cipher(const uint32_t* key1, const
                                                      const uint32_t* key3);
 extern cipher_interface_t* create_desede_cbc_pc_cipher(const uint8_t* key1, const uint8_t* key2,
                                                        const uint8_t* iv1, const uint8_t* iv2);
+extern cipher_interface_t* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
+                                               const uint32_t* key2, const uint32_t* iv);
 cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
     if (!algorithm_id) {
         return NULL;
@@ -168,6 +170,17 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
             key1_60639D8B_272E_4A4D_976E_AA270987A169,
             key2_60639D8B_272E_4A4D_976E_AA270987A169,
             key3_60639D8B_272E_4A4D_976E_AA270987A169
+        );
+    }
+    
+    // AB6C8 TEA CBC Triple
+    if (strcmp(algorithm_id, "AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91") == 0) {
+        LOG_DEBUG("Hit AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91");
+        return create_ab6c8_cipher(
+            key1_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91,
+            key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91,
+            key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91,
+            iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91
         );
     }
     return NULL;

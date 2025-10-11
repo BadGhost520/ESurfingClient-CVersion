@@ -101,6 +101,14 @@ extern const uint8_t key2_1A7343EC_7F9B_4570_BF58_16279A81116B[24];
 extern const uint8_t iv1_1A7343EC_7F9B_4570_BF58_16279A81116B[8];
 extern const uint8_t iv2_1A7343EC_7F9B_4570_BF58_16279A81116B[8];
 
+// -----------------------------------------------------------------
+// Algo Id: AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91 (AB6C8 TEA CBC Triple)
+// -----------------------------------------------------------------
+extern const uint32_t key1_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K0
+extern const uint32_t key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K1
+extern const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K2
+extern const uint32_t iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[2];
+
 #ifdef __cplusplus
 }
 #endif

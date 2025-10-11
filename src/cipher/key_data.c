@@ -213,3 +213,20 @@ const uint32_t key2_60639D8B_272E_4A4D_976E_AA270987A169[4] = {
 const uint32_t key3_60639D8B_272E_4A4D_976E_AA270987A169[4] = {
     0x5B527C44, 0x24214354, 0x22602E41, 0x56423F2D
 };
+
+// -----------------------------------------------------------------
+//  Algo Id: AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91 (AB6C8 TEA CBC Triple)
+//  Keys extracted from .so (little-endian dword order)
+// -----------------------------------------------------------------
+const uint32_t key1_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = { // K0
+    0x46253A70U, 0x7354653EU, 0x4C3A6260U, 0x79474F3CU
+};
+const uint32_t key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = { // K1
+    0x65682656U, 0x76554464U, 0x79284C6AU, 0x4D212B6CU
+};
+const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = { // K2
+    0x7D2F5640U, 0x4B635240U, 0x4D6F7E2FU, 0x5B76287DU
+};
+const uint32_t iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[2] = {
+    0x7E232848U, 0x3E2D513BU
+};
