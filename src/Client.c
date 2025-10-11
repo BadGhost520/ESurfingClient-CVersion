@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "headFiles/NetClient.h"
 #include "headFiles/PlatformUtils.h"
@@ -25,7 +26,9 @@ void authorization();
 
 void term()
 {
-    NetResult* result = simplePost(termUrl, sessionEncrypt(createXMLPayload("term")));
+    const char* encrypt = sessionEncrypt(createXMLPayload("term"));
+    LOG_DEBUG("Send encrypt: %s", encrypt);
+    NetResult* result = simplePost(termUrl, encrypt);
     if (result->type == NET_RESULT_ERROR)
     {
         LOG_ERROR("Log out error");
@@ -35,10 +38,13 @@ void term()
 
 void heartbeat()
 {
+    const char* encrypt = sessionEncrypt(createXMLPayload("heartbeat"));
+    LOG_DEBUG("Send encrypt: %s", encrypt);
     NetResult* result = simplePost(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         free(keepRetry);
+        LOG_DEBUG("result: %s", result->data);
         keepRetry = XML_Parser(sessionDecrypt(result->data), "interval");
     }
     else
@@ -50,9 +56,12 @@ void heartbeat()
 
 void login()
 {
+    const char* encrypt = sessionEncrypt(createXMLPayload("login"));
+    LOG_DEBUG("Send encrypt: %s", encrypt);
     NetResult* result = simplePost(authUrl, sessionEncrypt(createXMLPayload("login")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
+        LOG_DEBUG("result: %s", result->data);
         keepRetry = XML_Parser(sessionDecrypt(result->data), "keep-retry");
         keepUrl = cleanCDATA(XML_Parser(sessionDecrypt(result->data), "keep-url"));
         termUrl = cleanCDATA(XML_Parser(sessionDecrypt(result->data), "term-url"));
@@ -67,17 +76,17 @@ void login()
     free_net_result(result);
 }
 
-char* getTicket()
+void getTicket()
 {
+    const char* encrypt = sessionEncrypt(createXMLPayload("getTicket"));
+    LOG_DEBUG("Send encrypt: %s", encrypt);
     NetResult* result = simplePost(ticketUrl, sessionEncrypt(createXMLPayload("getTicket")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
-        free_net_result(result);
-        return XML_Parser(sessionDecrypt(result->data), "ticket");
+        LOG_DEBUG("result: %s", result->data);
+        ticket = strdup(XML_Parser(sessionDecrypt(result->data), "ticket"));
     }
-    LOG_ERROR("Result is empty");
     free_net_result(result);
-    return NULL;
 }
 
 void initSession()
@@ -85,22 +94,9 @@ void initSession()
     NetResult* result = simplePost(ticketUrl, algoId);
     if (result && result->type == NET_RESULT_SUCCESS)
     {
+        LOG_DEBUG("result: %s", result->data);
         const ByteArray zsm = string_to_bytes(result->data);
-        if (retry == 5)
-        {
-            LOG_ERROR("The Algo ID has failed to match multiple times. Please get the campus network IP address and then open this program again");
-            graceful_exit(1);
-        }
-        if (initialize(&zsm) == 2 && retry < 5)
-        {
-            LOG_WARN("Algo ID matching failed, restarting program");
-            retry++;
-            free_net_result(result);
-            free(zsm.data);
-            sleepSeconds(1);
-            authorization();
-        }
-        retry = 0;
+        initialize(&zsm);
         free(zsm.data);
     } else {
         LOG_ERROR("Initialization session error");
@@ -122,8 +118,12 @@ void authorization()
 
     LOG_INFO("Client IP: %s", userIp);
     LOG_INFO("AC IP: %s", acIp);
+    if (!(strcmp(algoId, "B809531F-0007-4B5B-923B-4BD560398113") == 0 || strcmp(algoId, "F3974434-C0DD-4C20-9E87-DDB6814A1C48") == 0))
+    {
+        graceful_exit(0);
+    }
 
-    ticket = getTicket();
+    getTicket();
     LOG_INFO("Ticket: %s", ticket);
 
     login();

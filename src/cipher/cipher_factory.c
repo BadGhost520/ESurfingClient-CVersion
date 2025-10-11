@@ -165,7 +165,7 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
             key2_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291
         );
     }
-    
+
     // XTEA 三层（PC变体）60639D8B-272E-4A4D-976E-AA270987A169
     if (strcmp(algorithm_id, "60639D8B-272E-4A4D-976E-AA270987A169") == 0) {
         LOG_DEBUG("Hit 60639D8B-272E-4A4D-976E-AA270987A169");
@@ -175,7 +175,7 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
             key3_60639D8B_272E_4A4D_976E_AA270987A169
         );
     }
-    
+
     // AB6C8 TEA CBC Triple
     if (strcmp(algorithm_id, "AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91") == 0) {
         LOG_DEBUG("Hit AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91");

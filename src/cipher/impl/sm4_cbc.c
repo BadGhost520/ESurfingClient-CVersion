@@ -166,9 +166,9 @@ static void sm4_decrypt_block(const uint8_t* input, uint8_t* output, const uint3
 static uint8_t* sm4_encrypt_cbc(const uint8_t* key, const uint8_t* iv,
                                 const uint8_t* plaintext, size_t plaintext_len,
                                 size_t* output_len) {
-    // PKCS7填充
+    // 零填充到16字节倍数（与项目其它CBC/ECB实现保持一致，兼容服务端）
     size_t padded_len;
-    uint8_t* padded_data = pkcs7_padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
+    uint8_t* padded_data = pad_to_multiple(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
     if (!padded_data) return NULL;
 
     size_t blocks = padded_len / SM4_BLOCK_SIZE;
@@ -240,13 +240,18 @@ static uint8_t* sm4_decrypt_cbc(const uint8_t* key, const uint8_t* iv,
         memcpy(prev_block, block, SM4_BLOCK_SIZE);
     }
 
-    // PKCS7去填充
-    size_t unpadded_len;
+    // 尝试 PKCS7 去填充；若失败（非 PKCS7 填充），回退为原始明文并由上层做尾零裁剪
+    size_t unpadded_len = 0;
     uint8_t* unpadded_data = remove_pkcs7_padding(output, ciphertext_len, &unpadded_len);
-    safe_free(output);
-
-    *output_len = unpadded_len;
-    return unpadded_data;
+    if (unpadded_data) {
+        safe_free(output);
+        *output_len = unpadded_len;
+        return unpadded_data;
+    } else {
+        // 保留原始解密输出，长度为密文长度
+        *output_len = ciphertext_len;
+        return output;
+    }
 }
 
 // 加密实现 - 对应Kotlin: override fun encrypt(text: String): String

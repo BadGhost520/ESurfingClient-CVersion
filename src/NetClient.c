@@ -13,7 +13,8 @@
 // libcurl响应回调函数 - 修复二进制数据处理
 size_t write_response_callback(void* contents, size_t size, size_t nmemb, ResponseData* response) {
     size_t real_size = size * nmemb;
-    char* ptr = realloc(response->memory, response->size + real_size);
+    // 额外申请1字节用于追加'\0'哨兵，防止误用字符串API越界读取
+    char* ptr = realloc(response->memory, response->size + real_size + 1);
 
     if (ptr == NULL) {
         printf("Not enough memory (realloc returned NULL)\n");
@@ -23,7 +24,8 @@ size_t write_response_callback(void* contents, size_t size, size_t nmemb, Respon
     response->memory = ptr;
     memcpy(&(response->memory[response->size]), contents, real_size);
     response->size += real_size;
-    // 不添加null终止符，保持原始二进制数据完整性
+    // 添加哨兵终止符（不改变有效负载长度），避免日志用"%s"打印时读穿
+    response->memory[response->size] = '\0';
 
     return real_size;
 }

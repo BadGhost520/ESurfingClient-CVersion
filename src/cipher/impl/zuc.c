@@ -72,11 +72,7 @@ static uint32_t ROL(uint32_t x, int n) {
     return (x << n) | (x >> (32 - n));
 }
 
-// 辅助函数：字节替换
-static uint32_t S(uint32_t x) {
-    return (S0[x >> 24] << 24) | (S1[(x >> 16) & 0xFF] << 16) |
-           (S0[(x >> 8) & 0xFF] << 8) | (S1[x & 0xFF]);
-}
+// 注：原先定义的未使用字节替换函数 S(x) 已移除以消除编译警告
 
 // 线性变换L1
 static uint32_t L1(uint32_t x) {
@@ -131,6 +127,10 @@ static void LFSRWithInitialisationMode(zuc_state_t* state, uint32_t u) {
     v = MulByPow2(state->LFSR[15], 15);
     f = AddM(f, v);
     f = AddM(f, u);
+    // ZUC 规范要求 LFSR 元素为非零的 31 位数
+    if (f == 0) {
+        f = 0x7FFFFFFFu;
+    }
 
     // 移位更新
     for (int i = 0; i < 15; i++) {
@@ -152,6 +152,10 @@ static void LFSRWithWorkMode(zuc_state_t* state) {
     f = AddM(f, v);
     v = MulByPow2(state->LFSR[15], 15);
     f = AddM(f, v);
+    // ZUC 规范要求 LFSR 元素为非零的 31 位数
+    if (f == 0) {
+        f = 0x7FFFFFFFu;
+    }
 
     // 移位更新
     for (int i = 0; i < 15; i++) {
@@ -246,22 +250,15 @@ static char* zuc_encrypt(cipher_interface_t* self, const char* text) {
     if (!data) return NULL;
     
     size_t text_len = strlen(text);
-    
-    // 4字节对齐填充（对应Kotlin中的4字节对齐）
-    size_t padded_len;
-    uint8_t* padded_data = pad_to_multiple((const uint8_t*)text, text_len, 4, &padded_len);
-    if (!padded_data) return NULL;
-    
-    // 分配输出缓冲区
-    uint8_t* output = safe_malloc(padded_len);
-    
+
+    // 流密码不需要填充：直接对原始长度进行处理，避免服务端不接受额外零字节
+    uint8_t* output = safe_malloc(text_len);
+
     // 执行ZUC加密
-    zuc_process_bytes(data->key, data->iv, padded_data, output, padded_len);
-    
-    safe_free(padded_data);
-    
+    zuc_process_bytes(data->key, data->iv, (const uint8_t*)text, output, text_len);
+
     // 转换为大写十六进制字符串
-    char* hex_result = bytes_to_hex_upper(output, padded_len);
+    char* hex_result = bytes_to_hex_upper(output, text_len);
     safe_free(output);
     
     return hex_result;

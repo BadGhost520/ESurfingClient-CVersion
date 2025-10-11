@@ -154,12 +154,6 @@ int load(const ByteArray* zsm) {
             strncpy(algo_id, str + total_length - 37, algo_id_length);
             (algo_id)[algo_id_length] = '\0';
             LOG_DEBUG("Extracted Algo ID: %s", algo_id);
-            if (!strcmp(algo_id, check1) || !strcmp(algo_id, check2))
-            {
-                free(key);
-                free(algo_id);
-                return 2;
-            }
         }
     } else {
         algo_id = NULL;
@@ -207,21 +201,12 @@ int load(const ByteArray* zsm) {
     return 1;
 }
 
-int initialize(const ByteArray* zsm)
+void initialize(const ByteArray* zsm)
 {
     LOG_DEBUG("Initializing session");
-    switch (load(zsm))
+    if (load(zsm))
     {
-    case 0:
-        initialized = 0;
-        return 0;
-    case 1:
         initialized = 1;
-        return 1;
-    case 2:
-        return 2;
-    default:
-        return 0;
     }
 }
 
