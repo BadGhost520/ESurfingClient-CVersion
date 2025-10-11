@@ -73,6 +73,7 @@ add_executable(ESurfingClient
         src/headFiles/cipher/impl/mod_xtea_pc.h
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
         src/headFiles/cipher/impl/mod_xtea_cbc_triple_pc.h
+        src/cipher/impl/des_ecb_six_pc.c
 
 )
 

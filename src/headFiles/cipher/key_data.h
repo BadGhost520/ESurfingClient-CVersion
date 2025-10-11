@@ -109,6 +109,16 @@ extern const uint32_t key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K1
 extern const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K2
 extern const uint32_t iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[2];
 
+// -----------------------------------------------------------------
+// Algo Id: B306E770-B7D5-49F2-A574-BCE2C5C650ED (DES 6-stage, PC)
+// -----------------------------------------------------------------
+extern const uint8_t key1_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K0
+extern const uint8_t key2_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K1
+extern const uint8_t key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K2
+extern const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K3
+extern const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K4
+extern const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K5
+
 #ifdef __cplusplus
 }
 #endif

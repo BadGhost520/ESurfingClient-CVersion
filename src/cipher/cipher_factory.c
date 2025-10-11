@@ -33,6 +33,9 @@ extern cipher_interface_t* create_desede_cbc_pc_cipher(const uint8_t* key1, cons
                                                        const uint8_t* iv1, const uint8_t* iv2);
 extern cipher_interface_t* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
                                                const uint32_t* key2, const uint32_t* iv);
+extern cipher_interface_t* create_des_ecb_six_pc_cipher(const uint8_t* key0, const uint8_t* key1,
+                                                        const uint8_t* key2, const uint8_t* key3,
+                                                        const uint8_t* key4, const uint8_t* key5);
 cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
     if (!algorithm_id) {
         return NULL;
@@ -181,6 +184,19 @@ cipher_interface_t* cipher_factory_create(const char* algorithm_id) {
             key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91,
             key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91,
             iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91
+        );
+    }
+
+    // DES-ECB 六阶段（PC）
+    if (strcmp(algorithm_id, "B306E770-B7D5-49F2-A574-BCE2C5C650ED") == 0) {
+        LOG_DEBUG("Hit B306E770-B7D5-49F2-A574-BCE2C5C650ED");
+        return create_des_ecb_six_pc_cipher(
+            key1_B306E770_B7D5_49F2_A574_BCE2C5C650ED,
+            key2_B306E770_B7D5_49F2_A574_BCE2C5C650ED,
+            key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED,
+            key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED,
+            key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED,
+            key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED
         );
     }
     return NULL;

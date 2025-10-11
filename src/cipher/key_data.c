@@ -230,3 +230,26 @@ const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = { // K2
 const uint32_t iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[2] = {
     0x7E232848U, 0x3E2D513BU
 };
+
+// -----------------------------------------------------------------
+// Algo Id: B306E770-B7D5-49F2-A574-BCE2C5C650ED (DES 6-stage, PC)
+// Keys extracted from .so (order: K0..K5, 8 bytes each)
+// -----------------------------------------------------------------
+const uint8_t key1_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K0
+    0x43, 0x4D, 0x75, 0x3F, 0x3D, 0x54, 0x72, 0x49
+};
+const uint8_t key2_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K1
+    0x79, 0x7A, 0x7A, 0x49, 0x23, 0x53, 0x55, 0x51
+};
+const uint8_t key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K2
+    0x6C, 0x25, 0x5C, 0x7B, 0x41, 0x73, 0x77, 0x62
+};
+const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K3
+    0x75, 0x6C, 0x6A, 0x28, 0x3A, 0x48, 0x22, 0x68
+};
+const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K4
+    0x79, 0x24, 0x6C, 0x41, 0x77, 0x6F, 0x52, 0x2A
+};
+const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K5
+    0x70, 0x6A, 0x45, 0x58, 0x76, 0x73, 0x6D, 0x27
+};
