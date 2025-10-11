@@ -118,10 +118,6 @@ void authorization()
 
     LOG_INFO("Client IP: %s", userIp);
     LOG_INFO("AC IP: %s", acIp);
-    if (!(strcmp(algoId, "B809531F-0007-4B5B-923B-4BD560398113") == 0 || strcmp(algoId, "F3974434-C0DD-4C20-9E87-DDB6814A1C48") == 0))
-    {
-        graceful_exit(0);
-    }
 
     getTicket();
     LOG_INFO("Ticket: %s", ticket);
