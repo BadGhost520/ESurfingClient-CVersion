@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "headFiles/Client.h"
 #include "headFiles/Constants.h"

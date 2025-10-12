@@ -51,6 +51,11 @@ static const uint8_t inv_sbox[256] = {
 
 static const uint8_t Rcon[11] = {0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36};
 
+#if defined(__GNUC__) || defined(__clang__)
+static uint8_t xtime(uint8_t x) __attribute__((unused));
+#else
+static uint8_t xtime(uint8_t x);
+#endif
 static uint8_t xtime(uint8_t x) { return (uint8_t)((x<<1) ^ ((x>>7) * 0x1b)); }
 static uint8_t mul(uint8_t a, uint8_t b) {
     uint8_t p = 0; for (int i=0;i<8;i++){ if (b & 1) p ^= a; uint8_t hi = a & 0x80; a <<= 1; if (hi) a ^= 0x1b; b >>= 1; } return p;

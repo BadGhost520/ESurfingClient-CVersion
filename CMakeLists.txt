@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.16)
 project(ESurfingClient C)
 
 set(CMAKE_C_STANDARD 11)
@@ -8,16 +8,21 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CURL_DIR "G:/vcpkg/installed/x64-mingw-static/share/curl")
+# Windows 平台使用 vcpkg 配置
+if(WIN32)
+    set(CURL_DIR "G:/vcpkg/installed/x64-mingw-static/share/curl")
+    set(CMAKE_TOOLCHAIN_FILE "G:/CLion 2025.2.1/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+    set(VCPKG_TARGET_TRIPLET "x86-mingw-static" CACHE STRING "Vcpkg triplet")
+endif()
 
-set(CMAKE_TOOLCHAIN_FILE "G:/CLion 2025.2.1/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
-
-set(VCPKG_TARGET_TRIPLET "x86-mingw-static" CACHE STRING "Vcpkg triplet")
-
-# 使用vcpkg的静态库
+# 通用依赖（跨平台）
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(LibXml2 REQUIRED)
+
+# Windows 额外依赖（Linux 不强制要求）
+if(WIN32)
+    find_package(LibXml2 REQUIRED)
+endif()
 
 add_executable(ESurfingClient
         src/DialerApp.c
@@ -77,10 +82,14 @@ add_executable(ESurfingClient
 
 )
 
-# 链接静态库
+# 链接库（跨平台）
 target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
 target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-target_link_libraries(ESurfingClient PRIVATE LibXml2::LibXml2)
+
+# Windows 需链接 LibXml2
+if(WIN32)
+    target_link_libraries(ESurfingClient PRIVATE LibXml2::LibXml2)
+endif()
 
 # Windows需要的额外静态库
 if(WIN32)
@@ -98,5 +107,13 @@ if(WIN32)
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
     set_target_properties(ESurfingClient PROPERTIES
         LINK_FLAGS "-static -static-libgcc -static-libstdc++"
+    )
+endif()
+
+# Linux 编译选项与输出目录
+if(UNIX AND NOT WIN32)
+    target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    set_target_properties(ESurfingClient PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
     )
 endif()

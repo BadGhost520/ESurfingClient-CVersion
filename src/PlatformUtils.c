@@ -540,9 +540,9 @@ char* createXMLPayload(const char* choose) {
         result = format_term_xml(payload, buffer_size, current_time);
     }
 
-    // 检查是否需要更大的缓冲区
-    if (result >= buffer_size) {
-        buffer_size = result + 1;
+    // 检查是否需要更大的缓冲区（修复有符号/无符号比较）
+    if (result < 0 || (size_t)result >= buffer_size) {
+        buffer_size = (size_t)result + 1;
         char* new_payload = (char*)realloc(payload, buffer_size);
         if (new_payload == NULL) {
             free(current_time);
@@ -550,24 +550,6 @@ char* createXMLPayload(const char* choose) {
             return NULL;
         }
         payload = new_payload;
-
-        // 重新格式化到更大的缓冲区
-        if (!strcmp(choose, "getTicket"))
-        {
-            result = format_getTicket_xml(payload, buffer_size, current_time);
-        }
-        else if (!strcmp(choose, "login"))
-        {
-            result = format_login_xml(payload, buffer_size, current_time);
-        }
-        else if (!strcmp(choose, "heartbeat"))
-        {
-            result = format_heartbeat_xml(payload, buffer_size, current_time);
-        }
-        else
-        {
-            result = format_term_xml(payload, buffer_size, current_time);
-        }
     }
 
     // 释放时间字符串内存
@@ -582,7 +564,7 @@ char* cleanCDATA(const char* text) {
     const char* cdata_start = "<![CDATA[";
     const char* cdata_end = "]]>";
 
-    char* start = strstr(text, cdata_start);
+    const char* start = strstr(text, cdata_start);
 
     start += strlen(cdata_start);
     char* end = strstr(start, cdata_end);
