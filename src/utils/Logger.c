@@ -18,6 +18,8 @@
 #include <time.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -48,6 +50,8 @@ static void logger_write_to_file(const char* message);
 static void logger_format_timestamp(char* buffer, size_t size);
 static void logger_rotate_file(void);
 static long logger_get_file_size(const char* filename);
+static int get_executable_dir(char* out, size_t size);
+static int ensure_log_dir(char* out, size_t size);
 
 #ifdef _WIN32
 static void logger_set_console_color(LogLevel level);
@@ -69,8 +73,27 @@ int logger_init(LogLevel level, LogTarget target, const char* log_file) {
             fprintf(stderr, "Error: File output requires specifying log file path\n");
             return -1;
         }
+        // 计算可执行文件所在目录，并在其中创建 log 目录
+        char log_dir[PATH_MAX];
+        if (ensure_log_dir(log_dir, sizeof(log_dir)) != 0) {
+            fprintf(stderr, "Error: Unable to prepare log directory\n");
+            return -1;
+        }
 
-        strncpy(g_logger_config.log_file, log_file, sizeof(g_logger_config.log_file) - 1);
+        // 仅保留文件名部分（忽略传入路径），统一写入到程序目录/log/
+        const char* base = log_file;
+        const char* s1 = strrchr(log_file, '/');
+        const char* s2 = strrchr(log_file, '\\');
+        const char* last = s1 ? s1 : s2;
+        if (last) base = last + 1;
+
+        // 组合最终日志文件路径
+#ifdef _WIN32
+        const char sep = '\\';
+#else
+        const char sep = '/';
+#endif
+        snprintf(g_logger_config.log_file, sizeof(g_logger_config.log_file), "%s%c%s", log_dir, sep, base);
         g_logger_config.log_file[sizeof(g_logger_config.log_file) - 1] = '\0';
 
         // 尝试打开日志文件
@@ -334,6 +357,78 @@ static long logger_get_file_size(const char* filename) {
     fclose(file);
 
     return size;
+}
+
+/**
+ * 获取可执行文件所在目录
+ * 返回0成功，非0失败
+ */
+static int get_executable_dir(char* out, size_t size) {
+#ifdef _WIN32
+    char path[MAX_PATH];
+    DWORD len = GetModuleFileNameA(NULL, path, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH) {
+        return -1;
+    }
+    // 寻找最后一个路径分隔符
+    char* last = strrchr(path, '\\');
+    if (!last) {
+        return -1;
+    }
+    *last = '\0'; // 截断到目录
+    strncpy(out, path, size - 1);
+    out[size - 1] = '\0';
+    return 0;
+#else
+    char path[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (len <= 0 || len >= (ssize_t)sizeof(path)) {
+        return -1;
+    }
+    path[len] = '\0';
+    // 寻找最后一个路径分隔符
+    char* last = strrchr(path, '/');
+    if (!last) {
+        return -1;
+    }
+    *last = '\0'; // 截断到目录
+    strncpy(out, path, size - 1);
+    out[size - 1] = '\0';
+    return 0;
+#endif
+}
+
+/**
+ * 确保程序目录下的 log 目录存在；返回 log 目录路径
+ */
+static int ensure_log_dir(char* out, size_t size) {
+    char dir[PATH_MAX];
+    if (get_executable_dir(dir, sizeof(dir)) != 0) {
+        return -1;
+    }
+#ifdef _WIN32
+    snprintf(out, size, "%s\\log", dir);
+    out[size - 1] = '\0';
+    if (!CreateDirectoryA(out, NULL)) {
+        DWORD err = GetLastError();
+        if (err != ERROR_ALREADY_EXISTS) {
+            return -1;
+        }
+    }
+#else
+    snprintf(out, size, "%s/log", dir);
+    out[size - 1] = '\0';
+    struct stat st;
+    if (stat(out, &st) != 0) {
+        if (mkdir(out, 0755) != 0 && errno != EEXIST) {
+            return -1;
+        }
+    } else if (!S_ISDIR(st.st_mode)) {
+        // 已存在但不是目录
+        return -1;
+    }
+#endif
+    return 0;
 }
 
 #ifdef _WIN32
