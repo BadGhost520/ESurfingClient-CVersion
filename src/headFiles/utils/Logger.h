@@ -84,7 +84,7 @@ extern LoggerConfig g_logger_config;
  * @param log_file 日志文件路径（如果输出到文件）
  * @return 0成功，-1失败
  */
-int logger_init(LogLevel level, LogTarget target, const char* log_file);
+int logger_init(LogLevel level, LogTarget target);
 
 /**
  * 清理日志系统资源

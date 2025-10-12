@@ -18,8 +18,6 @@
 #include <time.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <limits.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -53,39 +51,43 @@ static long logger_get_file_size(const char* filename);
 static int get_executable_dir(char* out, size_t size);
 static int ensure_log_dir(char* out, size_t size);
 
-#ifdef _WIN32
-static void logger_set_console_color(LogLevel level);
-static void logger_reset_console_color(void);
-#endif
-
 // ========== 核心函数实现 ==========
 
 /**
  * 初始化日志系统
  */
-int logger_init(LogLevel level, LogTarget target, const char* log_file) {
+int logger_init(LogLevel level, LogTarget target) {
     g_logger_config.level = level;
     g_logger_config.target = target;
 
     // 如果需要文件输出，设置文件路径
     if (target == LOG_TARGET_FILE || target == LOG_TARGET_BOTH) {
-        if (log_file == NULL || strlen(log_file) == 0) {
-            fprintf(stderr, "Error: File output requires specifying log file path\n");
-            return -1;
-        }
         // 计算可执行文件所在目录，并在其中创建 log 目录
         char log_dir[PATH_MAX];
         if (ensure_log_dir(log_dir, sizeof(log_dir)) != 0) {
             fprintf(stderr, "Error: Unable to prepare log directory\n");
             return -1;
         }
-
-        // 仅保留文件名部分（忽略传入路径），统一写入到程序目录/log/
-        const char* base = log_file;
-        const char* s1 = strrchr(log_file, '/');
-        const char* s2 = strrchr(log_file, '\\');
-        const char* last = s1 ? s1 : s2;
-        if (last) base = last + 1;
+        // 生成以当前时间命名的日志文件名（例如：20251012_153045.log）
+        time_t now;
+        time(&now);
+#ifdef _WIN32
+        struct tm tm_info;
+        if (localtime_s(&tm_info, &now) != 0) {
+            fprintf(stderr, "Error: Unable to get localtime for log filename\n");
+            return -1;
+        }
+        char time_name[64];
+        strftime(time_name, sizeof(time_name), "%Y%m%d_%H%M%S.log", &tm_info);
+#else
+        struct tm* tm_info = localtime(&now);
+        if (tm_info == NULL) {
+            fprintf(stderr, "Error: Unable to get localtime for log filename\n");
+            return -1;
+        }
+        char time_name[64];
+        strftime(time_name, sizeof(time_name), "%Y%m%d_%H%M%S.log", tm_info);
+#endif
 
         // 组合最终日志文件路径
 #ifdef _WIN32
@@ -93,7 +95,7 @@ int logger_init(LogLevel level, LogTarget target, const char* log_file) {
 #else
         const char sep = '/';
 #endif
-        snprintf(g_logger_config.log_file, sizeof(g_logger_config.log_file), "%s%c%s", log_dir, sep, base);
+        snprintf(g_logger_config.log_file, sizeof(g_logger_config.log_file), "%s%c%s", log_dir, sep, time_name);
         g_logger_config.log_file[sizeof(g_logger_config.log_file) - 1] = '\0';
 
         // 尝试打开日志文件
@@ -430,40 +432,3 @@ static int ensure_log_dir(char* out, size_t size) {
 #endif
     return 0;
 }
-
-#ifdef _WIN32
-/**
- * Windows控制台颜色设置
- */
-static void logger_set_console_color(LogLevel level) {
-    if (!g_logger_config.enable_color) {
-        return;
-    }
-
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    WORD color;
-
-    switch (level) {
-        case LOG_LEVEL_DEBUG: color = FOREGROUND_BLUE | FOREGROUND_GREEN; break;  // 青色
-        case LOG_LEVEL_INFO:  color = FOREGROUND_GREEN; break;                    // 绿色
-        case LOG_LEVEL_WARN:  color = FOREGROUND_RED | FOREGROUND_GREEN; break;   // 黄色
-        case LOG_LEVEL_ERROR: color = FOREGROUND_RED; break;                      // 红色
-        case LOG_LEVEL_FATAL: color = FOREGROUND_RED | FOREGROUND_BLUE; break;    // 紫色
-        default:              color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE; break;
-    }
-
-    SetConsoleTextAttribute(hConsole, color);
-}
-
-/**
- * Windows控制台颜色重置
- */
-static void logger_reset_console_color(void) {
-    if (!g_logger_config.enable_color) {
-        return;
-    }
-
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-}
-#endif

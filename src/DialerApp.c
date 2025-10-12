@@ -71,11 +71,11 @@ int main(const int argc, char* argv[]) {
 
     if (debugMode)
     {
-        logger_init(LOG_LEVEL_DEBUG, LOG_TARGET_BOTH, "run.log");
+        logger_init(LOG_LEVEL_DEBUG, LOG_TARGET_BOTH);
     }
     else
     {
-        logger_init(LOG_LEVEL_INFO, LOG_TARGET_BOTH, "run.log");
+        logger_init(LOG_LEVEL_INFO, LOG_TARGET_BOTH);
     }
 
     initShutdownHook();
