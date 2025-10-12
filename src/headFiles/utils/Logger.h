@@ -24,6 +24,11 @@
 #define LOGGER_H
 
 #include <stdio.h>
+#include <limits.h>
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 // ========== 日志级别定义 ==========
 typedef enum {
@@ -46,7 +51,7 @@ typedef enum {
 typedef struct {
     LogLevel    level;              // 当前日志级别
     LogTarget   target;             // 输出目标
-    char        log_file[256];      // 日志文件路径
+    char        log_file[PATH_MAX]; // 日志文件路径
     FILE*       file_handle;        // 文件句柄
     int        enable_color;       // 是否启用颜色输出
     int        enable_timestamp;   // 是否启用时间戳
@@ -81,7 +86,6 @@ extern LoggerConfig g_logger_config;
  * 初始化日志系统
  * @param level 日志级别
  * @param target 输出目标
- * @param log_file 日志文件路径（如果输出到文件）
  * @return 0成功，-1失败
  */
 int logger_init(LogLevel level, LogTarget target);

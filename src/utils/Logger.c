@@ -18,6 +18,8 @@
 #include <time.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -95,8 +97,11 @@ int logger_init(LogLevel level, LogTarget target) {
 #else
         const char sep = '/';
 #endif
-        snprintf(g_logger_config.log_file, sizeof(g_logger_config.log_file), "%s%c%s", log_dir, sep, time_name);
-        g_logger_config.log_file[sizeof(g_logger_config.log_file) - 1] = '\0';
+        int ln = snprintf(g_logger_config.log_file, sizeof(g_logger_config.log_file), "%s%c%s", log_dir, sep, time_name);
+        if (ln < 0 || (size_t)ln >= sizeof(g_logger_config.log_file)) {
+            fprintf(stderr, "Error: Log file path too long (max %zu)\n", sizeof(g_logger_config.log_file));
+            return -1;
+        }
 
         // 尝试打开日志文件
         g_logger_config.file_handle = fopen(g_logger_config.log_file, "a");
@@ -318,25 +323,56 @@ static void logger_rotate_file(void) {
     fclose(g_logger_config.file_handle);
     g_logger_config.file_handle = NULL;
 
-    // 轮转备份文件
-    char old_name[512];
-    char new_name[512];
+    // 轮转备份文件（使用动态缓冲避免路径截断）
+    size_t base_len = strlen(g_logger_config.log_file);
+    size_t buf_size = base_len + 32; // 足够容纳诸如 ".123456789" 的后缀
+    char* old_name = (char*)malloc(buf_size);
+    char* new_name = (char*)malloc(buf_size);
+    if (old_name == NULL || new_name == NULL) {
+        fprintf(stderr, "Error: Unable to allocate rotation buffers\n");
+        free(old_name);
+        free(new_name);
+        return;
+    }
 
     // 删除最老的备份文件
-    snprintf(old_name, sizeof(old_name), "%s.%d",
-             g_logger_config.log_file, g_logger_config.max_backup_files);
+    int n = snprintf(old_name, buf_size, "%s.%d",
+                     g_logger_config.log_file, g_logger_config.max_backup_files);
+    if (n < 0 || (size_t)n >= buf_size) {
+        fprintf(stderr, "Error: Rotation path too long\n");
+        free(old_name);
+        free(new_name);
+        return;
+    }
     remove(old_name);
 
     // 重命名现有备份文件
     for (int i = g_logger_config.max_backup_files - 1; i >= 1; i--) {
-        snprintf(old_name, sizeof(old_name), "%s.%d", g_logger_config.log_file, i);
-        snprintf(new_name, sizeof(new_name), "%s.%d", g_logger_config.log_file, i + 1);
+        n = snprintf(old_name, buf_size, "%s.%d", g_logger_config.log_file, i);
+        if (n < 0 || (size_t)n >= buf_size) {
+            fprintf(stderr, "Error: Rotation path too long\n");
+            break;
+        }
+        n = snprintf(new_name, buf_size, "%s.%d", g_logger_config.log_file, i + 1);
+        if (n < 0 || (size_t)n >= buf_size) {
+            fprintf(stderr, "Error: Rotation path too long\n");
+            break;
+        }
         rename(old_name, new_name);
     }
 
     // 重命名当前日志文件
-    snprintf(new_name, sizeof(new_name), "%s.1", g_logger_config.log_file);
+    n = snprintf(new_name, buf_size, "%s.1", g_logger_config.log_file);
+    if (n < 0 || (size_t)n >= buf_size) {
+        fprintf(stderr, "Error: Rotation path too long\n");
+        free(old_name);
+        free(new_name);
+        return;
+    }
     rename(g_logger_config.log_file, new_name);
+
+    free(old_name);
+    free(new_name);
 
     // 重新打开日志文件
     g_logger_config.file_handle = fopen(g_logger_config.log_file, "w");
@@ -378,8 +414,10 @@ static int get_executable_dir(char* out, size_t size) {
         return -1;
     }
     *last = '\0'; // 截断到目录
-    strncpy(out, path, size - 1);
-    out[size - 1] = '\0';
+    int n = snprintf(out, size, "%s", path);
+    if (n < 0 || (size_t)n >= size) {
+        return -1;
+    }
     return 0;
 #else
     char path[PATH_MAX];
@@ -394,8 +432,10 @@ static int get_executable_dir(char* out, size_t size) {
         return -1;
     }
     *last = '\0'; // 截断到目录
-    strncpy(out, path, size - 1);
-    out[size - 1] = '\0';
+    int n = snprintf(out, size, "%s", path);
+    if (n < 0 || (size_t)n >= size) {
+        return -1;
+    }
     return 0;
 #endif
 }
@@ -409,8 +449,10 @@ static int ensure_log_dir(char* out, size_t size) {
         return -1;
     }
 #ifdef _WIN32
-    snprintf(out, size, "%s\\log", dir);
-    out[size - 1] = '\0';
+    int n = snprintf(out, size, "%s\\log", dir);
+    if (n < 0 || (size_t)n >= size) {
+        return -1;
+    }
     if (!CreateDirectoryA(out, NULL)) {
         DWORD err = GetLastError();
         if (err != ERROR_ALREADY_EXISTS) {
@@ -418,8 +460,10 @@ static int ensure_log_dir(char* out, size_t size) {
         }
     }
 #else
-    snprintf(out, size, "%s/log", dir);
-    out[size - 1] = '\0';
+    int n = snprintf(out, size, "%s/log", dir);
+    if (n < 0 || (size_t)n >= size) {
+        return -1;
+    }
     struct stat st;
     if (stat(out, &st) != 0) {
         if (mkdir(out, 0755) != 0 && errno != EEXIST) {
