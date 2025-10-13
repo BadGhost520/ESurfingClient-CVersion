@@ -11,7 +11,7 @@ endif()
 # Windows 平台使用 vcpkg 配置
 if(WIN32)
     set(CURL_DIR "G:/vcpkg/installed/x64-mingw-static/share/curl")
-    set(CMAKE_TOOLCHAIN_FILE "G:/CLion 2025.2.1/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
+    set(CMAKE_TOOLCHAIN_FILE "G:/CLion-2025.2.1/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
     set(VCPKG_TARGET_TRIPLET "x86-mingw-static" CACHE STRING "Vcpkg triplet")
 endif()
 
