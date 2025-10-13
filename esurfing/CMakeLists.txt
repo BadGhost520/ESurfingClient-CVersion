@@ -117,3 +117,6 @@ if(UNIX AND NOT WIN32)
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
     )
 endif()
+
+include(GNUInstallDirs)
+install(TARGETS ESurfingClient RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
