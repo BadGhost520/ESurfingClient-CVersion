@@ -4,8 +4,10 @@ PKG_NAME:=esurfingclient
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
-PKG_SOURCE:=esurfingclient-$(PKG_VERSION).tar.gz
+PKG_SOURCE:=esurfingclient.tar.gz
 PKG_SOURCE_URL:=file://$(TOPDIR)/dl
+PKG_SOURCE_SUBDIR:=esurfing
+PKG_BUILD_DIR:=$(BUILD_DIR)/esurfing
 PKG_HASH:=skip
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=curl openssl
@@ -15,7 +17,7 @@ include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
 # 若压缩包顶层是子目录（如 test1），取消注释并设置
-CMAKE_SOURCE_SUBDIR:=esurfing
+CMAKE_SOURCE_SUBDIR:=
 
 CMAKE_INSTALL:=1
 CMAKE_OPTIONS += \
