@@ -21,13 +21,11 @@ LoggerConfig gLoggerConfig = {
     .level = LOG_LEVEL_INFO,
     .logFile = "",
     .fileHandle = NULL,
-    .maxFileSize = 10 * 1024 * 1024,  // 10MB
-    .maxBackupFiles = 5
+    .maxBackupFiles = 5,
+    .maxLines = 100000,
+    .currentLines = 0
 };
 
-/**
- * 获取日志级别字符串函数
- */
 const char* loggerLevelString(const LogLevel level)
 {
     switch (level)
@@ -42,9 +40,6 @@ const char* loggerLevelString(const LogLevel level)
     }
 }
 
-/**
- * 获取文件大小函数
- */
 long loggerGetFileSize(const char* filename)
 {
     FILE* file = fopen(filename, "r");
@@ -58,91 +53,38 @@ long loggerGetFileSize(const char* filename)
     return size;
 }
 
-/**
- * 文件轮转函数
- */
 void loggerRotateFile()
 {
-    if (gLoggerConfig.fileHandle == NULL)
+    if (gLoggerConfig.fileHandle == NULL || strlen(gLoggerConfig.logFile) == 0 || gLoggerConfig.currentLines < gLoggerConfig.maxLines)
     {
         return;
     }
     fclose(gLoggerConfig.fileHandle);
     gLoggerConfig.fileHandle = NULL;
-    const size_t baseLen = strlen(gLoggerConfig.logFile);
-    const size_t bufSize = baseLen + 32;
-    char* oldName = malloc(bufSize);
-    char* newName = malloc(bufSize);
-    if (oldName == NULL || newName == NULL)
+    char rotatedFilename[PATH_MAX];
+    char logDir[PATH_MAX];
+    strcpy(logDir, gLoggerConfig.logFile);
+    char* last_sep = strrchr(logDir,
+        #ifdef _WIN32
+            '\\'
+        #else
+            '/'
+        #endif
+    );
+    if (last_sep != NULL)
     {
-        fprintf(stderr, "Error: Unable to allocate rotation buffers\n");
-        free(oldName);
-        free(newName);
-        return;
+        *last_sep = '\0';
     }
-    int n = snprintf(oldName, bufSize, "%s.%d",
-                     gLoggerConfig.logFile, gLoggerConfig.maxBackupFiles);
-    if (n < 0 || (size_t)n >= bufSize)
-    {
-        fprintf(stderr, "Error: Rotation path too long\n");
-        free(oldName);
-        free(newName);
-        return;
-    }
-    remove(oldName);
-    for (int i = gLoggerConfig.maxBackupFiles - 1; i >= 1; i--)
-    {
-        n = snprintf(oldName, bufSize, "%s.%d", gLoggerConfig.logFile, i);
-        if (n < 0 || (size_t)n >= bufSize)
-        {
-            fprintf(stderr, "Error: Rotation path too long\n");
-            break;
-        }
-        n = snprintf(newName, bufSize, "%s.%d", gLoggerConfig.logFile, i + 1);
-        if (n < 0 || (size_t)n >= bufSize)
-        {
-            fprintf(stderr, "Error: Rotation path too long\n");
-            break;
-        }
-        rename(oldName, newName);
-    }
-    n = snprintf(newName, bufSize, "%s.1", gLoggerConfig.logFile);
-    if (n < 0 || (size_t)n >= bufSize)
-    {
-        fprintf(stderr, "Error: Rotation path too long\n");
-        free(oldName);
-        free(newName);
-        return;
-    }
-    rename(gLoggerConfig.logFile, newName);
-    free(oldName);
-    free(newName);
-    gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "w");
+    snprintf(rotatedFilename, sizeof(rotatedFilename), "%s\\%s.log", logDir, getFileTime());
+    rename(gLoggerConfig.logFile, rotatedFilename);
+    gLoggerConfig.currentLines = 0;
+    gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
     if (gLoggerConfig.fileHandle == NULL)
     {
-        fprintf(stderr, "Error: Unable to reopen log file after file rotation\n");
+        fprintf(stderr, "Error: Unable to reopen log file %s after rotation\n", gLoggerConfig.logFile);
     }
 }
 
-/**
- * 检查并执行文件轮转函数
- */
-void loggerRotateIfNeeded()
-{
-    if (gLoggerConfig.fileHandle == NULL || strlen(gLoggerConfig.logFile) == 0)
-    {
-        return;
-    }
-    const long fileSize = loggerGetFileSize(gLoggerConfig.logFile);
-    if (fileSize > (long)gLoggerConfig.maxFileSize)
-    {
-        loggerRotateFile();
-    }
-}
-
-/**
- * 获取可执行文件所在目录函数
- */
 int getExecutableDir(char* out)
 {
 #ifdef _WIN32
@@ -187,9 +129,6 @@ int getExecutableDir(char* out)
 #endif
 }
 
-/**
- * 检查 log 目录函数
- */
 int ensureLogDir(char* out)
 {
     char dir[PATH_MAX];
@@ -233,9 +172,6 @@ int ensureLogDir(char* out)
     return 0;
 }
 
-/**
- * 初始化日志系统函数
- */
 int loggerInit(const LogLevel level)
 {
     gLoggerConfig.level = level;
@@ -245,13 +181,12 @@ int loggerInit(const LogLevel level)
         fprintf(stderr, "Error: Unable to prepare log directory\n");
         return -1;
     }
-    const char* logFilename = "run.log";
 #ifdef _WIN32
     const char sep = '\\';
 #else
     const char sep = '/';
 #endif
-    const int ln = snprintf(gLoggerConfig.logFile, sizeof(gLoggerConfig.logFile), "%s%c%s", logDir, sep, logFilename);
+    const int ln = snprintf(gLoggerConfig.logFile, sizeof(gLoggerConfig.logFile), "%s%crun.log", logDir, sep);
     if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.logFile))
     {
         fprintf(stderr, "Error: Log file path too long (max %zu)\n", sizeof(gLoggerConfig.logFile));
@@ -267,9 +202,6 @@ int loggerInit(const LogLevel level)
     return 0;
 }
 
-/**
- * 清理日志系统函数
- */
 void loggerCleanup()
 {
     if (gLoggerConfig.fileHandle != NULL)
@@ -279,8 +211,6 @@ void loggerCleanup()
         gLoggerConfig.fileHandle = NULL;
         if (strlen(gLoggerConfig.logFile) > 0)
         {
-            time_t now;
-            time(&now);
             char newFilename[PATH_MAX];
             char logDir[PATH_MAX];
             strcpy(logDir, gLoggerConfig.logFile);
@@ -293,55 +223,14 @@ void loggerCleanup()
             );
             if (lastSep != NULL)
             {
-                *lastSep = '\0';  // 截断到目录路径
+                *lastSep = '\0';
             }
-            #ifdef _WIN32
-            struct tm tmInfo;
-            if (localtime_s(&tmInfo, &now) == 0)
-            {
-                char timeName[64];
-                strftime(timeName, sizeof(timeName), "%Y%m%d_%H%M%S.log", &tmInfo);
-                snprintf(newFilename, sizeof(newFilename), "%s\\%s", logDir, timeName);
-                rename(gLoggerConfig.logFile, newFilename);
-            }
-            #else
-            struct tm* tmInfo = localtime(&now);
-            if (tmInfo != NULL)
-            {
-                char timeName[64];
-                strftime(timeName, sizeof(timeName), "%Y%m%d_%H%M%S.log", tmInfo);
-                snprintf(newFilename, sizeof(newFilename), "%s/%s", logDir, timeName);
-                rename(gLoggerConfig.logFile, newFilename);
-            }
-            #endif
+            snprintf(newFilename, sizeof(newFilename), "%s\\%s.log", logDir, getFileTime());
+            rename(gLoggerConfig.logFile, newFilename);
         }
     }
 }
 
-/**
- * 设置文件轮转函数
- */
-void loggerSetRotation(const size_t maxSize, const int maxBackups)
-{
-    gLoggerConfig.maxFileSize = maxSize;
-    gLoggerConfig.maxBackupFiles = maxBackups;
-    LOG_INFO("File rotation setting: maximum %zu bytes, %d backup files", maxSize, maxBackups);
-}
-
-/**
- * 格式化时间戳函数
- */
-void loggerFormatTimestamp(char* buffer)
-{
-    time_t now;
-    time(&now);
-    const struct tm* tmInfo = localtime(&now);
-    strftime(buffer, 64, "%Y-%m-%d %H:%M:%S", tmInfo);
-}
-
-/**
- * 输出到控制台函数
- */
 void loggerWriteToConsole(const char* message)
 {
 #ifdef _WIN32
@@ -352,9 +241,6 @@ void loggerWriteToConsole(const char* message)
     fflush(stdout);
 }
 
-/**
- * 输出到文件函数
- */
 void loggerWriteToFile(const char* message)
 {
     if (gLoggerConfig.fileHandle != NULL)
@@ -364,9 +250,6 @@ void loggerWriteToFile(const char* message)
     }
 }
 
-/**
- * 核心日志输出函数
- */
 void loggerLog(const LogLevel level, const char* file, const int line, const char* format, ...)
 {
     if (level < gLoggerConfig.level)
@@ -390,6 +273,10 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
         message);
     loggerWriteToConsole(finalMessage);
     loggerWriteToFile(finalMessage);
-    loggerRotateIfNeeded();
+    if (gLoggerConfig.fileHandle != NULL)
+    {
+        gLoggerConfig.currentLines++;
+    }
+    loggerRotateFile();
     free(timestamp);
 }

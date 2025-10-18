@@ -120,21 +120,17 @@ void initSession()
 void authorization()
 {
     initSession();
-
     if (!isInitialized())
     {
         LOG_ERROR("Session initialization failed, please restart the application or retrieve the application from Release again");
-        LOG_ERROR("Release Url: https://github.com/liu23zhi/ESurfingClient-CVersion/releases");
+        LOG_ERROR("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases");
         isRunning = 0;
         return;
     }
-
     LOG_INFO("Client IP: %s", userIp);
     LOG_INFO("AC IP: %s", acIp);
-
     getTicket();
     LOG_INFO("Ticket: %s", ticket);
-
     login();
     if (keepUrl == NULL)
     {
@@ -143,7 +139,6 @@ void authorization()
         isRunning = 0;
         return;
     }
-
     tick = currentTimeMillis();
     isLogged = 1;
     LOG_INFO("Authorized login");
@@ -156,7 +151,7 @@ void run()
 {
     while (isRunning)
     {
-        const ConnectivityStatus networkStatus = detectConfig();
+        const ConnectivityStatus networkStatus = checkStatus();
         switch (networkStatus)
         {
         case CONNECTIVITY_SUCCESS:

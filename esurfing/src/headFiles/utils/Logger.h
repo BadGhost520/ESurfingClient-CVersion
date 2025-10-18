@@ -12,49 +12,53 @@
 #endif
 
 typedef enum {
-    LOG_LEVEL_DEBUG = 0,    // 调试信息
-    LOG_LEVEL_INFO  = 1,    // 一般信息
-    LOG_LEVEL_WARN  = 2,    // 警告信息
-    LOG_LEVEL_ERROR = 3,    // 错误信息
-    LOG_LEVEL_FATAL = 4,    // 致命错误
-    LOG_LEVEL_OFF   = 5     // 关闭日志
+    LOG_LEVEL_DEBUG = 0,
+    LOG_LEVEL_INFO  = 1,
+    LOG_LEVEL_WARN  = 2,
+    LOG_LEVEL_ERROR = 3,
+    LOG_LEVEL_FATAL = 4,
+    LOG_LEVEL_OFF   = 5
 } LogLevel;
 
 typedef enum {
-    LOG_TARGET_CONSOLE = 1,     // 控制台输出
-    LOG_TARGET_FILE    = 2,     // 文件输出
-    LOG_TARGET_BOTH    = 3      // 同时输出到控制台和文件
+    LOG_TARGET_CONSOLE = 1,
+    LOG_TARGET_FILE    = 2,
+    LOG_TARGET_BOTH    = 3
 } LogTarget;
 
 typedef struct {
     LogLevel    level;
     char        logFile[PATH_MAX];
     FILE*       fileHandle;
-    size_t      maxFileSize;
     int         maxBackupFiles;
+    size_t      maxLines;
+    size_t      currentLines;
 } LoggerConfig;
 
-extern LoggerConfig gLoggerConfig;
-
+/**
+ * 初始化日志系统函数
+ */
 int loggerInit(LogLevel level);
 
+/**
+ * 清理日志系统函数
+ */
 void loggerCleanup();
 
 void loggerLog(LogLevel level, const char* file, int line, const char* format, ...);
-
 #define LOG_DEBUG(format, ...) \
-    loggerLog(LOG_LEVEL_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__)
+loggerLog(LOG_LEVEL_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #define LOG_INFO(format, ...) \
-    loggerLog(LOG_LEVEL_INFO, __FILE__, __LINE__, format, ##__VA_ARGS__)
+loggerLog(LOG_LEVEL_INFO, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #define LOG_WARN(format, ...) \
-    loggerLog(LOG_LEVEL_WARN, __FILE__, __LINE__, format, ##__VA_ARGS__)
+loggerLog(LOG_LEVEL_WARN, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #define LOG_ERROR(format, ...) \
-    loggerLog(LOG_LEVEL_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__)
+loggerLog(LOG_LEVEL_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #define LOG_FATAL(format, ...) \
-    loggerLog(LOG_LEVEL_FATAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
+loggerLog(LOG_LEVEL_FATAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #endif //ESURFINGCLIENT_LOGGER_H

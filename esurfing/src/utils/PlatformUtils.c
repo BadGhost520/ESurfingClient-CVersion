@@ -26,12 +26,6 @@
     #include <sys/types.h>
 #endif
 
-/**
- * 将字符串转换为64位长整型
- * @param str 要转换的字符串
- * @param result 转换结果的指针
- * @return 转换是否成功 (1=成功, 0=失败)
- */
 int stringToLongLong(const char* str, long long* result)
 {
     if (!str || !result)
@@ -69,10 +63,6 @@ int stringToLongLong(const char* str, long long* result)
     return 1;
 }
 
-/**
- * 获取当前时间的毫秒时间戳函数
- * @return 64位时间戳
- */
 int64_t currentTimeMillis()
 {
 #ifdef _WIN32
@@ -91,12 +81,6 @@ int64_t currentTimeMillis()
 #endif
 }
 
-/**
- * 随机数生成函数
- * @param buffer 流
- * @param length 长度
- * @return
- */
 static int secureRandomBytes(unsigned char* buffer, size_t length)
 {
 #ifdef _WIN32
@@ -120,10 +104,6 @@ static int secureRandomBytes(unsigned char* buffer, size_t length)
 #endif
 }
 
-/**
- * 睡眠函数
- * @param milliseconds 毫秒
- */
 void sleepMilliseconds(const int milliseconds)
 {
     if (milliseconds <= 0) return;
@@ -134,10 +114,6 @@ void sleepMilliseconds(const int milliseconds)
 #endif
 }
 
-/**
- * 设置客户端 ID 函数
- * @param client_id 客户端 ID
- */
 void setClientId(char** client_id)
 {
     *client_id = malloc(37);
@@ -162,10 +138,6 @@ void setClientId(char** client_id)
     }
 }
 
-/**
- * 生成随机 MAC 地址函数
- * @return MAC 地址
- */
 char* randomMacAddress()
 {
     char* macStr = malloc(18 * sizeof(char));
@@ -180,10 +152,6 @@ char* randomMacAddress()
     return macStr;
 }
 
-/**
- * 生成10位随机字符串函数
- * @return 10位随机字符串
- */
 char* randomString()
 {
     char* str = malloc(18 * sizeof(char));
@@ -198,10 +166,6 @@ char* randomString()
     return str;
 }
 
-/**
- * 获取当前时间函数
- * @return 当前时间(YY-mm-dd HH-MM-SS)
- */
 char* getTime()
 {
     time_t rawTime;
@@ -216,11 +180,20 @@ char* getTime()
     return timeStr;
 }
 
-/**
- * 格式化获取 ticket XML 函数
- * @param buffer 流
- * @param timeStr 当前时间
- */
+char* getFileTime()
+{
+    time_t rawTime;
+    char* timeStr = malloc(20 * sizeof(char));
+    if (timeStr == NULL)
+    {
+        return NULL;
+    }
+    time(&rawTime);
+    const struct tm* timeInfo = localtime(&rawTime);
+    strftime(timeStr, 20, "%Y%m%d-%H%M%S", timeInfo);
+    return timeStr;
+}
+
 void formatGetTicketXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -247,11 +220,6 @@ void formatGetTicketXml(char* buffer, const char* timeStr)
     );
 }
 
-/**
- * 格式化登录 XML 函数
- * @param buffer 流
- * @param timeStr 当前时间
- */
 void formatLoginXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -273,11 +241,6 @@ void formatLoginXml(char* buffer, const char* timeStr)
     );
 }
 
-/**
- * 格式化心跳保活 XML 函数
- * @param buffer 流
- * @param timeStr 当前时间
- */
 void formatHeartbeatXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -304,11 +267,6 @@ void formatHeartbeatXml(char* buffer, const char* timeStr)
     );
 }
 
-/**
- * 格式化登出 XML 函数
- * @param buffer 流
- * @param timeStr 当前时间
- */
 void formatTermXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -335,11 +293,6 @@ void formatTermXml(char* buffer, const char* timeStr)
     );
 }
 
-/**
- * 创建 XML 字符串函数
- * @param choose 格式化选择
- * @return XML 字符串
- */
 char* createXMLPayload(const char* choose)
 {
     char* payload = malloc(1024);
@@ -373,11 +326,6 @@ char* createXMLPayload(const char* choose)
     return payload;
 }
 
-/**
- * 清除 CDATA 字段函数
- * @param text 未清除 CDATA 字段文本
- * @return 清除 CDATA 字段之后的文本
- */
 char* cleanCDATA(const char* text)
 {
     if (!text) return NULL;

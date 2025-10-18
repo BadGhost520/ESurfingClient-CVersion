@@ -22,6 +22,9 @@ extern char* ticketUrl;
 extern char* authUrl;
 extern volatile sig_atomic_t isLogged;
 
+/**
+ * 刷新状态函数
+ */
 void refreshStates();
 
 #endif //ESURFINGCLIENT_STATES_H

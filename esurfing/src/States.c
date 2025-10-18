@@ -25,9 +25,6 @@ char* ticketUrl;
 char* authUrl;
 volatile sig_atomic_t isLogged = 0;
 
-/**
- * 刷新状态函数
- */
 void refreshStates()
 {
     if (clientId)

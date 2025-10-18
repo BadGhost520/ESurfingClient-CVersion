@@ -18,19 +18,12 @@ const char* PORTAL_START_TAG = "<!--//config.campus.js.chinatelecom.com";
 const char* AUTH_KEY = "Eshore!@#";
 const char* HOST_NAME;
 
-/**
- * 初始化常量函数
- */
 void initConstants()
 {
     HOST_NAME = randomString();
     LOG_DEBUG("HOST_NAME: %s", HOST_NAME);
 }
 
-/**
- * 初始化 UA 函数
- * @param channel 通道
- */
 void initChannel(const int channel)
 {
     if (channel == 1)

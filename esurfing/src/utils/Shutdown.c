@@ -11,9 +11,6 @@
 #include "../headFiles/Session.h"
 #include "../headFiles/Client.h"
 
-/**
- * 关闭时要执行的函数
- */
 void performCleanup()
 {
     LOG_DEBUG("Executing the close function");
@@ -32,10 +29,6 @@ void performCleanup()
     loggerCleanup();
 }
 
-/**
- * 关闭函数
- * @param exitCode 退出码
- */
 void shut(const int exitCode)
 {
     LOG_INFO("Shutting down");
@@ -43,10 +36,6 @@ void shut(const int exitCode)
     exit(exitCode);
 }
 
-/**
- * 信号处理函数
- * @param sig 信号
- */
 void signalHandler(const int sig)
 {
     switch(sig)
@@ -63,9 +52,6 @@ void signalHandler(const int sig)
     }
 }
 
-/**
- * 初始化关闭函数
- */
 void initShutdown()
 {
     if (signal(SIGINT, signalHandler) == SIG_ERR)
