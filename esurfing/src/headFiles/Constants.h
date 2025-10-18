@@ -13,6 +13,8 @@ extern const char* PORTAL_START_TAG;
 extern const char* AUTH_KEY;
 extern const char* HOST_NAME;
 
-void initConstants(int device);
+void initConstants();
+
+void initChannel(int channel);
 
 #endif //ESURFINGCLIENT_CONSTANTS_H

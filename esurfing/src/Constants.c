@@ -51,9 +51,13 @@ char* random_string(int length) {
     return result;
 }
 
-void initConstants(int channel)
+void initConstants()
 {
     HOST_NAME = random_string(10);
+}
+
+void initChannel(const int channel)
+{
     if (channel == 1)
     {
         USER_AGENT = USER_LINUX_AGENT;

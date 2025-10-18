@@ -12,10 +12,10 @@
 #include <stdint.h>
 #include <errno.h>
 
-#include "headFiles/Constants.h"
-#include "headFiles/States.h"
-#include "headFiles/PlatformUtils.h"
-#include "headFiles/Options.h"
+#include "../headFiles/Constants.h"
+#include "../headFiles/States.h"
+#include "../headFiles/utils/PlatformUtils.h"
+#include "../headFiles/Options.h"
 
 // 平台特定的头文件
 #ifdef _WIN32

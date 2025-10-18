@@ -1,18 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
-project(ESurfingClient C)
+project(ESurfingClient C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif()
-
-# Windows 平台使用 vcpkg 配置
-if(WIN32)
-    set(CURL_DIR "G:/vcpkg/installed/x64-mingw-static/share/curl")
-    set(CMAKE_TOOLCHAIN_FILE "G:/CLion-2025.2.1/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
-    set(VCPKG_TARGET_TRIPLET "x86-mingw-static" CACHE STRING "Vcpkg triplet")
 endif()
 
 # 通用依赖（跨平台）
@@ -28,7 +21,7 @@ add_executable(ESurfingClient
         src/DialerApp.c
         src/Client.c
         src/NetworkStatus.c
-        src/PlatformUtils.c
+        src/utils/PlatformUtils.c
         src/Constants.c
         src/headFiles/Constants.h
         src/States.c
@@ -62,8 +55,8 @@ add_executable(ESurfingClient
         src/cipher/impl/desede_cbc.c
         src/cipher/impl/aes_ecb.c
         src/cipher/impl/aes_cbc.c
-        src/utils/ShutdownHook.c
-        src/headFiles/utils/ShutdownHook.h
+        src/utils/Shutdown.c
+        src/headFiles/utils/Shutdown.h
         src/utils/XMLParser.c
         src/headFiles/utils/XMLParser.h
         src/headFiles/Options.h
@@ -120,3 +113,10 @@ endif()
 
 include(GNUInstallDirs)
 install(TARGETS ESurfingClient RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# 去除调试信息
+target_compile_options(ESurfingClient PRIVATE -s)
+# 优化代码结构
+target_compile_options(ESurfingClient PRIVATE -O3)
+# 去除符号表
+set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
