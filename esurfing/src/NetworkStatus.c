@@ -9,7 +9,7 @@
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
-#include "headFiles/PlatformUtils.h"
+#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/XMLParser.h"
 
 typedef struct {

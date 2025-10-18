@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "headFiles/NetClient.h"
-#include "headFiles/PlatformUtils.h"
+#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 #include "headFiles/NetworkStatus.h"
@@ -18,7 +18,6 @@ char* keepRetry;
 char* keepUrl;
 char* termUrl;
 long long tick;
-int retry = 0;
 
 void authorization();
 
@@ -162,7 +161,7 @@ void run()
             }
             else
             {
-                LOG_INFO("The network is connected.");
+                LOG_INFO("The network is connected");
             }
             sleepSeconds(1);
             break;
@@ -170,6 +169,7 @@ void run()
             LOG_INFO("authentication required");
             isLogged = 0;
             authorization();
+            sleepSeconds(1);
             break;
         case CONNECTIVITY_REQUEST_ERROR:
             LOG_ERROR("Network error");

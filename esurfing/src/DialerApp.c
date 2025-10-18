@@ -4,36 +4,11 @@
 
 #include "headFiles/Client.h"
 #include "headFiles/Constants.h"
-#include "headFiles/utils/ShutdownHook.h"
 #include "headFiles/Options.h"
-#include "headFiles/PlatformUtils.h"
-#include "headFiles/Session.h"
+#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/States.h"
 #include "headFiles/utils/Logger.h"
-
-void shutdownHook()
-{
-    sleepSeconds(1);
-    if (isRunning)
-    {
-        isRunning = 0;
-    }
-    if (isInitialized())
-    {
-        if (isLogged)
-        {
-            term();
-        }
-        sessionFree();
-    }
-    logger_cleanup();
-}
-
-void initShutdownHook()
-{
-    init_shutdown_hook();
-    register_cleanup_function(shutdownHook);
-}
+#include "headFiles/utils/Shutdown.h"
 
 int main(const int argc, char* argv[]) {
     int opt;
@@ -78,7 +53,7 @@ int main(const int argc, char* argv[]) {
         logger_init(LOG_LEVEL_INFO, LOG_TARGET_BOTH);
     }
 
-    initShutdownHook();
+    initShutdown();
 
     if (username && password && channel)
     {
@@ -86,12 +61,12 @@ int main(const int argc, char* argv[]) {
         LOG_DEBUG("password: %s", pwd);
         if (strcmp(chn, "pc") == 0)
         {
-            initConstants(1);
+            initChannel(1);
             LOG_DEBUG("UA: %s", USER_AGENT);
         }
         else if (strcmp(chn, "phone") == 0)
         {
-            initConstants(2);
+            initChannel(2);
             LOG_DEBUG("UA: %s", USER_AGENT);
         }
         else
@@ -100,18 +75,14 @@ int main(const int argc, char* argv[]) {
             LOG_ERROR("Please run in the correct format");
             LOG_ERROR("Format: ESurfingClient -u <username> -p <password> -c <channel>");
             LOG_ERROR("<channel>: 1.pc, 2.phone");
-            graceful_exit(0);
+            shut(0);
             return 0;
         }
         while (isRunning) {
             // 你的业务逻辑
-
+            initConstants();
             refreshStates();
             run();
-            // 重要：检查退出条件
-            if (!isRunning) {
-                break;
-            }
         }
     }
     else
@@ -120,6 +91,5 @@ int main(const int argc, char* argv[]) {
         LOG_ERROR("Format: ESurfingClient -u <username> -p <password> -c <channel>");
         LOG_ERROR("<channel>: 1.pc, 2.phone");
     }
-    graceful_exit(0);
-    return 0;
+    shut(0);
 }

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "headFiles/PlatformUtils.h"
+#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/States.h"
 
 char* clientId;
@@ -14,7 +14,7 @@ char* ticket;
 char* userIp;
 char* acIp;
 
-int isRunning = 1;
+volatile sig_atomic_t isRunning = 1;
 
 char* schoolId;
 char* domain;
