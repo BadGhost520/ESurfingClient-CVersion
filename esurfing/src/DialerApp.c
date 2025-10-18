@@ -42,7 +42,6 @@ int main(const int argc, char* argv[]) {
             printf("Unknown error\n");
         }
     }
-
     if (debugMode)
     {
         loggerInit(LOG_LEVEL_DEBUG);
@@ -72,6 +71,7 @@ int main(const int argc, char* argv[]) {
             shut(0);
             return 0;
         }
+        isRunning = 1;
         while (isRunning) {
             initShutdown();
             initConstants();

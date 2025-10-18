@@ -7,21 +7,21 @@
 #include <signal.h>
 
 extern char* clientId;
-    extern char* algoId;
-    extern char* macAddress;
-    extern char* ticket;
-    extern char* userIp;
-    extern char* acIp;
+extern char* algoId;
+extern char* macAddress;
+extern char* ticket;
+extern char* userIp;
+extern char* acIp;
 
-    extern volatile sig_atomic_t isRunning;
+extern volatile sig_atomic_t isRunning;
 
-    extern char* schoolId;
-    extern char* domain;
-    extern char* area;
-    extern char* ticketUrl;
-    extern char* authUrl;
-    extern int isLogged;
+extern char* schoolId;
+extern char* domain;
+extern char* area;
+extern char* ticketUrl;
+extern char* authUrl;
+extern volatile sig_atomic_t isLogged;
 
-    void refreshStates(void);
+void refreshStates();
 
 #endif //ESURFINGCLIENT_STATES_H

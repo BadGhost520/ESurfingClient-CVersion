@@ -16,16 +16,19 @@ char* ticket;
 char* userIp;
 char* acIp;
 
-volatile sig_atomic_t isRunning = 1;
+volatile sig_atomic_t isRunning = 0;
 
 char* schoolId;
 char* domain;
 char* area;
 char* ticketUrl;
 char* authUrl;
-int isLogged = 0;
+volatile sig_atomic_t isLogged = 0;
 
-void refreshStates(void)
+/**
+ * 刷新状态函数
+ */
+void refreshStates()
 {
     if (clientId)
     {
