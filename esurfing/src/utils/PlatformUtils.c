@@ -216,7 +216,11 @@ char* getTime()
     return timeStr;
 }
 
-// 格式化XML字符串的辅助函数
+/**
+ * 格式化获取 ticket XML 函数
+ * @param buffer 流
+ * @param timeStr 当前时间
+ */
 void formatGetTicketXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -243,6 +247,11 @@ void formatGetTicketXml(char* buffer, const char* timeStr)
     );
 }
 
+/**
+ * 格式化登录 XML 函数
+ * @param buffer 流
+ * @param timeStr 当前时间
+ */
 void formatLoginXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -264,6 +273,11 @@ void formatLoginXml(char* buffer, const char* timeStr)
     );
 }
 
+/**
+ * 格式化心跳保活 XML 函数
+ * @param buffer 流
+ * @param timeStr 当前时间
+ */
 void formatHeartbeatXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -290,6 +304,11 @@ void formatHeartbeatXml(char* buffer, const char* timeStr)
     );
 }
 
+/**
+ * 格式化登出 XML 函数
+ * @param buffer 流
+ * @param timeStr 当前时间
+ */
 void formatTermXml(char* buffer, const char* timeStr)
 {
     snprintf(buffer, 1024,
@@ -316,7 +335,11 @@ void formatTermXml(char* buffer, const char* timeStr)
     );
 }
 
-// 创建XML payload字符串
+/**
+ * 创建 XML 字符串函数
+ * @param choose 格式化选择
+ * @return XML 字符串
+ */
 char* createXMLPayload(const char* choose)
 {
     char* payload = malloc(1024);
@@ -350,6 +373,11 @@ char* createXMLPayload(const char* choose)
     return payload;
 }
 
+/**
+ * 清除 CDATA 字段函数
+ * @param text 未清除 CDATA 字段文本
+ * @return 清除 CDATA 字段之后的文本
+ */
 char* cleanCDATA(const char* text)
 {
     if (!text) return NULL;
