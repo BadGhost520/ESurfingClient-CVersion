@@ -28,7 +28,6 @@ typedef enum {
 
 typedef struct {
     LogLevel    level;
-    LogTarget   target;
     char        log_file[PATH_MAX];
     FILE*       file_handle;
     int        enable_color;
@@ -40,7 +39,7 @@ typedef struct {
 
 extern LoggerConfig gLoggerConfig;
 
-int loggerInit(LogLevel level, LogTarget target);
+int loggerInit(LogLevel level);
 
 void loggerCleanup();
 

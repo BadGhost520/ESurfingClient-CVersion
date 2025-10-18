@@ -18,7 +18,6 @@
 
 LoggerConfig gLoggerConfig = {
     .level = LOG_LEVEL_INFO,
-    .target = LOG_TARGET_CONSOLE,
     .log_file = "",
     .file_handle = NULL,
     .enable_color = 1,
@@ -239,42 +238,34 @@ int ensureLogDir(char* out)
 /**
  * 初始化日志系统函数
  */
-int loggerInit(const LogLevel level, const LogTarget target)
+int loggerInit(const LogLevel level)
 {
     gLoggerConfig.level = level;
-    gLoggerConfig.target = target;
-    if (target == LOG_TARGET_FILE || target == LOG_TARGET_BOTH)
+    char log_dir[PATH_MAX];
+    if (ensureLogDir(log_dir) != 0)
     {
-        char log_dir[PATH_MAX];
-        if (ensureLogDir(log_dir) != 0)
-        {
-            fprintf(stderr, "Error: Unable to prepare log directory\n");
-            return -1;
-        }
-        // 使用固定的日志文件名 run.log
-        const char* log_filename = "run.log";
-        #ifdef _WIN32
-            const char sep = '\\';
-        #else
-            const char sep = '/';
-        #endif
-        const int ln = snprintf(gLoggerConfig.log_file, sizeof(gLoggerConfig.log_file), "%s%c%s", log_dir, sep, log_filename);
-        if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.log_file))
-        {
-            fprintf(stderr, "Error: Log file path too long (max %zu)\n", sizeof(gLoggerConfig.log_file));
-            return -1;
-        }
-        gLoggerConfig.file_handle = fopen(gLoggerConfig.log_file, "a");
-        if (gLoggerConfig.file_handle == NULL)
-        {
-            fprintf(stderr, "Error: Unable to open log file %s\n", gLoggerConfig.log_file);
-            return -1;
-        }
+        fprintf(stderr, "Error: Unable to prepare log directory\n");
+        return -1;
     }
-    LOG_DEBUG("Log System Initialization Successful - Level: %s, target: %s",
-             loggerLevelString(level),
-             target == LOG_TARGET_CONSOLE ? "console" :
-             target == LOG_TARGET_FILE ? "file" : "console+file");
+    const char* log_filename = "run.log";
+#ifdef _WIN32
+    const char sep = '\\';
+#else
+    const char sep = '/';
+#endif
+    const int ln = snprintf(gLoggerConfig.log_file, sizeof(gLoggerConfig.log_file), "%s%c%s", log_dir, sep, log_filename);
+    if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.log_file))
+    {
+        fprintf(stderr, "Error: Log file path too long (max %zu)\n", sizeof(gLoggerConfig.log_file));
+        return -1;
+    }
+    gLoggerConfig.file_handle = fopen(gLoggerConfig.log_file, "a");
+    if (gLoggerConfig.file_handle == NULL)
+    {
+        fprintf(stderr, "Error: Unable to open log file %s\n", gLoggerConfig.log_file);
+        return -1;
+    }
+    LOG_DEBUG("Log level: %s", loggerLevelString(level));
     return 0;
 }
 
@@ -313,15 +304,7 @@ void loggerCleanup()
                 char time_name[64];
                 strftime(time_name, sizeof(time_name), "%Y%m%d_%H%M%S.log", &tm_info);
                 snprintf(new_filename, sizeof(new_filename), "%s\\%s", log_dir, time_name);
-                if (rename(gLoggerConfig.log_file, new_filename) == 0)
-                {
-                    printf("Log file renamed to: %s\n", new_filename);
-                }
-                else
-                {
-                    fprintf(stderr, "Warning: Failed to rename log file from %s to %s\n",
-                           gLoggerConfig.log_file, new_filename);
-                }
+                rename(gLoggerConfig.log_file, new_filename);
             }
             #else
             struct tm* tm_info = localtime(&now);
@@ -330,15 +313,7 @@ void loggerCleanup()
                 char time_name[64];
                 strftime(time_name, sizeof(time_name), "%Y%m%d_%H%M%S.log", tm_info);
                 snprintf(new_filename, sizeof(new_filename), "%s/%s", log_dir, time_name);
-                if (rename(gLoggerConfig.log_file, new_filename) == 0)
-                {
-                    printf("Log file renamed to: %s\n", new_filename);
-                }
-                else
-                {
-                    fprintf(stderr, "Warning: Failed to rename log file from %s to %s\n",
-                           gLoggerConfig.log_file, new_filename);
-                }
+                rename(gLoggerConfig.log_file, new_filename);
             }
             #endif
         }
@@ -436,13 +411,7 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
                 line,
                 message);
     }
-    if (gLoggerConfig.target == LOG_TARGET_CONSOLE || gLoggerConfig.target == LOG_TARGET_BOTH)
-    {
-        loggerWriteToConsole(finalMessage);
-    }
-    if (gLoggerConfig.target == LOG_TARGET_FILE || gLoggerConfig.target == LOG_TARGET_BOTH)
-    {
-        loggerWriteToFile(finalMessage);
-        loggerRotateIfNeeded();
-    }
+    loggerWriteToConsole(finalMessage);
+    loggerWriteToFile(finalMessage);
+    loggerRotateIfNeeded();
 }

@@ -45,15 +45,12 @@ int main(const int argc, char* argv[]) {
 
     if (debugMode)
     {
-        loggerInit(LOG_LEVEL_DEBUG, LOG_TARGET_BOTH);
+        loggerInit(LOG_LEVEL_DEBUG);
     }
     else
     {
-        loggerInit(LOG_LEVEL_INFO, LOG_TARGET_BOTH);
+        loggerInit(LOG_LEVEL_INFO);
     }
-
-    initShutdown();
-
     if (username && password && channel)
     {
         LOG_DEBUG("username: %s", usr);
@@ -76,6 +73,7 @@ int main(const int argc, char* argv[]) {
             return 0;
         }
         while (isRunning) {
+            initShutdown();
             initConstants();
             refreshStates();
             run();
