@@ -28,13 +28,10 @@ typedef enum {
 
 typedef struct {
     LogLevel    level;
-    char        log_file[PATH_MAX];
-    FILE*       file_handle;
-    int        enable_color;
-    int        enable_timestamp;
-    int        enable_thread_safe;
-    size_t      max_file_size;
-    int         max_backup_files;
+    char        logFile[PATH_MAX];
+    FILE*       fileHandle;
+    size_t      maxFileSize;
+    int         maxBackupFiles;
 } LoggerConfig;
 
 extern LoggerConfig gLoggerConfig;

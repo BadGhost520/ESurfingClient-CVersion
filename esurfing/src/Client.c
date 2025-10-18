@@ -182,21 +182,21 @@ void run()
             {
                 LOG_INFO("The network is connected");
             }
-            sleepSeconds(1);
+            sleepMilliseconds(1000);
             break;
         case CONNECTIVITY_REQUIRE_AUTHORIZATION:
             LOG_INFO("authentication required");
             isLogged = 0;
             authorization();
-            sleepSeconds(1);
+            sleepMilliseconds(1000);
             break;
         case CONNECTIVITY_REQUEST_ERROR:
             LOG_ERROR("Network error");
-            sleepSeconds(5);
+            sleepMilliseconds(5000);
             break;
         default:
             LOG_ERROR("Unknown error");
-            sleepSeconds(5);
+            sleepMilliseconds(5000);
         }
     }
 }
