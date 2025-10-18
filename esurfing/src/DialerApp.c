@@ -62,12 +62,10 @@ int main(const int argc, char* argv[]) {
         if (strcmp(chn, "pc") == 0)
         {
             initChannel(1);
-            LOG_DEBUG("UA: %s", USER_AGENT);
         }
         else if (strcmp(chn, "phone") == 0)
         {
             initChannel(2);
-            LOG_DEBUG("UA: %s", USER_AGENT);
         }
         else
         {
@@ -79,7 +77,6 @@ int main(const int argc, char* argv[]) {
             return 0;
         }
         while (isRunning) {
-            // 你的业务逻辑
             initConstants();
             refreshStates();
             run();

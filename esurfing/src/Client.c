@@ -19,8 +19,9 @@ char* keepUrl;
 char* termUrl;
 long long tick;
 
-void authorization();
-
+/**
+ * 登出函数
+ */
 void term()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("term"));
@@ -33,6 +34,9 @@ void term()
     free_net_result(result);
 }
 
+/**
+ * 心跳保活函数
+ */
 void heartbeat()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("heartbeat"));
@@ -51,6 +55,9 @@ void heartbeat()
     free_net_result(result);
 }
 
+/**
+ * 登录函数
+ */
 void login()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("login"));
@@ -73,6 +80,9 @@ void login()
     free_net_result(result);
 }
 
+/**
+ * 获取 Ticket 函数
+ */
 void getTicket()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("getTicket"));
@@ -86,6 +96,9 @@ void getTicket()
     free_net_result(result);
 }
 
+/**
+ * 初始化会话
+ */
 void initSession()
 {
     NetResult* result = simplePost(ticketUrl, algoId);
@@ -101,6 +114,9 @@ void initSession()
     free_net_result(result);
 }
 
+/**
+ * 认证函数
+ */
 void authorization()
 {
     initSession();
@@ -133,6 +149,9 @@ void authorization()
     LOG_INFO("Authorized login");
 }
 
+/**
+ * 主运行函数
+ */
 void run()
 {
     while (isRunning)

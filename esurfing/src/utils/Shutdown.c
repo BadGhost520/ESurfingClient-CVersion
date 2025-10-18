@@ -17,7 +17,6 @@
 void performCleanup()
 {
     LOG_DEBUG("Executing the close function");
-    sleepSeconds(1);
     if (isRunning)
     {
         isRunning = 0;
@@ -39,7 +38,7 @@ void performCleanup()
  */
 void shut(const int exitCode)
 {
-    LOG_INFO("Shutting down...");
+    LOG_INFO("Shutting down");
     performCleanup();
     exit(exitCode);
 }
