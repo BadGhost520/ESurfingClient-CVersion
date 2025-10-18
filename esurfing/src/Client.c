@@ -19,29 +19,23 @@ char* keepUrl;
 char* termUrl;
 long long tick;
 
-/**
- * 登出函数
- */
 void term()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("term"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = simplePost(termUrl, encrypt);
+    NetResult* result = post(termUrl, encrypt);
     if (result->type == NET_RESULT_ERROR)
     {
         LOG_ERROR("Log out error");
     }
-    free_net_result(result);
+    freeNetResult(result);
 }
 
-/**
- * 心跳保活函数
- */
 void heartbeat()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("heartbeat"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = simplePost(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
+    NetResult* result = post(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         free(keepRetry);
@@ -52,17 +46,14 @@ void heartbeat()
     {
         LOG_ERROR("Result is empty");
     }
-    free_net_result(result);
+    freeNetResult(result);
 }
 
-/**
- * 登录函数
- */
 void login()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("login"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = simplePost(authUrl, sessionEncrypt(createXMLPayload("login")));
+    NetResult* result = post(authUrl, sessionEncrypt(createXMLPayload("login")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
@@ -77,31 +68,25 @@ void login()
     {
         LOG_ERROR("Result is empty");
     }
-    free_net_result(result);
+    freeNetResult(result);
 }
 
-/**
- * 获取 Ticket 函数
- */
 void getTicket()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("getTicket"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = simplePost(ticketUrl, sessionEncrypt(createXMLPayload("getTicket")));
+    NetResult* result = post(ticketUrl, sessionEncrypt(createXMLPayload("getTicket")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
         ticket = strdup(XML_Parser(sessionDecrypt(result->data), "ticket"));
     }
-    free_net_result(result);
+    freeNetResult(result);
 }
 
-/**
- * 初始化会话
- */
 void initSession()
 {
-    NetResult* result = simplePost(ticketUrl, algoId);
+    NetResult* result = post(ticketUrl, algoId);
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
@@ -111,12 +96,9 @@ void initSession()
     } else {
         LOG_ERROR("Initialization session error");
     }
-    free_net_result(result);
+    freeNetResult(result);
 }
 
-/**
- * 认证函数
- */
 void authorization()
 {
     initSession();
@@ -144,9 +126,6 @@ void authorization()
     LOG_INFO("Authorized login");
 }
 
-/**
- * 主运行函数
- */
 void run()
 {
     while (isRunning)

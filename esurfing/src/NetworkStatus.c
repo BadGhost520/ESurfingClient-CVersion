@@ -11,23 +11,7 @@
 #include "headFiles/States.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/XMLParser.h"
-
-typedef struct {
-    char* memory;
-    size_t size;
-} HTTPResponse;
-
-static size_t WriteMemoryCallback(const void *contents, const size_t size, const size_t nmemb, HTTPResponse *response)
-{
-    const size_t realSize = size * nmemb;
-    char *ptr = realloc(response->memory, response->size + realSize + 1);
-    if (!ptr) return 0;
-    response->memory = ptr;
-    memcpy(&(response->memory[response->size]), contents, realSize);
-    response->size += realSize;
-    response->memory[response->size] = 0;
-    return realSize;
-}
+#include "headFiles/NetClient.h"
 
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
@@ -83,7 +67,7 @@ ConnectivityStatus checkStatus()
     snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", clientId);
     headers = curl_slist_append(headers, header_buffer);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
     const CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK)
