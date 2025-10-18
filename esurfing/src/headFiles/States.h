@@ -14,13 +14,14 @@ extern char* userIp;
 extern char* acIp;
 
 extern volatile sig_atomic_t isRunning;
+extern volatile sig_atomic_t isLogged;
+extern volatile sig_atomic_t isInitialized;
 
 extern char* schoolId;
 extern char* domain;
 extern char* area;
 extern char* ticketUrl;
 extern char* authUrl;
-extern volatile sig_atomic_t isLogged;
 
 /**
  * 刷新状态函数

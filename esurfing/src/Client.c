@@ -120,7 +120,7 @@ void initSession()
 void authorization()
 {
     initSession();
-    if (!isInitialized())
+    if (!isInitialized)
     {
         LOG_ERROR("Session initialization failed, please restart the application or retrieve the application from Release again");
         LOG_ERROR("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases");
@@ -155,7 +155,7 @@ void run()
         switch (networkStatus)
         {
         case CONNECTIVITY_SUCCESS:
-            if (isInitialized() && isLogged)
+            if (isInitialized && isLogged)
             {
                 long long keep_retry;
                 if (stringToLongLong(keepRetry, &keep_retry))

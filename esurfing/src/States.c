@@ -17,13 +17,14 @@ char* userIp;
 char* acIp;
 
 volatile sig_atomic_t isRunning = 0;
+volatile sig_atomic_t isLogged = 0;
+volatile sig_atomic_t isInitialized = 0;
 
 char* schoolId;
 char* domain;
 char* area;
 char* ticketUrl;
 char* authUrl;
-volatile sig_atomic_t isLogged = 0;
 
 void refreshStates()
 {

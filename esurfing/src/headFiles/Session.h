@@ -6,21 +6,29 @@
 
 #include "utils/ByteArray.h"
 
-// Session初始化和状态检查
+/**
+ * 初始化会话
+ * @param zsm zsm 数据流
+ */
 void initialize(const ByteArray* zsm);
 
-int isInitialized();
-
-// 十六进制字符串转换函数
-int hex_string_to_binary(const char* hex_str, size_t hex_len, unsigned char** binary_data, size_t* binary_len);
-
-// 资源管理
+/**
+ * 释放会话资源函数
+ */
 void sessionFree();
 
-int init_cipher(const char* algo_id);
-
-// 加解密
+/**
+ * 加密函数
+ * @param text 要加密的文本
+ * @return 加密后的数据
+ */
 char* sessionEncrypt(const char* text);
+
+/**
+ * 解密函数
+ * @param text 要解密的数据
+ * @return 解密后的文本
+ */
 char* sessionDecrypt(const char* text);
 
 #endif //ESURFINGCLIENT_SESSION_H

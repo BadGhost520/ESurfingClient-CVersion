@@ -7,7 +7,6 @@
 
 #include "../headFiles/States.h"
 #include "../headFiles/utils/Logger.h"
-#include "../headFiles/utils/PlatformUtils.h"
 #include "../headFiles/Session.h"
 #include "../headFiles/Client.h"
 
@@ -18,7 +17,7 @@ void performCleanup()
     {
         isRunning = 0;
     }
-    if (isInitialized())
+    if (isInitialized)
     {
         if (isLogged)
         {
