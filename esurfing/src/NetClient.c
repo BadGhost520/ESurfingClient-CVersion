@@ -194,7 +194,7 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
     return result;
 }
 
-NetResult* post(const char* url, const char* data)
+NetResult* simPost(const char* url, const char* data)
 {
     return postRequest(url, data, NULL);
 }

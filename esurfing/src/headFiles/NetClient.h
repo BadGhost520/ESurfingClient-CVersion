@@ -58,7 +58,7 @@ size_t writeResponseCallback(const void *contents, size_t size, size_t nmemb, HT
  * @param data 数据
  * @return 网络返回值
  */
-NetResult* post(const char* url, const char* data);
+NetResult* simPost(const char* url, const char* data);
 
 #ifdef __cplusplus
 }

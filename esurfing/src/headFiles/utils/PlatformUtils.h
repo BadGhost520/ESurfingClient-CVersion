@@ -9,10 +9,10 @@
 #include <stdint.h>
 
 /**
- * 将字符串转换为64位长整型
+ * 字符串转换为64位长整型函数
  * @param str 要转换的字符串
  * @param result 转换结果的指针
- * @return 转换是否成功 (1=成功, 0=失败)
+ * @return 是否成功
  */
 int stringToLongLong(const char* str, long long* result);
 

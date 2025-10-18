@@ -10,8 +10,18 @@ typedef struct {
     size_t length;
 } ByteArray;
 
-ByteArray string_to_bytes(const char* str);
+/**
+ * 文本转字节函数
+ * @param str 文本数据
+ * @return 字节数据
+ */
+ByteArray stringToBytes(const char* str);
 
-void print_byte_array(const ByteArray* ba, const char* name);
+/**
+ * 打印字节函数
+ * @param ba 字节数据
+ * @param name 字节名
+ */
+void printByteArray(const ByteArray* ba, const char* name);
 
 #endif //ESURFINGCLIENT_BYTEARRAY_H

@@ -23,7 +23,7 @@ void term()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("term"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = post(termUrl, encrypt);
+    NetResult* result = simPost(termUrl, encrypt);
     if (result->type == NET_RESULT_ERROR)
     {
         LOG_ERROR("Log out error");
@@ -35,7 +35,7 @@ void heartbeat()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("heartbeat"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = post(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
+    NetResult* result = simPost(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         free(keepRetry);
@@ -53,7 +53,7 @@ void login()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("login"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = post(authUrl, sessionEncrypt(createXMLPayload("login")));
+    NetResult* result = simPost(authUrl, sessionEncrypt(createXMLPayload("login")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
@@ -75,7 +75,7 @@ void getTicket()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload("getTicket"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
-    NetResult* result = post(ticketUrl, sessionEncrypt(createXMLPayload("getTicket")));
+    NetResult* result = simPost(ticketUrl, sessionEncrypt(createXMLPayload("getTicket")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
@@ -86,11 +86,11 @@ void getTicket()
 
 void initSession()
 {
-    NetResult* result = post(ticketUrl, algoId);
+    NetResult* result = simPost(ticketUrl, algoId);
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
-        const ByteArray zsm = string_to_bytes(result->data);
+        const ByteArray zsm = stringToBytes(result->data);
         initialize(&zsm);
         free(zsm.data);
     } else {
