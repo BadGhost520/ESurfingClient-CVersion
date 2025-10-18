@@ -29,7 +29,7 @@ void performCleanup()
         }
         sessionFree();
     }
-    logger_cleanup();
+    loggerCleanup();
 }
 
 /**

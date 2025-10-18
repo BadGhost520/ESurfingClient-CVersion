@@ -5,7 +5,6 @@
 #include "headFiles/Client.h"
 #include "headFiles/Constants.h"
 #include "headFiles/Options.h"
-#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/States.h"
 #include "headFiles/utils/Logger.h"
 #include "headFiles/utils/Shutdown.h"
@@ -46,11 +45,11 @@ int main(const int argc, char* argv[]) {
 
     if (debugMode)
     {
-        logger_init(LOG_LEVEL_DEBUG, LOG_TARGET_BOTH);
+        loggerInit(LOG_LEVEL_DEBUG, LOG_TARGET_BOTH);
     }
     else
     {
-        logger_init(LOG_LEVEL_INFO, LOG_TARGET_BOTH);
+        loggerInit(LOG_LEVEL_INFO, LOG_TARGET_BOTH);
     }
 
     initShutdown();
