@@ -1,13 +1,8 @@
 #ifndef AES_ECB_H
 #define AES_ECB_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * AES-ECB 加解密算法头文件
- * 对应Kotlin的AESECB类
- */
 
 /**
  * 创建AES-ECB加解密实例

@@ -4,7 +4,7 @@
 #ifndef ESURFINGCLIENT_SESSION_H
 #define ESURFINGCLIENT_SESSION_H
 
-#include "utils/ByteArray.h"
+#include "utils/PlatformUtils.h"
 
 /**
  * 初始化会话

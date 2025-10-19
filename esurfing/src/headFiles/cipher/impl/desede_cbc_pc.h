@@ -1,12 +1,8 @@
 #ifndef DESEDE_CBC_PC_H
 #define DESEDE_CBC_PC_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * 3DES-CBC(两层，自实现) 头文件
- */
 
 /**
  * 创建3DES-CBC(两层)加解密实例

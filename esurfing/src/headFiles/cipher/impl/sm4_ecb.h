@@ -1,13 +1,8 @@
 #ifndef SM4_ECB_H
 #define SM4_ECB_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * SM4-ECB 加解密算法头文件
- * 对应Kotlin的SM4ECB类
- */
 
 /**
  * 创建SM4-ECB加解密实例

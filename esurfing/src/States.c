@@ -6,7 +6,6 @@
 
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/States.h"
-
 #include "headFiles/utils/Logger.h"
 
 char* clientId;

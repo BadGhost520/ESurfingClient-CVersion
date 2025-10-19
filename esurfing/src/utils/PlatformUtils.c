@@ -26,6 +26,51 @@
     #include <sys/types.h>
 #endif
 
+ByteArray stringToBytes(const char* str)
+{
+    ByteArray ba = {0};
+    if (!str) return ba;
+    ba.length = strlen(str);
+    ba.data = (unsigned char*)malloc(ba.length);
+    if (ba.data)
+    {
+        memcpy(ba.data, str, ba.length);
+    }
+    return ba;
+}
+
+char* XmlParser(const char* xmlData, const char* tag)
+{
+    if (!xmlData || !tag)
+    {
+        return NULL;
+    }
+    char start_tag[256];
+    snprintf(start_tag, sizeof(start_tag), "<%s>", tag);
+    char end_tag[256];
+    snprintf(end_tag, sizeof(end_tag), "</%s>", tag);
+    const char* start_pos = strstr(xmlData, start_tag);
+    if (!start_pos)
+    {
+        return NULL;
+    }
+    start_pos += strlen(start_tag);
+    const char* end_pos = strstr(start_pos, end_tag);
+    if (!end_pos)
+    {
+        return NULL;
+    }
+    const size_t content_length = end_pos - start_pos;
+    char* content = malloc(content_length + 1);
+    if (!content)
+    {
+        return NULL;
+    }
+    strncpy(content, start_pos, content_length);
+    content[content_length] = '\0';
+    return content;
+}
+
 int stringToLongLong(const char* str, long long* result)
 {
     if (!str || !result)

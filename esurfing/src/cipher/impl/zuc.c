@@ -1,22 +1,14 @@
-#include "../../headFiles/cipher/cipher_interface.h"
-#include "../../headFiles/cipher/cipher_utils.h"
+#include "../../headFiles/cipher/CipherInterface.h"
+#include "../../headFiles/cipher/CipherUtils.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-/**
- * ZUC-128 流密码（与 Java Zuc128 实现一致）：
- * - 初始化 32 轮 + 丢弃一次 F 输出，然后进入工作模式
- * - 密钥流按 32 位生成，并以大端顺序拆成 4 字节
- * - 业务封装按 4 字节对齐零填充（加密），解密后去除末尾零字节
- */
 
 typedef struct {
     uint8_t key[16];
     uint8_t iv[16];
 } zuc_cipher_data_t;
 
-// S-boxes
 static const uint8_t ZUC_S0[256] = {
     0x3e,0x72,0x5b,0x47,0xca,0xe0,0x00,0x33,0x04,0xd1,0x54,0x98,0x09,0xb9,0x6d,0xcb,
     0x7b,0x1b,0xf9,0x32,0xaf,0x9d,0x6a,0xa5,0xb8,0x2d,0xfc,0x1d,0x08,0x53,0x03,0x90,
@@ -64,40 +56,60 @@ typedef struct {
     uint32_t LFSR[16];
     uint32_t F[2];
     uint32_t BRC[4];
-    int index;            // next byte index in keyStream
-    uint8_t keyStream[4]; // current keystream word bytes (big-endian)
-    int iterations;       // produced words count
+    int index;
+    uint8_t keyStream[4];
+    int iterations;
 } zuc_state_t;
 
-static inline uint32_t ROTL32(uint32_t x, int k) { return (x << k) | (x >> (32 - k)); }
-static inline uint32_t L1(uint32_t X) { return X ^ ROTL32(X,2) ^ ROTL32(X,10) ^ ROTL32(X,18) ^ ROTL32(X,24); }
-static inline uint32_t L2(uint32_t X) { return X ^ ROTL32(X,8) ^ ROTL32(X,14) ^ ROTL32(X,22) ^ ROTL32(X,30); }
-static inline uint32_t MAKEU32(uint8_t a,uint8_t b,uint8_t c,uint8_t d){ return ((uint32_t)a<<24)|((uint32_t)b<<16)|((uint32_t)c<<8)|((uint32_t)d); }
-static inline uint32_t AddM(uint32_t a, uint32_t b){ uint32_t c=a+b; return (c & 0x7FFFFFFF) + (c>>31); }
-static inline uint32_t MulByPow2(uint32_t x, int k){ return (((x<<k)|(x>>(31-k))) & 0x7FFFFFFF); }
-
-static void BitReorganization(zuc_state_t* st){
-    st->BRC[0] = ((st->LFSR[15] & 0x7FFF8000) << 1) | (st->LFSR[14] & 0xFFFF);
-    st->BRC[1] = ((st->LFSR[11] & 0xFFFF) << 16) | (st->LFSR[9] >> 15);
-    st->BRC[2] = ((st->LFSR[7] & 0xFFFF) << 16) | (st->LFSR[5] >> 15);
-    st->BRC[3] = ((st->LFSR[2] & 0xFFFF) << 16) | (st->LFSR[0] >> 15);
+static uint32_t ROTL32(const uint32_t x, const int k)
+{
+    return x << k | x >> (32 - k);
+}
+static uint32_t L1(const uint32_t X)
+{
+    return X ^ ROTL32(X,2) ^ ROTL32(X,10) ^ ROTL32(X,18) ^ ROTL32(X,24);
+}
+static uint32_t L2(const uint32_t X)
+{
+    return X ^ ROTL32(X,8) ^ ROTL32(X,14) ^ ROTL32(X,22) ^ ROTL32(X,30);
+}
+static uint32_t MAKEU32(const uint8_t a, const uint8_t b, const uint8_t c, const uint8_t d)
+{
+    return (uint32_t)a<<24|(uint32_t)b<<16|(uint32_t)c<<8|(uint32_t)d;
+}
+static uint32_t AddM(const uint32_t a, const uint32_t b)
+{
+    uint32_t c=a+b; return (c & 0x7FFFFFFF) + (c>>31);
+}
+static uint32_t MulByPow2(const uint32_t x, const int k)
+{
+    return (x<<k|x>>(31-k)) & 0x7FFFFFFF;
 }
 
-static uint32_t F_func(zuc_state_t* st){
-    uint32_t W = (st->BRC[0] ^ st->F[0]) + st->F[1];
-    uint32_t W1 = st->F[0] + st->BRC[1];
-    uint32_t W2 = st->F[1] ^ st->BRC[2];
-    uint32_t u = L1((W1 << 16) | (W2 >> 16));
-    uint32_t v = L2((W2 << 16) | (W1 >> 16));
-    st->F[0] = MAKEU32(ZUC_S0[u >> 24], ZUC_S1[(u >> 16) & 0xFF], ZUC_S0[(u >> 8) & 0xFF], ZUC_S1[u & 0xFF]);
-    st->F[1] = MAKEU32(ZUC_S0[v >> 24], ZUC_S1[(v >> 16) & 0xFF], ZUC_S0[(v >> 8) & 0xFF], ZUC_S1[v & 0xFF]);
+static void BitReorganization(zuc_state_t* st)
+{
+    st->BRC[0] = (st->LFSR[15] & 0x7FFF8000) << 1 | st->LFSR[14] & 0xFFFF;
+    st->BRC[1] = (st->LFSR[11] & 0xFFFF) << 16 | st->LFSR[9] >> 15;
+    st->BRC[2] = (st->LFSR[7] & 0xFFFF) << 16 | st->LFSR[5] >> 15;
+    st->BRC[3] = (st->LFSR[2] & 0xFFFF) << 16 | st->LFSR[0] >> 15;
+}
+
+static uint32_t F_func(zuc_state_t* st)
+{
+    const uint32_t W = (st->BRC[0] ^ st->F[0]) + st->F[1];
+    const uint32_t W1 = st->F[0] + st->BRC[1];
+    const uint32_t W2 = st->F[1] ^ st->BRC[2];
+    const uint32_t u = L1(W1 << 16 | W2 >> 16);
+    const uint32_t v = L2(W2 << 16 | W1 >> 16);
+    st->F[0] = MAKEU32(ZUC_S0[u >> 24], ZUC_S1[u >> 16 & 0xFF], ZUC_S0[u >> 8 & 0xFF], ZUC_S1[u & 0xFF]);
+    st->F[1] = MAKEU32(ZUC_S0[v >> 24], ZUC_S1[v >> 16 & 0xFF], ZUC_S0[v >> 8 & 0xFF], ZUC_S1[v & 0xFF]);
     return W;
 }
 
-static void LFSRWithInitialisationMode(zuc_state_t* st, uint32_t u){
+static void LFSRWithInitialisationMode(zuc_state_t* st, const uint32_t u)
+{
     uint32_t f = st->LFSR[0];
-    uint32_t v;
-    v = MulByPow2(st->LFSR[0],8);  f = AddM(f,v);
+    uint32_t v = MulByPow2(st->LFSR[0], 8);  f = AddM(f,v);
     v = MulByPow2(st->LFSR[4],20); f = AddM(f,v);
     v = MulByPow2(st->LFSR[10],21);f = AddM(f,v);
     v = MulByPow2(st->LFSR[13],17);f = AddM(f,v);
@@ -107,10 +119,10 @@ static void LFSRWithInitialisationMode(zuc_state_t* st, uint32_t u){
     st->LFSR[15] = f;
 }
 
-static void LFSRWithWorkMode(zuc_state_t* st){
+static void LFSRWithWorkMode(zuc_state_t* st)
+{
     uint32_t f = st->LFSR[0];
-    uint32_t v;
-    v = MulByPow2(st->LFSR[0],8);  f = AddM(f,v);
+    uint32_t v = MulByPow2(st->LFSR[0], 8);  f = AddM(f,v);
     v = MulByPow2(st->LFSR[4],20); f = AddM(f,v);
     v = MulByPow2(st->LFSR[10],21);f = AddM(f,v);
     v = MulByPow2(st->LFSR[13],17);f = AddM(f,v);
@@ -119,127 +131,140 @@ static void LFSRWithWorkMode(zuc_state_t* st){
     st->LFSR[15] = f;
 }
 
-static inline uint32_t MAKEU31(uint8_t a, uint16_t b, uint8_t c){
-    return (((uint32_t)a << 23) | ((uint32_t)b << 8) | (uint32_t)c) & 0x7FFFFFFF;
+static uint32_t MAKEU31(const uint8_t a, const uint16_t b, const uint8_t c)
+{
+    return ((uint32_t)a << 23 | (uint32_t)b << 8 | (uint32_t)c) & 0x7FFFFFFF;
 }
 
-static void zuc_init(zuc_state_t* st, const uint8_t* key, const uint8_t* iv){
-    // expand key/iv into LFSR
-    for(int i=0;i<16;i++){
+static void zuc_init(zuc_state_t* st, const uint8_t* key, const uint8_t* iv)
+{
+    for(int i=0;i<16;i++)
+    {
         st->LFSR[i] = MAKEU31(key[i], ZUC_EK_D[i], iv[i]);
     }
     st->F[0]=0; st->F[1]=0;
     st->index = 0; st->iterations = 0;
-
     int nCount = 32;
-    while(nCount-- > 0){
+    while(nCount-- > 0)
+    {
         BitReorganization(st);
-        uint32_t w = F_func(st);
+        const uint32_t w = F_func(st);
         LFSRWithInitialisationMode(st, w >> 1);
     }
     BitReorganization(st);
-    (void)F_func(st); // discard
+    (void)F_func(st);
     LFSRWithWorkMode(st);
 }
 
-static inline void encode32be(uint32_t val, uint8_t* buf){
+static void encode32be(const uint32_t val, uint8_t* buf)
+{
     buf[0] = (uint8_t)(val >> 24);
     buf[1] = (uint8_t)(val >> 16);
     buf[2] = (uint8_t)(val >> 8);
-    buf[3] = (uint8_t)(val);
+    buf[3] = (uint8_t)val;
 }
 
-static uint32_t makeKeyStreamWord(zuc_state_t* st){
-    if(st->iterations++ >= 2047){
-        // 与 Java 实现一致：过量处理单 key/iv 时抛异常；这里直接退出
-        // 为保持接口友好，我们不终止进程，只是重置计数避免溢出
+static uint32_t makeKeyStreamWord(zuc_state_t* st)
+{
+    if(st->iterations++ >= 2047)
+    {
         st->iterations = 0;
     }
     BitReorganization(st);
-    uint32_t result = F_func(st) ^ st->BRC[3];
+    const uint32_t result = F_func(st) ^ st->BRC[3];
     LFSRWithWorkMode(st);
     return result;
 }
 
-static void makeKeyStream(zuc_state_t* st){
-    uint32_t w = makeKeyStreamWord(st);
+static void makeKeyStream(zuc_state_t* st)
+{
+    const uint32_t w = makeKeyStreamWord(st);
     encode32be(w, st->keyStream);
     st->index = 0;
 }
 
-static uint8_t zuc_return_byte(zuc_state_t* st, uint8_t in){
-    if(st->index == 0){
+static uint8_t zuc_return_byte(zuc_state_t* st, const uint8_t in)
+{
+    if(st->index == 0)
+    {
         makeKeyStream(st);
     }
-    uint8_t out = (uint8_t)(st->keyStream[st->index] ^ in);
+    const uint8_t out = (uint8_t)(st->keyStream[st->index] ^ in);
     st->index = (st->index + 1) % 4;
     return out;
 }
 
-static void zuc_process_bytes(zuc_state_t* st, const uint8_t* in, size_t len, uint8_t* out){
-    for(size_t i=0;i<len;i++){
+static void zuc_process_bytes(zuc_state_t* st, const uint8_t* in, const size_t len, uint8_t* out)
+{
+    for(size_t i=0;i<len;i++)
+    {
         out[i] = zuc_return_byte(st, in[i]);
     }
 }
 
-// 业务：按 4 字节对齐零填充
-static uint8_t* zero_pad_to_4(const uint8_t* data, size_t data_len, size_t* out_len){
-    return pad_to_multiple(data, data_len, 4, out_len);
+static uint8_t* zero_pad_to_4(const uint8_t* data, const size_t data_len, size_t* out_len)
+{
+    return padToMultiple(data, data_len, 4, out_len);
 }
 
-static size_t trim_trailing_zeros_len(const uint8_t* data, size_t len){
-    while(len > 0 && data[len-1] == 0x00){ len--; }
+static size_t trim_trailing_zeros_len(const uint8_t* data, size_t len)
+{
+    while(len > 0 && data[len-1] == 0x00)
+    {
+        len--;
+    }
     return len;
 }
 
-// 加密（文本 -> HEX）
-static char* zuc_encrypt(cipher_interface_t* self, const char* text){
+static char* zuc_encrypt(cipher_interface_t* self, const char* text)
+{
     if(!self || !text) return NULL;
-    zuc_cipher_data_t* d = (zuc_cipher_data_t*)self->private_data;
-    size_t text_len = strlen(text);
+    const zuc_cipher_data_t* d = self->private_data;
+    const size_t text_len = strlen(text);
     size_t padded_len=0;
     uint8_t* padded = zero_pad_to_4((const uint8_t*)text, text_len, &padded_len);
     if(!padded) return NULL;
-
-    uint8_t* out = safe_malloc(padded_len);
+    uint8_t* out = safeMalloc(padded_len);
     zuc_state_t st; zuc_init(&st, d->key, d->iv);
     zuc_process_bytes(&st, padded, padded_len, out);
-    safe_free(padded);
-
-    char* hex = bytes_to_hex_upper(out, padded_len);
-    safe_free(out);
+    safeFree(padded);
+    char* hex = bytesToHexUpper(out, padded_len);
+    safeFree(out);
     return hex;
 }
 
-// 解密（HEX -> 文本）
-static char* zuc_decrypt(cipher_interface_t* self, const char* hex){
+static char* zuc_decrypt(cipher_interface_t* self, const char* hex)
+{
     if(!self || !hex) return NULL;
-    zuc_cipher_data_t* d = (zuc_cipher_data_t*)self->private_data;
+    const zuc_cipher_data_t* d = self->private_data;
     size_t bytes_len=0;
-    uint8_t* bytes = hex_to_bytes(hex, &bytes_len);
+    uint8_t* bytes = hexToBytes(hex, &bytes_len);
     if(!bytes) return NULL;
-
-    uint8_t* out = safe_malloc(bytes_len);
+    uint8_t* out = safeMalloc(bytes_len);
     zuc_state_t st; zuc_init(&st, d->key, d->iv);
     zuc_process_bytes(&st, bytes, bytes_len, out);
-    safe_free(bytes);
-
-    size_t trimmed = trim_trailing_zeros_len(out, bytes_len);
-    char* result = safe_malloc(trimmed + 1);
+    safeFree(bytes);
+    const size_t trimmed = trim_trailing_zeros_len(out, bytes_len);
+    char* result = safeMalloc(trimmed + 1);
     memcpy(result, out, trimmed);
     result[trimmed] = '\0';
-    safe_free(out);
+    safeFree(out);
     return result;
 }
 
-static void zuc_destroy(cipher_interface_t* self){
-    if(self){ safe_free(self->private_data); safe_free(self);}
+static void zuc_destroy(cipher_interface_t* self)
+{
+    if(self)
+    {
+        safeFree(self->private_data); safeFree(self);
+    }
 }
 
-cipher_interface_t* create_zuc_cipher(const uint8_t* key, const uint8_t* iv){
+cipher_interface_t* create_zuc_cipher(const uint8_t* key, const uint8_t* iv)
+{
     if(!key || !iv) return NULL;
-    cipher_interface_t* ci = safe_malloc(sizeof(cipher_interface_t));
-    zuc_cipher_data_t* d = safe_malloc(sizeof(zuc_cipher_data_t));
+    cipher_interface_t* ci = safeMalloc(sizeof(cipher_interface_t));
+    zuc_cipher_data_t* d = safeMalloc(sizeof(zuc_cipher_data_t));
     memcpy(d->key, key, 16);
     memcpy(d->iv, iv, 16);
     ci->encrypt = zuc_encrypt;

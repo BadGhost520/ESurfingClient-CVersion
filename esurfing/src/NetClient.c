@@ -16,7 +16,7 @@ size_t writeResponseCallback(const void *contents, const size_t size, const size
     char *ptr = realloc(response->memory, response->size + realSize + 1);
     if (!ptr) return 0;
     response->memory = ptr;
-    memcpy(&(response->memory[response->size]), contents, realSize);
+    memcpy(&response->memory[response->size], contents, realSize);
     response->size += realSize;
     response->memory[response->size] = 0;
     return realSize;

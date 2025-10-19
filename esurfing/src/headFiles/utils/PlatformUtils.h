@@ -8,6 +8,26 @@
 
 #include <stdint.h>
 
+typedef struct {
+    unsigned char* data;
+    size_t length;
+} ByteArray;
+
+/**
+ * 文本转字节函数
+ * @param str 文本数据
+ * @return 字节数据
+ */
+ByteArray stringToBytes(const char* str);
+
+/**
+ * XML 解析函数
+ * @param xmlData XML 数据
+ * @param tag 标志
+ * @return 解析后的数据
+ */
+char* XmlParser(const char* xmlData, const char* tag);
+
 /**
  * 字符串转换为64位长整型函数
  * @param str 要转换的字符串

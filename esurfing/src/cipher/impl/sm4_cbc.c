@@ -1,14 +1,8 @@
-#include "../../headFiles/cipher/cipher_interface.h"
-#include "../../headFiles/cipher/cipher_utils.h"
+#include "../../headFiles/cipher/CipherInterface.h"
+#include "../../headFiles/cipher/CipherUtils.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-/**
- * SM4-CBC（PKCS7）实现：与 Kotlin SM4CBC 行为一致
- * - 加密：PKCS7 填充 → XOR IV/前一密文 → SM4 单块加密 → 输出 HEX
- * - 解密：逐块解密 → XOR IV/前一密文 → 去 PKCS7 → 输出明文
- */
 
 #define SM4_BLOCK_SIZE 16
 #define SM4_KEY_SIZE 16
@@ -18,7 +12,6 @@ typedef struct {
     uint8_t iv[SM4_BLOCK_SIZE];
 } sm4_cbc_data_t;
 
-// S-box
 static const uint8_t SM4_SBOX[256] = {
     0xd6,0x90,0xe9,0xfe,0xcc,0xe1,0x3d,0xb7,0x16,0xb6,0x14,0xc2,0x28,0xfb,0x2c,0x05,
     0x2b,0x67,0x9a,0x76,0x2a,0xbe,0x04,0xc3,0xaa,0x44,0x13,0x26,0x49,0x86,0x06,0x99,
@@ -44,61 +37,93 @@ static const uint32_t SM4_CK[32] = {
     0xc0c7ced5,0xdce3eaf1,0xf8ff060d,0x141b2229,0x30373e45,0x4c535a61,0x686f767d,0x848b9299,
     0xa0a7aeb5,0xbcc3cad1,0xd8dfe6ed,0xf4fb0209,0x10171e25,0x2c333a41,0x484f565d,0x646b7279
 };
-static const uint32_t SM4_FK[4] = { 0xa3b1bac6,0x56aa3350,0x677d9197,0xb27022dc };
+static const uint32_t SM4_FK[4] = {
+    0xa3b1bac6,0x56aa3350,0x677d9197,0xb27022dc
+};
 
-static inline uint32_t ROL32(uint32_t x, int n){ return (x<<n) | (x>>(32-n)); }
-static inline uint32_t tau(uint32_t A){
-    return (SM4_SBOX[(A>>24)&0xFF]<<24) | (SM4_SBOX[(A>>16)&0xFF]<<16) |
-           (SM4_SBOX[(A>>8)&0xFF]<<8) | (SM4_SBOX[A&0xFF]);
+static uint32_t ROL32(const uint32_t x, const int n)
+{
+    return x<<n | x>>(32-n);
 }
-static inline uint32_t L(uint32_t B){ return B ^ ROL32(B,2) ^ ROL32(B,10) ^ ROL32(B,18) ^ ROL32(B,24); }
-static inline uint32_t Lp(uint32_t B){ return B ^ ROL32(B,13) ^ ROL32(B,23); }
-static inline uint32_t T(uint32_t X){ return L(tau(X)); }
-static inline uint32_t Tp(uint32_t X){ return Lp(tau(X)); }
+static uint32_t tau(const uint32_t A)
+{
+    return (SM4_SBOX[A>>24&0xFF]<<24) | SM4_SBOX[A>>16&0xFF]<<16 |
+           (SM4_SBOX[A>>8&0xFF]<<8) | SM4_SBOX[A&0xFF];
+}
+static uint32_t L(const uint32_t B)
+{
+    return B ^ ROL32(B,2) ^ ROL32(B,10) ^ ROL32(B,18) ^ ROL32(B,24);
+}
+static uint32_t Lp(const uint32_t B)
+{
+    return B ^ ROL32(B,13) ^ ROL32(B,23);
+}
+static uint32_t T(const uint32_t X)
+{
+    return L(tau(X));
+}
+static uint32_t Tp(const uint32_t X)
+{
+    return Lp(tau(X));
+}
 
-static void sm4_key_expansion(const uint8_t* key, uint32_t* rk){
+static void sm4_key_expansion(const uint8_t* key, uint32_t* rk)
+{
     uint32_t MK[4];
     uint32_t K[36];
-    for(int i=0;i<4;i++){
-        MK[i] = ((uint32_t)key[i*4]<<24) | ((uint32_t)key[i*4+1]<<16) |
-                ((uint32_t)key[i*4+2]<<8) | (uint32_t)key[i*4+3];
+    for(int i=0;i<4;i++)
+    {
+        MK[i] = (uint32_t)key[i*4]<<24 | (uint32_t)key[i*4+1]<<16 |
+                (uint32_t)key[i*4+2]<<8 | (uint32_t)key[i*4+3];
     }
-    for(int i=0;i<4;i++){ K[i] = MK[i] ^ SM4_FK[i]; }
-    for(int i=0;i<32;i++){
+    for(int i=0;i<4;i++)
+    {
+        K[i] = MK[i] ^ SM4_FK[i];
+    }
+    for(int i=0;i<32;i++)
+    {
         K[i+4] = K[i] ^ Tp(K[i+1] ^ K[i+2] ^ K[i+3] ^ SM4_CK[i]);
         rk[i] = K[i+4];
     }
 }
 
-static void sm4_encrypt_block(const uint8_t* in, uint8_t* out, const uint32_t* rk){
+static void sm4_encrypt_block(const uint8_t* in, uint8_t* out, const uint32_t* rk)
+{
     uint32_t X[36];
-    for(int i=0;i<4;i++){
-        X[i] = ((uint32_t)in[i*4]<<24) | ((uint32_t)in[i*4+1]<<16) |
-               ((uint32_t)in[i*4+2]<<8) | (uint32_t)in[i*4+3];
+    for(int i=0;i<4;i++)
+    {
+        X[i] = (uint32_t)in[i*4]<<24 | (uint32_t)in[i*4+1]<<16 |
+               (uint32_t)in[i*4+2]<<8 | (uint32_t)in[i*4+3];
     }
-    for(int i=0;i<32;i++){
+    for(int i=0;i<32;i++)
+    {
         X[i+4] = X[i] ^ T(X[i+1] ^ X[i+2] ^ X[i+3] ^ rk[i]);
     }
-    for(int i=0;i<4;i++){
-        uint32_t Y = X[35 - i];
+    for(int i=0;i<4;i++)
+    {
+        const uint32_t Y = X[35 - i];
         out[i*4]   = (uint8_t)(Y>>24);
         out[i*4+1] = (uint8_t)(Y>>16);
         out[i*4+2] = (uint8_t)(Y>>8);
-        out[i*4+3] = (uint8_t)(Y);
+        out[i*4+3] = (uint8_t)Y;
     }
 }
 
-static void sm4_decrypt_block(const uint8_t* in, uint8_t* out, const uint32_t* rk){
+static void sm4_decrypt_block(const uint8_t* in, uint8_t* out, const uint32_t* rk)
+{
     uint32_t X[36];
-    for(int i=0;i<4;i++){
-        X[i] = ((uint32_t)in[i*4]<<24) | ((uint32_t)in[i*4+1]<<16) |
-               ((uint32_t)in[i*4+2]<<8) | (uint32_t)in[i*4+3];
+    for(int i=0;i<4;i++)
+    {
+        X[i] = (uint32_t)in[i*4]<<24 | (uint32_t)in[i*4+1]<<16 |
+               (uint32_t)in[i*4+2]<<8 | (uint32_t)in[i*4+3];
     }
-    for(int i=0;i<32;i++){
+    for(int i=0;i<32;i++)
+    {
         X[i+4] = X[i] ^ T(X[i+1] ^ X[i+2] ^ X[i+3] ^ rk[31 - i]);
     }
-    for(int i=0;i<4;i++){
-        uint32_t Y = X[35 - i];
+    for(int i=0;i<4;i++)
+    {
+        const uint32_t Y = X[35 - i];
         out[i*4]   = (uint8_t)(Y>>24);
         out[i*4+1] = (uint8_t)(Y>>16);
         out[i*4+2] = (uint8_t)(Y>>8);
@@ -107,78 +132,89 @@ static void sm4_decrypt_block(const uint8_t* in, uint8_t* out, const uint32_t* r
 }
 
 static uint8_t* sm4_encrypt_cbc(const uint8_t* key, const uint8_t* iv, const uint8_t* plaintext,
-                                size_t plaintext_len, size_t* output_len){
-    size_t padded_len=0; uint8_t* padded = pkcs7_padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
+                                const size_t plaintext_len, size_t* output_len)
+{
+    size_t padded_len=0; uint8_t* padded = pkcs7Padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
     if(!padded) return NULL;
-    uint8_t* out = safe_malloc(padded_len);
+    uint8_t* out = safeMalloc(padded_len);
     uint8_t prev[SM4_BLOCK_SIZE]; memcpy(prev, iv, SM4_BLOCK_SIZE);
     uint32_t rk[32]; sm4_key_expansion(key, rk);
-    size_t blocks = padded_len / SM4_BLOCK_SIZE;
-    for(size_t i=0;i<blocks;i++){
+    const size_t blocks = padded_len / SM4_BLOCK_SIZE;
+    for(size_t i=0;i<blocks;i++)
+    {
         uint8_t xored[SM4_BLOCK_SIZE];
-        xor_bytes(padded + i*SM4_BLOCK_SIZE, prev, xored, SM4_BLOCK_SIZE);
+        xorBytes(padded + i*SM4_BLOCK_SIZE, prev, xored, SM4_BLOCK_SIZE);
         sm4_encrypt_block(xored, out + i*SM4_BLOCK_SIZE, rk);
         memcpy(prev, out + i*SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
     }
-    safe_free(padded);
+    safeFree(padded);
     *output_len = padded_len;
     return out;
 }
 
 static uint8_t* sm4_decrypt_cbc(const uint8_t* key, const uint8_t* iv, const uint8_t* ciphertext,
-                                size_t ciphertext_len, size_t* output_len){
+                                const size_t ciphertext_len, size_t* output_len)
+{
     if(ciphertext_len % SM4_BLOCK_SIZE != 0) return NULL;
-    uint8_t* out_blocks = safe_malloc(ciphertext_len);
+    uint8_t* out_blocks = safeMalloc(ciphertext_len);
     uint8_t prev[SM4_BLOCK_SIZE]; memcpy(prev, iv, SM4_BLOCK_SIZE);
     uint32_t rk[32]; sm4_key_expansion(key, rk);
-    size_t blocks = ciphertext_len / SM4_BLOCK_SIZE;
-    for(size_t i=0;i<blocks;i++){
+    const size_t blocks = ciphertext_len / SM4_BLOCK_SIZE;
+    for(size_t i=0;i<blocks;i++)
+    {
         uint8_t dec[SM4_BLOCK_SIZE];
         const uint8_t* block = ciphertext + i*SM4_BLOCK_SIZE;
         sm4_decrypt_block(block, dec, rk);
-        xor_bytes(dec, prev, out_blocks + i*SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
+        xorBytes(dec, prev, out_blocks + i*SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
         memcpy(prev, block, SM4_BLOCK_SIZE);
     }
-    size_t unpadded_len=0; uint8_t* unpadded = remove_pkcs7_padding(out_blocks, ciphertext_len, &unpadded_len);
-    safe_free(out_blocks);
+    size_t unpadded_len=0; uint8_t* unpadded = removePkcs7Padding(out_blocks, ciphertext_len, &unpadded_len);
+    safeFree(out_blocks);
     *output_len = unpadded_len;
     return unpadded;
 }
 
-static char* sm4_cbc_encrypt(cipher_interface_t* self, const char* text){
+static char* sm4_cbc_encrypt(cipher_interface_t* self, const char* text)
+{
     if(!self || !text) return NULL;
-    sm4_cbc_data_t* d = (sm4_cbc_data_t*)self->private_data;
-    size_t text_len = strlen(text);
+    const sm4_cbc_data_t* d = self->private_data;
+    const size_t text_len = strlen(text);
     size_t out_len=0; uint8_t* out = sm4_encrypt_cbc(d->key, d->iv, (const uint8_t*)text, text_len, &out_len);
     if(!out) return NULL;
-    char* hex = bytes_to_hex_upper(out, out_len);
-    safe_free(out);
+    char* hex = bytesToHexUpper(out, out_len);
+    safeFree(out);
     return hex;
 }
 
-static char* sm4_cbc_decrypt(cipher_interface_t* self, const char* hex){
+static char* sm4_cbc_decrypt(cipher_interface_t* self, const char* hex)
+{
     if(!self || !hex) return NULL;
-    sm4_cbc_data_t* d = (sm4_cbc_data_t*)self->private_data;
-    size_t bytes_len=0; uint8_t* bytes = hex_to_bytes(hex, &bytes_len);
+    const sm4_cbc_data_t* d = self->private_data;
+    size_t bytes_len=0; uint8_t* bytes = hexToBytes(hex, &bytes_len);
     if(!bytes) return NULL;
     size_t out_len=0; uint8_t* out = sm4_decrypt_cbc(d->key, d->iv, bytes, bytes_len, &out_len);
-    safe_free(bytes);
+    safeFree(bytes);
     if(!out) return NULL;
-    char* result = safe_malloc(out_len + 1);
+    char* result = safeMalloc(out_len + 1);
     memcpy(result, out, out_len);
     result[out_len] = '\0';
-    safe_free(out);
+    safeFree(out);
     return result;
 }
 
-static void sm4_cbc_destroy(cipher_interface_t* self){
-    if(self){ safe_free(self->private_data); safe_free(self);}
+static void sm4_cbc_destroy(cipher_interface_t* self)
+{
+    if(self)
+    {
+        safeFree(self->private_data); safeFree(self);
+    }
 }
 
-cipher_interface_t* create_sm4_cbc_cipher(const uint8_t* key, const uint8_t* iv){
+cipher_interface_t* create_sm4_cbc_cipher(const uint8_t* key, const uint8_t* iv)
+{
     if(!key || !iv) return NULL;
-    cipher_interface_t* ci = safe_malloc(sizeof(cipher_interface_t));
-    sm4_cbc_data_t* d = safe_malloc(sizeof(sm4_cbc_data_t));
+    cipher_interface_t* ci = safeMalloc(sizeof(cipher_interface_t));
+    sm4_cbc_data_t* d = safeMalloc(sizeof(sm4_cbc_data_t));
     memcpy(d->key, key, SM4_KEY_SIZE);
     memcpy(d->iv, iv, SM4_BLOCK_SIZE);
     ci->encrypt = sm4_cbc_encrypt;

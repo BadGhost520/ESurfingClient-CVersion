@@ -1,13 +1,8 @@
 #ifndef AES_CBC_H
 #define AES_CBC_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * AES-CBC 加解密算法头文件
- * 对应Kotlin的AESCBC类
- */
 
 /**
  * 创建AES-CBC加解密实例

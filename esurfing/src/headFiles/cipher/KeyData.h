@@ -7,13 +7,6 @@
 extern "C" {
 #endif
 
-/**
- * 密钥数据 - 对应Kotlin的KeyData object
- * 
- * 包含所有加解密算法的密钥和初始化向量
- * 与Kotlin版本保持完全一致
- */
-
 // -----------------------------------------------------------------
 // Algo Id: CAFBCBAD-B6E7-4CAB-8A67-14D39F00CE1E (AES/CBC/NoPadding)
 // -----------------------------------------------------------------
@@ -104,20 +97,20 @@ extern const uint8_t iv2_1A7343EC_7F9B_4570_BF58_16279A81116B[8];
 // -----------------------------------------------------------------
 // Algo Id: AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91 (AB6C8 TEA CBC Triple)
 // -----------------------------------------------------------------
-extern const uint32_t key1_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K0
-extern const uint32_t key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K1
-extern const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4]; // K2
+extern const uint32_t key1_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4];
+extern const uint32_t key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4];
+extern const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4];
 extern const uint32_t iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[2];
 
 // -----------------------------------------------------------------
 // Algo Id: B306E770-B7D5-49F2-A574-BCE2C5C650ED (DES 6-stage, PC)
 // -----------------------------------------------------------------
-extern const uint8_t key1_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K0
-extern const uint8_t key2_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K1
-extern const uint8_t key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K2
-extern const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K3
-extern const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K4
-extern const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8]; // K5
+extern const uint8_t key1_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
+extern const uint8_t key2_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
+extern const uint8_t key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
+extern const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
+extern const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
+extern const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
 
 #ifdef __cplusplus
 }

@@ -1,13 +1,8 @@
 #ifndef MOD_XTEA_PC_H
 #define MOD_XTEA_PC_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * ModXTEA-PC 加解密算法头文件
- * 使用在PC环境中验证过的XTEA半轮顺序
- */
 
 /**
  * 创建ModXTEA-PC加解密实例

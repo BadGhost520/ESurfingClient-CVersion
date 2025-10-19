@@ -10,7 +10,6 @@
 #include "headFiles/Constants.h"
 #include "headFiles/States.h"
 #include "headFiles/utils/PlatformUtils.h"
-#include "headFiles/utils/XMLParser.h"
 #include "headFiles/NetClient.h"
 
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
@@ -97,8 +96,8 @@ ConnectivityStatus checkStatus()
         char* portal_config = extractBetweenTags(response_data.memory, PORTAL_START_TAG, PORTAL_END_TAG);
         if (portal_config && strlen(portal_config) > 0)
         {
-            char* auth_url_raw = XML_Parser(portal_config, "auth-url");
-            char* ticket_url_raw = XML_Parser(portal_config, "ticket-url");
+            char* auth_url_raw = XmlParser(portal_config, "auth-url");
+            char* ticket_url_raw = XmlParser(portal_config, "ticket-url");
             char* auth_url = cleanCDATA(auth_url_raw);
             char* ticket_url = cleanCDATA(ticket_url_raw);
             if (auth_url_raw) free(auth_url_raw);

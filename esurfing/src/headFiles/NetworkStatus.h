@@ -13,7 +13,7 @@ typedef enum {
 } ConnectivityStatus;
 
 /**
- * 网络状态检测
+ * 网络状态检测函数
  * @return 网络状态
  */
 ConnectivityStatus checkStatus();

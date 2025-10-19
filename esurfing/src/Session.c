@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "headFiles/utils/ByteArray.h"
+#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
-#include "headFiles/cipher/cipher_interface.h"
+#include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/utils/Logger.h"
 
 cipher_interface_t* cipher = NULL;
@@ -32,10 +32,10 @@ int initCipher(const char* algo_id)
 {
     if (cipher != NULL)
     {
-        cipher_factory_destroy(cipher);
+        cipherFactoryDestroy(cipher);
         cipher = NULL;
     }
-    cipher = cipher_factory_create(algo_id);
+    cipher = cipherFactoryCreate(algo_id);
     if (cipher == NULL)
     {
         return 0;

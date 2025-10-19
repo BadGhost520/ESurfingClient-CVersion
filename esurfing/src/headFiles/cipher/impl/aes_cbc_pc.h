@@ -1,7 +1,7 @@
 #ifndef AES_CBC_PC_H
 #define AES_CBC_PC_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
 
 #ifdef __cplusplus

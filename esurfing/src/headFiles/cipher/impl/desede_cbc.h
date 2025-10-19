@@ -1,13 +1,8 @@
 #ifndef DESEDE_CBC_H
 #define DESEDE_CBC_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * 3DES-CBC 加解密算法头文件
- * 对应Kotlin的DESedeCBC类
- */
 
 /**
  * 创建3DES-CBC加解密实例

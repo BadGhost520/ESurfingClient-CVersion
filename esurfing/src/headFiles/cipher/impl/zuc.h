@@ -1,13 +1,8 @@
 #ifndef ZUC_H
 #define ZUC_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * ZUC-128 加解密算法头文件
- * 对应Kotlin的ZUC类
- */
 
 /**
  * 创建ZUC-128加解密实例

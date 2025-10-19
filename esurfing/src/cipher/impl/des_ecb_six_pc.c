@@ -1,10 +1,8 @@
-#include "../../headFiles/cipher/impl/des_ecb_six_pc.h"
-#include "../../headFiles/cipher/cipher_utils.h"
+#include "../../headFiles/cipher/CipherInterface.h"
+#include "../../headFiles/cipher/CipherUtils.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-// ---- Minimal DES implementation (block) ----
 
 static const int IP[64] = {
     58,50,42,34,26,18,10,2,
@@ -98,115 +96,132 @@ static const uint8_t SBOX[8][64] = {
    2,1,14,7,4,10,8,13,15,12,9,0,3,5,6,11}
 };
 
-typedef struct { uint64_t subkeys[16]; } des_key_t;
+typedef struct
+{
+    uint64_t subkeys[16];
+} des_key_t;
 
-static inline uint64_t left_rotate28(uint64_t v, int s) {
+static uint64_t left_rotate28(uint64_t v, const int s)
+{
     v &= 0x0FFFFFFF;
-    return ((v << s) | (v >> (28 - s))) & 0x0FFFFFFF;
+    return (v << s | v >> (28 - s)) & 0x0FFFFFFF;
 }
 
-static uint64_t permute64(uint64_t in, const int* table, int n) {
+static uint64_t permute64(const uint64_t in, const int* table)
+{
     uint64_t out = 0;
-    for (int i = 0; i < n; i++) {
-        int src = table[i] - 1;
+    for (int i = 0; i < 64; i++)
+    {
+        const int src = table[i] - 1;
         out <<= 1;
-        out |= (in >> (64 - 1 - src)) & 1ULL;
+        out |= in >> (64 - 1 - src) & 1ULL;
     }
     return out;
 }
 
-static uint32_t feistel(uint32_t r, uint64_t subkey) {
+static uint32_t feistel(const uint32_t r, const uint64_t subkey)
+{
     uint64_t e = 0;
-    for (int i = 0; i < 48; i++) {
-        int src = E_EXP[i] - 1;
+    for (int i = 0; i < 48; i++)
+    {
+        const int src = E_EXP[i] - 1;
         e <<= 1;
-        e |= (uint64_t)((r >> (32 - 1 - src)) & 1U);
+        e |= (uint64_t)(r >> (32 - 1 - src) & 1U);
     }
     e ^= subkey;
     uint32_t s_out = 0;
-    for (int i = 0; i < 8; i++) {
-        uint8_t six = (e >> (48 - 6*(i+1))) & 0x3F;
-        int row = ((six & 0x20) >> 4) | (six & 0x01);
-        int col = (six >> 1) & 0x0F;
-        uint8_t val = SBOX[i][row*16 + col];
-        s_out = (s_out << 4) | val;
+    for (int i = 0; i < 8; i++)
+    {
+        const uint8_t six = e >> (48 - 6*(i+1)) & 0x3F;
+        const int row = (six & 0x20) >> 4 | six & 0x01;
+        const int col = six >> 1 & 0x0F;
+        const uint8_t val = SBOX[i][row*16 + col];
+        s_out = s_out << 4 | val;
     }
     uint32_t p = 0;
-    for (int i = 0; i < 32; i++) {
-        int src = P_PERM[i] - 1;
+    for (int i = 0; i < 32; i++)
+    {
+        const int src = P_PERM[i] - 1;
         p <<= 1;
         p |= (s_out >> (32 - 1 - src)) & 1U;
     }
     return p;
 }
 
-static des_key_t des_schedule(const uint8_t key_bytes[8]) {
+static des_key_t des_schedule(const uint8_t key_bytes[8])
+{
     uint64_t key64 = 0;
-    for (int i = 0; i < 8; i++) key64 = (key64 << 8) | key_bytes[i];
+    for (int i = 0; i < 8; i++) key64 = key64 << 8 | key_bytes[i];
     uint64_t kp = 0;
-    for (int i = 0; i < 56; i++) {
-        int src = PC1[i] - 1;
+    for (int i = 0; i < 56; i++)
+    {
+        const int src = PC1[i] - 1;
         kp <<= 1;
-        kp |= (key64 >> (64 - 1 - src)) & 1ULL;
+        kp |= key64 >> (64 - 1 - src) & 1ULL;
     }
-    uint32_t c = (uint32_t)((kp >> 28) & 0x0FFFFFFF);
+    uint32_t c = (uint32_t)(kp >> 28 & 0x0FFFFFFF);
     uint32_t d = (uint32_t)(kp & 0x0FFFFFFF);
     des_key_t sched;
-    for (int round = 0; round < 16; round++) {
+    for (int round = 0; round < 16; round++)
+    {
         c = (uint32_t)left_rotate28(c, SHIFTS[round]);
         d = (uint32_t)left_rotate28(d, SHIFTS[round]);
-        uint64_t cd = ((uint64_t)c << 28) | d;
+        const uint64_t cd = (uint64_t)c << 28 | d;
         uint64_t sk = 0;
         for (int i = 0; i < 48; i++) {
-            int src = PC2[i] - 1;
+            const int src = PC2[i] - 1;
             sk <<= 1;
-            sk |= (cd >> (56 - 1 - src)) & 1ULL;
+            sk |= cd >> (56 - 1 - src) & 1ULL;
         }
         sched.subkeys[round] = sk;
     }
     return sched;
 }
 
-static uint64_t des_block_core(uint64_t block, const des_key_t* sched, int decrypt) {
-    uint64_t ip = permute64(block, IP, 64);
+static uint64_t des_block_core(const uint64_t block, const des_key_t* sched, const int decrypt)
+{
+    uint64_t ip = permute64(block, IP);
     uint32_t l = (uint32_t)(ip >> 32);
     uint32_t r = (uint32_t)ip;
-    for (int round = 0; round < 16; round++) {
-        uint64_t sk = decrypt ? sched->subkeys[15 - round] : sched->subkeys[round];
-        uint32_t f = feistel(r, sk);
-        uint32_t new_l = r;
-        uint32_t new_r = l ^ f;
+    for (int round = 0; round < 16; round++)
+    {
+        const uint64_t sk = decrypt ? sched->subkeys[15 - round] : sched->subkeys[round];
+        const uint32_t f = feistel(r, sk);
+        const uint32_t new_l = r;
+        const uint32_t new_r = l ^ f;
         l = new_l; r = new_r;
     }
-    uint64_t preout = ((uint64_t)r << 32) | l;
-    uint64_t fp = permute64(preout, FP, 64);
+    const uint64_t preout = ((uint64_t)r << 32) | l;
+    const uint64_t fp = permute64(preout, FP);
     return fp;
 }
 
-static inline uint64_t read_be64(const uint8_t* in) {
+static uint64_t read_be64(const uint8_t* in)
+{
     uint64_t x = 0;
-    for (int i = 0; i < 8; i++) x = (x << 8) | in[i];
+    for (int i = 0; i < 8; i++) x = x << 8 | in[i];
     return x;
 }
-static inline void write_be64(uint8_t* out, uint64_t x) {
+static void write_be64(uint8_t* out, const uint64_t x)
+{
     for (int i = 0; i < 8; i++) out[i] = (uint8_t)(x >> (56 - 8*i));
 }
 
-// ---- DES-ECB six-stage (PC) context ----
 typedef struct {
-    des_key_t ks[6]; // K0..K5 schedules
+    des_key_t ks[6];
 } des_ecb_six_pc_ctx_t;
 
-// Encrypt: E(K3) -> D(K4) -> E(K5) -> E(K0) -> D(K1) -> E(K2)
-static char* des_ecb_six_pc_encrypt(cipher_interface_t* self, const char* text) {
+static char* des_ecb_six_pc_encrypt(cipher_interface_t* self, const char* text)
+{
     if (!self || !text) return NULL;
-    des_ecb_six_pc_ctx_t* ctx = (des_ecb_six_pc_ctx_t*)self->private_data;
-    size_t len = safe_strlen(text);
+    const des_ecb_six_pc_ctx_t* ctx = self->private_data;
+    const size_t len = safeStrLen(text);
     size_t padded_len = 0;
-    uint8_t* padded = pad_to_multiple((const uint8_t*)text, len, 8, &padded_len); // zero padding
+    uint8_t* padded = padToMultiple((const uint8_t*)text, len, 8, &padded_len);
     if (!padded) return NULL;
-    uint8_t* out = (uint8_t*)safe_malloc(padded_len);
-    for (size_t i = 0; i < padded_len; i += 8) {
+    uint8_t* out = safeMalloc(padded_len);
+    for (size_t i = 0; i < padded_len; i += 8)
+    {
         uint64_t b = read_be64(padded + i);
         b = des_block_core(b, &ctx->ks[3], 0);
         b = des_block_core(b, &ctx->ks[4], 1);
@@ -216,21 +231,25 @@ static char* des_ecb_six_pc_encrypt(cipher_interface_t* self, const char* text) 
         b = des_block_core(b, &ctx->ks[2], 0);
         write_be64(out + i, b);
     }
-    char* hex = bytes_to_hex_upper(out, padded_len);
-    safe_free(padded);
-    safe_free(out);
+    char* hex = bytesToHexUpper(out, padded_len);
+    safeFree(padded);
+    safeFree(out);
     return hex;
 }
 
-// Decrypt: D(K2) -> E(K1) -> D(K0) -> D(K5) -> E(K4) -> D(K3)
-static char* des_ecb_six_pc_decrypt(cipher_interface_t* self, const char* hex) {
+static char* des_ecb_six_pc_decrypt(cipher_interface_t* self, const char* hex)
+{
     if (!self || !hex) return NULL;
-    des_ecb_six_pc_ctx_t* ctx = (des_ecb_six_pc_ctx_t*)self->private_data;
+    const des_ecb_six_pc_ctx_t* ctx = self->private_data;
     size_t in_len = 0;
-    uint8_t* in = hex_to_bytes(hex, &in_len);
-    if (!in || (in_len % 8) != 0) { safe_free(in); return NULL; }
-    uint8_t* out = (uint8_t*)safe_malloc(in_len);
-    for (size_t i = 0; i < in_len; i += 8) {
+    uint8_t* in = hexToBytes(hex, &in_len);
+    if (!in || (in_len % 8) != 0)
+    {
+        safeFree(in); return NULL;
+    }
+    uint8_t* out = safeMalloc(in_len);
+    for (size_t i = 0; i < in_len; i += 8)
+    {
         uint64_t b = read_be64(in + i);
         b = des_block_core(b, &ctx->ks[2], 1);
         b = des_block_core(b, &ctx->ks[1], 0);
@@ -240,21 +259,21 @@ static char* des_ecb_six_pc_decrypt(cipher_interface_t* self, const char* hex) {
         b = des_block_core(b, &ctx->ks[3], 1);
         write_be64(out + i, b);
     }
-    // trim trailing zeros
     size_t plain_len = in_len;
     while (plain_len > 0 && out[plain_len - 1] == 0x00) plain_len--;
-    char* text = (char*)safe_malloc(plain_len + 1);
+    char* text = safeMalloc(plain_len + 1);
     memcpy(text, out, plain_len);
     text[plain_len] = '\0';
-    safe_free(in);
-    safe_free(out);
+    safeFree(in);
+    safeFree(out);
     return text;
 }
 
-static void des_ecb_six_pc_destroy(cipher_interface_t* self) {
+static void des_ecb_six_pc_destroy(cipher_interface_t* self)
+{
     if (!self) return;
-    if (self->private_data) safe_free(self->private_data);
-    safe_free(self);
+    if (self->private_data) safeFree(self->private_data);
+    safeFree(self);
 }
 
 cipher_interface_t* create_des_ecb_six_pc_cipher(
@@ -264,10 +283,11 @@ cipher_interface_t* create_des_ecb_six_pc_cipher(
     const uint8_t* key3,
     const uint8_t* key4,
     const uint8_t* key5
-) {
+)
+{
     if (!key0 || !key1 || !key2 || !key3 || !key4 || !key5) return NULL;
-    cipher_interface_t* ci = (cipher_interface_t*)safe_calloc(1, sizeof(cipher_interface_t));
-    des_ecb_six_pc_ctx_t* ctx = (des_ecb_six_pc_ctx_t*)safe_calloc(1, sizeof(des_ecb_six_pc_ctx_t));
+    cipher_interface_t* ci = safeCalloc(1, sizeof(cipher_interface_t));
+    des_ecb_six_pc_ctx_t* ctx = safeCalloc(1, sizeof(des_ecb_six_pc_ctx_t));
     ctx->ks[0] = des_schedule(key0);
     ctx->ks[1] = des_schedule(key1);
     ctx->ks[2] = des_schedule(key2);

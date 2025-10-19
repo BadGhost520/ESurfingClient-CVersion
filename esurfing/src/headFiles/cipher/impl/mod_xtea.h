@@ -1,13 +1,8 @@
 #ifndef MOD_XTEA_H
 #define MOD_XTEA_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * ModXTEA 加解密算法头文件
- * 对应Kotlin的ModXTEA类
- */
 
 /**
  * 创建ModXTEA加解密实例

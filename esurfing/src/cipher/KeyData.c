@@ -1,10 +1,4 @@
-#include "../headFiles/cipher/key_data.h"
-
-/**
- * 密钥数据实现 - 对应Kotlin的KeyData object
- * 
- * 所有密钥值与Kotlin版本完全一致
- */
+#include "../headFiles/cipher/KeyData.h"
 
 // -----------------------------------------------------------------
 // Algo Id: CAFBCBAD-B6E7-4CAB-8A67-14D39F00CE1E (AES/CBC/NoPadding)
@@ -46,13 +40,11 @@ const uint8_t key2_A474B1C2_3DE0_4EA2_8C5F_7093409CE6C4[16] = {
 // Algo Id: 4BA5496A-2123-46A7-85F2-35956EA7BE39 (AES/ECB/Two-Layer, PC)
 // -----------------------------------------------------------------
 const uint8_t key1_4BA5496A_2123_46A7_85F2_35956EA7BE39[16] = {
-    // 7775793E4A4756586A5A534566486F27
     0x77, 0x75, 0x79, 0x3E, 0x4A, 0x47, 0x56, 0x58,
     0x6A, 0x5A, 0x53, 0x45, 0x66, 0x48, 0x6F, 0x27
 };
 
 const uint8_t key2_4BA5496A_2123_46A7_85F2_35956EA7BE39[16] = {
-    // 64245575696E2A2527596D6957286541
     0x64, 0x24, 0x55, 0x75, 0x69, 0x6E, 0x2A, 0x25,
     0x27, 0x59, 0x6D, 0x69, 0x57, 0x28, 0x65, 0x41
 };
@@ -61,11 +53,9 @@ const uint8_t key2_4BA5496A_2123_46A7_85F2_35956EA7BE39[16] = {
 // Algo Id: 45433DCF-9ECA-4BE5-83F2-F92BA0B4F291 (AES/CBC/Two-Layer, PC)
 // -----------------------------------------------------------------
 const uint8_t key1_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291[16] = {
-    // 462D68786B4F687341507E252227496F
     0x46,0x2D,0x68,0x78,0x6B,0x4F,0x68,0x73,0x41,0x50,0x7E,0x25,0x22,0x27,0x49,0x6F
 };
 const uint8_t key2_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291[16] = {
-    // 46587D7A264C595742564862414F5F55
     0x46,0x58,0x7D,0x7A,0x26,0x4C,0x59,0x57,0x42,0x56,0x48,0x62,0x41,0x4F,0x5F,0x55
 };
 
@@ -179,14 +169,12 @@ const uint32_t iv_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1[2] = {
 // Algo Id: 1A7343EC-7F9B-4570-BF58-16279A81116B (DESede/CBC/Two-Layer, PC)
 // ----------------------------------------------------------------
 const uint8_t key1_1A7343EC_7F9B_4570_BF58_16279A81116B[24] = {
-    // K1 || K2 || K3 (each 8 bytes)
     0x3C,0x27,0x73,0x5A,0x65,0x2A,0x54,0x5E,
     0x64,0x41,0x3D,0x57,0x73,0x3A,0x2F,0x3B,
     0x53,0x28,0x52,0x47,0x52,0x44,0x48,0x51
 };
 
 const uint8_t key2_1A7343EC_7F9B_4570_BF58_16279A81116B[24] = {
-    // K4 || K5 || K6
     0x43,0x74,0x5C,0x56,0x5E,0x6A,0x22,0x61,
     0x65,0x6E,0x7A,0x7A,0x61,0x7A,0x2F,0x63,
     0x51,0x44,0x4E,0x6B,0x28,0x2D,0x27,0x2E
@@ -216,15 +204,14 @@ const uint32_t key3_60639D8B_272E_4A4D_976E_AA270987A169[4] = {
 
 // -----------------------------------------------------------------
 //  Algo Id: AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91 (AB6C8 TEA CBC Triple)
-//  Keys extracted from .so (little-endian dword order)
 // -----------------------------------------------------------------
-const uint32_t key1_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = { // K0
+const uint32_t key1_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = {
     0x46253A70U, 0x7354653EU, 0x4C3A6260U, 0x79474F3CU
 };
-const uint32_t key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = { // K1
+const uint32_t key2_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = {
     0x65682656U, 0x76554464U, 0x79284C6AU, 0x4D212B6CU
 };
-const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = { // K2
+const uint32_t key3_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[4] = {
     0x7D2F5640U, 0x4B635240U, 0x4D6F7E2FU, 0x5B76287DU
 };
 const uint32_t iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[2] = {
@@ -233,23 +220,22 @@ const uint32_t iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91[2] = {
 
 // -----------------------------------------------------------------
 // Algo Id: B306E770-B7D5-49F2-A574-BCE2C5C650ED (DES 6-stage, PC)
-// Keys extracted from .so (order: K0..K5, 8 bytes each)
 // -----------------------------------------------------------------
-const uint8_t key1_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K0
+const uint8_t key1_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = {
     0x43, 0x4D, 0x75, 0x3F, 0x3D, 0x54, 0x72, 0x49
 };
-const uint8_t key2_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K1
+const uint8_t key2_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = {
     0x79, 0x7A, 0x7A, 0x49, 0x23, 0x53, 0x55, 0x51
 };
-const uint8_t key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K2
+const uint8_t key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = {
     0x6C, 0x25, 0x5C, 0x7B, 0x41, 0x73, 0x77, 0x62
 };
-const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K3
+const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = {
     0x75, 0x6C, 0x6A, 0x28, 0x3A, 0x48, 0x22, 0x68
 };
-const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K4
+const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = {
     0x79, 0x24, 0x6C, 0x41, 0x77, 0x6F, 0x52, 0x2A
 };
-const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = { // K5
+const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8] = {
     0x70, 0x6A, 0x45, 0x58, 0x76, 0x73, 0x6D, 0x27
 };

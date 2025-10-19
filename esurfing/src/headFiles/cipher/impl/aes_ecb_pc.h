@@ -2,7 +2,7 @@
 #define AES_ECB_PC_H
 
 #include <stdint.h>
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 
 #ifdef __cplusplus
 extern "C" {

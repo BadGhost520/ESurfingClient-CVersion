@@ -1,15 +1,8 @@
-#include "../../headFiles/cipher/cipher_interface.h"
-#include "../../headFiles/cipher/cipher_utils.h"
+#include "../../headFiles/cipher/CipherInterface.h"
+#include "../../headFiles/cipher/CipherUtils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-
-/**
- * SM4-ECB实现 - 对应Kotlin的SM4ECB类
- * 
- * SM4是中国的分组密码算法，块大小为16字节
- * 这里实现SM4-ECB模式
- */
 
 #define SM4_BLOCK_SIZE 16
 #define SM4_KEY_SIZE 16
@@ -18,7 +11,6 @@ typedef struct {
     uint8_t key[SM4_KEY_SIZE];
 } sm4_ecb_data_t;
 
-// SM4算法的S盒
 static const uint8_t SM4_SBOX[256] = {
     0xd6, 0x90, 0xe9, 0xfe, 0xcc, 0xe1, 0x3d, 0xb7, 0x16, 0xb6, 0x14, 0xc2, 0x28, 0xfb, 0x2c, 0x05,
     0x2b, 0x67, 0x9a, 0x76, 0x2a, 0xbe, 0x04, 0xc3, 0xaa, 0x44, 0x13, 0x26, 0x49, 0x86, 0x06, 0x99,
@@ -38,7 +30,6 @@ static const uint8_t SM4_SBOX[256] = {
     0x18, 0xf0, 0x7d, 0xec, 0x3a, 0xdc, 0x4d, 0x20, 0x79, 0xee, 0x5f, 0x3e, 0xd7, 0xcb, 0x39, 0x48
 };
 
-// 常数CK
 static const uint32_t SM4_CK[32] = {
     0x00070e15, 0x1c232a31, 0x383f464d, 0x545b6269,
     0x70777e85, 0x8c939aa1, 0xa8afb6bd, 0xc4cbd2d9,
@@ -50,110 +41,100 @@ static const uint32_t SM4_CK[32] = {
     0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279
 };
 
-// 常数FK
 static const uint32_t SM4_FK[4] = {
     0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc
 };
 
-// 辅助函数：循环左移
-static uint32_t ROL(uint32_t x, int n) {
-    return (x << n) | (x >> (32 - n));
+static uint32_t ROL(const uint32_t x, const int n)
+{
+    return x << n | x >> (32 - n);
 }
 
-// 非线性变换τ
-static uint32_t tau(uint32_t A) {
-    return (SM4_SBOX[(A >> 24) & 0xFF] << 24) |
-           (SM4_SBOX[(A >> 16) & 0xFF] << 16) |
-           (SM4_SBOX[(A >> 8) & 0xFF] << 8) |
-           (SM4_SBOX[A & 0xFF]);
+static uint32_t tau(const uint32_t A)
+{
+    return SM4_SBOX[A >> 24 & 0xFF] << 24 |
+           SM4_SBOX[A >> 16 & 0xFF] << 16 |
+           SM4_SBOX[A >> 8 & 0xFF] << 8 |
+           SM4_SBOX[A & 0xFF];
 }
 
-// 线性变换L
-static uint32_t L(uint32_t B) {
+static uint32_t L(const uint32_t B)
+{
     return B ^ ROL(B, 2) ^ ROL(B, 10) ^ ROL(B, 18) ^ ROL(B, 24);
 }
 
-// 线性变换L'（用于密钥扩展）
-static uint32_t L_prime(uint32_t B) {
+static uint32_t L_prime(const uint32_t B)
+{
     return B ^ ROL(B, 13) ^ ROL(B, 23);
 }
 
-// 合成置换T
-static uint32_t T(uint32_t X) {
+static uint32_t T(const uint32_t X)
+{
     return L(tau(X));
 }
 
-// 合成置换T'（用于密钥扩展）
-static uint32_t T_prime(uint32_t X) {
+static uint32_t T_prime(const uint32_t X)
+{
     return L_prime(tau(X));
 }
 
-// SM4密钥扩展
-static void sm4_key_expansion(const uint8_t* key, uint32_t* rk) {
+static void sm4_key_expansion(const uint8_t* key, uint32_t* rk)
+{
     uint32_t MK[4];
     uint32_t K[36];
-    
-    // 将密钥转换为32位字
-    for (int i = 0; i < 4; i++) {
-        MK[i] = (key[i * 4] << 24) | (key[i * 4 + 1] << 16) |
-                (key[i * 4 + 2] << 8) | key[i * 4 + 3];
+    for (int i = 0; i < 4; i++)
+    {
+        MK[i] = key[i * 4] << 24 | key[i * 4 + 1] << 16 |
+                key[i * 4 + 2] << 8 | key[i * 4 + 3];
     }
-    
-    // 初始化K
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++)
+    {
         K[i] = MK[i] ^ SM4_FK[i];
     }
-    
-    // 生成轮密钥
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; i++)
+    {
         K[i + 4] = K[i] ^ T_prime(K[i + 1] ^ K[i + 2] ^ K[i + 3] ^ SM4_CK[i]);
         rk[i] = K[i + 4];
     }
 }
 
-// SM4加密一个块
-static void sm4_encrypt_block(const uint8_t* input, uint8_t* output, const uint32_t* rk) {
+static void sm4_encrypt_block(const uint8_t* input, uint8_t* output, const uint32_t* rk)
+{
     uint32_t X[36];
-    
-    // 将输入转换为32位字
-    for (int i = 0; i < 4; i++) {
-        X[i] = (input[i * 4] << 24) | (input[i * 4 + 1] << 16) |
-               (input[i * 4 + 2] << 8) | input[i * 4 + 3];
+    for (int i = 0; i < 4; i++)
+    {
+        X[i] = input[i * 4] << 24 | input[i * 4 + 1] << 16 |
+               input[i * 4 + 2] << 8 | input[i * 4 + 3];
     }
-    
-    // 32轮迭代
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; i++)
+    {
         X[i + 4] = X[i] ^ T(X[i + 1] ^ X[i + 2] ^ X[i + 3] ^ rk[i]);
     }
-    
-    // 反序变换
-    for (int i = 0; i < 4; i++) {
-        uint32_t Y = X[35 - i];
-        output[i * 4] = (Y >> 24) & 0xFF;
-        output[i * 4 + 1] = (Y >> 16) & 0xFF;
-        output[i * 4 + 2] = (Y >> 8) & 0xFF;
+    for (int i = 0; i < 4; i++)
+    {
+        const uint32_t Y = X[35 - i];
+        output[i * 4] = Y >> 24 & 0xFF;
+        output[i * 4 + 1] = Y >> 16 & 0xFF;
+        output[i * 4 + 2] = Y >> 8 & 0xFF;
         output[i * 4 + 3] = Y & 0xFF;
     }
 }
 
-// SM4解密一个块
-static void sm4_decrypt_block(const uint8_t* input, uint8_t* output, const uint32_t* rk) {
+static void sm4_decrypt_block(const uint8_t* input, uint8_t* output, const uint32_t* rk)
+{
     uint32_t X[36];
-    
-    // 将输入转换为32位字
-    for (int i = 0; i < 4; i++) {
-        X[i] = (input[i * 4] << 24) | (input[i * 4 + 1] << 16) |
-               (input[i * 4 + 2] << 8) | input[i * 4 + 3];
+    for (int i = 0; i < 4; i++)
+    {
+        X[i] = input[i * 4] << 24 | input[i * 4 + 1] << 16 |
+               input[i * 4 + 2] << 8 | input[i * 4 + 3];
     }
-    
-    // 32轮迭代（使用反向轮密钥）
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; i++)
+    {
         X[i + 4] = X[i] ^ T(X[i + 1] ^ X[i + 2] ^ X[i + 3] ^ rk[31 - i]);
     }
-    
-    // 反序变换
-    for (int i = 0; i < 4; i++) {
-        uint32_t Y = X[35 - i];
+    for (int i = 0; i < 4; i++)
+    {
+        const uint32_t Y = X[35 - i];
         output[i * 4] = (Y >> 24) & 0xFF;
         output[i * 4 + 1] = (Y >> 16) & 0xFF;
         output[i * 4 + 2] = (Y >> 8) & 0xFF;
@@ -161,133 +142,98 @@ static void sm4_decrypt_block(const uint8_t* input, uint8_t* output, const uint3
     }
 }
 
-// SM4-ECB加密
-static uint8_t* sm4_encrypt_ecb(const uint8_t* key, const uint8_t* plaintext, 
-                                size_t plaintext_len, size_t* output_len) {
-    // PKCS7填充
+static uint8_t* sm4_encrypt_ecb(const uint8_t* key, const uint8_t* plaintext,
+                                const size_t plaintext_len, size_t* output_len)
+{
     size_t padded_len;
-    uint8_t* padded_data = pkcs7_padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
+    uint8_t* padded_data = pkcs7Padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
     if (!padded_data) return NULL;
-    
-    size_t blocks = padded_len / SM4_BLOCK_SIZE;
-    uint8_t* output = safe_malloc(padded_len);
-    
-    // 密钥扩展
+    const size_t blocks = padded_len / SM4_BLOCK_SIZE;
+    uint8_t* output = safeMalloc(padded_len);
     uint32_t rk[32];
     sm4_key_expansion(key, rk);
-    
-    // 逐块加密
-    for (size_t i = 0; i < blocks; i++) {
+    for (size_t i = 0; i < blocks; i++)
+    {
         sm4_encrypt_block(padded_data + i * SM4_BLOCK_SIZE, 
                           output + i * SM4_BLOCK_SIZE, rk);
     }
-    
-    safe_free(padded_data);
+    safeFree(padded_data);
     *output_len = padded_len;
     return output;
 }
 
-// SM4-ECB解密
-static uint8_t* sm4_decrypt_ecb(const uint8_t* key, const uint8_t* ciphertext, 
-                                size_t ciphertext_len, size_t* output_len) {
+static uint8_t* sm4_decrypt_ecb(const uint8_t* key, const uint8_t* ciphertext,
+                                const size_t ciphertext_len, size_t* output_len)
+{
     if (ciphertext_len % SM4_BLOCK_SIZE != 0) return NULL;
-    
-    size_t blocks = ciphertext_len / SM4_BLOCK_SIZE;
-    uint8_t* output = safe_malloc(ciphertext_len);
-    
-    // 密钥扩展
+    const size_t blocks = ciphertext_len / SM4_BLOCK_SIZE;
+    uint8_t* output = safeMalloc(ciphertext_len);
     uint32_t rk[32];
     sm4_key_expansion(key, rk);
-    
-    // 逐块解密
-    for (size_t i = 0; i < blocks; i++) {
+    for (size_t i = 0; i < blocks; i++)
+    {
         sm4_decrypt_block(ciphertext + i * SM4_BLOCK_SIZE, 
                           output + i * SM4_BLOCK_SIZE, rk);
     }
-    
-    // PKCS7去填充
     size_t unpadded_len;
-    uint8_t* unpadded_data = remove_pkcs7_padding(output, ciphertext_len, &unpadded_len);
-    safe_free(output);
-    
+    uint8_t* unpadded_data = removePkcs7Padding(output, ciphertext_len, &unpadded_len);
+    safeFree(output);
     *output_len = unpadded_len;
     return unpadded_data;
 }
 
-// 加密实现 - 对应Kotlin: override fun encrypt(text: String): String
-static char* sm4_ecb_encrypt(cipher_interface_t* self, const char* text) {
+static char* sm4_ecb_encrypt(cipher_interface_t* self, const char* text)
+{
     if (!self || !text) return NULL;
-    
-    sm4_ecb_data_t* data = (sm4_ecb_data_t*)self->private_data;
+    sm4_ecb_data_t* data = self->private_data;
     if (!data) return NULL;
-    
-    size_t text_len = strlen(text);
+    const size_t text_len = strlen(text);
     size_t output_len;
-    
-    // SM4-ECB加密
     uint8_t* encrypted = sm4_encrypt_ecb(data->key, (const uint8_t*)text, 
                                          text_len, &output_len);
     if (!encrypted) return NULL;
-    
-    // 转换为大写十六进制字符串
-    char* hex_result = bytes_to_hex_upper(encrypted, output_len);
-    safe_free(encrypted);
-    
+    char* hex_result = bytesToHexUpper(encrypted, output_len);
+    safeFree(encrypted);
     return hex_result;
 }
 
-// 解密实现 - 对应Kotlin: override fun decrypt(hex: String): String
-static char* sm4_ecb_decrypt(cipher_interface_t* self, const char* hex) {
+static char* sm4_ecb_decrypt(cipher_interface_t* self, const char* hex)
+{
     if (!self || !hex) return NULL;
-    
-    sm4_ecb_data_t* data = (sm4_ecb_data_t*)self->private_data;
+    sm4_ecb_data_t* data = self->private_data;
     if (!data) return NULL;
-    
-    // 将十六进制字符串转换为字节数组
     size_t bytes_len;
-    uint8_t* bytes = hex_to_bytes(hex, &bytes_len);
+    uint8_t* bytes = hexToBytes(hex, &bytes_len);
     if (!bytes) return NULL;
-    
     size_t output_len;
-    
-    // SM4-ECB解密
     uint8_t* decrypted = sm4_decrypt_ecb(data->key, bytes, bytes_len, &output_len);
-    safe_free(bytes);
-    
+    safeFree(bytes);
     if (!decrypted) return NULL;
-    
-    // 转换为字符串
-    char* result = safe_malloc(output_len + 1);
+    char* result = safeMalloc(output_len + 1);
     memcpy(result, decrypted, output_len);
     result[output_len] = '\0';
-    safe_free(decrypted);
-    
+    safeFree(decrypted);
     return result;
 }
 
-// 销毁函数
-static void sm4_ecb_destroy(cipher_interface_t* self) {
-    if (self) {
-        safe_free(self->private_data);
-        safe_free(self);
+static void sm4_ecb_destroy(cipher_interface_t* self)
+{
+    if (self)
+    {
+        safeFree(self->private_data);
+        safeFree(self);
     }
 }
 
-// 创建SM4-ECB加解密实例
-cipher_interface_t* create_sm4_ecb_cipher(const uint8_t* key) {
+cipher_interface_t* create_sm4_ecb_cipher(const uint8_t* key)
+{
     if (!key) return NULL;
-    
-    cipher_interface_t* cipher = safe_malloc(sizeof(cipher_interface_t));
-    sm4_ecb_data_t* data = safe_malloc(sizeof(sm4_ecb_data_t));
-    
-    // 复制密钥
+    cipher_interface_t* cipher = safeMalloc(sizeof(cipher_interface_t));
+    sm4_ecb_data_t* data = safeMalloc(sizeof(sm4_ecb_data_t));
     memcpy(data->key, key, SM4_KEY_SIZE);
-    
-    // 设置函数指针
     cipher->encrypt = sm4_ecb_encrypt;
     cipher->decrypt = sm4_ecb_decrypt;
     cipher->destroy = sm4_ecb_destroy;
     cipher->private_data = data;
-    
     return cipher;
 }

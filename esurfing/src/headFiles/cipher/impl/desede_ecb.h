@@ -1,13 +1,8 @@
 #ifndef DESEDE_ECB_H
 #define DESEDE_ECB_H
 
-#include "../cipher_interface.h"
+#include "../CipherInterface.h"
 #include <stdint.h>
-
-/**
- * 3DES-ECB 加解密算法头文件
- * 对应Kotlin的DESedeECB类
- */
 
 /**
  * 创建3DES-ECB加解密实例

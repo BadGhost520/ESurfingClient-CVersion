@@ -5,14 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "headFiles/Constants.h"
 #include "headFiles/NetClient.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 #include "headFiles/NetworkStatus.h"
-#include "headFiles/utils/ByteArray.h"
-#include "headFiles/utils/XMLParser.h"
 #include "headFiles/utils/Logger.h"
+#include "headFiles/utils/Shutdown.h"
 
 char* keepRetry;
 char* keepUrl;
@@ -40,7 +40,7 @@ void heartbeat()
     {
         free(keepRetry);
         LOG_DEBUG("result: %s", result->data);
-        keepRetry = XML_Parser(sessionDecrypt(result->data), "interval");
+        keepRetry = XmlParser(sessionDecrypt(result->data), "interval");
     }
     else
     {
@@ -57,9 +57,9 @@ void login()
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
-        keepRetry = XML_Parser(sessionDecrypt(result->data), "keep-retry");
-        keepUrl = cleanCDATA(XML_Parser(sessionDecrypt(result->data), "keep-url"));
-        termUrl = cleanCDATA(XML_Parser(sessionDecrypt(result->data), "term-url"));
+        keepRetry = XmlParser(sessionDecrypt(result->data), "keep-retry");
+        keepUrl = cleanCDATA(XmlParser(sessionDecrypt(result->data), "keep-url"));
+        termUrl = cleanCDATA(XmlParser(sessionDecrypt(result->data), "term-url"));
         LOG_INFO("Keep Url: %s", keepUrl);
         LOG_INFO("Term Url: %s", termUrl);
         LOG_INFO("Keep Retry: %s", keepRetry);
@@ -79,7 +79,7 @@ void getTicket()
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
-        ticket = strdup(XML_Parser(sessionDecrypt(result->data), "ticket"));
+        ticket = strdup(XmlParser(sessionDecrypt(result->data), "ticket"));
     }
     freeNetResult(result);
 }
@@ -128,6 +128,7 @@ void authorization()
 
 void run()
 {
+    int count = 0;
     while (isRunning)
     {
         const ConnectivityStatus networkStatus = checkStatus();
@@ -161,6 +162,18 @@ void run()
         case CONNECTIVITY_REQUIRE_AUTHORIZATION:
             LOG_INFO("authentication required");
             isLogged = 0;
+            if (count == 5)
+            {
+                LOG_ERROR("Unknown error, trying to fix");
+                initConstants();
+                refreshStates();
+            }
+            if (count == 6)
+            {
+                LOG_ERROR("Unknown error");
+                shut(1);
+            }
+            count++;
             authorization();
             sleepMilliseconds(1000);
             break;
