@@ -5,7 +5,6 @@
 #include "headFiles/Client.h"
 #include "headFiles/Constants.h"
 #include "headFiles/Options.h"
-#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/States.h"
 #include "headFiles/utils/Logger.h"
 #include "headFiles/utils/Shutdown.h"
@@ -43,18 +42,14 @@ int main(const int argc, char* argv[]) {
             printf("Unknown error\n");
         }
     }
-
     if (debugMode)
     {
-        logger_init(LOG_LEVEL_DEBUG, LOG_TARGET_BOTH);
+        loggerInit(LOG_LEVEL_DEBUG);
     }
     else
     {
-        logger_init(LOG_LEVEL_INFO, LOG_TARGET_BOTH);
+        loggerInit(LOG_LEVEL_INFO);
     }
-
-    initShutdown();
-
     if (username && password && channel)
     {
         LOG_DEBUG("username: %s", usr);
@@ -62,12 +57,10 @@ int main(const int argc, char* argv[]) {
         if (strcmp(chn, "pc") == 0)
         {
             initChannel(1);
-            LOG_DEBUG("UA: %s", USER_AGENT);
         }
         else if (strcmp(chn, "phone") == 0)
         {
             initChannel(2);
-            LOG_DEBUG("UA: %s", USER_AGENT);
         }
         else
         {
@@ -78,8 +71,9 @@ int main(const int argc, char* argv[]) {
             shut(0);
             return 0;
         }
+        isRunning = 1;
         while (isRunning) {
-            // 你的业务逻辑
+            initShutdown();
             initConstants();
             refreshStates();
             run();

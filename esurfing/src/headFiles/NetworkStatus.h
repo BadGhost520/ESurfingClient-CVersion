@@ -12,9 +12,10 @@ typedef enum {
     CONNECTIVITY_REQUEST_ERROR = 2            // 请求失败或网络错误
 } ConnectivityStatus;
 
-// 网络状态检查函数
-// 访问 http://connect.rom.miui.com/generate_204
-// 返回值: 0-返回204, 1-返回304, 2-其他状态码或请求失败
-ConnectivityStatus detectConfig(void);
+/**
+ * 网络状态检测函数
+ * @return 网络状态
+ */
+ConnectivityStatus checkStatus();
 
 #endif // NETWORKSTATUS_H

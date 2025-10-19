@@ -6,6 +6,7 @@
 
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/States.h"
+#include "headFiles/utils/Logger.h"
 
 char* clientId;
 char* algoId;
@@ -14,29 +15,29 @@ char* ticket;
 char* userIp;
 char* acIp;
 
-volatile sig_atomic_t isRunning = 1;
+volatile sig_atomic_t isRunning = 0;
+volatile sig_atomic_t isLogged = 0;
+volatile sig_atomic_t isInitialized = 0;
 
 char* schoolId;
 char* domain;
 char* area;
 char* ticketUrl;
 char* authUrl;
-int isLogged = 0;
 
-void refreshStates(void)
+void refreshStates()
 {
-    // 刷新客户端状态
     if (clientId)
     {
         free(clientId);
     }
     setClientId(&clientId);
-
     if (algoId)
     {
         free(algoId);
     }
     algoId = strdup("00000000-0000-0000-0000-000000000000");
-
     macAddress = strdup(randomMacAddress());
+    LOG_DEBUG("Client Id: %s", clientId);
+    LOG_DEBUG("MAC: %s", macAddress);
 }
