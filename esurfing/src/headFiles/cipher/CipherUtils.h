@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+#ifdef WIN32
+#else
+#include <stddef.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

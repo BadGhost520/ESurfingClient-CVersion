@@ -133,7 +133,7 @@ static uint32_t feistel(const uint32_t r, const uint64_t subkey)
     for (int i = 0; i < 8; i++)
     {
         const uint8_t six = e >> (48 - 6*(i+1)) & 0x3F;
-        const int row = (six & 0x20) >> 4 | six & 0x01;
+        const int row = (six & 0x20) >> 4 | (six & 0x01);
         const int col = six >> 1 & 0x0F;
         const uint8_t val = SBOX[i][row*16 + col];
         s_out = s_out << 4 | val;

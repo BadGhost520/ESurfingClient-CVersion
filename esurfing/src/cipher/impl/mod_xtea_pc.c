@@ -27,7 +27,7 @@ static void set_uint32_be(uint8_t* data, const size_t offset, const uint32_t val
 
 static uint32_t bswap32(const uint32_t x)
 {
-    return x >> 24 | x >> 8 & 0x0000FF00u | x << 8 & 0x00FF0000u | x << 24;
+    return x >> 24 | (x >> 8 & 0x0000FF00u) | (x << 8 & 0x00FF0000u) | x << 24;
 }
 
 static void xtea_encrypt_block_pc(uint32_t* v0, uint32_t* v1, const uint32_t* key)

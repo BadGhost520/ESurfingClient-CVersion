@@ -28,6 +28,7 @@ typedef enum {
 
 typedef struct {
     LogLevel    level;
+    char        logDir[PATH_MAX];
     char        logFile[PATH_MAX];
     FILE*       fileHandle;
     int         maxBackupFiles;

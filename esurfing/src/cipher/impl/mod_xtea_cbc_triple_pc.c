@@ -74,9 +74,9 @@ static void ab6c8_block_encrypt(uint32_t* v0_le, uint32_t* v1_le, const uint32_t
     while (1)
     {
         v9  += (16U * v10 ^ v10 >> 5) + (j ^ v10) + v6;
-        v10 += (16U * v9 ^ v9 >> 5) + (j - delta ^ v9) + v8;
+        v10 += (16U * v9 ^ v9 >> 5) + ((j - delta) ^ v9) + v8;
         if (v11 == j - delta) break;
-        v6 = v17[(uint8_t)j - 71U & 3U];
+        v6 = v17[(uint8_t)(j - 71U) & 3U];
         v8 = v17[(j + 1013904242U) >> 11 & 3U];
         j  -= delta;
     }

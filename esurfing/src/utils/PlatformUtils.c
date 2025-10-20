@@ -155,7 +155,7 @@ void sleepMilliseconds(const int milliseconds)
 #ifdef _WIN32
     Sleep(milliseconds);
 #else
-    usleep(milliseconds * 1000)
+    usleep(milliseconds * 1000);
 #endif
 }
 
@@ -170,8 +170,8 @@ void setClientId(char** client_id)
             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
             randomBytes[0], randomBytes[1], randomBytes[2], randomBytes[3],
             randomBytes[4], randomBytes[5],
-            randomBytes[6] & 0x0F | 0x40,
-            randomBytes[7] & 0x3F | 0x80,
+            (randomBytes[6] & 0x0F) | 0x40,
+            (randomBytes[7] & 0x3F) | 0x80,
             randomBytes[8], randomBytes[9],
             randomBytes[10], randomBytes[11],
             randomBytes[12],randomBytes[13],

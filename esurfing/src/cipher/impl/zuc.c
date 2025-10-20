@@ -88,7 +88,7 @@ static uint32_t MulByPow2(const uint32_t x, const int k)
 
 static void BitReorganization(zuc_state_t* st)
 {
-    st->BRC[0] = (st->LFSR[15] & 0x7FFF8000) << 1 | st->LFSR[14] & 0xFFFF;
+    st->BRC[0] = (st->LFSR[15] & 0x7FFF8000) << 1 | (st->LFSR[14] & 0xFFFF);
     st->BRC[1] = (st->LFSR[11] & 0xFFFF) << 16 | st->LFSR[9] >> 15;
     st->BRC[2] = (st->LFSR[7] & 0xFFFF) << 16 | st->LFSR[5] >> 15;
     st->BRC[3] = (st->LFSR[2] & 0xFFFF) << 16 | st->LFSR[0] >> 15;
