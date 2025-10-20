@@ -10,15 +10,25 @@
 #include "../headFiles/utils/PlatformUtils.h"
 
 #ifdef _WIN32
-    #include <windows.h>
-    #include <io.h>
+#include <windows.h>
+#include <io.h>
 #else
-    #include <unistd.h>
-    #include <sys/stat.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
 #endif
+
+#ifdef _WIN32
+    const char sep = '\\';
+#else
+    const char sep = '/';
+#endif
+
+const char* fileName = "run.log";
 
 LoggerConfig gLoggerConfig = {
     .level = LOG_LEVEL_INFO,
+    .logDir = "",
     .logFile = "",
     .fileHandle = NULL,
     .maxBackupFiles = 5,
@@ -61,21 +71,26 @@ void loggerRotateFile()
     }
     fclose(gLoggerConfig.fileHandle);
     gLoggerConfig.fileHandle = NULL;
-    char rotatedFilename[PATH_MAX];
-    char logDir[PATH_MAX];
-    strcpy(logDir, gLoggerConfig.logFile);
-    char* last_sep = strrchr(logDir,
-        #ifdef _WIN32
-            '\\'
-        #else
-            '/'
-        #endif
-    );
-    if (last_sep != NULL)
+
+    char* timeStr = getFileTime();
+    if (timeStr == NULL)
     {
-        *last_sep = '\0';
+        fprintf(stderr, "Error: Unable to get file time for rotation\n");
+        gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
+        return;
     }
-    snprintf(rotatedFilename, sizeof(rotatedFilename), "%s\\%s.log", logDir, getFileTime());
+
+    char rotatedFilename[PATH_MAX];
+    int result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
+    free(timeStr);
+
+    if (result >= (int)sizeof(rotatedFilename))
+    {
+        fprintf(stderr, "Error: Rotated filename too long (max %zu)\n", sizeof(rotatedFilename) - 1);
+        gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
+        return;
+    }
+
     rename(gLoggerConfig.logFile, rotatedFilename);
     gLoggerConfig.currentLines = 0;
     gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
@@ -131,11 +146,15 @@ int getExecutableDir(char* out)
 
 int ensureLogDir(char* out)
 {
+#ifdef WIN32
     char dir[PATH_MAX];
     if (getExecutableDir(dir) != 0)
     {
         return -1;
     }
+#else
+    char dir[] = "/var/log/esurfing";
+#endif
 #ifdef _WIN32
     const int n = snprintf(out, 260, "%s\\logs", dir);
     if (n < 0 || (size_t)n >= 260)
@@ -151,7 +170,7 @@ int ensureLogDir(char* out)
         }
     }
 #else
-    int n = snprintf(out, 260, "%s/log", dir);
+    int n = snprintf(out, 260, "%s/logs", dir);
     if (n < 0 || (size_t)n >= 260)
     {
         return -1;
@@ -159,6 +178,10 @@ int ensureLogDir(char* out)
     struct stat st;
     if (stat(out, &st) != 0)
     {
+        if (mkdir(dir, 0755) != 0 && errno != EEXIST)
+        {
+            return -1;
+        }
         if (mkdir(out, 0755) != 0 && errno != EEXIST)
         {
             return -1;
@@ -175,18 +198,12 @@ int ensureLogDir(char* out)
 int loggerInit(const LogLevel level)
 {
     gLoggerConfig.level = level;
-    char logDir[PATH_MAX];
-    if (ensureLogDir(logDir) != 0)
+    if (ensureLogDir(gLoggerConfig.logDir) != 0)
     {
         fprintf(stderr, "Error: Unable to prepare log directory\n");
         return -1;
     }
-#ifdef _WIN32
-    const char sep = '\\';
-#else
-    const char sep = '/';
-#endif
-    const int ln = snprintf(gLoggerConfig.logFile, sizeof(gLoggerConfig.logFile), "%s%crun.log", logDir, sep);
+    const int ln = snprintf(gLoggerConfig.logFile, sizeof(gLoggerConfig.logFile), "%s%c%s", gLoggerConfig.logDir, sep, fileName);
     if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.logFile))
     {
         fprintf(stderr, "Error: Log file path too long (max %zu)\n", sizeof(gLoggerConfig.logFile));
@@ -211,21 +228,23 @@ void loggerCleanup()
         gLoggerConfig.fileHandle = NULL;
         if (strlen(gLoggerConfig.logFile) > 0)
         {
-            char newFilename[PATH_MAX];
-            char logDir[PATH_MAX];
-            strcpy(logDir, gLoggerConfig.logFile);
-            char* lastSep = strrchr(logDir,
-                #ifdef _WIN32
-                    '\\'
-                #else
-                    '/'
-                #endif
-            );
-            if (lastSep != NULL)
+            char* timeStr = getFileTime();
+            if (timeStr == NULL)
             {
-                *lastSep = '\0';
+                fprintf(stderr, "Error: Unable to get file time for cleanup\n");
+                return;
             }
-            snprintf(newFilename, sizeof(newFilename), "%s\\%s.log", logDir, getFileTime());
+
+            char newFilename[PATH_MAX];
+            int result = snprintf(newFilename, sizeof(newFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
+            free(timeStr);
+
+            if (result >= (int)sizeof(newFilename))
+            {
+                fprintf(stderr, "Error: New filename too long (max %zu)\n", sizeof(newFilename) - 1);
+                return;
+            }
+
             rename(gLoggerConfig.logFile, newFilename);
         }
     }

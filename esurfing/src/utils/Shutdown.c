@@ -39,15 +39,17 @@ void signalHandler(const int sig)
 {
     switch(sig)
     {
-        case SIGINT:
-            LOG_DEBUG("Received SIGINT signal (Ctrl+C)");
-            shut(0);
-        case SIGTERM:
-            LOG_DEBUG("Received SIGTERM signal (Terminate request)");
-            shut(0);
-        default:
-            LOG_DEBUG("Received unprocessed signal: %d", sig);
-            shut(0);
+    case SIGINT:
+        LOG_DEBUG("Received SIGINT signal (Ctrl+C)");
+        shut(0);
+        break;
+    case SIGTERM:
+        LOG_DEBUG("Received SIGTERM signal (Terminate request)");
+        shut(0);
+        break;
+    default:
+        LOG_DEBUG("Received unprocessed signal: %d", sig);
+        shut(0);
     }
 }
 
