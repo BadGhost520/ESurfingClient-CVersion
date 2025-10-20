@@ -79,6 +79,8 @@ uci commit esurfingclient
 /etc/init.d/esurfingclient start
 ```
 
+# 关于日志文件
+
 > [!IMPORTANT]
 > 在 Windows 系统中
 > 
