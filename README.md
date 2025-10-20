@@ -80,7 +80,17 @@ uci commit esurfingclient
 ```
 
 > [!IMPORTANT]
+> 在 Windows 系统中
+> 
 > 程序运行后，会在运行目录下新建 logs 文件夹
+> 
+> 程序运行时，logs 文件夹内会生成实时更新的 run.log 日志文件
+> 
+> 程序退出时，run.log 日志文件会被重命名为<当前时间>.log
+>
+> 在 Linux 类系统中
+>
+> 程序运行后，会在 /var/log 目录下下新建 esurfing/logs 目录
 > 
 > 程序运行时，logs 文件夹内会生成实时更新的 run.log 日志文件
 > 
