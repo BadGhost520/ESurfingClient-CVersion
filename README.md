@@ -34,13 +34,6 @@
 .\ESurfingClient.exe -u <用户名> -p <密码> -c <认证通道>
 ```
 
-> [!IMPORTANT]
-> 程序运行后，会在运行目录下新建 logs 文件夹
-> 
-> 程序运行时，logs 文件夹内会生成实时更新的 run.log 日志文件
-> 
-> 程序退出时，run.log 日志文件会被重命名为<当前时间>.log
-
 # OpenWRT 环境使用教程
 
 **1. 从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases) 中下载相应的 ipk 包**
@@ -86,3 +79,9 @@ uci commit esurfingclient
 /etc/init.d/esurfingclient start
 ```
 
+> [!IMPORTANT]
+> 程序运行后，会在运行目录下新建 logs 文件夹
+> 
+> 程序运行时，logs 文件夹内会生成实时更新的 run.log 日志文件
+> 
+> 程序退出时，run.log 日志文件会被重命名为<当前时间>.log
