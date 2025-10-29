@@ -34,7 +34,7 @@ jobs:
     - name: Rename SDK directory
       run: |
         echo "Rename SDK dir"
-        mv $SDK_FILENAME openwrt-sdk
+        mv openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
 
     - name: Copy esurfingclient package to dl directory
       run: |
@@ -107,7 +107,7 @@ jobs:
       run: |
         echo "Copy esurfingclient package to bash dir"
         # Find the esurfingclient IPK file with pattern matching
-        ipk_file=$(find openwrt-sdk/bin/packages/x86_64/base/ -name "esurfingclient_*_mipsel_24kc.ipk" | head -1)
+        ipk_file=$(find openwrt-sdk/bin/packages/x86_64/base/ -name "esurfingclient_*.ipk" | head -1)
         if [ -n "$ipk_file" ]; then
           echo "Found IPK file: $ipk_file"
           cp "$ipk_file" esurfingclient-x86_64-openwrt-24.10.4.ipk

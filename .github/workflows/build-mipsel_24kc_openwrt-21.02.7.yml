@@ -34,7 +34,7 @@ jobs:
     - name: Rename SDK directory
       run: |
         echo "Rename SDK dir"
-        mv $SDK_FILENAME openwrt-sdk
+        mv openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64 openwrt-sdk
     
     - name: Copy esurfingclient package to dl directory
       run: |

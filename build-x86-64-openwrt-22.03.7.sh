@@ -14,7 +14,7 @@ rm -rf openwrt-sdk
 echo "Extracting SDK"
 tar -xf $filename
 echo "Rename SDK dir"
-mv $filename openwrt-sdk
+mv openwrt-sdk-22.03.7-x86-64_gcc-11.2.0_musl.Linux-x86_64 openwrt-sdk
 echo "Copy esurfingclient package to dl dir"
 tar -czf esurfingclient.tar.gz esurfing
 mv esurfingclient.tar.gz openwrt-sdk/dl/
