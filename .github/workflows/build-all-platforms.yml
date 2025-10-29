@@ -21,6 +21,7 @@ on:
           - x86_64-22.03.7
           - x86_64-24.10.4
           - x64-linux
+          - windows-x64
 
 jobs:
   # 检查要构建的平台
@@ -60,7 +61,8 @@ jobs:
               { file: 'build-x86_64-openwrt-21.02.7.yml', platform: 'x86_64-21.02.7' },
               { file: 'build-x86_64-openwrt-22.03.7.yml', platform: 'x86_64-22.03.7' },
               { file: 'build-x86_64-openwrt-24.10.4.yml', platform: 'x86_64-24.10.4' },
-              { file: 'build-x64-linux.yml', platform: 'x64-linux' }
+              { file: 'build-x64-linux.yml', platform: 'x64-linux' },
+              { file: 'build-windows-x64.yml', platform: 'windows-x64' }
             ];
             
             const selectedPlatform = '${{ needs.check-platforms.outputs.selected-platform }}';

@@ -103,22 +103,3 @@ jobs:
         name: esurfingclient-x64-linux
         path: esurfingclient-x64-linux.tar.gz
         retention-days: 30
-
-    - name: Build summary
-      run: |
-        echo "## 🎉 Build Completed Successfully!" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Platform**: x64 Linux" >> $GITHUB_STEP_SUMMARY
-        echo "**Binary**: ESurfingClient-1.0.0" >> $GITHUB_STEP_SUMMARY
-        echo "**Package**: esurfingclient-x64-linux.tar.gz" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📋 Build Details" >> $GITHUB_STEP_SUMMARY
-        echo "- Compiler: GCC" >> $GITHUB_STEP_SUMMARY
-        echo "- Optimizations: Stripped symbols, UPX compressed" >> $GITHUB_STEP_SUMMARY
-        echo "- Package format: tar.gz" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📦 Artifact Information" >> $GITHUB_STEP_SUMMARY
-        echo "- Artifact name: \`esurfingclient-x64-linux\`" >> $GITHUB_STEP_SUMMARY
-        echo "- Retention: 30 days" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "🎯 The build artifact is ready for download!"

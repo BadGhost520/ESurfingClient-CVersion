@@ -7,6 +7,7 @@ permissions:
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build:
@@ -20,27 +21,69 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 upx-ucl
+        
+        # 安装 MinGW-w64 的开发库
+        sudo apt-get install -y \
+          mingw-w64-tools \
+          libz-mingw-w64-dev \
+          pkg-config
 
     - name: Install Windows dependencies
       run: |
-        # 安装 MinGW-w64 的静态库
-        sudo apt-get install -y mingw-w64-tools
-        
-        # 下载并安装预编译的 Windows 静态库
+        # 创建工作目录
         mkdir -p /tmp/win-deps
         cd /tmp/win-deps
         
-        # 下载 curl 静态库
-        wget -q https://curl.se/windows/dl-8.5.0_1/curl-8.5.0_1-win64-mingw.zip
-        unzip -q curl-8.5.0_1-win64-mingw.zip
+        # 设置 MinGW 前缀
+        export MINGW_PREFIX=/usr/x86_64-w64-mingw32
         
-        # 下载 OpenSSL 静态库  
-        wget -q https://github.com/openssl/openssl/releases/download/openssl-3.2.0/openssl-3.2.0.tar.gz
+        # 下载并编译 OpenSSL
+        echo "📦 Building OpenSSL for Windows..."
+        wget -q https://github.com/openssl/openssl/archive/refs/tags/openssl-3.2.0.tar.gz
         tar -xzf openssl-3.2.0.tar.gz
+        cd openssl-openssl-3.2.0
         
-        # 下载 libxml2 静态库
+        ./Configure mingw64 --cross-compile-prefix=x86_64-w64-mingw32- \
+          --prefix=$MINGW_PREFIX \
+          --openssldir=$MINGW_PREFIX/ssl \
+          no-shared
+        make -j$(nproc)
+        sudo make install_sw
+        cd ..
+        
+        # 下载并编译 libxml2
+        echo "📦 Building libxml2 for Windows..."
         wget -q https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.3.tar.xz
         tar -xf libxml2-2.12.3.tar.xz
+        cd libxml2-2.12.3
+        
+        ./configure --host=x86_64-w64-mingw32 \
+          --prefix=$MINGW_PREFIX \
+          --enable-static \
+          --disable-shared \
+          --without-python
+        make -j$(nproc)
+        sudo make install
+        cd ..
+        
+        # 下载并编译 CURL
+        echo "📦 Building CURL for Windows..."
+        wget -q https://curl.se/download/curl-8.5.0.tar.gz
+        tar -xzf curl-8.5.0.tar.gz
+        cd curl-8.5.0
+        
+        ./configure --host=x86_64-w64-mingw32 \
+          --prefix=$MINGW_PREFIX \
+          --enable-static \
+          --disable-shared \
+          --with-openssl=$MINGW_PREFIX \
+          --without-libpsl \
+          --without-brotli \
+          --without-zstd \
+          --disable-ldap \
+          --disable-ldaps
+        make -j$(nproc)
+        sudo make install
 
     - name: Build ESurfingClient
       run: |
@@ -49,15 +92,32 @@ jobs:
         echo "📁 Go to esurfing dir"
         cd esurfing
         
+        # 设置环境变量
+        export MINGW_PREFIX=/usr/x86_64-w64-mingw32
+        export PKG_CONFIG_PATH=$MINGW_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
+        export CMAKE_PREFIX_PATH=$MINGW_PREFIX:$CMAKE_PREFIX_PATH
+        
         echo "⚙️ CMake configuring with MinGW cross-compilation"
         cmake -G "Unix Makefiles" \
           -DCMAKE_SYSTEM_NAME=Windows \
           -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
           -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
           -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_PREFIX_PATH=$MINGW_PREFIX \
+          -DCMAKE_FIND_ROOT_PATH=$MINGW_PREFIX \
+          -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+          -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+          -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
           -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
           -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
           -DBUILD_SHARED_LIBS=OFF \
+          -DCURL_LIBRARY=$MINGW_PREFIX/lib/libcurl.a \
+          -DCURL_INCLUDE_DIR=$MINGW_PREFIX/include \
+          -DOPENSSL_ROOT_DIR=$MINGW_PREFIX \
+          -DOPENSSL_LIBRARIES="$MINGW_PREFIX/lib/libssl.a;$MINGW_PREFIX/lib/libcrypto.a" \
+          -DOPENSSL_INCLUDE_DIR=$MINGW_PREFIX/include \
+          -DLibXml2_LIBRARY=$MINGW_PREFIX/lib/libxml2.a \
+          -DLibXml2_INCLUDE_DIR=$MINGW_PREFIX/include/libxml2 \
           .
         
         echo "🔨 Building with make"
