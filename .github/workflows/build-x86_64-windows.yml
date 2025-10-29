@@ -1,4 +1,4 @@
-name: Build x64 Windows Binary
+name: Build x86_64 Windows Binary
 
 # 配置工作流权限
 permissions:
