@@ -28,7 +28,7 @@ jobs:
           echo "Had $SDK_FILENAME, skip download"
         else
           echo "No $SDK_FILENAME, Downloading"
-          wget "https://mirrors.sustech.edu.cn/openwrt/releases/21.02.7/targets/ramips/mt7621/openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64.tar.xz"
+          wget "https://downloads.openwrt.org/releases/21.02.7/targets/ramips/mt7621/openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64.tar.xz"
         fi
     
     - name: Remove existing openwrt-sdk directory
@@ -66,15 +66,28 @@ jobs:
       run: |
         echo "Go to openwrt-sdk dir"
         cd openwrt-sdk
-        echo "Updating feeds"
-        if scripts/feeds update -a; then
-          echo "Update feeds successful"
-          echo "Installing feeds packages"
-          scripts/feeds install -a
-        else
-          echo "Update feeds failed"
-          exit 1
-        fi
+        echo "Updating feeds with retry mechanism"
+        retry_count=0
+        max_retries=5
+        
+        while [ $retry_count -lt $max_retries ]; do
+          echo "Attempt $((retry_count + 1)) of $max_retries: Updating feeds"
+          if scripts/feeds update -a; then
+            echo "Update feeds successful"
+            echo "Installing feeds packages"
+            scripts/feeds install -a
+            break
+          else
+            retry_count=$((retry_count + 1))
+            echo "Update feeds failed (attempt $retry_count)"
+            if [ $retry_count -eq $max_retries ]; then
+              echo "Update feeds failed after $max_retries attempts"
+              exit 1
+            fi
+            echo "Retrying in 5 seconds..."
+            sleep 5
+          fi
+        done
     
     - name: Compile curl package
       run: |
@@ -97,11 +110,19 @@ jobs:
     - name: Copy built package
       run: |
         echo "Copy esurfingclient package to bash dir"
-        cp openwrt-sdk/bin/packages/mipsel_24kc/base/esurfingclient_1.0.0-1_mipsel_24kc.ipk esurfingclient-mipsel_24kc-openwrt-21.02.7-1.0.0.ipk
+        # Find the esurfingclient IPK file with pattern matching
+        ipk_file=$(find openwrt-sdk/bin/packages/mipsel_24kc/base/ -name "esurfingclient_*_mipsel_24kc.ipk" | head -1)
+        if [ -n "$ipk_file" ]; then
+          echo "Found IPK file: $ipk_file"
+          cp "$ipk_file" esurfingclient-mipsel_24kc-openwrt-21.02.7.ipk
+        else
+          echo "Error: No esurfingclient IPK file found"
+          exit 1
+        fi
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: esurfingclient-openwrt-21.02.7-mipsel_24kc
-        path: esurfingclient-mipsel_24kc-openwrt-21.02.7-1.0.0.ipk
+        path: esurfingclient-mipsel_24kc-openwrt-21.02.7.ipk
         retention-days: 30

@@ -39,4 +39,11 @@ make package/openssl/compile V=sc -j$(nproc)
 echo "Making esurfingclient package"
 make package/esurfingclient/compile V=sc -j$(nproc)
 echo "Copy esurfingclient package to bash dir"
-cp bin/packages/mipsel_24kc/base/esurfingclient_1.0.0-1_mipsel_24kc.ipk ../esurfingclient-mipsel_24kc-openwrt-21.02.7-1.0.0.ipk
+ipk_file=$(find openwrt-sdk/bin/packages/mipsel_24kc/base/ -name "esurfingclient_*_mipsel_24kc.ipk" | head -1)
+if [ -n "$ipk_file" ]; then
+  echo "Found IPK file: $ipk_file"
+  cp "$ipk_file" esurfingclient-mipsel_24kc-openwrt-21.02.7.ipk
+else
+  echo "Error: No esurfingclient IPK file found"
+  exit 1
+fi
