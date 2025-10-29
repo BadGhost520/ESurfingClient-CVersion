@@ -1,4 +1,4 @@
-name: Build Windows x64 Binary
+name: Build x64 Windows Binary
 
 # 配置工作流权限
 permissions:
@@ -54,43 +54,44 @@ jobs:
         
         echo "📦 Moving and renaming executable"
         if [ -f "ESurfingClient.exe" ]; then
-          mv ESurfingClient.exe ESurfingClient-1.0.0.exe
-          echo "✅ Executable renamed to ESurfingClient-1.0.0.exe"
+          mv ESurfingClient.exe ESurfingClient-x86_64-windows.exe
+          echo "✅ Executable renamed to ESurfingClient-x86_64-windows.exe"
         else
           echo "❌ ESurfingClient.exe not found!"
           exit 1
         fi
         
         echo "🗜️ Compressing with UPX"
-        upx --best --lzma ESurfingClient-1.0.0.exe || echo "⚠️ UPX compression failed, continuing..."
+        upx --best --lzma ESurfingClient-x86_64-windows.exe || echo "⚠️ UPX compression failed, continuing..."
         
         echo "📊 File information:"
-        ls -la ESurfingClient-1.0.0.exe
-        file ESurfingClient-1.0.0.exe || echo "file command not available"
+        ls -la ESurfingClient-x86_64-windows.exe
+        file ESurfingClient-x86_64-windows.exe || echo "file command not available"
 
     - name: Verify build output
       shell: msys2 {0}
       run: |
         cd esurfing
-        if [ ! -f "ESurfingClient-1.0.0.exe" ]; then
-          echo "❌ Build failed: ESurfingClient-1.0.0.exe not found"
+        if [ ! -f "ESurfingClient-x86_64-windows.exe" ]; then
+          echo "❌ Build failed: ESurfingClient-x86_64-windows.exe not found"
           exit 1
         fi
         
         echo "✅ Build successful!"
-        echo "📁 Final executable: $(pwd)/ESurfingClient-1.0.0.exe"
-        echo "📏 File size: $(stat -c%s ESurfingClient-1.0.0.exe) bytes"
+        echo "📁 Final executable: $(pwd)/ESurfingClient-x86_64-windows.exe"
+        echo "📏 File size: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
 
     - name: Create package
       shell: msys2 {0}
       run: |
         echo "📦 Creating Windows x64 package"
         
-        # Create package directory
-        mkdir -p esurfingclient-windows-x64
+        # Copy executable to root directory for packaging
+        cp esurfing/ESurfingClient-x86_64-windows.exe ./
         
-        # Copy executable
-        cp esurfing/ESurfingClient-1.0.0.exe esurfingclient-windows-x64/
+        # Create ZIP archive with executable in root
+        echo "🗜️ Creating ZIP archive"
+        7z a esurfingclient-windows-x64.zip ESurfingClient-x86_64-windows.exe
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -98,5 +99,5 @@ jobs:
         name: esurfingclient-windows-x64
         path: |
           esurfingclient-windows-x64.zip
-          esurfing/ESurfingClient-1.0.0.exe
+          ESurfingClient-x86_64-windows.exe
         retention-days: 30

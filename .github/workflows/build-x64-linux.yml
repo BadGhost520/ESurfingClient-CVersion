@@ -34,24 +34,24 @@ jobs:
         make -j$(nproc)
         
         echo "📦 Moved ESurfingClient to root dir"
-        mv bin/ESurfingClient ../ESurfingClient-1.0.0
+        mv bin/ESurfingClient ../ESurfingClient-x86_64-linux
         
         echo "🛡️ Protect1 - Strip binary"
-        strip --strip-all ../ESurfingClient-1.0.0
+        strip --strip-all ../ESurfingClient-x86_64-linux
         
         echo "📦 Protect2 - Compress with UPX"
-        upx --best ../ESurfingClient-1.0.0
+        upx --best ../ESurfingClient-x86_64-linux
         
         echo "✅ Build completed successfully"
 
     - name: Verify build output
       run: |
         echo "🔍 Verifying build output"
-        if [ -f "ESurfingClient-1.0.0" ]; then
+        if [ -f "ESurfingClient-x86_64-linux" ]; then
           echo "✅ Binary file exists"
-          ls -la ESurfingClient-1.0.0
-          file ESurfingClient-1.0.0
-          echo "📏 File size: $(du -h ESurfingClient-1.0.0 | cut -f1)"
+          ls -la ESurfingClient-x86_64-linux
+          file ESurfingClient-x86_64-linux
+          echo "📏 File size: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
         else
           echo "❌ Binary file not found"
           exit 1
@@ -60,39 +60,9 @@ jobs:
     - name: Create package
       run: |
         echo "📦 Creating package"
-        mkdir -p esurfingclient-x64-linux
-        cp ESurfingClient-1.0.0 esurfingclient-x64-linux/
         
-        # Create a simple README
-        cat > esurfingclient-x64-linux/README.md << 'EOF'
-        # ESurfing Client - x64 Linux Binary
-        
-        ## Installation
-        
-        1. Make the binary executable:
-           ```bash
-           chmod +x ESurfingClient-1.0.0
-           ```
-        
-        2. Run the client:
-           ```bash
-           ./ESurfingClient-1.0.0
-           ```
-        
-        ## System Requirements
-        
-        - x64 Linux system
-        - Compatible with most modern Linux distributions
-        
-        ## Build Information
-        
-        - Platform: x64 Linux
-        - Compiler: GCC
-        - Optimizations: Stripped and compressed with UPX
-        EOF
-        
-        # Create compressed package
-        tar -czf esurfingclient-x64-linux.tar.gz esurfingclient-x64-linux/
+        # Create compressed package with executable in root
+        tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux
         
         echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
         ls -la esurfingclient-x64-linux.tar.gz
@@ -101,5 +71,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: esurfingclient-x64-linux
-        path: esurfingclient-x64-linux.tar.gz
+        path: |
+          esurfingclient-x64-linux.tar.gz
+          ESurfingClient-x86_64-linux
         retention-days: 30
