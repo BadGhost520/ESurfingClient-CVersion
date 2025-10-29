@@ -91,35 +91,6 @@ jobs:
         
         # Copy executable
         cp esurfing/ESurfingClient-1.0.0.exe esurfingclient-windows-x64/
-        
-        # Create README
-        cat > esurfingclient-windows-x64/README.txt << 'EOF'
-ESurfingClient Windows x64 Binary
-================================
-
-This is a statically linked Windows x64 binary of ESurfingClient.
-
-Files:
-- ESurfingClient-1.0.0.exe: Main executable (statically linked)
-
-Usage:
-  ESurfingClient-1.0.0.exe [options]
-
-Build Information:
-- Platform: Windows x64
-- Compiler: MinGW-w64 GCC
-- Linking: Static (no external DLL dependencies)
-- Compression: UPX compressed
-- Build Date: $(date)
-
-For more information, visit the project repository.
-EOF
-        
-        echo "📋 Package contents:"
-        ls -la esurfingclient-windows-x64/
-        
-        echo "🗜️ Creating ZIP archive"
-         7z a esurfingclient-windows-x64.zip esurfingclient-windows-x64/
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
