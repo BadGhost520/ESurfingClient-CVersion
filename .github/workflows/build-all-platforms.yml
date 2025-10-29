@@ -9,10 +9,17 @@ on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: 'Select platforms to build (comma-separated: mipsel-21.02.7, mipsel-23.05.0, x86_64-24.10.4, or "all")'
+        description: 'Select platform to build'
         required: false
         default: 'all'
-        type: string
+        type: choice
+        options:
+          - 'all'
+          - 'mipsel-21.02.7'
+          - 'mipsel-23.05.0'
+          - 'x86_64-21.02.7'
+          - 'x86_64-22.03.7'
+          - 'x86_64-24.10.4'
 
 jobs:
   # 检查哪些平台需要构建
@@ -21,6 +28,8 @@ jobs:
     outputs:
       build-mipsel-21: ${{ steps.check.outputs.build-mipsel-21 }}
       build-mipsel-23: ${{ steps.check.outputs.build-mipsel-23 }}
+      build-x86_64-21: ${{ steps.check.outputs.build-x86_64-21 }}
+      build-x86_64-22: ${{ steps.check.outputs.build-x86_64-22 }}
       build-x86_64-24: ${{ steps.check.outputs.build-x86_64-24 }}
     steps:
       - name: Check platforms to build
@@ -32,21 +41,31 @@ jobs:
           if [[ "$platforms" == "all" ]]; then
             echo "build-mipsel-21=true" >> $GITHUB_OUTPUT
             echo "build-mipsel-23=true" >> $GITHUB_OUTPUT
+            echo "build-x86_64-21=true" >> $GITHUB_OUTPUT
+            echo "build-x86_64-22=true" >> $GITHUB_OUTPUT
             echo "build-x86_64-24=true" >> $GITHUB_OUTPUT
           else
             # 默认都为false
             echo "build-mipsel-21=false" >> $GITHUB_OUTPUT
             echo "build-mipsel-23=false" >> $GITHUB_OUTPUT
+            echo "build-x86_64-21=false" >> $GITHUB_OUTPUT
+            echo "build-x86_64-22=false" >> $GITHUB_OUTPUT
             echo "build-x86_64-24=false" >> $GITHUB_OUTPUT
             
             # 检查每个平台
-            if [[ "$platforms" == *"mipsel-21.02.7"* ]]; then
+            if [[ "$platforms" == "mipsel-21.02.7" ]]; then
               echo "build-mipsel-21=true" >> $GITHUB_OUTPUT
             fi
-            if [[ "$platforms" == *"mipsel-23.05.0"* ]]; then
+            if [[ "$platforms" == "mipsel-23.05.0" ]]; then
               echo "build-mipsel-23=true" >> $GITHUB_OUTPUT
             fi
-            if [[ "$platforms" == *"x86_64-24.10.4"* ]]; then
+            if [[ "$platforms" == "x86_64-21.02.7" ]]; then
+              echo "build-x86_64-21=true" >> $GITHUB_OUTPUT
+            fi
+            if [[ "$platforms" == "x86_64-22.03.7" ]]; then
+              echo "build-x86_64-22=true" >> $GITHUB_OUTPUT
+            fi
+            if [[ "$platforms" == "x86_64-24.10.4" ]]; then
               echo "build-x86_64-24=true" >> $GITHUB_OUTPUT
             fi
           fi
@@ -165,6 +184,120 @@ jobs:
             
             throw new Error('mipsel 23.05.0 build timed out');
 
+  # 并行构建 x86_64 OpenWrt 21.02.7
+  build-x86_64-21-02-7:
+    needs: check-platforms
+    if: needs.check-platforms.outputs.build-x86_64-21 == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Trigger x86_64 21.02.7 build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-x86_64-openwrt-21.02.7.yml',
+              ref: context.ref
+            });
+            console.log('Triggered x86_64 21.02.7 build workflow');
+            return result;
+
+      - name: Wait for workflow completion
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const maxWaitTime = 60 * 60 * 1000; // 1 hour
+            const checkInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+            
+            while (Date.now() - startTime < maxWaitTime) {
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'build-x86_64-openwrt-21.02.7.yml',
+                per_page: 1
+              });
+              
+              if (runs.data.workflow_runs.length > 0) {
+                const run = runs.data.workflow_runs[0];
+                console.log(`x86_64 21.02.7 build status: ${run.status} - ${run.conclusion}`);
+                
+                if (run.status === 'completed') {
+                  if (run.conclusion === 'success') {
+                    console.log('x86_64 21.02.7 build completed successfully');
+                    return;
+                  } else {
+                    throw new Error(`x86_64 21.02.7 build failed with conclusion: ${run.conclusion}`);
+                  }
+                }
+              }
+              
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+            
+            throw new Error('x86_64 21.02.7 build timed out');
+
+  # 并行构建 x86_64 OpenWrt 22.03.7
+  build-x86_64-22-03-7:
+    needs: check-platforms
+    if: needs.check-platforms.outputs.build-x86_64-22 == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Trigger x86_64 22.03.7 build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-x86_64-openwrt-22.03.7.yml',
+              ref: context.ref
+            });
+            console.log('Triggered x86_64 22.03.7 build workflow');
+            return result;
+
+      - name: Wait for workflow completion
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const maxWaitTime = 60 * 60 * 1000; // 1 hour
+            const checkInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+            
+            while (Date.now() - startTime < maxWaitTime) {
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'build-x86_64-openwrt-22.03.7.yml',
+                per_page: 1
+              });
+              
+              if (runs.data.workflow_runs.length > 0) {
+                const run = runs.data.workflow_runs[0];
+                console.log(`x86_64 22.03.7 build status: ${run.status} - ${run.conclusion}`);
+                
+                if (run.status === 'completed') {
+                  if (run.conclusion === 'success') {
+                    console.log('x86_64 22.03.7 build completed successfully');
+                    return;
+                  } else {
+                    throw new Error(`x86_64 22.03.7 build failed with conclusion: ${run.conclusion}`);
+                  }
+                }
+              }
+              
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+            
+            throw new Error('x86_64 22.03.7 build timed out');
+
   # 并行构建 x86_64 OpenWrt 24.10.4
   build-x86_64-24-10-4:
     needs: check-platforms
@@ -224,7 +357,7 @@ jobs:
 
   # 汇总构建结果
   summary:
-    needs: [check-platforms, build-mipsel-21-02-7, build-mipsel-23-05-0, build-x86_64-24-10-4]
+    needs: [check-platforms, build-mipsel-21-02-7, build-mipsel-23-05-0, build-x86_64-21-02-7, build-x86_64-22-03-7, build-x86_64-24-10-4]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -261,6 +394,32 @@ jobs:
             echo "| mipsel_24kc OpenWrt 23.05.0 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
           fi
           
+          # x86_64 21.02.7
+          if [[ "${{ needs.check-platforms.outputs.build-x86_64-21 }}" == "true" ]]; then
+            if [[ "${{ needs.build-x86_64-21-02-7.result }}" == "success" ]]; then
+              echo "| x86_64 OpenWrt 21.02.7 | ✅ Built | Success |" >> $GITHUB_STEP_SUMMARY
+            elif [[ "${{ needs.build-x86_64-21-02-7.result }}" == "failure" ]]; then
+              echo "| x86_64 OpenWrt 21.02.7 | ❌ Built | Failed |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| x86_64 OpenWrt 21.02.7 | ⏭️ Built | Skipped |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| x86_64 OpenWrt 21.02.7 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # x86_64 22.03.7
+          if [[ "${{ needs.check-platforms.outputs.build-x86_64-22 }}" == "true" ]]; then
+            if [[ "${{ needs.build-x86_64-22-03-7.result }}" == "success" ]]; then
+              echo "| x86_64 OpenWrt 22.03.7 | ✅ Built | Success |" >> $GITHUB_STEP_SUMMARY
+            elif [[ "${{ needs.build-x86_64-22-03-7.result }}" == "failure" ]]; then
+              echo "| x86_64 OpenWrt 22.03.7 | ❌ Built | Failed |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| x86_64 OpenWrt 22.03.7 | ⏭️ Built | Skipped |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "| x86_64 OpenWrt 22.03.7 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           # x86_64 24.10.4
           if [[ "${{ needs.check-platforms.outputs.build-x86_64-24 }}" == "true" ]]; then
             if [[ "${{ needs.build-x86_64-24-10-4.result }}" == "success" ]]; then
@@ -283,6 +442,8 @@ jobs:
           # 检查是否有任何构建失败
           if [[ "${{ needs.build-mipsel-21-02-7.result }}" == "failure" ]] || \
              [[ "${{ needs.build-mipsel-23-05-0.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-x86_64-21-02-7.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-x86_64-22-03-7.result }}" == "failure" ]] || \
              [[ "${{ needs.build-x86_64-24-10-4.result }}" == "failure" ]]; then
             echo "❌ One or more builds failed"
             exit 1
