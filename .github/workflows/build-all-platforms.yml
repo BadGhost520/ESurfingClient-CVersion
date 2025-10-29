@@ -218,129 +218,237 @@ jobs:
               }
             }
             
-            // 保存artifacts信息到环境变量，供后续步骤使用
-            fs.writeFileSync('artifacts/artifacts-list.json', JSON.stringify(artifactsList, null, 2));
+            // 保存artifacts信息，供后续步骤使用
+            fs.writeFileSync('artifacts-list.json', JSON.stringify(artifactsList, null, 2));
             console.log(`📦 Collected ${artifactsList.length} artifacts total`);
-            
-            // 将构件信息保存到环境变量
-            const artifactNames = artifactsList.map(a => a.name).join(',');
-            fs.appendFileSync(process.env.GITHUB_ENV, `ARTIFACT_NAMES=${artifactNames}\n`);
             
             return { triggeredRuns, artifactsList };
 
-      - name: Download build artifacts
-        if: env.ARTIFACT_NAMES != ''
-        run: |
-          echo "🔽 Downloading build artifacts..."
-          
-          # 读取构件列表
-          if [ -f "artifacts/artifacts-list.json" ]; then
-            echo "Found artifacts list:"
-            cat artifacts/artifacts-list.json
-            
-            # 创建平台目录结构
-            mkdir -p artifacts/mipsel-21.02.7
-            mkdir -p artifacts/mipsel-23.05.0  
-            mkdir -p artifacts/x86_64-21.02.7
-            mkdir -p artifacts/x86_64-22.03.7
-            mkdir -p artifacts/x86_64-24.10.4
-            
-            echo "✅ Created platform directories"
-          else
-            echo "❌ No artifacts list found"
-          fi
-
-      - name: Download individual artifacts
-        uses: actions/download-artifact@v4
-        if: env.ARTIFACT_NAMES != ''
+      - name: Download and collect build artifacts
+        uses: actions/github-script@v7
         with:
-          pattern: esurfingclient-*
-          path: downloaded-artifacts/
-          merge-multiple: false
-
-      - name: Organize downloaded artifacts
-        if: env.ARTIFACT_NAMES != ''
-        run: |
-          echo "📁 Organizing downloaded artifacts..."
-          
-          # 移动下载的构件到对应的平台目录
-          if [ -d "downloaded-artifacts" ]; then
-            for dir in downloaded-artifacts/*/; do
-              if [ -d "$dir" ]; then
-                artifact_name=$(basename "$dir")
-                echo "Processing $artifact_name..."
-                
-                # 根据构件名称确定平台
-                if [[ "$artifact_name" == *"mipsel"* && "$artifact_name" == *"21.02.7"* ]]; then
-                  cp -r "$dir"* artifacts/mipsel-21.02.7/
-                elif [[ "$artifact_name" == *"mipsel"* && "$artifact_name" == *"23.05.0"* ]]; then
-                  cp -r "$dir"* artifacts/mipsel-23.05.0/
-                elif [[ "$artifact_name" == *"x86_64"* && "$artifact_name" == *"21.02.7"* ]]; then
-                  cp -r "$dir"* artifacts/x86_64-21.02.7/
-                elif [[ "$artifact_name" == *"x86_64"* && "$artifact_name" == *"22.03.7"* ]]; then
-                  cp -r "$dir"* artifacts/x86_64-22.03.7/
-                elif [[ "$artifact_name" == *"x86_64"* && "$artifact_name" == *"24.10.4"* ]]; then
-                  cp -r "$dir"* artifacts/x86_64-24.10.4/
-                fi
-              fi
-            done
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
             
-            echo "✅ Artifacts organized by platform"
-            echo "📦 Final structure:"
-            find artifacts/ -type f -name "*.ipk" -o -name "*.json" | head -20
-          else
-            echo "❌ No downloaded artifacts found"
-          fi
+            // 读取构件列表
+            const artifactsList = JSON.parse(fs.readFileSync('artifacts-list.json', 'utf8'));
+            console.log(`📦 Processing ${artifactsList.length} artifacts`);
+            
+            // 创建发布目录结构
+            const releaseDir = 'release-files';
+            fs.mkdirSync(releaseDir, { recursive: true });
+            
+            // 为每个构件下载文件
+            for (const artifact of artifactsList) {
+              try {
+                console.log(`⬇️ Downloading artifact: ${artifact.name}`);
+                
+                // 从 download_url 中提取 artifact ID
+                const artifactId = parseInt(artifact.download_url.split('/artifacts/')[1].split('/zip')[0]);
+                
+                // 下载构件
+                const download = await github.rest.actions.downloadArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifactId,
+                  archive_format: 'zip',
+                });
+                
+                // 保存到文件
+                const fileName = `${artifact.name}.zip`;
+                const filePath = path.join(releaseDir, fileName);
+                fs.writeFileSync(filePath, Buffer.from(download.data));
+                
+                console.log(`✅ Downloaded: ${fileName} (${(download.data.byteLength / 1024).toFixed(1)} KB)`);
+                
+              } catch (error) {
+                console.log(`❌ Failed to download ${artifact.name}: ${error.message}`);
+              }
+            }
+            
+            // 创建构建信息文件
+            const buildInfo = {
+              build_time: new Date().toISOString(),
+              repository: context.repo.full_name,
+              commit_sha: context.sha,
+              workflow_run_id: context.runId,
+              artifacts: artifactsList.map(a => ({
+                name: a.name,
+                platform: a.name.includes('mipsel') ? 
+                  (a.name.includes('21.02.7') ? 'mipsel_24kc-openwrt-21.02.7' : 'mipsel_24kc-openwrt-23.05.0') :
+                  (a.name.includes('21.02.7') ? 'x86_64-openwrt-21.02.7' : 
+                   a.name.includes('22.03.7') ? 'x86_64-openwrt-22.03.7' : 'x86_64-openwrt-24.10.4'),
+                size_bytes: a.size_in_bytes,
+                created_at: a.created_at
+              }))
+            };
+            
+            fs.writeFileSync(path.join(releaseDir, 'build-info.json'), JSON.stringify(buildInfo, null, 2));
+            
+            console.log(`📋 Created build info with ${buildInfo.artifacts.length} artifacts`);
 
-      - name: Create build summary
+      - name: Create README for release
         run: |
-          mkdir -p collected-artifacts
+          cat > release-files/README.md << 'EOF'
+          # ESurfing Client - Multi-Platform Build
           
-          # 创建README文件
-          cat > collected-artifacts/README.md << 'EOF'
-          # ESurfing Client Build Artifacts
+          This release contains ESurfing Client binaries for multiple OpenWrt platforms.
           
-          This package contains build artifacts for multiple OpenWrt platforms.
+          ## 📦 Available Platforms
           
-          ## Platforms Included
+          - **mipsel_24kc-openwrt-21.02.7** - For MIPS routers (OpenWrt 21.02.7)
+          - **mipsel_24kc-openwrt-23.05.0** - For MIPS routers (OpenWrt 23.05.0)
+          - **x86_64-openwrt-21.02.7** - For x86_64 systems (OpenWrt 21.02.7)
+          - **x86_64-openwrt-22.03.7** - For x86_64 systems (OpenWrt 22.03.7)
+          - **x86_64-openwrt-24.10.4** - For x86_64 systems (OpenWrt 24.10.4)
           
-          - **mipsel_24kc OpenWrt 21.02.7** - For older MIPS routers
-          - **mipsel_24kc OpenWrt 23.05.0** - For newer MIPS routers  
-          - **x86_64 OpenWrt 21.02.7** - For x86_64 systems (older)
-          - **x86_64 OpenWrt 22.03.7** - For x86_64 systems (stable)
-          - **x86_64 OpenWrt 24.10.4** - For x86_64 systems (latest)
+          ## 🚀 Installation Instructions
           
-          ## Installation Instructions
+          1. Download the appropriate `.zip` file for your platform
+          2. Extract the contents to get the `.ipk` package
+          3. Upload to your OpenWrt device
+          4. Install using: `opkg install esurfingclient_*.ipk`
+          5. Configure and start the service
           
-          1. Extract the appropriate package for your platform
-          2. Copy the binary to your OpenWrt device
-          3. Make it executable: `chmod +x esurfingclient`
-          4. Run with appropriate configuration
+          ## 📋 Build Information
           
-          ## Build Information
+          - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **Repository**: ${{ github.repository }}
+          - **Commit**: ${{ github.sha }}
+          - **Workflow Run**: ${{ github.run_id }}
           
-          - Built with: GitHub Actions
-          - Compiler: Cross-compilation toolchain for each platform
-          - Build date: $(date)
+          ## 📄 Files Included
           
-          For more information, visit: https://github.com/$(echo $GITHUB_REPOSITORY)
+          - `build-info.json` - Detailed build information
+          - `esurfingclient-*.zip` - Platform-specific packages
+          
+          For more information and source code, visit: https://github.com/${{ github.repository }}
           EOF
           
-          echo "✅ Created build summary and README"
-          echo "### 📦 Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "Selected platform: ${{ needs.check-platforms.outputs.selected-platform }}" >> $GITHUB_STEP_SUMMARY
-          echo "All build artifacts have been collected and uploaded as a unified package." >> $GITHUB_STEP_SUMMARY
+          echo "✅ Created README for release"
 
-      - name: Upload collected artifacts
-        uses: actions/upload-artifact@v4
+      - name: Generate release tag and name
+        id: release_info
+        run: |
+          # 生成基于时间的标签和发布名称
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          RELEASE_TAG="build-${TIMESTAMP}"
+          RELEASE_NAME="ESurfing Client Build - $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+          
+          echo "🏷️ Release tag: ${RELEASE_TAG}"
+          echo "📝 Release name: ${RELEASE_NAME}"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: esurfing-client-all-platforms
-          path: |
-            collected-artifacts/
-            artifacts/
-          retention-days: 30
+          tag_name: ${{ steps.release_info.outputs.release_tag }}
+          release_name: ${{ steps.release_info.outputs.release_name }}
+          body: |
+            # ESurfing Client - Multi-Platform Build
+            
+            🚀 **Automated build containing binaries for multiple OpenWrt platforms**
+            
+            ## 📦 Available Platforms
+            
+            - **mipsel_24kc-openwrt-21.02.7** - For MIPS routers (OpenWrt 21.02.7)
+            - **mipsel_24kc-openwrt-23.05.0** - For MIPS routers (OpenWrt 23.05.0)
+            - **x86_64-openwrt-21.02.7** - For x86_64 systems (OpenWrt 21.02.7)
+            - **x86_64-openwrt-22.03.7** - For x86_64 systems (OpenWrt 22.03.7)
+            - **x86_64-openwrt-24.10.4** - For x86_64 systems (OpenWrt 24.10.4)
+            
+            ## 🔧 Installation Instructions
+            
+            1. Download the appropriate `.zip` file for your platform from the assets below
+            2. Extract the contents to get the `.ipk` package
+            3. Upload to your OpenWrt device
+            4. Install using: `opkg install esurfingclient_*.ipk`
+            5. Configure and start the service
+            
+            ## 📋 Build Information
+            
+            - **Build Date**: ${{ steps.release_info.outputs.release_name }}
+            - **Repository**: ${{ github.repository }}
+            - **Commit**: ${{ github.sha }}
+            - **Workflow Run**: ${{ github.run_id }}
+            
+            ## 📄 Assets Description
+            
+            - `README.md` - Detailed installation and usage instructions
+            - `build-info.json` - Complete build metadata and artifact information
+            - `esurfingclient-*.zip` - Platform-specific packages (one for each supported platform)
+            
+            ---
+            
+            *This release was automatically generated by GitHub Actions*
+          draft: false
+          prerelease: false
+
+      - name: Upload release assets
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            const releaseId = ${{ steps.create_release.outputs.id }};
+            const releaseDir = 'release-files';
+            
+            console.log(`📤 Uploading assets to release ID: ${releaseId}`);
+            
+            // 获取所有要上传的文件
+            const files = fs.readdirSync(releaseDir);
+            console.log(`📁 Found ${files.length} files to upload:`, files);
+            
+            // 上传每个文件
+            for (const fileName of files) {
+              const filePath = path.join(releaseDir, fileName);
+              const fileContent = fs.readFileSync(filePath);
+              
+              console.log(`⬆️ Uploading: ${fileName} (${(fileContent.length / 1024).toFixed(1)} KB)`);
+              
+              try {
+                const uploadResponse = await github.rest.repos.uploadReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: releaseId,
+                  name: fileName,
+                  data: fileContent,
+                });
+                
+                console.log(`✅ Uploaded: ${fileName} - ${uploadResponse.data.browser_download_url}`);
+              } catch (error) {
+                console.log(`❌ Failed to upload ${fileName}: ${error.message}`);
+              }
+            }
+            
+            console.log(`🎉 Release created successfully!`);
+            console.log(`🔗 Release URL: https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${{ steps.release_info.outputs.release_tag }}`);
+
+      - name: Update workflow summary
+        run: |
+          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Tag**: \`${{ steps.release_info.outputs.release_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Name**: ${{ steps.release_info.outputs.release_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🔗 Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.release_info.outputs.release_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Available Downloads" >> $GITHUB_STEP_SUMMARY
+          echo "- README.md - Installation instructions" >> $GITHUB_STEP_SUMMARY
+          echo "- build-info.json - Build metadata" >> $GITHUB_STEP_SUMMARY
+          echo "- esurfingclient-*.zip - Platform-specific packages" >> $GITHUB_STEP_SUMMARY
           
       - name: Check overall result
         run: |
           echo "✅ All selected builds completed successfully"
-          echo "📦 Artifacts have been collected and uploaded"
+          echo "🎉 Release created with all platform binaries"
+          echo "🔗 Download from: https://github.com/${{ github.repository }}/releases/tag/${{ steps.release_info.outputs.release_tag }}"
