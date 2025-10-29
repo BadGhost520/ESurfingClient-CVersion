@@ -1,12 +1,8 @@
 name: Build Windows x64 Binary
 
-# 配置工作流权限
-permissions:
-  actions: write
-  contents: read
-
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: write
@@ -135,6 +131,7 @@ EOF
         retention-days: 30
 
     - name: Generate build summary
+      shell: msys2 {0}
       run: |
         echo "## 🏗️ Windows x64 Build Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
