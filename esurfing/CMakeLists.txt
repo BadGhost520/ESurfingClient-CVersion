@@ -184,6 +184,56 @@ if(WIN32)
         NO_DEFAULT_PATH
     )
     
+    find_library(ZSTD_STATIC_LIB 
+        NAMES libzstd.a zstd 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(IDN2_STATIC_LIB 
+        NAMES libidn2.a idn2 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(PSL_STATIC_LIB 
+        NAMES libpsl.a psl 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(BROTLI_DEC_STATIC_LIB 
+        NAMES libbrotlidec.a brotlidec 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(BROTLI_COMMON_STATIC_LIB 
+        NAMES libbrotlicommon.a brotlicommon 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
     # 如果找不到静态库，回退到使用CMake的find_package
     if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB OR NOT NGHTTP2_STATIC_LIB OR NOT SSH2_STATIC_LIB)
         message(STATUS "Some static libraries not found, using find_package fallback")
@@ -229,7 +279,7 @@ if(WIN32)
         )
     else()
         # 使用找到的静态库
-        message(STATUS "✅ Found all static libraries, using static linking")
+        message(STATUS "✅ Found all core static libraries, using static linking")
         message(STATUS "CURL: ${CURL_STATIC_LIB}")
         message(STATUS "SSL: ${SSL_STATIC_LIB}")
         message(STATUS "CRYPTO: ${CRYPTO_STATIC_LIB}")
@@ -237,6 +287,23 @@ if(WIN32)
         message(STATUS "Z: ${Z_STATIC_LIB}")
         message(STATUS "NGHTTP2: ${NGHTTP2_STATIC_LIB}")
         message(STATUS "SSH2: ${SSH2_STATIC_LIB}")
+        
+        # Optional libraries
+        if(ZSTD_STATIC_LIB)
+            message(STATUS "ZSTD: ${ZSTD_STATIC_LIB}")
+        endif()
+        if(IDN2_STATIC_LIB)
+            message(STATUS "IDN2: ${IDN2_STATIC_LIB}")
+        endif()
+        if(PSL_STATIC_LIB)
+            message(STATUS "PSL: ${PSL_STATIC_LIB}")
+        endif()
+        if(BROTLI_DEC_STATIC_LIB)
+            message(STATUS "BROTLI_DEC: ${BROTLI_DEC_STATIC_LIB}")
+        endif()
+        if(BROTLI_COMMON_STATIC_LIB)
+            message(STATUS "BROTLI_COMMON: ${BROTLI_COMMON_STATIC_LIB}")
+        endif()
         if(NGHTTP3_STATIC_LIB)
             message(STATUS "NGHTTP3: ${NGHTTP3_STATIC_LIB}")
         endif()
@@ -247,6 +314,7 @@ if(WIN32)
             message(STATUS "NGTCP2_CRYPTO: ${NGTCP2_CRYPTO_STATIC_LIB}")
         endif()
         
+        # Link core libraries
         target_link_libraries(ESurfingClient PRIVATE 
             ${CURL_STATIC_LIB}
             ${SSH2_STATIC_LIB}
@@ -256,6 +324,23 @@ if(WIN32)
             ${Z_STATIC_LIB}
             ${NGHTTP2_STATIC_LIB}
         )
+        
+        # Link optional compression and IDN libraries
+        if(ZSTD_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${ZSTD_STATIC_LIB})
+        endif()
+        if(IDN2_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${IDN2_STATIC_LIB})
+        endif()
+        if(PSL_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${PSL_STATIC_LIB})
+        endif()
+        if(BROTLI_DEC_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${BROTLI_DEC_STATIC_LIB})
+        endif()
+        if(BROTLI_COMMON_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${BROTLI_COMMON_STATIC_LIB})
+        endif()
         
         # Add optional HTTP/3 libraries if available
         if(NGHTTP3_STATIC_LIB)

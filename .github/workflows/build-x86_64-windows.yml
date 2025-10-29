@@ -34,6 +34,10 @@ jobs:
           mingw-w64-x86_64-nghttp3
           mingw-w64-x86_64-ngtcp2
           mingw-w64-x86_64-libssh2
+          mingw-w64-x86_64-zstd
+          mingw-w64-x86_64-libidn2
+          mingw-w64-x86_64-libpsl
+          mingw-w64-x86_64-brotli
           p7zip
 
     - name: Build ESurfingClient
@@ -65,6 +69,10 @@ jobs:
           ls /mingw64/lib/libnghttp3* 2>/dev/null || echo "❌ No libnghttp3 found"
           ls /mingw64/lib/libngtcp2* 2>/dev/null || echo "❌ No libngtcp2 found"
           ls /mingw64/lib/libssh2* 2>/dev/null || echo "❌ No libssh2 found"
+          ls /mingw64/lib/libzstd* 2>/dev/null || echo "❌ No libzstd found"
+          ls /mingw64/lib/libidn2* 2>/dev/null || echo "❌ No libidn2 found"
+          ls /mingw64/lib/libpsl* 2>/dev/null || echo "❌ No libpsl found"
+          ls /mingw64/lib/libbrotli* 2>/dev/null || echo "❌ No libbrotli found"
         else
           echo "❌ /mingw64/lib not found"
         fi
@@ -116,6 +124,11 @@ jobs:
           /mingw64/lib/libcrypto.a \
           /mingw64/lib/libxml2.a \
           /mingw64/lib/libz.a \
+          /mingw64/lib/libzstd.a \
+          /mingw64/lib/libidn2.a \
+          /mingw64/lib/libpsl.a \
+          /mingw64/lib/libbrotlidec.a \
+          /mingw64/lib/libbrotlicommon.a \
           -lws2_32 -lwldap32 -lwinmm -lcrypt32 -lnormaliz -lsecur32 -lbcrypt -liphlpapi \
           -lpthread || echo "⚠️ Manual relinking failed, using original"
         
