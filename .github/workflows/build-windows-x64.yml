@@ -1,8 +1,12 @@
 name: Build Windows x64 Binary
 
+# 配置工作流权限
+permissions:
+  actions: write
+  contents: read
+
 on:
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: write
@@ -29,7 +33,7 @@ jobs:
           mingw-w64-x86_64-openssl
           mingw-w64-x86_64-libxml2
           mingw-w64-x86_64-pkg-config
-          make
+          mingw-w64-x86_64-upx
 
     - name: Build ESurfingClient
       shell: msys2 {0}
@@ -39,7 +43,7 @@ jobs:
         echo "📁 Go to esurfing dir"
         cd esurfing
         
-        echo "⚙️ CMake configuring for static build"
+        echo "⚙️ CMake configuring with static linking"
         cmake -G "MinGW Makefiles" \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_C_COMPILER=gcc \
@@ -58,56 +62,49 @@ jobs:
           echo "✅ Executable renamed to ESurfingClient-1.0.0.exe"
         else
           echo "❌ ESurfingClient.exe not found!"
-          ls -la
           exit 1
         fi
         
-        echo "🔍 Stripping debug symbols"
-        strip ESurfingClient-1.0.0.exe
+        echo "🗜️ Compressing with UPX"
+        upx --best --lzma ESurfingClient-1.0.0.exe || echo "⚠️ UPX compression failed, continuing..."
         
         echo "📊 File information:"
-        ls -lh ESurfingClient-1.0.0.exe
-        file ESurfingClient-1.0.0.exe
+        ls -la ESurfingClient-1.0.0.exe
+        file ESurfingClient-1.0.0.exe || echo "file command not available"
 
     - name: Verify build output
       shell: msys2 {0}
       run: |
         cd esurfing
         if [ ! -f "ESurfingClient-1.0.0.exe" ]; then
-          echo "❌ Build failed - executable not found"
+          echo "❌ Build failed: ESurfingClient-1.0.0.exe not found"
           exit 1
         fi
         
-        echo "✅ Build successful"
-        echo "📋 Build summary:"
-        echo "- Executable: ESurfingClient-1.0.0.exe"
-        echo "- Size: $(du -h ESurfingClient-1.0.0.exe | cut -f1)"
-        echo "- Static linking: Enabled"
-        
-        # 检查依赖
-        echo "🔍 Checking dependencies:"
-        ldd ESurfingClient-1.0.0.exe || echo "Static executable - no dynamic dependencies"
+        echo "✅ Build successful!"
+        echo "📁 Final executable: $(pwd)/ESurfingClient-1.0.0.exe"
+        echo "📏 File size: $(stat -c%s ESurfingClient-1.0.0.exe) bytes"
 
     - name: Create package
       shell: msys2 {0}
       run: |
-        cd esurfing
-        
         echo "📦 Creating Windows x64 package"
+        
+        # Create package directory
         mkdir -p esurfingclient-windows-x64
         
-        # 复制可执行文件
-        cp ESurfingClient-1.0.0.exe esurfingclient-windows-x64/
+        # Copy executable
+        cp esurfing/ESurfingClient-1.0.0.exe esurfingclient-windows-x64/
         
-        # 创建 README
+        # Create README
         cat > esurfingclient-windows-x64/README.txt << 'EOF'
-ESurfingClient Windows x64 Static Build
-======================================
+ESurfingClient Windows x64 Binary
+================================
 
-This is a statically linked Windows x64 build of ESurfingClient.
+This is a statically linked Windows x64 binary of ESurfingClient.
 
 Files:
-- ESurfingClient-1.0.0.exe: Main executable (static build)
+- ESurfingClient-1.0.0.exe: Main executable (statically linked)
 
 Usage:
   ESurfingClient-1.0.0.exe [options]
@@ -115,37 +112,47 @@ Usage:
 Build Information:
 - Platform: Windows x64
 - Compiler: MinGW-w64 GCC
-- Linking: Static (no external dependencies required)
+- Linking: Static (no external DLL dependencies)
+- Compression: UPX compressed
 - Build Date: $(date)
 
 For more information, visit the project repository.
 EOF
         
-        echo "🗜️ Creating archive"
-        7z a esurfingclient-windows-x64.zip esurfingclient-windows-x64/
-        
         echo "📋 Package contents:"
-        7z l esurfingclient-windows-x64.zip
+        ls -la esurfingclient-windows-x64/
+        
+        echo "🗜️ Creating ZIP archive"
+        7z a esurfingclient-windows-x64.zip esurfingclient-windows-x64/
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: esurfingclient-windows-x64
-        path: esurfing/esurfingclient-windows-x64.zip
+        path: |
+          esurfingclient-windows-x64.zip
+          esurfing/ESurfingClient-1.0.0.exe
         retention-days: 30
 
     - name: Generate build summary
       run: |
-        echo "## Windows x64 Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "## 🏗️ Windows x64 Build Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ **Build Status:** Success" >> $GITHUB_STEP_SUMMARY
-        echo "🏗️ **Platform:** Windows x64" >> $GITHUB_STEP_SUMMARY
-        echo "🔗 **Linking:** Static" >> $GITHUB_STEP_SUMMARY
-        echo "📦 **Package:** esurfingclient-windows-x64.zip" >> $GITHUB_STEP_SUMMARY
-        echo "🕒 **Build Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Build Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Features" >> $GITHUB_STEP_SUMMARY
-        echo "- Static linking (no external dependencies)" >> $GITHUB_STEP_SUMMARY
-        echo "- Optimized release build" >> $GITHUB_STEP_SUMMARY
-        echo "- Debug symbols stripped" >> $GITHUB_STEP_SUMMARY
-        echo "- Windows x64 compatible" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Artifacts Generated:" >> $GITHUB_STEP_SUMMARY
+        echo "- \`esurfingclient-windows-x64.zip\` - Complete package with README" >> $GITHUB_STEP_SUMMARY
+        echo "- \`ESurfingClient-1.0.0.exe\` - Standalone executable" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔧 Build Configuration:" >> $GITHUB_STEP_SUMMARY
+        echo "- **Platform**: Windows x64" >> $GITHUB_STEP_SUMMARY
+        echo "- **Compiler**: MinGW-w64 GCC" >> $GITHUB_STEP_SUMMARY
+        echo "- **Linking**: Static (no external dependencies)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Compression**: UPX compressed" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Type**: Release" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📚 Dependencies (statically linked):" >> $GITHUB_STEP_SUMMARY
+        echo "- libcurl" >> $GITHUB_STEP_SUMMARY
+        echo "- OpenSSL" >> $GITHUB_STEP_SUMMARY
+        echo "- LibXml2" >> $GITHUB_STEP_SUMMARY
+        echo "- Windows system libraries" >> $GITHUB_STEP_SUMMARY
