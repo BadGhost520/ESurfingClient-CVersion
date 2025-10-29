@@ -6,6 +6,11 @@
 
 **3. `按顺序`运行下面`必要`的命令以设置服务配置文件和运行服务**
 
+> [!WARNING]
+> **一定要按顺序！**
+
+### 必要命令
+
 ```bash
 # 设置用户名 (必要)
 uci set esurfingclient.main.username='<用户名>'
@@ -30,6 +35,9 @@ uci commit esurfingclient
 # 重载配置文件 (必要)
 /etc/init.d/esurfingclient reload
 ```
+
+### 可选命令
+
 ```bash
 # 设置认证通道
 uci set esurfingclient.main.channel='<认证通道>'(默认为`pc`)
@@ -41,6 +49,8 @@ uci set esurfingclient.main.channel='pc'
 > 目前有两个认证通道: pc 和 phone
 > 
 > **两者并没有什么太大的区别**
+
+### 程序服务类命令
 
 ```bash
 # 设置开机自启
