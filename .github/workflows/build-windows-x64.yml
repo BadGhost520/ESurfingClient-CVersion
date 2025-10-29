@@ -2,7 +2,6 @@ name: Build Windows x64 Binary
 
 on:
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: write
@@ -10,40 +9,51 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: >-
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-make
-          mingw-w64-x86_64-curl
-          mingw-w64-x86_64-openssl
-          mingw-w64-x86_64-libxml2
-          mingw-w64-x86_64-pkg-config
-          mingw-w64-x86_64-upx
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 upx-ucl
+
+    - name: Install Windows dependencies
+      run: |
+        # 安装 MinGW-w64 的静态库
+        sudo apt-get install -y mingw-w64-tools
+        
+        # 下载并安装预编译的 Windows 静态库
+        mkdir -p /tmp/win-deps
+        cd /tmp/win-deps
+        
+        # 下载 curl 静态库
+        wget -q https://curl.se/windows/dl-8.5.0_1/curl-8.5.0_1-win64-mingw.zip
+        unzip -q curl-8.5.0_1-win64-mingw.zip
+        
+        # 下载 OpenSSL 静态库  
+        wget -q https://github.com/openssl/openssl/releases/download/openssl-3.2.0/openssl-3.2.0.tar.gz
+        tar -xzf openssl-3.2.0.tar.gz
+        
+        # 下载 libxml2 静态库
+        wget -q https://download.gnome.org/sources/libxml2/2.12/libxml2-2.12.3.tar.xz
+        tar -xf libxml2-2.12.3.tar.xz
 
     - name: Build ESurfingClient
-      shell: msys2 {0}
       run: |
         echo "🏗️ Starting Windows x64 build process"
         
         echo "📁 Go to esurfing dir"
         cd esurfing
         
-        echo "⚙️ CMake configuring with static linking"
-        cmake -G "MinGW Makefiles" \
+        echo "⚙️ CMake configuring with MinGW cross-compilation"
+        cmake -G "Unix Makefiles" \
+          -DCMAKE_SYSTEM_NAME=Windows \
+          -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+          -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=gcc \
-          -DCMAKE_CXX_COMPILER=g++ \
           -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
           -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
           -DBUILD_SHARED_LIBS=OFF \
@@ -66,10 +76,9 @@ jobs:
         
         echo "📊 File information:"
         ls -la ESurfingClient-1.0.0.exe
-        file ESurfingClient-1.0.0.exe || echo "file command not available"
+        file ESurfingClient-1.0.0.exe
 
     - name: Verify build output
-      shell: msys2 {0}
       run: |
         cd esurfing
         if [ ! -f "ESurfingClient-1.0.0.exe" ]; then
@@ -82,7 +91,6 @@ jobs:
         echo "📏 File size: $(stat -c%s ESurfingClient-1.0.0.exe) bytes"
 
     - name: Create package
-      shell: msys2 {0}
       run: |
         echo "📦 Creating Windows x64 package"
         
@@ -107,7 +115,7 @@ Usage:
 
 Build Information:
 - Platform: Windows x64
-- Compiler: MinGW-w64 GCC
+- Compiler: MinGW-w64 GCC (cross-compiled on Ubuntu)
 - Linking: Static (no external DLL dependencies)
 - Compression: UPX compressed
 - Build Date: $(date)
@@ -119,7 +127,7 @@ EOF
         ls -la esurfingclient-windows-x64/
         
         echo "🗜️ Creating ZIP archive"
-        7z a esurfingclient-windows-x64.zip esurfingclient-windows-x64/
+        zip -r esurfingclient-windows-x64.zip esurfingclient-windows-x64/
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -131,7 +139,6 @@ EOF
         retention-days: 30
 
     - name: Generate build summary
-      shell: msys2 {0}
       run: |
         echo "## 🏗️ Windows x64 Build Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -142,7 +149,7 @@ EOF
         echo "- \`ESurfingClient-1.0.0.exe\` - Standalone executable" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🔧 Build Configuration:" >> $GITHUB_STEP_SUMMARY
-        echo "- **Platform**: Windows x64" >> $GITHUB_STEP_SUMMARY
+        echo "- **Platform**: Windows x64 (cross-compiled on Ubuntu)" >> $GITHUB_STEP_SUMMARY
         echo "- **Compiler**: MinGW-w64 GCC" >> $GITHUB_STEP_SUMMARY
         echo "- **Linking**: Static (no external dependencies)" >> $GITHUB_STEP_SUMMARY
         echo "- **Compression**: UPX compressed" >> $GITHUB_STEP_SUMMARY
