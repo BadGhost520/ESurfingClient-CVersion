@@ -19,7 +19,7 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake gcc g++ make upx-ucl
+        sudo apt-get install -y build-essential cmake gcc g++ make upx-ucl binutils
 
     - name: Build ESurfingClient
       run: |
@@ -33,13 +33,13 @@ jobs:
         echo "🔨 Making Programme"
         make -j$(nproc)
         
-        echo "📦 Moved ESurfingClient to bash dir"
+        echo "📦 Moved ESurfingClient to root dir"
         mv bin/ESurfingClient ../ESurfingClient-1.0.0
         
-        echo "🛡️ Protect1 - Strip symbols"
+        echo "🛡️ Protect1 - Strip binary"
         strip --strip-all ../ESurfingClient-1.0.0
         
-        echo "📦 Protect2 - UPX compression"
+        echo "📦 Protect2 - Compress with UPX"
         upx --best ../ESurfingClient-1.0.0
         
         echo "✅ Build completed successfully"
@@ -48,92 +48,77 @@ jobs:
       run: |
         echo "🔍 Verifying build output"
         if [ -f "ESurfingClient-1.0.0" ]; then
-          echo "✅ ESurfingClient binary found"
+          echo "✅ Binary file exists"
           ls -la ESurfingClient-1.0.0
           file ESurfingClient-1.0.0
-          echo "📊 Binary size: $(du -h ESurfingClient-1.0.0 | cut -f1)"
+          echo "📏 File size: $(du -h ESurfingClient-1.0.0 | cut -f1)"
         else
-          echo "❌ ESurfingClient binary not found"
+          echo "❌ Binary file not found"
           exit 1
         fi
 
-    - name: Create release package
+    - name: Create package
       run: |
-        echo "📦 Creating release package"
-        mkdir -p release-package
-        cp ESurfingClient-1.0.0 release-package/
+        echo "📦 Creating package"
+        mkdir -p esurfingclient-x64-linux
+        cp ESurfingClient-1.0.0 esurfingclient-x64-linux/
         
-        # Create README for the package
-        cat > release-package/README.md << 'EOF'
-# ESurfingClient x64 Linux Binary
-
-## 系统要求
-- Linux x86_64 系统
-- glibc 2.17 或更高版本
-
-## 安装说明
-1. 下载 ESurfingClient-1.0.0 二进制文件
-2. 给予执行权限：`chmod +x ESurfingClient-1.0.0`
-3. 运行程序：`./ESurfingClient-1.0.0`
-
-## 使用说明
-请参考项目主页的使用文档。
-
-## 构建信息
-- 构建时间: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-- 构建平台: x86_64 Linux
-- 编译器: GCC $(gcc --version | head -n1)
-- 优化: 已启用符号剥离和 UPX 压缩
-EOF
+        # Create a simple README
+        cat > esurfingclient-x64-linux/README.md << 'EOF'
+        # ESurfing Client - x64 Linux Binary
         
-        # Create version info
-        cat > release-package/version.txt << EOF
-Version: 1.0.0
-Platform: x86_64-linux
-Build Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-Build ID: ${{ github.run_id }}
-Commit: ${{ github.sha }}
-EOF
+        ## Installation
         
-        echo "📋 Package contents:"
-        ls -la release-package/
-
-    - name: Create compressed archive
-      run: |
-        echo "🗜️ Creating compressed archive"
-        cd release-package
-        tar -czf ../esurfingclient-x64-linux.tar.gz *
-        cd ..
+        1. Make the binary executable:
+           ```bash
+           chmod +x ESurfingClient-1.0.0
+           ```
         
-        echo "📊 Archive info:"
+        2. Run the client:
+           ```bash
+           ./ESurfingClient-1.0.0
+           ```
+        
+        ## System Requirements
+        
+        - x64 Linux system
+        - Compatible with most modern Linux distributions
+        
+        ## Build Information
+        
+        - Platform: x64 Linux
+        - Compiler: GCC
+        - Optimizations: Stripped and compressed with UPX
+        EOF
+        
+        # Create compressed package
+        tar -czf esurfingclient-x64-linux.tar.gz esurfingclient-x64-linux/
+        
+        echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
         ls -la esurfingclient-x64-linux.tar.gz
-        echo "📦 Archive size: $(du -h esurfingclient-x64-linux.tar.gz | cut -f1)"
 
-    - name: Upload build artifacts
+    - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: esurfingclient-x64-linux
-        path: |
-          esurfingclient-x64-linux.tar.gz
-          ESurfingClient-1.0.0
+        path: esurfingclient-x64-linux.tar.gz
         retention-days: 30
 
     - name: Build summary
       run: |
-        echo "## 🎉 x64 Linux Build Completed Successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "## 🎉 Build Completed Successfully!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📦 Build Artifacts" >> $GITHUB_STEP_SUMMARY
-        echo "- **Binary**: ESurfingClient-1.0.0" >> $GITHUB_STEP_SUMMARY
-        echo "- **Archive**: esurfingclient-x64-linux.tar.gz" >> $GITHUB_STEP_SUMMARY
+        echo "**Platform**: x64 Linux" >> $GITHUB_STEP_SUMMARY
+        echo "**Binary**: ESurfingClient-1.0.0" >> $GITHUB_STEP_SUMMARY
+        echo "**Package**: esurfingclient-x64-linux.tar.gz" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📊 Build Information" >> $GITHUB_STEP_SUMMARY
-        echo "- **Platform**: x86_64 Linux" >> $GITHUB_STEP_SUMMARY
-        echo "- **Build Time**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-        echo "- **Binary Size**: $(du -h ESurfingClient-1.0.0 | cut -f1)" >> $GITHUB_STEP_SUMMARY
-        echo "- **Archive Size**: $(du -h esurfingclient-x64-linux.tar.gz | cut -f1)" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Build Details" >> $GITHUB_STEP_SUMMARY
+        echo "- Compiler: GCC" >> $GITHUB_STEP_SUMMARY
+        echo "- Optimizations: Stripped symbols, UPX compressed" >> $GITHUB_STEP_SUMMARY
+        echo "- Package format: tar.gz" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🛠️ Optimizations Applied" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Symbol stripping (strip --strip-all)" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ UPX compression (--best)" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Artifact Information" >> $GITHUB_STEP_SUMMARY
+        echo "- Artifact name: \`esurfingclient-x64-linux\`" >> $GITHUB_STEP_SUMMARY
+        echo "- Retention: 30 days" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "🎯 **Ready for deployment!**" >> $GITHUB_STEP_SUMMARY
+        echo "🎯 The build artifact is ready for download!"
