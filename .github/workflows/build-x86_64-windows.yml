@@ -69,7 +69,7 @@ jobs:
           ls /mingw64/lib/libz* 2>/dev/null || echo "❌ No libz found"
           ls /mingw64/lib/libnghttp2* 2>/dev/null || echo "❌ No libnghttp2 found"
           ls /mingw64/lib/libnghttp3* 2>/dev/null || echo "❌ No libnghttp3 found"
-          ls /mingw64/lib/libngtcp2* 2>/dev/null || echo "❌ No libngtcp2 found"
+          ls /mingw64/lib/libngtcp2.* 2>/dev/null || echo "❌ No libngtcp2 found"
           ls /mingw64/lib/libssh2* 2>/dev/null || echo "❌ No libssh2 found"
           ls /mingw64/lib/libzstd* 2>/dev/null || echo "❌ No libzstd found"
           ls /mingw64/lib/libidn2* 2>/dev/null || echo "❌ No libidn2 found"
@@ -123,7 +123,6 @@ jobs:
           /mingw64/lib/libnghttp2.a \
           /mingw64/lib/libnghttp3.a \
           /mingw64/lib/libngtcp2.a \
-          /mingw64/lib/libngtcp2_crypto_ossl.a \
           /mingw64/lib/libssl.a \
           /mingw64/lib/libcrypto.a \
           /mingw64/lib/libxml2.a \

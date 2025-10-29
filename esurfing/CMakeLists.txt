@@ -376,16 +376,14 @@ if(WIN32)
             target_link_libraries(ESurfingClient PRIVATE ${ICONV_STATIC_LIB})
         endif()
         
-        # Add optional HTTP/3 libraries if available
+        # Add optional HTTP/3 libraries if available (excluding ngtcp2_crypto_ossl due to QUIC compatibility issues)
         if(NGHTTP3_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${NGHTTP3_STATIC_LIB})
         endif()
         if(NGTCP2_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_STATIC_LIB})
         endif()
-        if(NGTCP2_CRYPTO_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_CRYPTO_STATIC_LIB})
-        endif()
+        # Note: ngtcp2_crypto_ossl is disabled due to OpenSSL QUIC function compatibility issues
         
         # Add Windows system libraries
         target_link_libraries(ESurfingClient PRIVATE 
