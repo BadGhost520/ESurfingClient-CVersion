@@ -48,21 +48,18 @@ jobs:
         cd esurfing
         
         echo "🔍 Checking available static libraries"
-        echo "Library search paths:"
-        echo "  /mingw64/lib"
-        ls -la /mingw64/lib/ | head -20
-        echo ""
-        echo "CURL libraries:"
-        find /mingw64 -name "*curl*" -type f 2>/dev/null || echo "No CURL libraries found"
-        echo ""
-        echo "OpenSSL libraries:"
-        find /mingw64 -name "*ssl*" -type f 2>/dev/null || echo "No SSL libraries found"
-        echo ""
-        echo "LibXML2 libraries:"
-        find /mingw64 -name "*xml2*" -type f 2>/dev/null || echo "No XML2 libraries found"
-        echo ""
-        echo "Zlib libraries:"
-        find /mingw64 -name "*libz*" -type f 2>/dev/null || echo "No zlib libraries found"
+        echo "Checking /mingw64/lib directory..."
+        if [ -d "/mingw64/lib" ]; then
+          echo "✅ /mingw64/lib exists"
+          echo "Key library files:"
+          ls /mingw64/lib/libcurl* 2>/dev/null || echo "❌ No libcurl found"
+          ls /mingw64/lib/libssl* 2>/dev/null || echo "❌ No libssl found"
+          ls /mingw64/lib/libcrypto* 2>/dev/null || echo "❌ No libcrypto found"
+          ls /mingw64/lib/libxml2* 2>/dev/null || echo "❌ No libxml2 found"
+          ls /mingw64/lib/libz* 2>/dev/null || echo "❌ No libz found"
+        else
+          echo "❌ /mingw64/lib not found"
+        fi
         
         echo "⚙️ CMake configuring with aggressive static linking"
         export PKG_CONFIG_ALL_STATIC=1
