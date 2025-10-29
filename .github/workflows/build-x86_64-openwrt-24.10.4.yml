@@ -1,4 +1,4 @@
-name: Build OpenWrt 23.05.0 Package
+name: Build x86_64 OpenWrt 24.10.4 Package
 
 on:
   workflow_dispatch:

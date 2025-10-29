@@ -1,10 +1,10 @@
-name: Build OpenWrt 23.05.0 Package
+name: Build mipsel_24kc OpenWrt 23.05.0 Package
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-openwrt-23-05-0:
+  build-mipsel_24kc-openwrt-23-05-0:
     runs-on: ubuntu-latest
     container:
       image: debian:11
