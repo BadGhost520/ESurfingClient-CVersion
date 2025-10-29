@@ -33,6 +33,7 @@ jobs:
           mingw-w64-x86_64-nghttp2
           mingw-w64-x86_64-nghttp3
           mingw-w64-x86_64-ngtcp2
+          mingw-w64-x86_64-libssh2
           p7zip
 
     - name: Build ESurfingClient
@@ -63,6 +64,7 @@ jobs:
           ls /mingw64/lib/libnghttp2* 2>/dev/null || echo "❌ No libnghttp2 found"
           ls /mingw64/lib/libnghttp3* 2>/dev/null || echo "❌ No libnghttp3 found"
           ls /mingw64/lib/libngtcp2* 2>/dev/null || echo "❌ No libngtcp2 found"
+          ls /mingw64/lib/libssh2* 2>/dev/null || echo "❌ No libssh2 found"
         else
           echo "❌ /mingw64/lib not found"
         fi
@@ -105,9 +107,11 @@ jobs:
         gcc -static -static-libgcc -static-libstdc++ -o ESurfingClient-x86_64-windows-static.exe \
           $(find . -name "*.o") \
           /mingw64/lib/libcurl.a \
+          /mingw64/lib/libssh2.a \
           /mingw64/lib/libnghttp2.a \
           /mingw64/lib/libnghttp3.a \
           /mingw64/lib/libngtcp2.a \
+          /mingw64/lib/libngtcp2_crypto_ossl.a \
           /mingw64/lib/libssl.a \
           /mingw64/lib/libcrypto.a \
           /mingw64/lib/libxml2.a \

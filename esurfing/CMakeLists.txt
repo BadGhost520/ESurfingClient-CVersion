@@ -164,8 +164,28 @@ if(WIN32)
         NO_DEFAULT_PATH
     )
     
+    find_library(NGTCP2_CRYPTO_STATIC_LIB 
+        NAMES libngtcp2_crypto_ossl.a ngtcp2_crypto_ossl 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(SSH2_STATIC_LIB 
+        NAMES libssh2.a ssh2 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
     # 如果找不到静态库，回退到使用CMake的find_package
-    if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB OR NOT NGHTTP2_STATIC_LIB)
+    if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB OR NOT NGHTTP2_STATIC_LIB OR NOT SSH2_STATIC_LIB)
         message(STATUS "Some static libraries not found, using find_package fallback")
         if(NOT CURL_STATIC_LIB)
             message(STATUS "Missing: libcurl.a")
@@ -184,6 +204,9 @@ if(WIN32)
         endif()
         if(NOT NGHTTP2_STATIC_LIB)
             message(STATUS "Missing: libnghttp2.a")
+        endif()
+        if(NOT SSH2_STATIC_LIB)
+            message(STATUS "Missing: libssh2.a")
         endif()
         
         find_package(CURL REQUIRED)
@@ -213,15 +236,20 @@ if(WIN32)
         message(STATUS "XML2: ${XML2_STATIC_LIB}")
         message(STATUS "Z: ${Z_STATIC_LIB}")
         message(STATUS "NGHTTP2: ${NGHTTP2_STATIC_LIB}")
+        message(STATUS "SSH2: ${SSH2_STATIC_LIB}")
         if(NGHTTP3_STATIC_LIB)
             message(STATUS "NGHTTP3: ${NGHTTP3_STATIC_LIB}")
         endif()
         if(NGTCP2_STATIC_LIB)
             message(STATUS "NGTCP2: ${NGTCP2_STATIC_LIB}")
         endif()
+        if(NGTCP2_CRYPTO_STATIC_LIB)
+            message(STATUS "NGTCP2_CRYPTO: ${NGTCP2_CRYPTO_STATIC_LIB}")
+        endif()
         
         target_link_libraries(ESurfingClient PRIVATE 
             ${CURL_STATIC_LIB}
+            ${SSH2_STATIC_LIB}
             ${XML2_STATIC_LIB}
             ${SSL_STATIC_LIB}
             ${CRYPTO_STATIC_LIB}
@@ -235,6 +263,9 @@ if(WIN32)
         endif()
         if(NGTCP2_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_STATIC_LIB})
+        endif()
+        if(NGTCP2_CRYPTO_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_CRYPTO_STATIC_LIB})
         endif()
         
         # Add Windows system libraries
