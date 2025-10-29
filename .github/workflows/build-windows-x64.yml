@@ -1,0 +1,151 @@
+name: Build Windows x64 Binary
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-curl
+          mingw-w64-x86_64-openssl
+          mingw-w64-x86_64-libxml2
+          mingw-w64-x86_64-pkg-config
+          make
+
+    - name: Build ESurfingClient
+      shell: msys2 {0}
+      run: |
+        echo "🏗️ Starting Windows x64 build process"
+        
+        echo "📁 Go to esurfing dir"
+        cd esurfing
+        
+        echo "⚙️ CMake configuring for static build"
+        cmake -G "MinGW Makefiles" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=gcc \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
+          -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
+          -DBUILD_SHARED_LIBS=OFF \
+          .
+        
+        echo "🔨 Building with make"
+        make -j$(nproc)
+        
+        echo "📦 Moving and renaming executable"
+        if [ -f "ESurfingClient.exe" ]; then
+          mv ESurfingClient.exe ESurfingClient-1.0.0.exe
+          echo "✅ Executable renamed to ESurfingClient-1.0.0.exe"
+        else
+          echo "❌ ESurfingClient.exe not found!"
+          ls -la
+          exit 1
+        fi
+        
+        echo "🔍 Stripping debug symbols"
+        strip ESurfingClient-1.0.0.exe
+        
+        echo "📊 File information:"
+        ls -lh ESurfingClient-1.0.0.exe
+        file ESurfingClient-1.0.0.exe
+
+    - name: Verify build output
+      shell: msys2 {0}
+      run: |
+        cd esurfing
+        if [ ! -f "ESurfingClient-1.0.0.exe" ]; then
+          echo "❌ Build failed - executable not found"
+          exit 1
+        fi
+        
+        echo "✅ Build successful"
+        echo "📋 Build summary:"
+        echo "- Executable: ESurfingClient-1.0.0.exe"
+        echo "- Size: $(du -h ESurfingClient-1.0.0.exe | cut -f1)"
+        echo "- Static linking: Enabled"
+        
+        # 检查依赖
+        echo "🔍 Checking dependencies:"
+        ldd ESurfingClient-1.0.0.exe || echo "Static executable - no dynamic dependencies"
+
+    - name: Create package
+      shell: msys2 {0}
+      run: |
+        cd esurfing
+        
+        echo "📦 Creating Windows x64 package"
+        mkdir -p esurfingclient-windows-x64
+        
+        # 复制可执行文件
+        cp ESurfingClient-1.0.0.exe esurfingclient-windows-x64/
+        
+        # 创建 README
+        cat > esurfingclient-windows-x64/README.txt << 'EOF'
+ESurfingClient Windows x64 Static Build
+======================================
+
+This is a statically linked Windows x64 build of ESurfingClient.
+
+Files:
+- ESurfingClient-1.0.0.exe: Main executable (static build)
+
+Usage:
+  ESurfingClient-1.0.0.exe [options]
+
+Build Information:
+- Platform: Windows x64
+- Compiler: MinGW-w64 GCC
+- Linking: Static (no external dependencies required)
+- Build Date: $(date)
+
+For more information, visit the project repository.
+EOF
+        
+        echo "🗜️ Creating archive"
+        7z a esurfingclient-windows-x64.zip esurfingclient-windows-x64/
+        
+        echo "📋 Package contents:"
+        7z l esurfingclient-windows-x64.zip
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: esurfingclient-windows-x64
+        path: esurfing/esurfingclient-windows-x64.zip
+        retention-days: 30
+
+    - name: Generate build summary
+      run: |
+        echo "## Windows x64 Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **Build Status:** Success" >> $GITHUB_STEP_SUMMARY
+        echo "🏗️ **Platform:** Windows x64" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 **Linking:** Static" >> $GITHUB_STEP_SUMMARY
+        echo "📦 **Package:** esurfingclient-windows-x64.zip" >> $GITHUB_STEP_SUMMARY
+        echo "🕒 **Build Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Features" >> $GITHUB_STEP_SUMMARY
+        echo "- Static linking (no external dependencies)" >> $GITHUB_STEP_SUMMARY
+        echo "- Optimized release build" >> $GITHUB_STEP_SUMMARY
+        echo "- Debug symbols stripped" >> $GITHUB_STEP_SUMMARY
+        echo "- Windows x64 compatible" >> $GITHUB_STEP_SUMMARY
