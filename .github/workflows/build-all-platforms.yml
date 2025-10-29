@@ -20,6 +20,7 @@ on:
           - x86_64-21.02.7
           - x86_64-22.03.7
           - x86_64-24.10.4
+          - x64-linux
 
 jobs:
   # 检查要构建的平台
@@ -58,7 +59,8 @@ jobs:
               { file: 'build-mipsel_24kc-openwrt-23.05.0.yml', platform: 'mipsel-23.05.0' },
               { file: 'build-x86_64-openwrt-21.02.7.yml', platform: 'x86_64-21.02.7' },
               { file: 'build-x86_64-openwrt-22.03.7.yml', platform: 'x86_64-22.03.7' },
-              { file: 'build-x86_64-openwrt-24.10.4.yml', platform: 'x86_64-24.10.4' }
+              { file: 'build-x86_64-openwrt-24.10.4.yml', platform: 'x86_64-24.10.4' },
+              { file: 'build-x64-linux.yml', platform: 'x64-linux' }
             ];
             
             const selectedPlatform = '${{ needs.check-platforms.outputs.selected-platform }}';
@@ -276,7 +278,8 @@ jobs:
               workflow_run_id: context.runId,
               artifacts: artifactsList.map(a => ({
                 name: a.name,
-                platform: a.name.includes('mipsel') ? 
+                platform: a.name.includes('x64-linux') ? 'x64-linux' :
+                  a.name.includes('mipsel') ? 
                   (a.name.includes('21.02.7') ? 'mipsel_24kc-openwrt-21.02.7' : 'mipsel_24kc-openwrt-23.05.0') :
                   (a.name.includes('21.02.7') ? 'x86_64-openwrt-21.02.7' : 
                    a.name.includes('22.03.7') ? 'x86_64-openwrt-22.03.7' : 'x86_64-openwrt-24.10.4'),
@@ -303,14 +306,22 @@ jobs:
           - **x86_64-openwrt-21.02.7** - For x86_64 systems (OpenWrt 21.02.7)
           - **x86_64-openwrt-22.03.7** - For x86_64 systems (OpenWrt 22.03.7)
           - **x86_64-openwrt-24.10.4** - For x86_64 systems (OpenWrt 24.10.4)
+          - **x64-linux** - For native x86_64 Linux systems
           
           ## 🚀 Installation Instructions
           
+          ### For OpenWrt Platforms
           1. Download the appropriate `.zip` file for your platform
           2. Extract the contents to get the `.ipk` package
           3. Upload to your OpenWrt device
           4. Install using: `opkg install esurfingclient_*.ipk`
           5. Configure and start the service
+          
+          ### For x64-Linux Platform
+          1. Download the `esurfingclient-x64-linux.zip` file
+          2. Extract the contents to get the binary and documentation
+          3. Make the binary executable: `chmod +x ESurfingClient-1.0.0`
+          4. Run the program: `./ESurfingClient-1.0.0`
           
           ## 📋 Build Information
           
