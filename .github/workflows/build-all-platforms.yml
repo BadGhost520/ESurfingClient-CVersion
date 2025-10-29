@@ -4,7 +4,6 @@ name: Build All Platforms
 permissions:
   actions: write
   contents: read
-  metadata: read
 
 on:
   workflow_dispatch:
@@ -50,7 +49,6 @@ jobs:
       - name: Trigger and wait for platform builds
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             
@@ -74,122 +72,157 @@ jobs:
             
             console.log(`Will trigger ${workflowsToTrigger.length} workflows`);
             
-            // 触发工作流
+            const triggeredRuns = [];
+            
+            // 触发工作流并记录运行ID
             for (const workflow of workflowsToTrigger) {
               try {
                 console.log(`Triggering ${workflow.file}...`);
                 
-                await github.rest.actions.createWorkflowDispatch({
+                // 先获取触发前的最新运行ID
+                const beforeRuns = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.file,
+                  per_page: 1
+                });
+                
+                const beforeRunId = beforeRuns.data.workflow_runs.length > 0 ? beforeRuns.data.workflow_runs[0].id : null;
+                
+                const response = await github.rest.actions.createWorkflowDispatch({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   workflow_id: workflow.file,
                   ref: context.ref
                 });
                 
-                console.log(`✅ Triggered ${workflow.file} successfully`);
+                console.log(`Triggered ${workflow.file} successfully`);
+                
+                // 等待新运行出现
+                let newRunId = null;
+                let attempts = 0;
+                const maxAttempts = 12; // 最多等待60秒
+                
+                while (attempts < maxAttempts && !newRunId) {
+                  await new Promise(resolve => setTimeout(resolve, 5000));
+                  attempts++;
+                  
+                  const afterRuns = await github.rest.actions.listWorkflowRuns({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    workflow_id: workflow.file,
+                    per_page: 5
+                  });
+                  
+                  // 查找新的运行（ID不同于触发前的运行）
+                  for (const run of afterRuns.data.workflow_runs) {
+                    if (run.id !== beforeRunId && run.status !== 'completed') {
+                      newRunId = run.id;
+                      break;
+                    }
+                  }
+                }
+                
+                if (newRunId) {
+                  triggeredRuns.push({
+                    workflow: workflow.file,
+                    platform: workflow.platform,
+                    runId: newRunId
+                  });
+                  console.log(`Recorded new run ID ${newRunId} for ${workflow.file}`);
+                } else {
+                  console.log(`Failed to find new run for ${workflow.file}`);
+                }
                 
               } catch (error) {
-                console.log(`❌ Error triggering ${workflow.file}: ${error.message}`);
+                console.log(`Error triggering ${workflow.file}: ${error.message}`);
               }
             }
             
-            console.log(`🚀 Triggered ${workflowsToTrigger.length} workflows`);
-            console.log('⏳ Waiting 2 minutes for workflows to start...');
+            console.log(`Triggered ${triggeredRuns.length} workflows, now waiting for completion...`);
             
-            // 等待2分钟让工作流开始
-            await new Promise(resolve => setTimeout(resolve, 120000));
-            
-            // 现在检查工作流状态并等待完成
+            // 等待所有工作流完成
             const maxWaitTime = 60 * 60 * 1000; // 1 hour
             const checkInterval = 30 * 1000; // 30 seconds
             const startTime = Date.now();
             
             while (Date.now() - startTime < maxWaitTime) {
               let allCompleted = true;
-              const runStatuses = [];
               
-              for (const workflow of workflowsToTrigger) {
+              for (const run of triggeredRuns) {
+                if (run.completed) continue;
+                
                 try {
-                  // 获取该工作流的最新运行
-                  const runs = await github.rest.actions.listWorkflowRuns({
+                  const runDetails = await github.rest.actions.getWorkflowRun({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    workflow_id: workflow.file,
-                    per_page: 1
+                    run_id: run.runId
                   });
                   
-                  if (runs.data.workflow_runs.length > 0) {
-                    const latestRun = runs.data.workflow_runs[0];
-                    const status = latestRun.status;
-                    const conclusion = latestRun.conclusion;
-                    
-                    console.log(`${workflow.platform}: ${status} - ${conclusion || 'running'}`);
-                    
-                    runStatuses.push({
-                      workflow: workflow.file,
-                      platform: workflow.platform,
-                      status: status,
-                      conclusion: conclusion,
-                      runId: latestRun.id
-                    });
-                    
-                    if (status !== 'completed') {
-                      allCompleted = false;
-                    }
+                  console.log(`${run.workflow} (${run.runId}): ${runDetails.data.status} - ${runDetails.data.conclusion}`);
+                  
+                  if (runDetails.data.status === 'completed') {
+                    run.completed = true;
+                    run.conclusion = runDetails.data.conclusion;
+                    console.log(`✅ ${run.workflow} completed with ${run.conclusion}`);
                   } else {
-                    console.log(`${workflow.platform}: No runs found`);
                     allCompleted = false;
                   }
                 } catch (error) {
-                  console.log(`Error checking ${workflow.platform}: ${error.message}`);
+                  console.log(`Error checking ${run.workflow}: ${error.message}`);
                   allCompleted = false;
                 }
               }
               
               if (allCompleted) {
                 console.log('🎉 All workflows completed!');
-                
-                // 收集成功的构建产物
-                const artifactsList = [];
-                for (const runStatus of runStatuses) {
-                  if (runStatus.conclusion === 'success') {
-                    try {
-                      const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        run_id: runStatus.runId
-                      });
-                      
-                      for (const artifact of artifacts.data.artifacts) {
-                        artifactsList.push({
-                          platform: runStatus.platform,
-                          name: artifact.name,
-                          download_url: artifact.archive_download_url,
-                          size: artifact.size_in_bytes
-                        });
-                      }
-                      console.log(`✅ ${runStatus.platform} build completed successfully`);
-                    } catch (error) {
-                      console.log(`Error collecting artifacts for ${runStatus.platform}: ${error.message}`);
-                    }
-                  } else {
-                    console.log(`❌ ${runStatus.platform} build failed with: ${runStatus.conclusion}`);
-                  }
-                }
-                
-                // 保存产物列表
-                fs.writeFileSync('artifacts-list.json', JSON.stringify(artifactsList, null, 2));
-                console.log(`📦 Collected ${artifactsList.length} artifacts`);
                 break;
               }
               
-              console.log('⏳ Still waiting for workflows to complete...');
+              console.log('⏳ Waiting for workflows to complete...');
               await new Promise(resolve => setTimeout(resolve, checkInterval));
             }
             
+            // 检查是否超时
             if (Date.now() - startTime >= maxWaitTime) {
-              console.log('⏰ Timeout reached, stopping wait');
+              throw new Error('⏰ Timeout waiting for workflows to complete');
             }
+            
+            // 收集artifacts
+            const artifactsList = [];
+            
+            for (const run of triggeredRuns) {
+              if (run.conclusion === 'success') {
+                try {
+                  const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.runId
+                  });
+                  
+                  for (const artifact of artifacts.data.artifacts) {
+                    console.log(`Found artifact: ${artifact.name} from ${run.workflow}`);
+                    artifactsList.push({
+                      name: artifact.name,
+                      workflow: run.workflow,
+                      platform: run.platform,
+                      download_url: artifact.archive_download_url,
+                      size: artifact.size_in_bytes
+                    });
+                  }
+                } catch (error) {
+                  console.log(`Error collecting artifacts from ${run.workflow}: ${error.message}`);
+                }
+              } else {
+                console.log(`⚠️ Skipping artifacts from ${run.workflow} (${run.conclusion})`);
+              }
+            }
+            
+            // 保存artifacts信息
+            fs.writeFileSync('artifacts/artifacts-list.json', JSON.stringify(artifactsList, null, 2));
+            console.log(`📦 Collected ${artifactsList.length} artifacts total`);
+            
+            return { triggeredRuns, artifactsList };
 
       - name: Create build summary
         run: |
