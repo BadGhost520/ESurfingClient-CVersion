@@ -98,7 +98,7 @@ if(WIN32)
     
     # 设置MinGW的完全静态链接选项
     set_target_properties(ESurfingClient PROPERTIES
-        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -Wl,-Bstatic -lcurl -lssl -lcrypto -lxml2 -lz -Wl,-Bdynamic"
     )
     # 强制使用静态库
     set_target_properties(ESurfingClient PROPERTIES
