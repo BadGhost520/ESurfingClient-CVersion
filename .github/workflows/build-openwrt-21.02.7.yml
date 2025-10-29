@@ -1,10 +1,6 @@
 name: Build OpenWrt 21.02.7 Package
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -20,7 +16,7 @@ jobs:
     - name: Install build dependencies
       run: |
         apt-get update
-        apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates
+        apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file
     
     - name: Set SDK filename variable
       run: |
