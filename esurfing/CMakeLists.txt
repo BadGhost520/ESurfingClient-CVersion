@@ -97,8 +97,14 @@ if(WIN32)
     )
     # 设置MinGW的完全静态链接选项
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(ESurfingClient PRIVATE CURL_STATICLIB)
     set_target_properties(ESurfingClient PROPERTIES
-        LINK_FLAGS "-static -static-libgcc -static-libstdc++"
+        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+    )
+    # 强制使用静态库
+    set_target_properties(ESurfingClient PROPERTIES
+        LINK_SEARCH_START_STATIC ON
+        LINK_SEARCH_END_STATIC ON
     )
 endif()
 
