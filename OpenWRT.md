@@ -42,3 +42,10 @@ uci commit esurfingclient
 # 启动服务
 /etc/init.d/esurfingclient start
 ```
+
+> [!TIP]
+> 认证通道:
+> 1. pc
+> 2. phone
+> 
+> **两者并没有什么太大的区别**
