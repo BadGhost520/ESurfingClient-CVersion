@@ -134,9 +134,58 @@ if(WIN32)
         NO_DEFAULT_PATH
     )
     
+    find_library(NGHTTP2_STATIC_LIB 
+        NAMES libnghttp2.a nghttp2 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(NGHTTP3_STATIC_LIB 
+        NAMES libnghttp3.a nghttp3 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(NGTCP2_STATIC_LIB 
+        NAMES libngtcp2.a ngtcp2 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
     # 如果找不到静态库，回退到使用CMake的find_package
-    if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB)
+    if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB OR NOT NGHTTP2_STATIC_LIB)
         message(STATUS "Some static libraries not found, using find_package fallback")
+        if(NOT CURL_STATIC_LIB)
+            message(STATUS "Missing: libcurl.a")
+        endif()
+        if(NOT SSL_STATIC_LIB)
+            message(STATUS "Missing: libssl.a")
+        endif()
+        if(NOT CRYPTO_STATIC_LIB)
+            message(STATUS "Missing: libcrypto.a")
+        endif()
+        if(NOT XML2_STATIC_LIB)
+            message(STATUS "Missing: libxml2.a")
+        endif()
+        if(NOT Z_STATIC_LIB)
+            message(STATUS "Missing: libz.a")
+        endif()
+        if(NOT NGHTTP2_STATIC_LIB)
+            message(STATUS "Missing: libnghttp2.a")
+        endif()
+        
         find_package(CURL REQUIRED)
         find_package(OpenSSL REQUIRED)
         find_package(LibXml2 REQUIRED)
@@ -157,13 +206,39 @@ if(WIN32)
         )
     else()
         # 使用找到的静态库
-        message(STATUS "Using static libraries: ${CURL_STATIC_LIB}, ${SSL_STATIC_LIB}, ${CRYPTO_STATIC_LIB}, ${XML2_STATIC_LIB}, ${Z_STATIC_LIB}")
+        message(STATUS "✅ Found all static libraries, using static linking")
+        message(STATUS "CURL: ${CURL_STATIC_LIB}")
+        message(STATUS "SSL: ${SSL_STATIC_LIB}")
+        message(STATUS "CRYPTO: ${CRYPTO_STATIC_LIB}")
+        message(STATUS "XML2: ${XML2_STATIC_LIB}")
+        message(STATUS "Z: ${Z_STATIC_LIB}")
+        message(STATUS "NGHTTP2: ${NGHTTP2_STATIC_LIB}")
+        if(NGHTTP3_STATIC_LIB)
+            message(STATUS "NGHTTP3: ${NGHTTP3_STATIC_LIB}")
+        endif()
+        if(NGTCP2_STATIC_LIB)
+            message(STATUS "NGTCP2: ${NGTCP2_STATIC_LIB}")
+        endif()
+        
         target_link_libraries(ESurfingClient PRIVATE 
             ${CURL_STATIC_LIB}
             ${XML2_STATIC_LIB}
             ${SSL_STATIC_LIB}
             ${CRYPTO_STATIC_LIB}
             ${Z_STATIC_LIB}
+            ${NGHTTP2_STATIC_LIB}
+        )
+        
+        # Add optional HTTP/3 libraries if available
+        if(NGHTTP3_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${NGHTTP3_STATIC_LIB})
+        endif()
+        if(NGTCP2_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_STATIC_LIB})
+        endif()
+        
+        # Add Windows system libraries
+        target_link_libraries(ESurfingClient PRIVATE 
             ws2_32
             wldap32
             winmm
