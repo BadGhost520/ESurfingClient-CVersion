@@ -37,6 +37,8 @@ jobs:
           mingw-w64-x86_64-brotli
           mingw-w64-x86_64-libunistring
           mingw-w64-x86_64-libiconv
+          mingw-w64-x86_64-pkg-config
+          mingw-w64-x86_64-upx
           p7zip
 
     - name: Check OpenSSL version and QUIC support
