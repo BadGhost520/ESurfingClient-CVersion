@@ -4,7 +4,7 @@
 
 **2. 使用 opkg install 安装下载的 ipk 包**
 
-**3. 运行下面`必要`的命令以设置服务配置文件和运行服务**
+**3. `按顺序`运行下面`必要`的命令以设置服务配置文件和运行服务**
 
 ```bash
 # 设置用户名 (必要)
@@ -23,7 +23,15 @@ uci set esurfingclient.main.password='A1234567'
 uci set esurfingclient.main.enabled='1'
 ```
 ```bash
-# 设置认证通道 (可选)
+# 提交更改 (必要)
+uci commit esurfingclient
+```
+```bash
+# 重载配置文件 (必要)
+/etc/init.d/esurfingclient reload
+```
+```bash
+# 设置认证通道
 uci set esurfingclient.main.channel='<认证通道>'(默认为`pc`)
 # 示例
 uci set esurfingclient.main.channel='pc'
@@ -35,16 +43,12 @@ uci set esurfingclient.main.channel='pc'
 > **两者并没有什么太大的区别**
 
 ```bash
-# 提交更改 (必要)
-uci commit esurfingclient
-```
-```bash
-# 重载配置文件 (必要)
-/etc/init.d/esurfingclient reload
-```
-```bash
-# 设置开机自启 (可选)
+# 设置开机自启
 /etc/init.d/esurfingclient enable
+```
+```bash
+# 重启服务
+/etc/init.d/esurfingclient restart
 ```
 ```bash
 # 停止服务
