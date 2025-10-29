@@ -218,11 +218,79 @@ jobs:
               }
             }
             
-            // 保存artifacts信息
+            // 保存artifacts信息到环境变量，供后续步骤使用
             fs.writeFileSync('artifacts/artifacts-list.json', JSON.stringify(artifactsList, null, 2));
             console.log(`📦 Collected ${artifactsList.length} artifacts total`);
             
+            // 将构件信息保存到环境变量
+            const artifactNames = artifactsList.map(a => a.name).join(',');
+            fs.appendFileSync(process.env.GITHUB_ENV, `ARTIFACT_NAMES=${artifactNames}\n`);
+            
             return { triggeredRuns, artifactsList };
+
+      - name: Download build artifacts
+        if: env.ARTIFACT_NAMES != ''
+        run: |
+          echo "🔽 Downloading build artifacts..."
+          
+          # 读取构件列表
+          if [ -f "artifacts/artifacts-list.json" ]; then
+            echo "Found artifacts list:"
+            cat artifacts/artifacts-list.json
+            
+            # 创建平台目录结构
+            mkdir -p artifacts/mipsel-21.02.7
+            mkdir -p artifacts/mipsel-23.05.0  
+            mkdir -p artifacts/x86_64-21.02.7
+            mkdir -p artifacts/x86_64-22.03.7
+            mkdir -p artifacts/x86_64-24.10.4
+            
+            echo "✅ Created platform directories"
+          else
+            echo "❌ No artifacts list found"
+          fi
+
+      - name: Download individual artifacts
+        uses: actions/download-artifact@v4
+        if: env.ARTIFACT_NAMES != ''
+        with:
+          pattern: esurfingclient-*
+          path: downloaded-artifacts/
+          merge-multiple: false
+
+      - name: Organize downloaded artifacts
+        if: env.ARTIFACT_NAMES != ''
+        run: |
+          echo "📁 Organizing downloaded artifacts..."
+          
+          # 移动下载的构件到对应的平台目录
+          if [ -d "downloaded-artifacts" ]; then
+            for dir in downloaded-artifacts/*/; do
+              if [ -d "$dir" ]; then
+                artifact_name=$(basename "$dir")
+                echo "Processing $artifact_name..."
+                
+                # 根据构件名称确定平台
+                if [[ "$artifact_name" == *"mipsel"* && "$artifact_name" == *"21.02.7"* ]]; then
+                  cp -r "$dir"* artifacts/mipsel-21.02.7/
+                elif [[ "$artifact_name" == *"mipsel"* && "$artifact_name" == *"23.05.0"* ]]; then
+                  cp -r "$dir"* artifacts/mipsel-23.05.0/
+                elif [[ "$artifact_name" == *"x86_64"* && "$artifact_name" == *"21.02.7"* ]]; then
+                  cp -r "$dir"* artifacts/x86_64-21.02.7/
+                elif [[ "$artifact_name" == *"x86_64"* && "$artifact_name" == *"22.03.7"* ]]; then
+                  cp -r "$dir"* artifacts/x86_64-22.03.7/
+                elif [[ "$artifact_name" == *"x86_64"* && "$artifact_name" == *"24.10.4"* ]]; then
+                  cp -r "$dir"* artifacts/x86_64-24.10.4/
+                fi
+              fi
+            done
+            
+            echo "✅ Artifacts organized by platform"
+            echo "📦 Final structure:"
+            find artifacts/ -type f -name "*.ipk" -o -name "*.json" | head -20
+          else
+            echo "❌ No downloaded artifacts found"
+          fi
 
       - name: Create build summary
         run: |
