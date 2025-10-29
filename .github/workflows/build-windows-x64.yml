@@ -1,11 +1,12 @@
 name: Build Windows x64 Binary
 
-on:
-  workflow_dispatch:
-
+# 配置工作流权限
 permissions:
   contents: write
   actions: write
+
+on:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -99,64 +100,3 @@ jobs:
         
         # Copy executable
         cp esurfing/ESurfingClient-1.0.0.exe esurfingclient-windows-x64/
-        
-        # Create README
-        cat > esurfingclient-windows-x64/README.txt << 'EOF'
-ESurfingClient Windows x64 Binary
-================================
-
-This is a statically linked Windows x64 binary of ESurfingClient.
-
-Files:
-- ESurfingClient-1.0.0.exe: Main executable (statically linked)
-
-Usage:
-  ESurfingClient-1.0.0.exe [options]
-
-Build Information:
-- Platform: Windows x64
-- Compiler: MinGW-w64 GCC (cross-compiled on Ubuntu)
-- Linking: Static (no external DLL dependencies)
-- Compression: UPX compressed
-- Build Date: $(date)
-
-For more information, visit the project repository.
-EOF
-        
-        echo "📋 Package contents:"
-        ls -la esurfingclient-windows-x64/
-        
-        echo "🗜️ Creating ZIP archive"
-        zip -r esurfingclient-windows-x64.zip esurfingclient-windows-x64/
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: esurfingclient-windows-x64
-        path: |
-          esurfingclient-windows-x64.zip
-          esurfing/ESurfingClient-1.0.0.exe
-        retention-days: 30
-
-    - name: Generate build summary
-      run: |
-        echo "## 🏗️ Windows x64 Build Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### ✅ Build Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📦 Artifacts Generated:" >> $GITHUB_STEP_SUMMARY
-        echo "- \`esurfingclient-windows-x64.zip\` - Complete package with README" >> $GITHUB_STEP_SUMMARY
-        echo "- \`ESurfingClient-1.0.0.exe\` - Standalone executable" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🔧 Build Configuration:" >> $GITHUB_STEP_SUMMARY
-        echo "- **Platform**: Windows x64 (cross-compiled on Ubuntu)" >> $GITHUB_STEP_SUMMARY
-        echo "- **Compiler**: MinGW-w64 GCC" >> $GITHUB_STEP_SUMMARY
-        echo "- **Linking**: Static (no external dependencies)" >> $GITHUB_STEP_SUMMARY
-        echo "- **Compression**: UPX compressed" >> $GITHUB_STEP_SUMMARY
-        echo "- **Build Type**: Release" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📚 Dependencies (statically linked):" >> $GITHUB_STEP_SUMMARY
-        echo "- libcurl" >> $GITHUB_STEP_SUMMARY
-        echo "- OpenSSL" >> $GITHUB_STEP_SUMMARY
-        echo "- LibXml2" >> $GITHUB_STEP_SUMMARY
-        echo "- Windows system libraries" >> $GITHUB_STEP_SUMMARY
