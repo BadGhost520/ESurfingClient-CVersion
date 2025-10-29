@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-x64-windows:
     runs-on: windows-latest
     
     steps:
@@ -49,8 +49,8 @@ jobs:
           -DBUILD_SHARED_LIBS=OFF \
           .
         
-        echo "🔨 Building with make"
-        make -j$(nproc)
+        echo "🔨 Building with mingw32-make"
+        mingw32-make -j$(nproc)
         
         echo "📦 Moving and renaming executable"
         if [ -f "ESurfingClient.exe" ]; then
