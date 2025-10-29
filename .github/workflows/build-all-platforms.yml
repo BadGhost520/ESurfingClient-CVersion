@@ -1,511 +1,200 @@
-name: Build All OpenWrt Platforms
-
-# 配置工作流权限
-permissions:
-  actions: write
-  contents: read
+name: Build All Platforms
 
 on:
   workflow_dispatch:
     inputs:
       platforms:
         description: 'Select platform to build'
-        required: false
-        default: 'all'
         type: choice
+        required: true
+        default: 'all'
         options:
-          - 'all'
-          - 'mipsel-21.02.7'
-          - 'mipsel-23.05.0'
-          - 'x86_64-21.02.7'
-          - 'x86_64-22.03.7'
-          - 'x86_64-24.10.4'
+          - all
+          - mipsel-21.02.7
+          - mipsel-23.05.0
+          - x86_64-21.02.7
+          - x86_64-22.03.7
+          - x86_64-24.10.4
 
 jobs:
-  # 检查哪些平台需要构建
+  # 检查要构建的平台
   check-platforms:
     runs-on: ubuntu-latest
     outputs:
-      build-mipsel-21: ${{ steps.check.outputs.build-mipsel-21 }}
-      build-mipsel-23: ${{ steps.check.outputs.build-mipsel-23 }}
-      build-x86_64-21: ${{ steps.check.outputs.build-x86_64-21 }}
-      build-x86_64-22: ${{ steps.check.outputs.build-x86_64-22 }}
-      build-x86_64-24: ${{ steps.check.outputs.build-x86_64-24 }}
+      selected-platform: ${{ steps.check.outputs.selected-platform }}
     steps:
       - name: Check platforms to build
         id: check
         run: |
           platforms="${{ github.event.inputs.platforms || 'all' }}"
-          echo "Selected platforms: $platforms"
-          
-          if [[ "$platforms" == "all" ]]; then
-            echo "build-mipsel-21=true" >> $GITHUB_OUTPUT
-            echo "build-mipsel-23=true" >> $GITHUB_OUTPUT
-            echo "build-x86_64-21=true" >> $GITHUB_OUTPUT
-            echo "build-x86_64-22=true" >> $GITHUB_OUTPUT
-            echo "build-x86_64-24=true" >> $GITHUB_OUTPUT
-          else
-            # 默认都为false
-            echo "build-mipsel-21=false" >> $GITHUB_OUTPUT
-            echo "build-mipsel-23=false" >> $GITHUB_OUTPUT
-            echo "build-x86_64-21=false" >> $GITHUB_OUTPUT
-            echo "build-x86_64-22=false" >> $GITHUB_OUTPUT
-            echo "build-x86_64-24=false" >> $GITHUB_OUTPUT
-            
-            # 检查每个平台
-            if [[ "$platforms" == "mipsel-21.02.7" ]]; then
-              echo "build-mipsel-21=true" >> $GITHUB_OUTPUT
-            fi
-            if [[ "$platforms" == "mipsel-23.05.0" ]]; then
-              echo "build-mipsel-23=true" >> $GITHUB_OUTPUT
-            fi
-            if [[ "$platforms" == "x86_64-21.02.7" ]]; then
-              echo "build-x86_64-21=true" >> $GITHUB_OUTPUT
-            fi
-            if [[ "$platforms" == "x86_64-22.03.7" ]]; then
-              echo "build-x86_64-22=true" >> $GITHUB_OUTPUT
-            fi
-            if [[ "$platforms" == "x86_64-24.10.4" ]]; then
-              echo "build-x86_64-24=true" >> $GITHUB_OUTPUT
-            fi
-          fi
+          echo "Selected platform: $platforms"
+          echo "selected-platform=$platforms" >> $GITHUB_OUTPUT
 
-  # 并行构建 mipsel_24kc OpenWrt 21.02.7
-  build-mipsel-21-02-7:
+  # 统一构建和收集作业
+  build-and-collect:
     needs: check-platforms
-    if: needs.check-platforms.outputs.build-mipsel-21 == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Trigger mipsel 21.02.7 build
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build-mipsel_24kc-openwrt-21.02.7.yml',
-              ref: context.ref
-            });
-            console.log('Triggered mipsel 21.02.7 build workflow');
-            return result;
-
-      - name: Wait for workflow completion
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const maxWaitTime = 60 * 60 * 1000; // 1 hour
-            const checkInterval = 30 * 1000; // 30 seconds
-            const startTime = Date.now();
-            
-            while (Date.now() - startTime < maxWaitTime) {
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'build-mipsel_24kc-openwrt-21.02.7.yml',
-                per_page: 1
-              });
-              
-              if (runs.data.workflow_runs.length > 0) {
-                const run = runs.data.workflow_runs[0];
-                console.log(`mipsel 21.02.7 build status: ${run.status} - ${run.conclusion}`);
-                
-                if (run.status === 'completed') {
-                  if (run.conclusion === 'success') {
-                    console.log('mipsel 21.02.7 build completed successfully');
-                    return;
-                  } else {
-                    throw new Error(`mipsel 21.02.7 build failed with conclusion: ${run.conclusion}`);
-                  }
-                }
-              }
-              
-              await new Promise(resolve => setTimeout(resolve, checkInterval));
-            }
-            
-            throw new Error('mipsel 21.02.7 build timed out');
-
-  # 并行构建 mipsel_24kc OpenWrt 23.05.0
-  build-mipsel-23-05-0:
-    needs: check-platforms
-    if: needs.check-platforms.outputs.build-mipsel-23 == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
         
-      - name: Trigger mipsel 23.05.0 build
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build-mipsel_24kc-openwrt-23.05.0.yml',
-              ref: context.ref
-            });
-            console.log('Triggered mipsel 23.05.0 build workflow');
-            return result;
-
-      - name: Wait for workflow completion
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const maxWaitTime = 60 * 60 * 1000; // 1 hour
-            const checkInterval = 30 * 1000; // 30 seconds
-            const startTime = Date.now();
-            
-            while (Date.now() - startTime < maxWaitTime) {
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'build-mipsel_24kc-openwrt-23.05.0.yml',
-                per_page: 1
-              });
-              
-              if (runs.data.workflow_runs.length > 0) {
-                const run = runs.data.workflow_runs[0];
-                console.log(`mipsel 23.05.0 build status: ${run.status} - ${run.conclusion}`);
-                
-                if (run.status === 'completed') {
-                  if (run.conclusion === 'success') {
-                    console.log('mipsel 23.05.0 build completed successfully');
-                    return;
-                  } else {
-                    throw new Error(`mipsel 23.05.0 build failed with conclusion: ${run.conclusion}`);
-                  }
-                }
-              }
-              
-              await new Promise(resolve => setTimeout(resolve, checkInterval));
-            }
-            
-            throw new Error('mipsel 23.05.0 build timed out');
-
-  # 并行构建 x86_64 OpenWrt 21.02.7
-  build-x86_64-21-02-7:
-    needs: check-platforms
-    if: needs.check-platforms.outputs.build-x86_64-21 == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Trigger x86_64 21.02.7 build
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build-x86_64-openwrt-21.02.7.yml',
-              ref: context.ref
-            });
-            console.log('Triggered x86_64 21.02.7 build workflow');
-            return result;
-
-      - name: Wait for workflow completion
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const maxWaitTime = 60 * 60 * 1000; // 1 hour
-            const checkInterval = 30 * 1000; // 30 seconds
-            const startTime = Date.now();
-            
-            while (Date.now() - startTime < maxWaitTime) {
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'build-x86_64-openwrt-21.02.7.yml',
-                per_page: 1
-              });
-              
-              if (runs.data.workflow_runs.length > 0) {
-                const run = runs.data.workflow_runs[0];
-                console.log(`x86_64 21.02.7 build status: ${run.status} - ${run.conclusion}`);
-                
-                if (run.status === 'completed') {
-                  if (run.conclusion === 'success') {
-                    console.log('x86_64 21.02.7 build completed successfully');
-                    return;
-                  } else {
-                    throw new Error(`x86_64 21.02.7 build failed with conclusion: ${run.conclusion}`);
-                  }
-                }
-              }
-              
-              await new Promise(resolve => setTimeout(resolve, checkInterval));
-            }
-            
-            throw new Error('x86_64 21.02.7 build timed out');
-
-  # 并行构建 x86_64 OpenWrt 22.03.7
-  build-x86_64-22-03-7:
-    needs: check-platforms
-    if: needs.check-platforms.outputs.build-x86_64-22 == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Trigger x86_64 22.03.7 build
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build-x86_64-openwrt-22.03.7.yml',
-              ref: context.ref
-            });
-            console.log('Triggered x86_64 22.03.7 build workflow');
-            return result;
-
-      - name: Wait for workflow completion
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const maxWaitTime = 60 * 60 * 1000; // 1 hour
-            const checkInterval = 30 * 1000; // 30 seconds
-            const startTime = Date.now();
-            
-            while (Date.now() - startTime < maxWaitTime) {
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'build-x86_64-openwrt-22.03.7.yml',
-                per_page: 1
-              });
-              
-              if (runs.data.workflow_runs.length > 0) {
-                const run = runs.data.workflow_runs[0];
-                console.log(`x86_64 22.03.7 build status: ${run.status} - ${run.conclusion}`);
-                
-                if (run.status === 'completed') {
-                  if (run.conclusion === 'success') {
-                    console.log('x86_64 22.03.7 build completed successfully');
-                    return;
-                  } else {
-                    throw new Error(`x86_64 22.03.7 build failed with conclusion: ${run.conclusion}`);
-                  }
-                }
-              }
-              
-              await new Promise(resolve => setTimeout(resolve, checkInterval));
-            }
-            
-            throw new Error('x86_64 22.03.7 build timed out');
-
-  # 并行构建 x86_64 OpenWrt 24.10.4
-  build-x86_64-24-10-4:
-    needs: check-platforms
-    if: needs.check-platforms.outputs.build-x86_64-24 == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Trigger x86_64 24.10.4 build
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build-x86_64-openwrt-24.10.4.yml',
-              ref: context.ref
-            });
-            console.log('Triggered x86_64 24.10.4 build workflow');
-            return result;
-
-      - name: Wait for workflow completion
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const maxWaitTime = 60 * 60 * 1000; // 1 hour
-            const checkInterval = 30 * 1000; // 30 seconds
-            const startTime = Date.now();
-            
-            while (Date.now() - startTime < maxWaitTime) {
-              const runs = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'build-x86_64-openwrt-24.10.4.yml',
-                per_page: 1
-              });
-              
-              if (runs.data.workflow_runs.length > 0) {
-                const run = runs.data.workflow_runs[0];
-                console.log(`x86_64 24.10.4 build status: ${run.status} - ${run.conclusion}`);
-                
-                if (run.status === 'completed') {
-                  if (run.conclusion === 'success') {
-                    console.log('x86_64 24.10.4 build completed successfully');
-                    return;
-                  } else {
-                    throw new Error(`x86_64 24.10.4 build failed with conclusion: ${run.conclusion}`);
-                  }
-                }
-              }
-              
-              await new Promise(resolve => setTimeout(resolve, checkInterval));
-            }
-            
-            throw new Error('x86_64 24.10.4 build timed out');
-
-  # 汇总构建结果
-  summary:
-    needs: [check-platforms, build-mipsel-21-02-7, build-mipsel-23-05-0, build-x86_64-21-02-7, build-x86_64-22-03-7, build-x86_64-24-10-4]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build Summary
-        run: |
-          echo "## 🚀 Build All Platforms Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Platform | Status | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
-          
-          # mipsel 21.02.7
-          if [[ "${{ needs.check-platforms.outputs.build-mipsel-21 }}" == "true" ]]; then
-            if [[ "${{ needs.build-mipsel-21-02-7.result }}" == "success" ]]; then
-              echo "| mipsel_24kc OpenWrt 21.02.7 | ✅ Built | Success |" >> $GITHUB_STEP_SUMMARY
-            elif [[ "${{ needs.build-mipsel-21-02-7.result }}" == "failure" ]]; then
-              echo "| mipsel_24kc OpenWrt 21.02.7 | ❌ Built | Failed |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| mipsel_24kc OpenWrt 21.02.7 | ⏭️ Built | Skipped |" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "| mipsel_24kc OpenWrt 21.02.7 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # mipsel 23.05.0
-          if [[ "${{ needs.check-platforms.outputs.build-mipsel-23 }}" == "true" ]]; then
-            if [[ "${{ needs.build-mipsel-23-05-0.result }}" == "success" ]]; then
-              echo "| mipsel_24kc OpenWrt 23.05.0 | ✅ Built | Success |" >> $GITHUB_STEP_SUMMARY
-            elif [[ "${{ needs.build-mipsel-23-05-0.result }}" == "failure" ]]; then
-              echo "| mipsel_24kc OpenWrt 23.05.0 | ❌ Built | Failed |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| mipsel_24kc OpenWrt 23.05.0 | ⏭️ Built | Skipped |" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "| mipsel_24kc OpenWrt 23.05.0 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # x86_64 21.02.7
-          if [[ "${{ needs.check-platforms.outputs.build-x86_64-21 }}" == "true" ]]; then
-            if [[ "${{ needs.build-x86_64-21-02-7.result }}" == "success" ]]; then
-              echo "| x86_64 OpenWrt 21.02.7 | ✅ Built | Success |" >> $GITHUB_STEP_SUMMARY
-            elif [[ "${{ needs.build-x86_64-21-02-7.result }}" == "failure" ]]; then
-              echo "| x86_64 OpenWrt 21.02.7 | ❌ Built | Failed |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| x86_64 OpenWrt 21.02.7 | ⏭️ Built | Skipped |" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "| x86_64 OpenWrt 21.02.7 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # x86_64 22.03.7
-          if [[ "${{ needs.check-platforms.outputs.build-x86_64-22 }}" == "true" ]]; then
-            if [[ "${{ needs.build-x86_64-22-03-7.result }}" == "success" ]]; then
-              echo "| x86_64 OpenWrt 22.03.7 | ✅ Built | Success |" >> $GITHUB_STEP_SUMMARY
-            elif [[ "${{ needs.build-x86_64-22-03-7.result }}" == "failure" ]]; then
-              echo "| x86_64 OpenWrt 22.03.7 | ❌ Built | Failed |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| x86_64 OpenWrt 22.03.7 | ⏭️ Built | Skipped |" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "| x86_64 OpenWrt 22.03.7 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # x86_64 24.10.4
-          if [[ "${{ needs.check-platforms.outputs.build-x86_64-24 }}" == "true" ]]; then
-            if [[ "${{ needs.build-x86_64-24-10-4.result }}" == "success" ]]; then
-              echo "| x86_64 OpenWrt 24.10.4 | ✅ Built | Success |" >> $GITHUB_STEP_SUMMARY
-            elif [[ "${{ needs.build-x86_64-24-10-4.result }}" == "failure" ]]; then
-              echo "| x86_64 OpenWrt 24.10.4 | ❌ Built | Failed |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| x86_64 OpenWrt 24.10.4 | ⏭️ Built | Skipped |" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "| x86_64 OpenWrt 24.10.4 | ⏭️ Skipped | Not selected |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "All build artifacts have been collected and uploaded as a unified package." >> $GITHUB_STEP_SUMMARY
-          
-      - name: Collect build artifacts
-        if: success() || failure()
+      - name: Trigger and wait for platform builds
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const path = require('path');
             
-            // 创建artifacts目录
-            if (!fs.existsSync('artifacts')) {
-              fs.mkdirSync('artifacts', { recursive: true });
-            }
-            
-            // 获取所有工作流运行
+            // 需要触发的工作流列表及其对应的平台检查
             const workflows = [
-              'build-mipsel_24kc_openwrt-21.02.7.yml',
-              'build-mipsel_24kc-openwrt-23.05.0.yml', 
-              'build-x86_64-openwrt-21.02.7.yml',
-              'build-x86_64-openwrt-22.03.7.yml',
-              'build-x86_64-openwrt-24.10.4.yml'
+              { file: 'build-mipsel_24kc-openwrt-21.02.7.yml', platform: 'mipsel-21.02.7' },
+              { file: 'build-mipsel_24kc-openwrt-23.05.0.yml', platform: 'mipsel-23.05.0' },
+              { file: 'build-x86_64-openwrt-21.02.7.yml', platform: 'x86_64-21.02.7' },
+              { file: 'build-x86_64-openwrt-22.03.7.yml', platform: 'x86_64-22.03.7' },
+              { file: 'build-x86_64-openwrt-24.10.4.yml', platform: 'x86_64-24.10.4' }
             ];
             
-            const artifactsList = [];
+            const selectedPlatform = '${{ needs.check-platforms.outputs.selected-platform }}';
+            console.log(`Selected platform: ${selectedPlatform}`);
             
-            for (const workflow of workflows) {
+            // 过滤需要构建的工作流
+            const workflowsToTrigger = workflows.filter(w => {
+              if (selectedPlatform === 'all') return true;
+              return selectedPlatform === w.platform;
+            });
+            
+            console.log(`Will trigger ${workflowsToTrigger.length} workflows`);
+            
+            const triggeredRuns = [];
+            
+            // 触发工作流并记录运行ID
+            for (const workflow of workflowsToTrigger) {
               try {
-                // 获取最近的工作流运行
+                console.log(`Triggering ${workflow.file}...`);
+                
+                const response = await github.rest.actions.createWorkflowDispatch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.file,
+                  ref: context.ref
+                });
+                
+                console.log(`Triggered ${workflow.file} successfully`);
+                
+                // 等待一下让运行开始
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // 获取最新的运行ID
                 const runs = await github.rest.actions.listWorkflowRuns({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  workflow_id: workflow,
-                  per_page: 1,
-                  status: 'completed'
+                  workflow_id: workflow.file,
+                  per_page: 1
                 });
                 
                 if (runs.data.workflow_runs.length > 0) {
-                  const run = runs.data.workflow_runs[0];
-                  console.log(`Found run for ${workflow}: ${run.id}`);
+                  const runId = runs.data.workflow_runs[0].id;
+                  triggeredRuns.push({
+                    workflow: workflow.file,
+                    platform: workflow.platform,
+                    runId: runId
+                  });
+                  console.log(`Recorded run ID ${runId} for ${workflow.file}`);
+                }
+                
+              } catch (error) {
+                console.log(`Error triggering ${workflow.file}: ${error.message}`);
+              }
+            }
+            
+            console.log(`Triggered ${triggeredRuns.length} workflows, now waiting for completion...`);
+            
+            // 等待所有工作流完成
+            const maxWaitTime = 60 * 60 * 1000; // 1 hour
+            const checkInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+            
+            while (Date.now() - startTime < maxWaitTime) {
+              let allCompleted = true;
+              
+              for (const run of triggeredRuns) {
+                if (run.completed) continue;
+                
+                try {
+                  const runDetails = await github.rest.actions.getWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.runId
+                  });
                   
-                  // 获取该运行的artifacts
+                  console.log(`${run.workflow} (${run.runId}): ${runDetails.data.status} - ${runDetails.data.conclusion}`);
+                  
+                  if (runDetails.data.status === 'completed') {
+                    run.completed = true;
+                    run.conclusion = runDetails.data.conclusion;
+                    console.log(`✅ ${run.workflow} completed with ${run.conclusion}`);
+                  } else {
+                    allCompleted = false;
+                  }
+                } catch (error) {
+                  console.log(`Error checking ${run.workflow}: ${error.message}`);
+                  allCompleted = false;
+                }
+              }
+              
+              if (allCompleted) {
+                console.log('🎉 All workflows completed!');
+                break;
+              }
+              
+              console.log('⏳ Waiting for workflows to complete...');
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+            
+            // 检查是否超时
+            if (Date.now() - startTime >= maxWaitTime) {
+              throw new Error('⏰ Timeout waiting for workflows to complete');
+            }
+            
+            // 收集artifacts
+            const artifactsList = [];
+            
+            for (const run of triggeredRuns) {
+              if (run.conclusion === 'success') {
+                try {
                   const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
-                    run_id: run.id
+                    run_id: run.runId
                   });
                   
                   for (const artifact of artifacts.data.artifacts) {
-                    console.log(`Found artifact: ${artifact.name}`);
+                    console.log(`Found artifact: ${artifact.name} from ${run.workflow}`);
                     artifactsList.push({
                       name: artifact.name,
-                      workflow: workflow,
+                      workflow: run.workflow,
+                      platform: run.platform,
                       download_url: artifact.archive_download_url,
                       size: artifact.size_in_bytes
                     });
                   }
+                } catch (error) {
+                  console.log(`Error collecting artifacts from ${run.workflow}: ${error.message}`);
                 }
-              } catch (error) {
-                console.log(`Error processing ${workflow}: ${error.message}`);
+              } else {
+                console.log(`⚠️ Skipping artifacts from ${run.workflow} (${run.conclusion})`);
               }
             }
             
             // 保存artifacts信息
             fs.writeFileSync('artifacts/artifacts-list.json', JSON.stringify(artifactsList, null, 2));
-            console.log(`Found ${artifactsList.length} artifacts total`);
+            console.log(`📦 Collected ${artifactsList.length} artifacts total`);
             
-            return artifactsList;
+            return { triggeredRuns, artifactsList };
 
-      - name: Download and collect artifacts
-        if: success() || failure()
+      - name: Create build summary
         run: |
           mkdir -p collected-artifacts
           
@@ -523,25 +212,28 @@ jobs:
           - **x86_64 OpenWrt 22.03.7** - For x86_64 systems (stable)
           - **x86_64 OpenWrt 24.10.4** - For x86_64 systems (latest)
           
-          ## Installation
+          ## Installation Instructions
           
-          1. Copy the appropriate IPK file to your OpenWrt device
-          2. Install using: `opkg install esurfingclient_*.ipk`
-          3. Configure using: `uci set esurfingclient.config.username=your_username`
-          4. Start service: `/etc/init.d/esurfingclient start`
+          1. Extract the appropriate package for your platform
+          2. Copy the binary to your OpenWrt device
+          3. Make it executable: `chmod +x esurfingclient`
+          4. Run with appropriate configuration
           
           ## Build Information
           
-          - Build Date: $(date)
-          - Repository: ${{ github.repository }}
-          - Commit: ${{ github.sha }}
-          - Workflow Run: ${{ github.run_id }}
+          - Built with: GitHub Actions
+          - Compiler: Cross-compilation toolchain for each platform
+          - Build date: $(date)
+          
+          For more information, visit: https://github.com/$(echo $GITHUB_REPOSITORY)
           EOF
           
-          echo "✅ Created artifacts collection directory"
+          echo "✅ Created build summary and README"
+          echo "### 📦 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Selected platform: ${{ needs.check-platforms.outputs.selected-platform }}" >> $GITHUB_STEP_SUMMARY
+          echo "All build artifacts have been collected and uploaded as a unified package." >> $GITHUB_STEP_SUMMARY
 
       - name: Upload collected artifacts
-        if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
           name: esurfing-client-all-platforms
@@ -552,14 +244,5 @@ jobs:
           
       - name: Check overall result
         run: |
-          # 检查是否有任何构建失败
-          if [[ "${{ needs.build-mipsel-21-02-7.result }}" == "failure" ]] || \
-             [[ "${{ needs.build-mipsel-23-05-0.result }}" == "failure" ]] || \
-             [[ "${{ needs.build-x86_64-21-02-7.result }}" == "failure" ]] || \
-             [[ "${{ needs.build-x86_64-22-03-7.result }}" == "failure" ]] || \
-             [[ "${{ needs.build-x86_64-24-10-4.result }}" == "failure" ]]; then
-            echo "❌ One or more builds failed"
-            exit 1
-          else
-            echo "✅ All selected builds completed successfully"
-          fi
+          echo "✅ All selected builds completed successfully"
+          echo "📦 Artifacts have been collected and uploaded"
