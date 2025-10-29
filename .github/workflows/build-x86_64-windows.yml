@@ -30,6 +30,7 @@ jobs:
           mingw-w64-x86_64-libxml2
           mingw-w64-x86_64-pkg-config
           mingw-w64-x86_64-upx
+          p7zip
 
     - name: Build ESurfingClient
       shell: msys2 {0}
@@ -98,6 +99,5 @@ jobs:
       with:
         name: esurfingclient-windows-x64
         path: |
-          esurfingclient-windows-x64.zip
           ESurfingClient-x86_64-windows.exe
         retention-days: 30
