@@ -25,7 +25,7 @@ jobs:
           mingw-w64-x86_64-gcc
           mingw-w64-x86_64-cmake
           mingw-w64-x86_64-make
-          mingw-w64-x86_64-curl
+          mingw-w64-x86_64-curl-static
           mingw-w64-x86_64-openssl
           mingw-w64-x86_64-libxml2
           mingw-w64-x86_64-pkg-config
@@ -37,8 +37,10 @@ jobs:
       env:
         PKG_CONFIG: "pkg-config --static"
         LDFLAGS: "-static -static-libgcc -static-libstdc++"
-        CFLAGS: "-static"
-        CXXFLAGS: "-static"
+        CFLAGS: "-static -DCURL_STATICLIB"
+        CXXFLAGS: "-static -DCURL_STATICLIB"
+        CMAKE_FIND_LIBRARY_SUFFIXES: ".a"
+        CMAKE_EXE_LINKER_FLAGS: "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
       run: |
         echo "🏗️ Starting Windows x64 build process"
         
@@ -46,18 +48,22 @@ jobs:
         cd esurfing
         
         echo "⚙️ CMake configuring with static linking"
+        export PKG_CONFIG_ALL_STATIC=1
+        export PKG_CONFIG_ALL_STATIC_PRIVATE=1
         cmake -G "MinGW Makefiles" \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_C_COMPILER=gcc \
           -DCMAKE_CXX_COMPILER=g++ \
-          -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++ -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic" \
-          -DCMAKE_C_FLAGS="-static" \
-          -DCMAKE_CXX_FLAGS="-static" \
+          -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++ -Wl,-Bstatic -lpthread -Wl,-Bdynamic" \
+          -DCMAKE_C_FLAGS="-static -DCURL_STATICLIB" \
+          -DCMAKE_CXX_FLAGS="-static -DCURL_STATICLIB" \
           -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
           -DBUILD_SHARED_LIBS=OFF \
           -DCURL_STATICLIB=ON \
           -DOPENSSL_USE_STATIC_LIBS=ON \
           -DLIBXML2_USE_STATIC_LIBS=ON \
+          -DCMAKE_LINK_SEARCH_START_STATIC=ON \
+          -DCMAKE_LINK_SEARCH_END_STATIC=ON \
           .
         
         echo "🔨 Building with mingw32-make"

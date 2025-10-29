@@ -74,38 +74,41 @@ add_executable(ESurfingClient
 
 )
 
-# 链接库（跨平台）
-target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
-target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-
-# Windows 需链接 LibXml2
+# Windows平台特殊配置
 if(WIN32)
-    target_link_libraries(ESurfingClient PRIVATE LibXml2::LibXml2)
-endif()
-
-# Windows需要的额外静态库
-if(WIN32)
-    target_link_libraries(ESurfingClient PRIVATE
-            ws2_32
-            wldap32
-            winmm
-            crypt32
-            normaliz
-            secur32
-            bcrypt
-            iphlpapi
-    )
-    # 设置MinGW的完全静态链接选项
+    # 设置编译定义
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
     target_compile_definitions(ESurfingClient PRIVATE CURL_STATICLIB)
+    
+    # 按正确顺序链接库
+    target_link_libraries(ESurfingClient PRIVATE 
+        CURL::libcurl
+        LibXml2::LibXml2
+        OpenSSL::SSL 
+        OpenSSL::Crypto
+        ws2_32
+        wldap32
+        winmm
+        crypt32
+        normaliz
+        secur32
+        bcrypt
+        iphlpapi
+    )
+    
+    # 设置MinGW的完全静态链接选项
     set_target_properties(ESurfingClient PROPERTIES
-        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
     )
     # 强制使用静态库
     set_target_properties(ESurfingClient PROPERTIES
         LINK_SEARCH_START_STATIC ON
         LINK_SEARCH_END_STATIC ON
     )
+else()
+    # 非Windows平台的链接库
+    target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
+    target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
 # Linux 编译选项与输出目录
