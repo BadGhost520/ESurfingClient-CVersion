@@ -151,7 +151,7 @@ jobs:
         ls -la
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: esurfingclient-${{ matrix.arch }}-openwrt-${{ matrix.openwrt_version }}
         path: artifacts/*.ipk
@@ -164,7 +164,7 @@ jobs:
     
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
         
