@@ -1,0 +1,204 @@
+name: Build All Target Architectures
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      openwrt_version:
+        description: 'OpenWrt version to build'
+        required: false
+        default: '23.05.0'
+        type: choice
+        options:
+        - '21.02.7'
+        - '23.05.0'
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # OpenWrt 21.02.7 targets
+          - openwrt_version: "21.02.7"
+            gcc_version: "8.4.0"
+            target: "ramips"
+            subtarget: "mt7621"
+            arch: "mipsel_24kc"
+          - openwrt_version: "21.02.7"
+            gcc_version: "8.4.0"
+            target: "x86"
+            subtarget: "64"
+            arch: "x86_64"
+          # OpenWrt 23.05.0 targets  
+          - openwrt_version: "23.05.0"
+            gcc_version: "12.3.0"
+            target: "ramips"
+            subtarget: "mt7621"
+            arch: "mipsel_24kc"
+          - openwrt_version: "23.05.0"
+            gcc_version: "12.3.0"
+            target: "x86"
+            subtarget: "64"
+            arch: "x86_64"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        df -h
+        
+    - name: Setup build environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential clang flex bison g++ gawk \
+          gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
+          python3-distutils rsync unzip wget curl ccache
+    
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ matrix.target }}-${{ matrix.subtarget }}-${{ matrix.openwrt_version }}
+        
+    - name: Cache OpenWrt SDK
+      uses: actions/cache@v3
+      with:
+        path: openwrt-sdk-${{ matrix.openwrt_version }}-${{ matrix.target }}-${{ matrix.subtarget }}_gcc-${{ matrix.gcc_version }}_musl.Linux-x86_64.tar.xz
+        key: openwrt-sdk-${{ matrix.openwrt_version }}-${{ matrix.target }}-${{ matrix.subtarget }}-${{ matrix.gcc_version }}
+        
+    - name: Download OpenWrt SDK
+      run: |
+        filename="openwrt-sdk-${{ matrix.openwrt_version }}-${{ matrix.target }}-${{ matrix.subtarget }}_gcc-${{ matrix.gcc_version }}_musl.Linux-x86_64.tar.xz"
+        if [[ ! -f "$filename" ]]; then
+          echo "Downloading OpenWrt SDK ${{ matrix.openwrt_version }} for ${{ matrix.target }}/${{ matrix.subtarget }}"
+          wget "https://mirrors.sustech.edu.cn/openwrt/releases/${{ matrix.openwrt_version }}/targets/${{ matrix.target }}/${{ matrix.subtarget }}/$filename" || \
+          wget "https://downloads.openwrt.org/releases/${{ matrix.openwrt_version }}/targets/${{ matrix.target }}/${{ matrix.subtarget }}/$filename"
+        else
+          echo "Using cached SDK"
+        fi
+        
+    - name: Extract and setup SDK
+      run: |
+        filename="openwrt-sdk-${{ matrix.openwrt_version }}-${{ matrix.target }}-${{ matrix.subtarget }}_gcc-${{ matrix.gcc_version }}_musl.Linux-x86_64.tar.xz"
+        echo "Remove existing openwrt-sdk dir"
+        rm -rf openwrt-sdk
+        echo "Extracting SDK"
+        tar -xf "$filename"
+        echo "Rename SDK dir"
+        mv "openwrt-sdk-${{ matrix.openwrt_version }}-${{ matrix.target }}-${{ matrix.subtarget }}_gcc-${{ matrix.gcc_version }}_musl.Linux-x86_64" openwrt-sdk
+        
+    - name: Prepare package sources
+      run: |
+        echo "Copy esurfingclient package to dl dir"
+        tar -czf esurfingclient.tar.gz esurfing
+        mv esurfingclient.tar.gz openwrt-sdk/dl/
+        echo "Copy esurfing package to package dir"
+        cp -r esurfingclient openwrt-sdk/package/
+        echo "Copy menuconfig and cover .config"
+        cp menuconfig.config openwrt-sdk/.config
+        
+    - name: Configure ccache
+      run: |
+        cd openwrt-sdk
+        echo 'CONFIG_CCACHE=y' >> .config
+        
+    - name: Update feeds
+      run: |
+        cd openwrt-sdk
+        echo "Updating feeds"
+        scripts/feeds update -a
+        echo "Installing feeds packages"
+        scripts/feeds install -a
+        
+    - name: Build dependencies
+      run: |
+        cd openwrt-sdk
+        echo "Making curl package"
+        make package/curl/compile V=sc -j$(nproc) || make package/curl/compile V=s
+        echo "Making openssl package"
+        make package/openssl/compile V=sc -j$(nproc) || make package/openssl/compile V=s
+        
+    - name: Build ESurfingClient package
+      run: |
+        cd openwrt-sdk
+        echo "Making esurfingclient package"
+        make package/esurfingclient/compile V=sc -j$(nproc) || make package/esurfingclient/compile V=s
+        
+    - name: Copy build artifacts
+      run: |
+        cd openwrt-sdk
+        mkdir -p ../artifacts
+        find bin/packages -name "esurfingclient_*.ipk" -exec cp {} ../artifacts/ \;
+        # Rename with target info
+        cd ../artifacts
+        for file in esurfingclient_*.ipk; do
+          if [[ -f "$file" ]]; then
+            new_name="esurfingclient-${{ matrix.arch }}-openwrt-${{ matrix.openwrt_version }}-$(echo $file | sed 's/esurfingclient_//' | sed 's/_.*/.ipk/')"
+            mv "$file" "$new_name"
+          fi
+        done
+        ls -la
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: esurfingclient-${{ matrix.arch }}-openwrt-${{ matrix.openwrt_version }}
+        path: artifacts/*.ipk
+        retention-days: 30
+        
+  release:
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+        
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+        find artifacts -name "*.ipk" -exec cp {} release/ \;
+        ls -la release/
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*.ipk
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## ESurfingClient OpenWrt Packages
+          
+          This release includes IPK packages for multiple OpenWrt versions and architectures:
+          
+          ### Supported Platforms:
+          - **mipsel_24kc**: MIPS 24Kc (MT7621 routers)
+          - **x86_64**: x86 64-bit systems
+          
+          ### OpenWrt Versions:
+          - 21.02.7 (GCC 8.4.0)
+          - 23.05.0 (GCC 12.3.0)
+          
+          ### Installation:
+          ```bash
+          # Download the appropriate IPK for your router
+          # Install using opkg
+          opkg install esurfingclient-*.ipk
+          ```
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
