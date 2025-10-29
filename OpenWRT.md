@@ -9,10 +9,14 @@
 ```bash
 # 设置用户名 (必要)
 uci set esurfingclient.main.username='<用户名>'
+# 示例
+uci set esurfingclient.main.username='23333333'
 ```
 ```bash
 # 设置密码 (必要)
 uci set esurfingclient.main.password='<密码>'
+# 示例
+uci set esurfingclient.main.password='A1234567'
 ```
 ```bash
 # 设置程序是否能被启动 (必要)
@@ -21,12 +25,12 @@ uci set esurfingclient.main.enabled='1'
 ```bash
 # 设置认证通道 (可选)
 uci set esurfingclient.main.channel='<认证通道>'(默认为`pc`)
+# 示例
+uci set esurfingclient.main.channel='pc'
 ```
 
 > [!TIP]
-> 认证通道:
-> 1. pc
-> 2. phone
+> 目前有两个认证通道: pc 和 phone
 > 
 > **两者并没有什么太大的区别**
 
