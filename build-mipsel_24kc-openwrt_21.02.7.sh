@@ -14,8 +14,6 @@ echo "Extracting SDK"
 tar -xf openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64.tar.xz
 echo "Rename SDK dir"
 mv openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64 openwrt-sdk
-echo "Modified feeds.conf.default"
-sed -i 's/https:/http:/g' feeds.conf.default
 echo "Copy esurfingclient package to dl dir"
 tar -czf esurfingclient.tar.gz esurfing
 mv esurfingclient.tar.gz openwrt-sdk/dl/
