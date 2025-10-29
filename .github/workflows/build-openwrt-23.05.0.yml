@@ -1,10 +1,10 @@
-name: Build OpenWrt 21.02.7 Package
+name: Build OpenWrt 23.05.0 Package
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-openwrt-21-02-7:
+  build-openwrt-23-05-0:
     runs-on: ubuntu-latest
     container:
       image: debian:11
@@ -20,7 +20,7 @@ jobs:
     
     - name: Set SDK filename variable
       run: |
-        echo "SDK_FILENAME=openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64.tar.xz" >> $GITHUB_ENV
+        echo "SDK_FILENAME=openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz" >> $GITHUB_ENV
     
     - name: Check if SDK exists and download if needed
       run: |
@@ -28,7 +28,7 @@ jobs:
           echo "Had $SDK_FILENAME, skip download"
         else
           echo "No $SDK_FILENAME, Downloading"
-          wget "https://mirrors.sustech.edu.cn/openwrt/releases/21.02.7/targets/ramips/mt7621/openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64.tar.xz"
+          wget "https://mirrors.sustech.edu.cn/openwrt/releases/23.05.0/targets/ramips/mt7621/openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
         fi
     
     - name: Remove existing openwrt-sdk directory
@@ -39,12 +39,12 @@ jobs:
     - name: Extract SDK
       run: |
         echo "Extracting SDK"
-        tar -xf openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64.tar.xz
+        tar -xf openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz
     
     - name: Rename SDK directory
       run: |
         echo "Rename SDK dir"
-        mv openwrt-sdk-21.02.7-ramips-mt7621_gcc-8.4.0_musl.Linux-x86_64 openwrt-sdk
+        mv openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
     
     - name: Copy esurfingclient package to dl directory
       run: |
@@ -114,7 +114,7 @@ jobs:
         ipk_file=$(find openwrt-sdk/bin/packages/mipsel_24kc/base/ -name "esurfingclient_*_mipsel_24kc.ipk" | head -1)
         if [ -n "$ipk_file" ]; then
           echo "Found IPK file: $ipk_file"
-          cp "$ipk_file" esurfingclient-mipsel_24kc-openwrt-21.02.7.ipk
+          cp "$ipk_file" esurfingclient-mipsel_24kc-openwrt-23.05.0.ipk
         else
           echo "Error: No esurfingclient IPK file found"
           exit 1
@@ -123,6 +123,6 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: esurfingclient-openwrt-21.02.7-mipsel_24kc
-        path: esurfingclient-mipsel_24kc-openwrt-21.02.7.ipk
+        name: esurfingclient-openwrt-23.05.0-mipsel_24kc
+        path: esurfingclient-mipsel_24kc-openwrt-23.05.0.ipk
         retention-days: 30
