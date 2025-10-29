@@ -22,6 +22,14 @@ uci set esurfingclient.main.enabled='1'
 # 设置认证通道 (可选)
 uci set esurfingclient.main.channel='<认证通道>'(默认为`pc`)
 ```
+
+> [!TIP]
+> 认证通道:
+> 1. pc
+> 2. phone
+> 
+> **两者并没有什么太大的区别**
+
 ```bash
 # 提交更改 (必要)
 uci commit esurfingclient
@@ -42,10 +50,3 @@ uci commit esurfingclient
 # 启动服务
 /etc/init.d/esurfingclient start
 ```
-
-> [!TIP]
-> 认证通道:
-> 1. pc
-> 2. phone
-> 
-> **两者并没有什么太大的区别**
