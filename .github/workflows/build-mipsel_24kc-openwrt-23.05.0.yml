@@ -29,7 +29,31 @@ jobs:
     
     - name: Check if SDK exists and download if needed
       run: |
-        wget "https://mirrors.sustech.edu.cn/openwrt/releases/23.05.0/targets/ramips/mt7621/openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+        SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/23.05.0/targets/ramips/mt7621/openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+        MAX_RETRIES=5
+        RETRY_COUNT=0
+        
+        echo "🔄 Downloading SDK with retry mechanism (max $MAX_RETRIES attempts)"
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          echo "📥 Attempt $RETRY_COUNT/$MAX_RETRIES: Downloading SDK..."
+          
+          if wget --timeout=30 --tries=1 "$SDK_URL"; then
+            echo "✅ SDK downloaded successfully on attempt $RETRY_COUNT"
+            break
+          else
+            echo "❌ Download failed on attempt $RETRY_COUNT"
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              WAIT_TIME=$((RETRY_COUNT * 10))
+              echo "⏳ Waiting ${WAIT_TIME} seconds before retry..."
+              sleep $WAIT_TIME
+            else
+              echo "💥 All $MAX_RETRIES download attempts failed"
+              exit 1
+            fi
+          fi
+        done
     
     - name: Extract SDK
       run: |
