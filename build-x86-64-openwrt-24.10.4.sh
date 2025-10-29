@@ -1,18 +1,20 @@
 #!/bin/bash
-filename="openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+filename="openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+
+apt install build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync zstd
 
 if [[ -f "$filename" ]]; then
     echo "Had $filename, skip download"
 else
     echo "No $filename, Downloading"
-    wget "https://mirrors.sustech.edu.cn/openwrt/releases/23.05.0/targets/ramips/mt7621/openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+    wget "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.4/targets/x86/64/openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
 fi
 echo "Remove openwrt-sdk dir(if had)"
 rm -rf openwrt-sdk
 echo "Extracting SDK"
-tar -xf openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+tar -I zstd -xf $filename
 echo "Rename SDK dir"
-mv openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
+mv openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
 echo "Copy esurfingclient package to dl dir"
 tar -czf esurfingclient.tar.gz esurfing
 mv esurfingclient.tar.gz openwrt-sdk/dl/
@@ -38,10 +40,10 @@ make package/openssl/compile V=sc -j$(nproc)
 echo "Making esurfingclient package"
 make package/esurfingclient/compile V=sc -j$(nproc)
 echo "Copy esurfingclient package to bash dir"
-ipk_file=$(find openwrt-sdk/bin/packages/mipsel_24kc/base/ -name "esurfingclient_*_mipsel_24kc.ipk" | head -1)
+ipk_file=$(find openwrt-sdk/bin/packages/x86_64/base/ -name "esurfingclient_*_x86_64.ipk" | head -1)
 if [ -n "$ipk_file" ]; then
   echo "Found IPK file: $ipk_file"
-  cp "$ipk_file" esurfingclient-mipsel_24kc-openwrt-21.02.7.ipk
+  cp "$ipk_file" esurfingclient-x86_64-openwrt-24.10.4.ipk
 else
   echo "Error: No esurfingclient IPK file found"
   exit 1
