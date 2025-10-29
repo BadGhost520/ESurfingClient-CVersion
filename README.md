@@ -14,6 +14,9 @@
 |OpenWRT|x86_64|21.02.7, 22.03.7, 24.10.4|
 |OpenWRT|mipsel_24kc|21.02.7, 23.05.0|
 
+> [!TIP]
+> 如果有其它兼容需求，可以提交一个 issue ，会尝试进行兼容
+
 # 使用教程
 
 [**Windows & Linux 环境**](./Windows&Linux.md)
