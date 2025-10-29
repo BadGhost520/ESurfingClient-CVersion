@@ -1,5 +1,10 @@
 name: Build mipsel_24kc OpenWrt 21.02.7 Package
 
+# 配置工作流权限
+permissions:
+  actions: write
+  contents: read
+
 on:
   workflow_dispatch:
 

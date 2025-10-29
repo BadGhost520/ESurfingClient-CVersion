@@ -1,5 +1,10 @@
 name: Build x86_64 OpenWrt 24.10.4 Package
 
+# 配置工作流权限
+permissions:
+  actions: write
+  contents: read
+
 on:
   workflow_dispatch:
 
