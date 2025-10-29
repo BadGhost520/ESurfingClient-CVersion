@@ -155,7 +155,7 @@ if(WIN32)
             bcrypt
             iphlpapi
         )
-    else
+    else()
         # 使用找到的静态库
         message(STATUS "Using static libraries: ${CURL_STATIC_LIB}, ${SSL_STATIC_LIB}, ${CRYPTO_STATIC_LIB}, ${XML2_STATIC_LIB}, ${Z_STATIC_LIB}")
         target_link_libraries(ESurfingClient PRIVATE 
