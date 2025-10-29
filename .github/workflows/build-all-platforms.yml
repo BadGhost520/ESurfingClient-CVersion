@@ -1,5 +1,10 @@
 name: Build All OpenWrt Platforms
 
+# 配置工作流权限
+permissions:
+  actions: write
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -8,18 +13,6 @@ on:
         required: false
         default: 'all'
         type: string
-  push:
-    branches: [ main, master ]
-    paths:
-      - 'esurfing/**'
-      - 'esurfingclient/**'
-      - '.github/workflows/build-*.yml'
-  pull_request:
-    branches: [ main, master ]
-    paths:
-      - 'esurfing/**'
-      - 'esurfingclient/**'
-      - '.github/workflows/build-*.yml'
 
 jobs:
   # 检查哪些平台需要构建
