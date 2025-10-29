@@ -47,14 +47,22 @@ jobs:
         echo "📁 Go to esurfing dir"
         cd esurfing
         
-        echo "⚙️ CMake configuring with static linking"
+        echo "🔍 Checking available static libraries"
+        echo "CURL static libraries:"
+        find /mingw64/lib -name "*curl*" -type f || echo "No CURL libraries found"
+        echo "OpenSSL static libraries:"
+        find /mingw64/lib -name "*ssl*" -type f || echo "No SSL libraries found"
+        echo "LibXML2 static libraries:"
+        find /mingw64/lib -name "*xml2*" -type f || echo "No XML2 libraries found"
+        
+        echo "⚙️ CMake configuring with aggressive static linking"
         export PKG_CONFIG_ALL_STATIC=1
         export PKG_CONFIG_ALL_STATIC_PRIVATE=1
         cmake -G "MinGW Makefiles" \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_C_COMPILER=gcc \
           -DCMAKE_CXX_COMPILER=g++ \
-          -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -Wl,-Bstatic -lcurl -lssl -lcrypto -lxml2 -lz -lws2_32 -lwldap32 -lwinmm -lcrypt32 -Wl,-Bdynamic" \
+          -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
           -DCMAKE_C_FLAGS="-static -DCURL_STATICLIB" \
           -DCMAKE_CXX_FLAGS="-static -DCURL_STATICLIB" \
           -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
@@ -76,6 +84,26 @@ jobs:
         else
           echo "❌ ESurfingClient.exe not found!"
           exit 1
+        fi
+        
+        echo "🔧 Attempting to fix dynamic linking issues"
+        echo "Current dependencies:"
+        ldd ESurfingClient-x86_64-windows.exe || objdump -p ESurfingClient-x86_64-windows.exe | grep "DLL Name"
+        
+        echo "🔄 Trying to relink with full static flags"
+        gcc -static -static-libgcc -static-libstdc++ -o ESurfingClient-x86_64-windows-static.exe \
+          $(find . -name "*.o") \
+          /mingw64/lib/libcurl.a \
+          /mingw64/lib/libssl.a \
+          /mingw64/lib/libcrypto.a \
+          /mingw64/lib/libxml2.a \
+          /mingw64/lib/libz.a \
+          -lws2_32 -lwldap32 -lwinmm -lcrypt32 -lnormaliz -lsecur32 -lbcrypt -liphlpapi \
+          -lpthread || echo "⚠️ Manual relinking failed, using original"
+        
+        if [ -f "ESurfingClient-x86_64-windows-static.exe" ]; then
+          mv ESurfingClient-x86_64-windows-static.exe ESurfingClient-x86_64-windows.exe
+          echo "✅ Used manually relinked static version"
         fi
         
         echo "🗜️ Compressing with UPX"

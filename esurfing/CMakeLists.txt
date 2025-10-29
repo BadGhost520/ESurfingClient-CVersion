@@ -80,12 +80,23 @@ if(WIN32)
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
     target_compile_definitions(ESurfingClient PRIVATE CURL_STATICLIB)
     
-    # 按正确顺序链接库
+    # 强制使用静态库路径
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    
+    # 手动查找静态库
+    find_library(CURL_STATIC_LIB NAMES libcurl.a curl PATHS /mingw64/lib NO_DEFAULT_PATH)
+    find_library(SSL_STATIC_LIB NAMES libssl.a ssl PATHS /mingw64/lib NO_DEFAULT_PATH)
+    find_library(CRYPTO_STATIC_LIB NAMES libcrypto.a crypto PATHS /mingw64/lib NO_DEFAULT_PATH)
+    find_library(XML2_STATIC_LIB NAMES libxml2.a xml2 PATHS /mingw64/lib NO_DEFAULT_PATH)
+    find_library(Z_STATIC_LIB NAMES libz.a z PATHS /mingw64/lib NO_DEFAULT_PATH)
+    
+    # 按正确顺序链接静态库
     target_link_libraries(ESurfingClient PRIVATE 
-        CURL::libcurl
-        LibXml2::LibXml2
-        OpenSSL::SSL 
-        OpenSSL::Crypto
+        ${CURL_STATIC_LIB}
+        ${XML2_STATIC_LIB}
+        ${SSL_STATIC_LIB}
+        ${CRYPTO_STATIC_LIB}
+        ${Z_STATIC_LIB}
         ws2_32
         wldap32
         winmm
@@ -98,7 +109,7 @@ if(WIN32)
     
     # 设置MinGW的完全静态链接选项
     set_target_properties(ESurfingClient PROPERTIES
-        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -Wl,-Bstatic -lcurl -lssl -lcrypto -lxml2 -lz -Wl,-Bdynamic"
+        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
     )
     # 强制使用静态库
     set_target_properties(ESurfingClient PROPERTIES
