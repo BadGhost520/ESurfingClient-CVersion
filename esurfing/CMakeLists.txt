@@ -83,29 +83,97 @@ if(WIN32)
     # 强制使用静态库路径
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     
-    # 手动查找静态库
-    find_library(CURL_STATIC_LIB NAMES libcurl.a curl PATHS /mingw64/lib NO_DEFAULT_PATH)
-    find_library(SSL_STATIC_LIB NAMES libssl.a ssl PATHS /mingw64/lib NO_DEFAULT_PATH)
-    find_library(CRYPTO_STATIC_LIB NAMES libcrypto.a crypto PATHS /mingw64/lib NO_DEFAULT_PATH)
-    find_library(XML2_STATIC_LIB NAMES libxml2.a xml2 PATHS /mingw64/lib NO_DEFAULT_PATH)
-    find_library(Z_STATIC_LIB NAMES libz.a z PATHS /mingw64/lib NO_DEFAULT_PATH)
-    
-    # 按正确顺序链接静态库
-    target_link_libraries(ESurfingClient PRIVATE 
-        ${CURL_STATIC_LIB}
-        ${XML2_STATIC_LIB}
-        ${SSL_STATIC_LIB}
-        ${CRYPTO_STATIC_LIB}
-        ${Z_STATIC_LIB}
-        ws2_32
-        wldap32
-        winmm
-        crypt32
-        normaliz
-        secur32
-        bcrypt
-        iphlpapi
+    # 尝试多个可能的路径查找静态库
+    find_library(CURL_STATIC_LIB 
+        NAMES libcurl.a curl 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
     )
+    
+    find_library(SSL_STATIC_LIB 
+        NAMES libssl.a ssl 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(CRYPTO_STATIC_LIB 
+        NAMES libcrypto.a crypto 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(XML2_STATIC_LIB 
+        NAMES libxml2.a xml2 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(Z_STATIC_LIB 
+        NAMES libz.a z 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    # 如果找不到静态库，回退到使用CMake的find_package
+    if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB)
+        message(STATUS "Some static libraries not found, using find_package fallback")
+        find_package(CURL REQUIRED)
+        find_package(OpenSSL REQUIRED)
+        find_package(LibXml2 REQUIRED)
+        
+        target_link_libraries(ESurfingClient PRIVATE 
+            CURL::libcurl
+            LibXml2::LibXml2
+            OpenSSL::SSL 
+            OpenSSL::Crypto
+            ws2_32
+            wldap32
+            winmm
+            crypt32
+            normaliz
+            secur32
+            bcrypt
+            iphlpapi
+        )
+    else
+        # 使用找到的静态库
+        message(STATUS "Using static libraries: ${CURL_STATIC_LIB}, ${SSL_STATIC_LIB}, ${CRYPTO_STATIC_LIB}, ${XML2_STATIC_LIB}, ${Z_STATIC_LIB}")
+        target_link_libraries(ESurfingClient PRIVATE 
+            ${CURL_STATIC_LIB}
+            ${XML2_STATIC_LIB}
+            ${SSL_STATIC_LIB}
+            ${CRYPTO_STATIC_LIB}
+            ${Z_STATIC_LIB}
+            ws2_32
+            wldap32
+            winmm
+            crypt32
+            normaliz
+            secur32
+            bcrypt
+            iphlpapi
+        )
+    endif()
     
     # 设置MinGW的完全静态链接选项
     set_target_properties(ESurfingClient PROPERTIES
