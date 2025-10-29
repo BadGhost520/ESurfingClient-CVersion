@@ -234,6 +234,26 @@ if(WIN32)
         NO_DEFAULT_PATH
     )
     
+    find_library(UNISTRING_STATIC_LIB 
+        NAMES libunistring.a unistring 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(ICONV_STATIC_LIB 
+        NAMES libiconv.a iconv 
+        PATHS 
+            /mingw64/lib 
+            /usr/lib 
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+        NO_DEFAULT_PATH
+    )
+    
     # 如果找不到静态库，回退到使用CMake的find_package
     if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB OR NOT NGHTTP2_STATIC_LIB OR NOT SSH2_STATIC_LIB)
         message(STATUS "Some static libraries not found, using find_package fallback")
@@ -304,6 +324,12 @@ if(WIN32)
         if(BROTLI_COMMON_STATIC_LIB)
             message(STATUS "BROTLI_COMMON: ${BROTLI_COMMON_STATIC_LIB}")
         endif()
+        if(UNISTRING_STATIC_LIB)
+            message(STATUS "UNISTRING: ${UNISTRING_STATIC_LIB}")
+        endif()
+        if(ICONV_STATIC_LIB)
+            message(STATUS "ICONV: ${ICONV_STATIC_LIB}")
+        endif()
         if(NGHTTP3_STATIC_LIB)
             message(STATUS "NGHTTP3: ${NGHTTP3_STATIC_LIB}")
         endif()
@@ -340,6 +366,14 @@ if(WIN32)
         endif()
         if(BROTLI_COMMON_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${BROTLI_COMMON_STATIC_LIB})
+        endif()
+        
+        # Link Unicode and character encoding libraries (required by IDN2 and PSL)
+        if(UNISTRING_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${UNISTRING_STATIC_LIB})
+        endif()
+        if(ICONV_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${ICONV_STATIC_LIB})
         endif()
         
         # Add optional HTTP/3 libraries if available

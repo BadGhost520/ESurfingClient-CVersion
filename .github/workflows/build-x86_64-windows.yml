@@ -38,6 +38,8 @@ jobs:
           mingw-w64-x86_64-libidn2
           mingw-w64-x86_64-libpsl
           mingw-w64-x86_64-brotli
+          mingw-w64-x86_64-libunistring
+          mingw-w64-x86_64-libiconv
           p7zip
 
     - name: Build ESurfingClient
@@ -73,6 +75,8 @@ jobs:
           ls /mingw64/lib/libidn2* 2>/dev/null || echo "❌ No libidn2 found"
           ls /mingw64/lib/libpsl* 2>/dev/null || echo "❌ No libpsl found"
           ls /mingw64/lib/libbrotli* 2>/dev/null || echo "❌ No libbrotli found"
+          ls /mingw64/lib/libunistring* 2>/dev/null || echo "❌ No libunistring found"
+          ls /mingw64/lib/libiconv* 2>/dev/null || echo "❌ No libiconv found"
         else
           echo "❌ /mingw64/lib not found"
         fi
@@ -129,6 +133,8 @@ jobs:
           /mingw64/lib/libpsl.a \
           /mingw64/lib/libbrotlidec.a \
           /mingw64/lib/libbrotlicommon.a \
+          /mingw64/lib/libunistring.a \
+          /mingw64/lib/libiconv.a \
           -lws2_32 -lwldap32 -lwinmm -lcrypt32 -lnormaliz -lsecur32 -lbcrypt -liphlpapi \
           -lpthread || echo "⚠️ Manual relinking failed, using original"
         
