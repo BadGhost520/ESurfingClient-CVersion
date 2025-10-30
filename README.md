@@ -1,6 +1,6 @@
 # ESurfingClient-C
 
-**根据 Rsplwe 大蛇的 Kotlin 源码编写的 C 语言版本的天翼校园认证客户端** :+1:
+**根据 Rsplwe 大蛇的 Kotlin 源码编写的 C 语言版本的`广东`天翼校园认证客户端** :+1:
 
 > [!IMPORTANT]
 > 这是一个`半开源`程序，隐藏了加解密算法代码
