@@ -48,9 +48,9 @@
 
 # 使用教程
 
-[**Windows & Linux 环境**](./Windows&Linux.md)
+[**Windows & Linux 环境**](Windows&Linux.md)
 
-[**OpenWRT 环境**](./OpenWRT.md)
+[**OpenWRT 环境**](OpenWRT.md)
 
 # 关于日志系统
 
@@ -69,3 +69,5 @@
 - 程序运行时，logs 目录下会生成实时更新的 run.log 日志文件
 
 - 程序退出时，run.log 日志文件会被重命名为<当前时间>.log
+
+# [更新日志](UpdateLogs.md)
