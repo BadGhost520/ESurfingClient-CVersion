@@ -15,15 +15,15 @@ on:
         default: 'all'
         options:
           - all
-          - build-openwrt-21.02.7-ramips-mt7621
-          - build-openwrt-21.02.7-x86-64
-          - build-openwrt-22.03.7-x86-64
-          - build-openwrt-23.05.0-ramips-mt7621
-          - build-openwrt-24.10.4-mediatek-filogic
-          - build-openwrt-24.10.4-ramips-mt7621
-          - build-openwrt-24.10.4-x86-64
-          - build-x86_64-linux
-          - build-x86_64-windows
+          - 21.02.7-ramips-mt7621
+          - 21.02.7-x86-64
+          - 22.03.7-x86-64
+          - 23.05.0-ramips-mt7621
+          - 24.10.4-mediatek-filogic
+          - 24.10.4-ramips-mt7621
+          - 24.10.4-x86-64
+          - x86_64-linux
+          - x86_64-windows
 
 jobs:
   # 检查要构建的平台
