@@ -15,13 +15,15 @@ on:
         default: 'all'
         options:
           - all
-          - mipsel-21.02.7
-          - mipsel-23.05.0
-          - x86_64-21.02.7
-          - x86_64-22.03.7
-          - x86_64-24.10.4
-          - x86_64-linux
-          - x86_64-windows
+          - build-openwrt-21.02.7-ramips-mt7621
+          - build-openwrt-21.02.7-x86-64
+          - build-openwrt-22.03.7-x86-64
+          - build-openwrt-23.05.0-ramips-mt7621
+          - build-openwrt-24.10.4-mediatek-filogic
+          - build-openwrt-24.10.4-ramips-mt7621
+          - build-openwrt-24.10.4-x86-64
+          - build-x86_64-linux
+          - build-x86_64-windows
 
 jobs:
   # 检查要构建的平台
@@ -56,11 +58,13 @@ jobs:
             
             // 需要触发的工作流列表及其对应的平台检查
             const workflows = [
-              { file: 'build-mipsel_24kc-openwrt-21.02.7.yml', platform: 'mipsel-21.02.7' },
-              { file: 'build-mipsel_24kc-openwrt-23.05.0.yml', platform: 'mipsel-23.05.0' },
-              { file: 'build-x86_64-openwrt-21.02.7.yml', platform: 'x86_64-21.02.7' },
-              { file: 'build-x86_64-openwrt-22.03.7.yml', platform: 'x86_64-22.03.7' },
-              { file: 'build-x86_64-openwrt-24.10.4.yml', platform: 'x86_64-24.10.4' },
+              { file: 'build-openwrt-21.02.7-ramips-mt7621.yml', platform: '21.02.7-ramips-mt7621' },
+              { file: 'build-openwrt-21.02.7-x86-64.yml', platform: '21.02.7-x86-64' },
+              { file: 'build-openwrt-22.03.7-x86-64.yml', platform: '22.03.7-x86-64' },
+              { file: 'build-openwrt-23.05.0-ramips-mt7621.yml', platform: '23.05.0-ramips-mt7621' },
+              { file: 'build-openwrt-24.10.4-mediatek-filogic.yml', platform: '24.10.4-mediatek-filogic' },
+              { file: 'build-openwrt-24.10.4-ramips-mt7621.yml', platform: '24.10.4-ramips-mt7621' },
+              { file: 'build-openwrt-24.10.4-x86-64.yml', platform: '24.10.4-x86-64' },
               { file: 'build-x86_64-linux.yml', platform: 'x86_64-linux' },
               { file: 'build-x86_64-windows.yml', platform: 'x86_64-windows' }
             ];
