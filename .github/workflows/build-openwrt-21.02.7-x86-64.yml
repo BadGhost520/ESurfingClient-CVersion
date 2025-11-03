@@ -142,6 +142,7 @@ jobs:
           cp "$ipk_file" esurfingclient-openwrt-21.02.7-x86-64.ipk
         else
           echo "Error: No esurfingclient IPK file found"
+          ls openwrt-sdk/bin/packages/
           exit 1
         fi
 

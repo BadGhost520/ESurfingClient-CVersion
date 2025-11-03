@@ -136,12 +136,13 @@ jobs:
       run: |
         echo "Copy esurfingclient package to bash dir"
         # Find the esurfingclient IPK file with pattern matching
-        ipk_file=$(find openwrt-sdk/bin/packages/mipsel_24kc/base/ -name "esurfingclient_*.ipk" | head -1)
+        ipk_file=$(find openwrt-sdk/bin/packages/aarch64_cortex-a53/base/ -name "esurfingclient_*.ipk" | head -1)
         if [ -n "$ipk_file" ]; then
           echo "Found IPK file: $ipk_file"
           cp "$ipk_file" esurfingclient-openwrt-24.10.4-mediatek-filogic.ipk
         else
           echo "Error: No esurfingclient IPK file found"
+          ls openwrt-sdk/bin/packages/
           exit 1
         fi
     
