@@ -7,22 +7,23 @@
 
 # 目前支持的环境
 
-|系统|架构|版本|
+|系统|架构|版本(Linux 内核版本)|
 |----|----|----|
 |Windows|x86_64|All|
-|Linux|x86_64|All|All|
-|OpenWrt|x86_64|21.02.7|
-|OpenWrt|x86_64|22.03.7|
-|OpenWrt|x86_64|24.10.4|
-|OpenWrt|Mipsel_24kc-MT7621|21.02.7|
-|OpenWrt|Mipsel_24kc-MT7621|23.05.0|
+|Linux|x86_64|All|
+|OpenWrt|x86_64|21.02.7(5.4.238)|
+|OpenWrt|x86_64|22.03.7(5.10.221)|
+|OpenWrt|x86_64|24.10.4(6.6.110)|
+|OpenWrt|Arm64-MTFilogic|24.10.4(6.6.110)|
+|OpenWrt|Mipsel_24kc-MT7621|21.02.7(5.4.238)|
+|OpenWrt|Mipsel_24kc-MT7621|23.05.0(5.15.134)|
+|OpenWrt|Mipsel_24kc-MT7621|24.10.4(6.6.110)|
 
 # 正在适配的环境
 
-|系统|架构|版本|
+|系统|架构|版本(Linux内核版本)|
 |----|----|----|
-|OpenWrt|Mipsel_24kc-MT7621|24.10.4|
-|OpenWrt|Arm64-MTFilogic|24.10.4|
+|N|N|N|
 
 # 打算适配的环境
 
