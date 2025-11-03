@@ -1,4 +1,4 @@
-name: Build x86_64 OpenWrt 24.10.4 Package
+name: Build OpenWrt 21.02.7 x86-64 Package
 
 # 配置工作流权限
 permissions:
@@ -7,9 +7,9 @@ permissions:
 
 on:
   workflow_dispatch:
-
+    
 jobs:
-  build-x86_64-openwrt-24-10-4:
+  build-openwrt-21-02-7-x86-64:
     runs-on: ubuntu-latest
     container:
       image: debian:11
@@ -21,15 +21,15 @@ jobs:
     - name: Install build dependencies
       run: |
         apt-get update
-        apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd
+        apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file
 
     - name: Set SDK filename variable
       run: |
-        echo "SDK_FILENAME=openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst" >> $GITHUB_ENV
+        echo "SDK_FILENAME=openwrt-sdk-21.02.7-x86-64_gcc-8.4.0_musl.Linux-x86_64.tar.xz" >> $GITHUB_ENV
 
     - name: Check if SDK exists and download if needed
       run: |
-        SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/24.10.4/targets/x86/64/openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+        SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/21.02.7/targets/x86/64/openwrt-sdk-21.02.7-x86-64_gcc-8.4.0_musl.Linux-x86_64.tar.xz"
         MAX_RETRIES=5
         RETRY_COUNT=0
         
@@ -58,12 +58,12 @@ jobs:
     - name: Extract SDK
       run: |
         echo "Extracting SDK"
-        tar -I zstd -xf $SDK_FILENAME
+        tar -xf $SDK_FILENAME
 
     - name: Rename SDK directory
       run: |
         echo "Rename SDK dir"
-        mv openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
+        mv openwrt-sdk-21.02.7-x86-64_gcc-8.4.0_musl.Linux-x86_64 openwrt-sdk
 
     - name: Copy esurfingclient package to dl directory
       run: |
@@ -105,7 +105,7 @@ jobs:
               curl -X POST \
                 -H "Accept: application/vnd.github.v3+json" \
                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-x86_64-openwrt-24.10.4.yml/dispatches \
+                https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-x86_64-openwrt-21.02.7.yml/dispatches \
                 -d '{"ref":"${{ github.ref }}"}'
               exit 1
             fi
@@ -139,7 +139,7 @@ jobs:
         ipk_file=$(find openwrt-sdk/bin/packages/x86_64/base/ -name "esurfingclient_*.ipk" | head -1)
         if [ -n "$ipk_file" ]; then
           echo "Found IPK file: $ipk_file"
-          cp "$ipk_file" esurfingclient-x86_64-openwrt-24.10.4.ipk
+          cp "$ipk_file" esurfingclient-openwrt-21.02.7-x86-64.ipk
         else
           echo "Error: No esurfingclient IPK file found"
           exit 1
@@ -148,6 +148,6 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: esurfingclient-openwrt-24.10.4-x86_64
-        path: esurfingclient-x86_64-openwrt-24.10.4.ipk
+        name: esurfingclient-openwrt-21.02.7-x86-64
+        path: esurfingclient-openwrt-21.02.7-x86-64.ipk
         retention-days: 30

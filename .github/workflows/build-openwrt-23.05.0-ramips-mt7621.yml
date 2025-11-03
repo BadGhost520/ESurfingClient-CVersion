@@ -1,4 +1,4 @@
-name: Build x86_64 OpenWrt 22.03.7 Package
+name: Build OpenWrt 23.05.0 ramips mt7621 Package
 
 # 配置工作流权限
 permissions:
@@ -7,29 +7,29 @@ permissions:
 
 on:
   workflow_dispatch:
-    
+
 jobs:
-  build-x86_64-openwrt-22-03-7:
+  build-openwrt-23-05-0-ramips-mt7621:
     runs-on: ubuntu-latest
     container:
       image: debian:11
-
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
+    
     - name: Install build dependencies
       run: |
         apt-get update
         apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file
-
+    
     - name: Set SDK filename variable
       run: |
-        echo "SDK_FILENAME=openwrt-sdk-22.03.7-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz" >> $GITHUB_ENV
-
+        echo "SDK_FILENAME=openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz" >> $GITHUB_ENV
+    
     - name: Check if SDK exists and download if needed
       run: |
-        SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/22.03.7/targets/x86/64/openwrt-sdk-22.03.7-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz"
+        SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/23.05.0/targets/ramips/mt7621/openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
         MAX_RETRIES=5
         RETRY_COUNT=0
         
@@ -54,33 +54,33 @@ jobs:
             fi
           fi
         done
-
+    
     - name: Extract SDK
       run: |
         echo "Extracting SDK"
         tar -xf $SDK_FILENAME
-
+    
     - name: Rename SDK directory
       run: |
         echo "Rename SDK dir"
-        mv openwrt-sdk-22.03.7-x86-64_gcc-11.2.0_musl.Linux-x86_64 openwrt-sdk
-
+        mv openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
+    
     - name: Copy esurfingclient package to dl directory
       run: |
         echo "Copy esurfingclient package to dl dir"
         tar -czf esurfingclient.tar.gz esurfing
         mv esurfingclient.tar.gz openwrt-sdk/dl/
-
+    
     - name: Copy esurfing package to package directory
       run: |
         echo "Copy esurfing package to package dir"
         cp -r esurfingclient openwrt-sdk/package/
-
+    
     - name: Copy menuconfig and cover .config
       run: |
         echo "Copy menuconfig and cover .config"
         cp menuconfig.config openwrt-sdk/.config
-
+    
     - name: Update feeds
       run: |
         echo "Go to openwrt-sdk dir"
@@ -105,7 +105,7 @@ jobs:
               curl -X POST \
                 -H "Accept: application/vnd.github.v3+json" \
                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-x86_64-openwrt-22.03.7.yml/dispatches \
+                https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-mipsel_24kc-openwrt-23.05.0.yml/dispatches \
                 -d '{"ref":"${{ github.ref }}"}'
               exit 1
             fi
@@ -113,41 +113,41 @@ jobs:
             sleep 5
           fi
         done
-
+    
     - name: Compile curl package
       run: |
         cd openwrt-sdk
         echo "Making curl package"
         make package/curl/compile V=sc -j$(nproc)
-
+    
     - name: Compile openssl package
       run: |
         cd openwrt-sdk
         echo "Making openssl package"
         make package/openssl/compile V=sc -j$(nproc)
-
+    
     - name: Compile esurfingclient package
       run: |
         cd openwrt-sdk
         echo "Making esurfingclient package"
         make package/esurfingclient/compile V=sc -j$(nproc)
-
+    
     - name: Copy built package
       run: |
         echo "Copy esurfingclient package to bash dir"
         # Find the esurfingclient IPK file with pattern matching
-        ipk_file=$(find openwrt-sdk/bin/packages/x86_64/base/ -name "esurfingclient_*.ipk" | head -1)
+        ipk_file=$(find openwrt-sdk/bin/packages/mipsel_24kc/base/ -name "esurfingclient_*.ipk" | head -1)
         if [ -n "$ipk_file" ]; then
           echo "Found IPK file: $ipk_file"
-          cp "$ipk_file" esurfingclient-x86_64-openwrt-22.03.7.ipk
+          cp "$ipk_file" esurfingclient-openwrt-23.05.0-ramips-mt7621.ipk
         else
           echo "Error: No esurfingclient IPK file found"
           exit 1
         fi
-
+    
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: esurfingclient-openwrt-22.03.7-x86_64
-        path: esurfingclient-x86_64-openwrt-22.03.7.ipk
+        name: esurfingclient-openwrt-23.05.0-ramips-mt7621
+        path: esurfingclient-openwrt-23.05.0-ramips-mt7621.ipk
         retention-days: 30
