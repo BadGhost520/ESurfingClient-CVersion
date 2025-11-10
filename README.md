@@ -2,10 +2,11 @@
 
 **根据 Rsplwe 大蛇的 Kotlin 源码编写的 C 语言版本的`广东`天翼校园认证客户端** :+1:
 
-**优点是程序文件超级小😋(Linux & OpenWrt 版本不到 100KB，而 Windows 版本因为要静态链接，但也是只有 2.65MB)**
+**优点是程序文件超级小😋(Linux 版本不到 100KB，因为 Windows 版本需要静态链接，OpenWrt 版本需要安装依赖包，所以会大一些，但总共也只占用不超过 3MB 的储存空间)**
 
-> [!WARNING]
-> 不要让我发现有人拿去做路由器贩卖
+## 附上作者自用 K2P 路由器安装本包之后的资源占用情况⬇
+
+![Please refresh](image/3.png) ![Please refresh](image/2.png) ![Please refresh](image/1.png)
 
 # 目前支持的环境
 
@@ -73,3 +74,6 @@
 - 程序退出时，run.log 日志文件会被重命名为<当前时间>.log
 
 # [更新日志](UpdateLogs.md)
+
+> [!WARNING]
+> 不要让我发现有人拿去做路由器贩卖
