@@ -131,8 +131,7 @@ void run()
     int count = 0;
     while (isRunning)
     {
-        const ConnectivityStatus networkStatus = checkStatus();
-        switch (networkStatus)
+        switch (checkStatus())
         {
         case CONNECTIVITY_SUCCESS:
             if (isInitialized && isLogged)

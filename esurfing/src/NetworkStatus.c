@@ -11,6 +11,7 @@
 #include "headFiles/States.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/NetClient.h"
+#include "headFiles/utils/Logger.h"
 
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
@@ -46,11 +47,12 @@ char* extractUrlParameter(const char* url, const char* param_name)
 
 ConnectivityStatus checkStatus()
 {
-    long response_code = 0;
+    int response_code = 0;
     HTTPResponse response_data = {0};
     CURL* curl = curl_easy_init();
     if (!curl)
     {
+        LOG_ERROR("Curl init error");
         return CONNECTIVITY_REQUEST_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
@@ -74,6 +76,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
+        LOG_ERROR("HTTP request error");
         return CONNECTIVITY_REQUEST_ERROR;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
@@ -89,6 +92,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
+        LOG_ERROR("HTTP Response error, response code: %d", response_code);
         return CONNECTIVITY_REQUEST_ERROR;
     }
     if (response_data.memory && response_data.size > 0)
