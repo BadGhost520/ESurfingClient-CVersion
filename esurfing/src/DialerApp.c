@@ -15,7 +15,7 @@ int main(const int argc, char* argv[]) {
     int password = 0;
     int debugMode = 0;
     int channel = 0;
-    while ((opt = getopt(argc, argv, "u:p:c:d")) != -1)
+    while ((opt = getopt(argc, argv, "u:p:c::d")) != -1)
     {
         switch (opt)
         {
@@ -33,7 +33,6 @@ int main(const int argc, char* argv[]) {
             break;
         case 'd':
             debugMode = 1;
-            printf("Debug mode is enabled\n");
             break;
         case '?':
             printf("Parameter error：%c\n", optopt);
@@ -50,40 +49,44 @@ int main(const int argc, char* argv[]) {
     {
         loggerInit(LOG_LEVEL_INFO);
     }
-    if (username && password && channel)
+    if (username && password)
     {
         LOG_DEBUG("username: %s", usr);
         LOG_DEBUG("password: %s", pwd);
-        if (strcmp(chn, "pc") == 0)
+        LOG_DEBUG("Channel: %s", chn);
+        if (channel)
         {
-            initChannel(1);
-        }
-        else if (strcmp(chn, "phone") == 0)
-        {
-            initChannel(2);
+            if (strcmp(chn, "pc") == 0)
+            {
+                initChannel(1);
+            }
+            else if (strcmp(chn, "phone") == 0)
+            {
+                initChannel(2);
+            }
+            else
+            {
+                LOG_ERROR("Wrong channel");
+                LOG_ERROR("Please run in the correct format");
+                LOG_ERROR("Format: ESurfingClient -u <username> -p <password> -c <channel>");
+                shut(0);
+                return 0;
+            }
         }
         else
         {
-            LOG_ERROR("Wrong channel");
-            LOG_ERROR("Please run in the correct format");
-            LOG_ERROR("Format: ESurfingClient -u <username> -p <password> -c <channel>");
-            LOG_ERROR("<channel>: 1.pc, 2.phone");
-            shut(0);
-            return 0;
+            initChannel(1);
         }
         isRunning = 1;
-        while (isRunning) {
-            initShutdown();
-            initConstants();
-            refreshStates();
-            run();
-        }
+        initShutdown();
+        initConstants();
+        refreshStates();
+        run();
     }
     else
     {
         LOG_ERROR("Please run in the correct format");
-        LOG_ERROR("Format: ESurfingClient -u <username> -p <password> -c <channel>");
-        LOG_ERROR("<channel>: 1.pc, 2.phone");
+        LOG_ERROR("Format: ESurfingClient -u <username> -p <password>");
     }
     shut(0);
 }

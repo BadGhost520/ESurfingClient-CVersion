@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
-PKG_VERSION:=1.0.2
-PKG_RELEASE:=1
+PKG_VERSION:=1.0.3
+PKG_RELEASE:=2
 
 PKG_SOURCE:=esurfingclient.tar.gz
 PKG_SOURCE_URL:=file://$(TOPDIR)/dl
@@ -35,7 +35,10 @@ define Package/esurfingclient/description
 A lightweight esurfing authentication client
 endef
 
-# 自定义构建后处理
+define Package/esurfingclient/conffiles
+/etc/config/esurfingclient
+endef
+
 define Build/Compile
 	$(call Build/Compile/Default)
 

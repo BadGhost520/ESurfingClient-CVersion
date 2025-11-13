@@ -45,7 +45,7 @@ start_service() {
 	procd_set_param command "$PROG"
 	procd_append_param command -u "$username"
 	procd_append_param command -p "$password"
-  procd_append_param command -c "$channel"
+  procd_append_param command -c"$channel"
 	
 	[ "$debug" = "1" ] && procd_append_param command -d
 	
