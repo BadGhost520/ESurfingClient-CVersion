@@ -26,6 +26,7 @@ void performCleanup()
         sessionFree();
     }
     loggerCleanup();
+    sleepMilliseconds(5000);
 }
 
 void shut(const int exitCode)

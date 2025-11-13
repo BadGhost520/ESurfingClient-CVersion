@@ -12,6 +12,9 @@ typedef enum {
     CONNECTIVITY_REQUEST_ERROR = 2
 } ConnectivityStatus;
 
+/*
+ * 检测网络状态
+ */
 ConnectivityStatus checkStatus();
 
 #endif // NETWORKSTATUS_H
