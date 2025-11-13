@@ -9,7 +9,7 @@
 > [!WARNING]
 > **一定要按顺序！**
 
-### 必要命令
+### 必要指令
 
 ```bash
 # 设置用户名 (必要)
@@ -36,11 +36,11 @@ uci commit esurfingclient
 /etc/init.d/esurfingclient reload
 ```
 
-### 可选命令
+### 可选指令
 
 ```bash
-# 设置认证通道
-uci set esurfingclient.main.channel='<认证通道>'(默认为`pc`)
+# 设置认证通道(默认为`pc`)
+uci set esurfingclient.main.channel='<认证通道>'
 # 示例
 uci set esurfingclient.main.channel='pc'
 ```
@@ -50,7 +50,7 @@ uci set esurfingclient.main.channel='pc'
 > 
 > **两者并没有什么太大的区别**
 
-### 程序服务类命令
+### 程序服务类指令
 
 ```bash
 # 设置开机自启
