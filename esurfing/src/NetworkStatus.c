@@ -85,6 +85,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
+        LOG_DEBUG("Connect success, response code: %d", response_code);
         return CONNECTIVITY_SUCCESS;
     }
     if (response_code != 200 && response_code != 302)

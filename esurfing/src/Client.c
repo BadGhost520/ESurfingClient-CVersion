@@ -105,7 +105,7 @@ void authorization()
     if (!isInitialized)
     {
         LOG_ERROR("Session initialization failed, please restart the application or retrieve the application from Release again");
-        LOG_ERROR("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases");
+        LOG_ERROR("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest");
         isRunning = 0;
         return;
     }
@@ -128,7 +128,6 @@ void authorization()
 
 void run()
 {
-    int count = 0;
     while (isRunning)
     {
         switch (checkStatus())
@@ -160,19 +159,6 @@ void run()
             break;
         case CONNECTIVITY_REQUIRE_AUTHORIZATION:
             LOG_INFO("authentication required");
-            isLogged = 0;
-            if (count == 5)
-            {
-                LOG_ERROR("Unknown error, trying to fix");
-                initConstants();
-                refreshStates();
-            }
-            if (count == 6)
-            {
-                LOG_ERROR("Unknown error");
-                shut(1);
-            }
-            count++;
             authorization();
             sleepMilliseconds(1000);
             break;

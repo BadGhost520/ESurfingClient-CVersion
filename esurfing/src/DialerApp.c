@@ -78,12 +78,10 @@ int main(const int argc, char* argv[]) {
             initChannel(1);
         }
         isRunning = 1;
-        while (isRunning) {
-            initShutdown();
-            initConstants();
-            refreshStates();
-            run();
-        }
+        initShutdown();
+        initConstants();
+        refreshStates();
+        run();
     }
     else
     {

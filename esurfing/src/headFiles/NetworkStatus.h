@@ -7,15 +7,11 @@
 #define NETWORKSTATUS_H
 
 typedef enum {
-    CONNECTIVITY_SUCCESS = 0,                // 网络已连接，无需认证
-    CONNECTIVITY_REQUIRE_AUTHORIZATION = 1,   // 需要进行校园网认证
-    CONNECTIVITY_REQUEST_ERROR = 2            // 请求失败或网络错误
+    CONNECTIVITY_SUCCESS = 0,
+    CONNECTIVITY_REQUIRE_AUTHORIZATION = 1,
+    CONNECTIVITY_REQUEST_ERROR = 2
 } ConnectivityStatus;
 
-/**
- * 网络状态检测函数
- * @return 网络状态
- */
 ConnectivityStatus checkStatus();
 
 #endif // NETWORKSTATUS_H
