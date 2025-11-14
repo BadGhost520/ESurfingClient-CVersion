@@ -7,6 +7,7 @@
 #include "headFiles/Options.h"
 #include "headFiles/States.h"
 #include "headFiles/utils/Logger.h"
+#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Shutdown.h"
 
 int main(const int argc, char* argv[]) {
@@ -77,6 +78,7 @@ int main(const int argc, char* argv[]) {
         {
             initChannel(1);
         }
+        sleepMilliseconds(5000);
         isRunning = 1;
         initShutdown();
         initConstants();
