@@ -38,6 +38,7 @@ char* extractUrlParameter(const char* url, const char* param_name)
     char* param_end = strchr(param_start, '&');
     if (!param_end) param_end = param_start + strlen(param_start);
     const size_t len = param_end - param_start;
+    if (len <= 0) return NULL;
     char* result = malloc(len + 1);
     if (!result) return NULL;
     strncpy(result, param_start, len);
@@ -76,7 +77,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
-        LOG_ERROR("HTTP request error");
+        LOG_ERROR("HTTP request error: %s", curl_easy_strerror(res));
         return CONNECTIVITY_REQUEST_ERROR;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
@@ -109,17 +110,17 @@ ConnectivityStatus checkStatus()
             if (ticket_url_raw) free(ticket_url_raw);
             if (auth_url && ticket_url && strlen(auth_url) > 0 && strlen(ticket_url) > 0)
             {
-                if (authUrl) free(authUrl);
+                free(authUrl);
                 authUrl = strdup(auth_url);
-                if (ticketUrl) free(ticketUrl);
+                free(ticketUrl);
                 ticketUrl = strdup(ticket_url);
                 char* user_ip = extractUrlParameter(ticket_url, "wlanuserip");
                 char* ac_ip = extractUrlParameter(ticket_url, "wlanacip");
                 if (user_ip && ac_ip)
                 {
-                    if (userIp) free(userIp);
+                    free(userIp);
                     userIp = strdup(user_ip);
-                    if (acIp) free(acIp);
+                    free(acIp);
                     acIp = strdup(ac_ip);
                     free(user_ip);
                     free(ac_ip);

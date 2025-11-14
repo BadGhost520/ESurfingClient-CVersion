@@ -61,6 +61,10 @@ char* XmlParser(const char* xmlData, const char* tag)
         return NULL;
     }
     const size_t content_length = end_pos - start_pos;
+    if (content_length <= 0) 
+    {
+        return NULL;
+    }
     char* content = malloc(content_length + 1);
     if (!content)
     {
@@ -377,13 +381,17 @@ char* cleanCDATA(const char* text)
     const char* cdataStart = "<![CDATA[";
     const char* cdataEnd = "]]>";
     const char* start = strstr(text, cdataStart);
+    if (!start) {
+        return strdup(text);
+    }
     start += strlen(cdataStart);
-    char* end = strstr(start, cdataEnd);
+    const char* end = strstr(start, cdataEnd);
     if (!end)
     {
         return strdup(text);
     }
     const size_t len = end - start;
+    if (len <= 0) return NULL; // 添加长度检查
     char* result = malloc(len + 1);
     if (!result) return NULL;
     strncpy(result, start, len);
