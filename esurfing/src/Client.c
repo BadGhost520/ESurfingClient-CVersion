@@ -169,7 +169,8 @@ void run()
     while (isRunning)
     {
         LOG_DEBUG("Enter main check");
-        switch (checkStatus())
+        const ConnectivityStatus networkStatus = checkStatus();
+        switch (networkStatus)
         {
         case CONNECTIVITY_SUCCESS:
             LOG_DEBUG("Connect success");
