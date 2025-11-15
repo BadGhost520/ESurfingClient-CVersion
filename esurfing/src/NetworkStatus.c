@@ -15,12 +15,14 @@
 
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
+    if (!text || !start_tag || !end_tag) return NULL;
     char* start = strstr(text, start_tag);
     if (!start) return NULL;
     start += strlen(start_tag);
     char* end = strstr(start, end_tag);
     if (!end) return NULL;
     const size_t len = end - start;
+    if (len <= 0) return NULL;
     char* result = malloc(len + 1);
     if (!result) return NULL;
     strncpy(result, start, len);
@@ -30,6 +32,7 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
 
 char* extractUrlParameter(const char* url, const char* param_name)
 {
+    if (!url || !param_name) return NULL;
     char search_pattern[256];
     snprintf(search_pattern, sizeof(search_pattern), "%s=", param_name);
     char* param_start = strstr(url, search_pattern);
@@ -51,11 +54,19 @@ ConnectivityStatus checkStatus()
     LOG_DEBUG("Start network check");
     int response_code = 0;
     HTTPResponse response_data = {0};
+    response_data.memory = malloc(1);
+    response_data.size = 0;
+    if (!response_data.memory) {
+        LOG_ERROR("Failed to allocate initial memory for response");
+        return CONNECTIVITY_REQUEST_ERROR;
+    }
+    response_data.memory[0] = '\0';
     CURL* curl = curl_easy_init();
     LOG_DEBUG("Init curl");
     if (!curl)
     {
         LOG_ERROR("Curl init error");
+        free(response_data.memory);
         return CONNECTIVITY_REQUEST_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
@@ -104,7 +115,9 @@ ConnectivityStatus checkStatus()
     LOG_DEBUG("Check if success");
     if (response_data.memory && response_data.size > 0)
     {
+        LOG_DEBUG("Check if have response data");
         char* portal_config = extractBetweenTags(response_data.memory, PORTAL_START_TAG, PORTAL_END_TAG);
+        LOG_DEBUG("Get portal config");
         if (portal_config && strlen(portal_config) > 0)
         {
             LOG_DEBUG("Have portal config");
@@ -137,7 +150,7 @@ ConnectivityStatus checkStatus()
                     free(portal_config);
                     curl_easy_cleanup(curl);
                     curl_slist_free_all(headers);
-                    free(response_data.memory);
+                    if (response_data.memory) free(response_data.memory);
                     return CONNECTIVITY_REQUIRE_AUTHORIZATION;
                 }
                 LOG_DEBUG("Free user ip and ac ip");
@@ -147,7 +160,7 @@ ConnectivityStatus checkStatus()
             LOG_DEBUG("Free auth url and ticket url");
             if (auth_url) free(auth_url);
             if (ticket_url) free(ticket_url);
-            free(portal_config);
+            if (portal_config) free(portal_config);
         }
     }
     LOG_DEBUG("Clean curl");
