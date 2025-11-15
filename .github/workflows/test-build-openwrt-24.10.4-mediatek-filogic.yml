@@ -1,4 +1,4 @@
-name: Build OpenWrt 24.10.4 mediatek filogic Package
+name: Test Build OpenWrt 24.10.4 mediatek filogic Package
 
 # 配置工作流权限
 permissions:
