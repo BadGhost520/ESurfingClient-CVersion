@@ -24,9 +24,9 @@ void term()
     const char* encrypt = sessionEncrypt(createXMLPayload("term"));
     LOG_DEBUG("Send encrypt: %s", encrypt);
     NetResult* result = simPost(termUrl, encrypt);
-    if (result->type == NET_RESULT_ERROR)
+    if (result && result->type == NET_RESULT_ERROR)
     {
-        LOG_ERROR("Log out error");
+        LOG_ERROR("Log out error: %s", result->errorMessage ? result->errorMessage : "Unknown error");
     }
     freeNetResult(result);
 }
@@ -38,13 +38,22 @@ void heartbeat()
     NetResult* result = simPost(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
     if (result && result->type == NET_RESULT_SUCCESS)
     {
-        free(keepRetry);
-        LOG_DEBUG("result: %s", result->data);
-        keepRetry = XmlParser(sessionDecrypt(result->data), "interval");
+        char* decrypted_data = sessionDecrypt(result->data);
+        if (decrypted_data) {
+            LOG_DEBUG("result: %s", decrypted_data);
+            char* parsed_interval = XmlParser(decrypted_data, "interval");
+            if (parsed_interval) {
+                free(keepRetry);
+                keepRetry = parsed_interval;
+            }
+            free(decrypted_data);
+        } else {
+            LOG_ERROR("Failed to decrypt heartbeat response");
+        }
     }
     else
     {
-        LOG_ERROR("Result is empty");
+        LOG_ERROR("Heartbeat request failed");
     }
     freeNetResult(result);
 }
@@ -57,12 +66,34 @@ void login()
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
-        keepRetry = XmlParser(sessionDecrypt(result->data), "keep-retry");
-        keepUrl = cleanCDATA(XmlParser(sessionDecrypt(result->data), "keep-url"));
-        termUrl = cleanCDATA(XmlParser(sessionDecrypt(result->data), "term-url"));
-        LOG_INFO("Keep Url: %s", keepUrl);
-        LOG_INFO("Term Url: %s", termUrl);
-        LOG_INFO("Keep Retry: %s", keepRetry);
+        char* decrypted_data = sessionDecrypt(result->data);
+        if (!decrypted_data) {
+            LOG_ERROR("Failed to decrypt login response");
+            freeNetResult(result);
+            return;
+        }
+        
+        char* parsed_keep_retry = XmlParser(decrypted_data, "keep-retry");
+        if (parsed_keep_retry) {
+            free(keepRetry);
+            keepRetry = parsed_keep_retry;
+        }
+        
+        char* parsed_keep_url = cleanCDATA(XmlParser(decrypted_data, "keep-url"));
+        if (parsed_keep_url) {
+            free(keepUrl);
+            keepUrl = parsed_keep_url;
+        }
+        
+        char* parsed_term_url = cleanCDATA(XmlParser(decrypted_data, "term-url"));
+        if (parsed_term_url) {
+            free(termUrl);
+            termUrl = parsed_term_url;
+        }
+        
+        LOG_INFO("Keep Url: %s", keepUrl ? keepUrl : "NULL");
+        LOG_INFO("Term Url: %s", termUrl ? termUrl : "NULL");
+        LOG_INFO("Keep Retry: %s", keepRetry ? keepRetry : "NULL");
     }
     else
     {
@@ -79,7 +110,13 @@ void getTicket()
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("result: %s", result->data);
-        ticket = strdup(XmlParser(sessionDecrypt(result->data), "ticket"));
+        char* parsed_ticket = XmlParser(sessionDecrypt(result->data), "ticket");
+        if (parsed_ticket) {
+            ticket = strdup(parsed_ticket);
+            free(parsed_ticket);
+        } else {
+            LOG_ERROR("Failed to parse ticket from response");
+        }
     }
     freeNetResult(result);
 }

@@ -45,20 +45,18 @@ int initCipher(const char* algo_id)
 
 int load(const ByteArray* zsm)
 {
-    char* key;
-    char* algo_id;
+    char* key = NULL;
+    char* algo_id = NULL;
     LOG_DEBUG("Received zsm data length: %zu", zsm->length);
     if (!zsm->data || zsm->length == 0)
     {
-        key = NULL;
-        algo_id = NULL;
+        LOG_ERROR("Invalid zsm data");
         return 0;
     }
     char* str = malloc(zsm->length + 1);
     if (!str)
     {
-        key = NULL;
-        algo_id = NULL;
+        LOG_ERROR("Failed to allocate memory for string conversion");
         return 0;
     }
     memcpy(str, zsm->data, zsm->length);
@@ -69,8 +67,6 @@ int load(const ByteArray* zsm)
     {
         LOG_ERROR("Insufficient string length");
         free(str);
-        key = NULL;
-        algo_id = NULL;
         return 0;
     }
     const size_t key_length = strlen(str) - 4 - 38;
@@ -78,34 +74,41 @@ int load(const ByteArray* zsm)
     {
         LOG_ERROR("Key length calculation error");
         free(str);
-        key = NULL;
-        algo_id = NULL;
         return 0;
     }
     key = (char*)malloc(key_length + 1);
-    if (key)
+    if (!key)
     {
-        strncpy(key, str + 4, key_length);
-        (key)[key_length] = '\0';
-        LOG_DEBUG("Extracted Key: %s", key);
-        LOG_DEBUG("Key length: %zu", key_length);
+        LOG_ERROR("Failed to allocate memory for key");
+        free(str);
+        return 0;
     }
+    strncpy(key, str + 4, key_length);
+    key[key_length] = '\0';
+    LOG_DEBUG("Extracted Key: %s", key);
+    LOG_DEBUG("Key length: %zu", key_length);
+    
     const size_t total_length = strlen(str);
     if (total_length >= 38)
     {
         const size_t algo_id_length = 36;
         algo_id = (char*)malloc(algo_id_length + 1);
-        if (algo_id)
+        if (!algo_id)
         {
-            strncpy(algo_id, str + total_length - 37, algo_id_length);
-            (algo_id)[algo_id_length] = '\0';
-            LOG_DEBUG("Extracted Algo ID: %s", algo_id);
+            LOG_ERROR("Failed to allocate memory for algo_id");
+            free(key);
+            free(str);
+            return 0;
         }
+        strncpy(algo_id, str + total_length - 37, algo_id_length);
+        algo_id[algo_id_length] = '\0';
+        LOG_DEBUG("Extracted Algo ID: %s", algo_id);
     }
     else
     {
-        algo_id = NULL;
         LOG_ERROR("The string length is not sufficient to extract the Algo ID");
+        free(key);
+        free(str);
         return 0;
     }
     free(str);
