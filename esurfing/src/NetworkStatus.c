@@ -48,9 +48,11 @@ char* extractUrlParameter(const char* url, const char* param_name)
 
 ConnectivityStatus checkStatus()
 {
+    LOG_DEBUG("Start network check");
     int response_code = 0;
     HTTPResponse response_data = {0};
     CURL* curl = curl_easy_init();
+    LOG_DEBUG("Init curl");
     if (!curl)
     {
         LOG_ERROR("Curl init error");
@@ -80,7 +82,9 @@ ConnectivityStatus checkStatus()
         LOG_ERROR("HTTP request error: %s", curl_easy_strerror(res));
         return CONNECTIVITY_REQUEST_ERROR;
     }
+    LOG_DEBUG("HTTP request end");
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    LOG_DEBUG("Get response code: %d", response_code);
     if (response_code == 204)
     {
         curl_easy_cleanup(curl);
@@ -97,11 +101,13 @@ ConnectivityStatus checkStatus()
         LOG_ERROR("HTTP Response error, response code: %d", response_code);
         return CONNECTIVITY_REQUEST_ERROR;
     }
+    LOG_DEBUG("Check if success");
     if (response_data.memory && response_data.size > 0)
     {
         char* portal_config = extractBetweenTags(response_data.memory, PORTAL_START_TAG, PORTAL_END_TAG);
         if (portal_config && strlen(portal_config) > 0)
         {
+            LOG_DEBUG("Have portal config");
             char* auth_url_raw = XmlParser(portal_config, "auth-url");
             char* ticket_url_raw = XmlParser(portal_config, "ticket-url");
             char* auth_url = cleanCDATA(auth_url_raw);
@@ -110,6 +116,7 @@ ConnectivityStatus checkStatus()
             if (ticket_url_raw) free(ticket_url_raw);
             if (auth_url && ticket_url && strlen(auth_url) > 0 && strlen(ticket_url) > 0)
             {
+                LOG_DEBUG("Have auth url and ticket url");
                 free(authUrl);
                 authUrl = strdup(auth_url);
                 free(ticketUrl);
@@ -118,6 +125,7 @@ ConnectivityStatus checkStatus()
                 char* ac_ip = extractUrlParameter(ticket_url, "wlanacip");
                 if (user_ip && ac_ip)
                 {
+                    LOG_DEBUG("Have user ip and ac ip");
                     free(userIp);
                     userIp = strdup(user_ip);
                     free(acIp);
@@ -132,16 +140,20 @@ ConnectivityStatus checkStatus()
                     free(response_data.memory);
                     return CONNECTIVITY_REQUIRE_AUTHORIZATION;
                 }
+                LOG_DEBUG("Free user ip and ac ip");
                 if (user_ip) free(user_ip);
                 if (ac_ip) free(ac_ip);
             }
+            LOG_DEBUG("Free auth url and ticket url");
             if (auth_url) free(auth_url);
             if (ticket_url) free(ticket_url);
             free(portal_config);
         }
     }
+    LOG_DEBUG("Clean curl");
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
     if (response_data.memory) free(response_data.memory);
+    LOG_DEBUG("Free response data");
     return CONNECTIVITY_SUCCESS;
 }

@@ -165,13 +165,17 @@ void authorization()
 
 void run()
 {
+    LOG_DEBUG("Enter main run");
     while (isRunning)
     {
+        LOG_DEBUG("Enter main check");
         switch (checkStatus())
         {
         case CONNECTIVITY_SUCCESS:
+            LOG_DEBUG("Connect success");
             if (isInitialized && isLogged)
             {
+                LOG_DEBUG("Type: Login connect");
                 long long keep_retry;
                 if (stringToLongLong(keepRetry, &keep_retry))
                 {
