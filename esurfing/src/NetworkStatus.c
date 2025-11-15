@@ -58,9 +58,7 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
 char* extractUrlParameter(const char* url, const char* param_name)
 {
     if (!url || !param_name) return NULL;
-    // 添加额外的有效性检查
     if (strlen(url) == 0 || strlen(param_name) == 0) return NULL;
-    
     char search_pattern[256];
     snprintf(search_pattern, sizeof(search_pattern), "%s=", param_name);
     char* param_start = strstr(url, search_pattern);
@@ -82,7 +80,7 @@ ConnectivityStatus checkStatus()
     LOG_DEBUG("Start network check");
     int response_code = 0;
     HTTPResponse response_data = {0};
-    response_data.memory = malloc(1);  // Initialize memory pointer
+    response_data.memory = malloc(1);
     response_data.size = 0;
     if (!response_data.memory) {
         LOG_ERROR("Failed to allocate initial memory for response");
@@ -142,14 +140,11 @@ ConnectivityStatus checkStatus()
         return CONNECTIVITY_REQUEST_ERROR;
     }
     LOG_DEBUG("Check if success");
-    // 加强对response_data的检查
     if (response_data.memory && response_data.size > 0)
     {
         LOG_DEBUG("Check if have response data, size: %zu", response_data.size);
-        // 确保字符串以null结尾
-        response_data.memory[response_data.size] = '\0';
+        // response_data.memory[response_data.size] = '\0';
         LOG_DEBUG("Response data: %s", response_data.memory);
-        
         char* portal_config = extractBetweenTags(response_data.memory, PORTAL_START_TAG, PORTAL_END_TAG);
         LOG_DEBUG("Get portal config: %s", portal_config ? "success" : "failed or not found");
         if (portal_config && strlen(portal_config) > 0)
