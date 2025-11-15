@@ -15,16 +15,41 @@
 
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
-    if (!text || !start_tag || !end_tag) return NULL;
+    if (!text || !start_tag || !end_tag)
+    {
+        LOG_DEBUG("NULL pointer passed to extractBetweenTags");
+        return NULL;
+    }
+    if (strlen(text) == 0 || strlen(start_tag) == 0 || strlen(end_tag) == 0)
+    {
+        LOG_DEBUG("Empty string passed to extractBetweenTags");
+        return NULL;
+    }
     char* start = strstr(text, start_tag);
-    if (!start) return NULL;
+    if (!start)
+    {
+        LOG_DEBUG("Start tag not found in text");
+        return NULL;
+    }
     start += strlen(start_tag);
     char* end = strstr(start, end_tag);
-    if (!end) return NULL;
+    if (!end)
+    {
+        LOG_DEBUG("End tag not found in text");
+        return NULL;
+    }
     const size_t len = end - start;
-    if (len <= 0) return NULL;
+    if (len <= 0)
+    {
+        LOG_DEBUG("Invalid length calculated: %zu", len);
+        return NULL;
+    }
     char* result = malloc(len + 1);
-    if (!result) return NULL;
+    if (!result)
+    {
+        LOG_DEBUG("Failed to allocate memory for result");
+        return NULL;
+    }
     strncpy(result, start, len);
     result[len] = '\0';
     return result;
@@ -33,6 +58,9 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
 char* extractUrlParameter(const char* url, const char* param_name)
 {
     if (!url || !param_name) return NULL;
+    // 添加额外的有效性检查
+    if (strlen(url) == 0 || strlen(param_name) == 0) return NULL;
+    
     char search_pattern[256];
     snprintf(search_pattern, sizeof(search_pattern), "%s=", param_name);
     char* param_start = strstr(url, search_pattern);
@@ -54,13 +82,14 @@ ConnectivityStatus checkStatus()
     LOG_DEBUG("Start network check");
     int response_code = 0;
     HTTPResponse response_data = {0};
-    response_data.memory = malloc(1);
+    response_data.memory = malloc(1);  // Initialize memory pointer
     response_data.size = 0;
     if (!response_data.memory) {
         LOG_ERROR("Failed to allocate initial memory for response");
         return CONNECTIVITY_REQUEST_ERROR;
     }
     response_data.memory[0] = '\0';
+
     CURL* curl = curl_easy_init();
     LOG_DEBUG("Init curl");
     if (!curl)
@@ -113,11 +142,16 @@ ConnectivityStatus checkStatus()
         return CONNECTIVITY_REQUEST_ERROR;
     }
     LOG_DEBUG("Check if success");
+    // 加强对response_data的检查
     if (response_data.memory && response_data.size > 0)
     {
-        LOG_DEBUG("Check if have response data");
+        LOG_DEBUG("Check if have response data, size: %zu", response_data.size);
+        // 确保字符串以null结尾
+        response_data.memory[response_data.size] = '\0';
+        LOG_DEBUG("Response data: %s", response_data.memory);
+        
         char* portal_config = extractBetweenTags(response_data.memory, PORTAL_START_TAG, PORTAL_END_TAG);
-        LOG_DEBUG("Get portal config");
+        LOG_DEBUG("Get portal config: %s", portal_config ? "success" : "failed or not found");
         if (portal_config && strlen(portal_config) > 0)
         {
             LOG_DEBUG("Have portal config");
