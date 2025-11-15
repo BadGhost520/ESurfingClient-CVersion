@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
 PKG_VERSION:=1.0.3
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 
 PKG_SOURCE:=esurfingclient.tar.gz
 PKG_SOURCE_URL:=file://$(TOPDIR)/dl
@@ -23,6 +23,10 @@ CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF
+
+# 添加针对ARM64架构的特定编译选项
+TARGET_CFLAGS += $(if $(filter aarch64,$(ARCH)),\
+	-march=armv8-a+nocrypto)
 
 define Package/esurfingclient
 	SECTION:=net
