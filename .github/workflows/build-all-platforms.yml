@@ -55,8 +55,6 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            
-            // 需要触发的工作流列表及其对应的平台检查
             const workflows = [
               { file: 'build-openwrt-21.02.7-ramips-mt7621.yml', platform: '21.02.7-ramips-mt7621' },
               { file: 'build-openwrt-21.02.7-x86-64.yml', platform: '21.02.7-x86-64' },

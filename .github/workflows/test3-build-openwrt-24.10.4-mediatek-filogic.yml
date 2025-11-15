@@ -1,0 +1,156 @@
+name: Test3 Build OpenWrt 24.10.4 mediatek filogic Package
+
+# 配置工作流权限
+permissions:
+  actions: write
+  contents: read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-openwrt-24-10-4-mediatek-filogic:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: 'a34e7c1368d3f59d0b5e0aaf5fd3fd4e05f67a6b'
+    
+    - name: Install build dependencies
+      run: |
+        apt-get update
+        apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd python3-setuptools swig
+    
+    - name: Set SDK filename variable
+      run: |
+        echo "SDK_FILENAME=openwrt-sdk-24.10.4-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst" >> $GITHUB_ENV
+    
+    - name: Check if SDK exists and download if needed
+      run: |
+        SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/24.10.4/targets/mediatek/filogic/openwrt-sdk-24.10.4-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+        MAX_RETRIES=5
+        RETRY_COUNT=0
+        
+        echo "🔄 Downloading SDK with retry mechanism (max $MAX_RETRIES attempts)"
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          echo "📥 Attempt $RETRY_COUNT/$MAX_RETRIES: Downloading SDK..."
+          
+          if wget --timeout=30 --tries=1 "$SDK_URL"; then
+            echo "✅ SDK downloaded successfully on attempt $RETRY_COUNT"
+            break
+          else
+            echo "❌ Download failed on attempt $RETRY_COUNT"
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              WAIT_TIME=$((RETRY_COUNT * 10))
+              echo "⏳ Waiting ${WAIT_TIME} seconds before retry..."
+              sleep $WAIT_TIME
+            else
+              echo "💥 All $MAX_RETRIES download attempts failed"
+              exit 1
+            fi
+          fi
+        done
+    
+    - name: Extract SDK
+      run: |
+        echo "Extracting SDK"
+        tar -I zstd -xf $SDK_FILENAME
+    
+    - name: Rename SDK directory
+      run: |
+        echo "Rename SDK dir"
+        mv openwrt-sdk-24.10.4-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
+    
+    - name: Copy esurfingclient package to dl directory
+      run: |
+        echo "Copy esurfingclient package to dl dir"
+        tar -czf esurfingclient.tar.gz esurfing
+        mv esurfingclient.tar.gz openwrt-sdk/dl/
+    
+    - name: Copy esurfing package to package directory
+      run: |
+        echo "Copy esurfing package to package dir"
+        cp -r esurfingclient openwrt-sdk/package/
+    
+    - name: Copy menuconfig and cover .config
+      run: |
+        echo "Copy menuconfig and cover .config"
+        cp menuconfig.config openwrt-sdk/.config
+    
+    - name: Update feeds
+      run: |
+        echo "Go to openwrt-sdk dir"
+        cd openwrt-sdk
+        echo "Updating feeds with retry mechanism"
+        retry_count=0
+        max_retries=5
+        
+        while [ $retry_count -lt $max_retries ]; do
+          echo "Attempt $((retry_count + 1)) of $max_retries: Updating feeds"
+          if scripts/feeds update -a; then
+            echo "Update feeds successful"
+            echo "Installing feeds packages"
+            scripts/feeds install -a
+            break
+          else
+            retry_count=$((retry_count + 1))
+            echo "Update feeds failed (attempt $retry_count)"
+            if [ $retry_count -eq $max_retries ]; then
+              echo "Update feeds failed after $max_retries attempts"
+              echo "Triggering workflow restart..."
+              curl -X POST \
+                -H "Accept: application/vnd.github.v3+json" \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-mipsel_24kc-openwrt-24.10.4.yml/dispatches \
+                -d '{"ref":"${{ github.ref }}"}'
+              exit 1
+            fi
+            echo "Retrying in 5 seconds..."
+            sleep 5
+          fi
+        done
+    
+    - name: Compile curl package
+      run: |
+        cd openwrt-sdk
+        echo "Making curl package"
+        make package/curl/compile V=sc -j$(nproc)
+    
+    - name: Compile openssl package
+      run: |
+        cd openwrt-sdk
+        echo "Making openssl package"
+        make package/openssl/compile V=sc -j$(nproc)
+    
+    - name: Compile esurfingclient package
+      run: |
+        cd openwrt-sdk
+        echo "Making esurfingclient package"
+        make package/esurfingclient/compile V=sc -j$(nproc)
+    
+    - name: Copy built package
+      run: |
+        echo "Copy esurfingclient package to bash dir"
+        # Find the esurfingclient IPK file with pattern matching
+        ipk_file=$(find openwrt-sdk/bin/packages/aarch64_cortex-a53/base/ -name "esurfingclient_*.ipk" | head -1)
+        if [ -n "$ipk_file" ]; then
+          echo "Found IPK file: $ipk_file"
+          cp "$ipk_file" esurfingclient-openwrt-24.10.4-mediatek-filogic.ipk
+        else
+          echo "Error: No esurfingclient IPK file found"
+          ls openwrt-sdk/bin/packages/
+          exit 1
+        fi
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: esurfingclient-openwrt-24.10.4-mediatek-filogic
+        path: esurfingclient-openwrt-24.10.4-mediatek-filogic.ipk
+        retention-days: 30
