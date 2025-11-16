@@ -485,6 +485,42 @@ else()
         NO_DEFAULT_PATH
     )
     
+    find_library(UNISTRING_STATIC_LIB
+        NAMES libunistring.a unistring
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(LDAP_STATIC_LIB
+        NAMES libldap.a ldap
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(LBER_STATIC_LIB
+        NAMES liblber.a lber
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(RTMP_STATIC_LIB
+        NAMES librtmp.a rtmp
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
     # 检查是否找到所有静态库
     if(CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
         message(STATUS "✅ Found all core static libraries for Unix platform:")
@@ -546,6 +582,25 @@ else()
         if(PSL_STATIC_LIB)
             message(STATUS "  PSL: ${PSL_STATIC_LIB}")
             target_link_libraries(ESurfingClient PRIVATE ${PSL_STATIC_LIB})
+        endif()
+        
+        if(UNISTRING_STATIC_LIB)
+            message(STATUS "  UNISTRING: ${UNISTRING_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${UNISTRING_STATIC_LIB})
+        endif()
+        
+        if(LDAP_STATIC_LIB AND LBER_STATIC_LIB)
+            message(STATUS "  LDAP: ${LDAP_STATIC_LIB}")
+            message(STATUS "  LBER: ${LBER_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE 
+                ${LDAP_STATIC_LIB}
+                ${LBER_STATIC_LIB}
+            )
+        endif()
+        
+        if(RTMP_STATIC_LIB)
+            message(STATUS "  RTMP: ${RTMP_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${RTMP_STATIC_LIB})
         endif()
         
         # 添加系统库
