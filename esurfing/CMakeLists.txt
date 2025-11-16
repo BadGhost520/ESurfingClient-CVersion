@@ -291,35 +291,74 @@ elseif(UNIX AND NOT WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     set(BUILD_STATIC ON CACHE BOOL "Build with static linking")
 
-    find_library(CURL_STATIC_LIB
-            NAMES libcurl.a curl
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-    )
+    # 首先尝试使用 OpenWrt 的 STAGING_DIR
+    if(DEFINED ENV{STAGING_DIR})
+        set(STAGING_DIR $ENV{STAGING_DIR})
+        message(STATUS "Using OpenWrt STAGING_DIR: ${STAGING_DIR}")
 
-    find_library(SSL_STATIC_LIB
-            NAMES libssl.a ssl
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-    )
+        find_library(CURL_STATIC_LIB
+                NAMES libcurl.a curl
+                PATHS
+                ${STAGING_DIR}/usr/lib
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
 
-    find_library(CRYPTO_STATIC_LIB
-            NAMES libcrypto.a crypto
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-    )
+        find_library(SSL_STATIC_LIB
+                NAMES libssl.a ssl
+                PATHS
+                ${STAGING_DIR}/usr/lib
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
+
+        find_library(CRYPTO_STATIC_LIB
+                NAMES libcrypto.a crypto
+                PATHS
+                ${STAGING_DIR}/usr/lib
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
+    else()
+        find_library(CURL_STATIC_LIB
+                NAMES libcurl.a curl
+                PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
+
+        find_library(SSL_STATIC_LIB
+                NAMES libssl.a ssl
+                PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
+
+        find_library(CRYPTO_STATIC_LIB
+                NAMES libcrypto.a crypto
+                PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
+    endif()
 
     find_library(Z_STATIC_LIB
             NAMES libz.a z
@@ -333,20 +372,17 @@ elseif(UNIX AND NOT WIN32)
 
     if(BUILD_STATIC AND CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
         target_link_libraries(ESurfingClient PRIVATE
-                /usr/local/lib/libcurl.a
+                ${CURL_STATIC_LIB}
                 ${SSL_STATIC_LIB}
                 ${CRYPTO_STATIC_LIB}
                 dl
                 pthread
         )
+        if(Z_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
+        endif()
         set_target_properties(ESurfingClient PROPERTIES
                 LINK_FLAGS "-static -static-libgcc -static-libstdc++"
-        )
-    else()
-        target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                OpenSSL::SSL
-                OpenSSL::Crypto
         )
     endif()
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
