@@ -365,9 +365,9 @@ elseif(UNIX AND NOT WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     set(BUILD_STATIC ON CACHE BOOL "Build with static linking")
 
-    # 查找 Kerberos/GSSAPI 库
-    find_library(GSSAPI_STATIC_LIB
-            NAMES libgssapi_krb5.a gssapi_krb5
+    # 查找 GSSAPI/Kerberos 相关库
+    find_library(GSSAPI_LIB
+            NAMES gssapi_krb5 gssapi
             PATHS
             /usr/lib/x86_64-linux-gnu
             /usr/lib64
@@ -375,8 +375,8 @@ elseif(UNIX AND NOT WIN32)
             /usr/local/lib
     )
 
-    find_library(KRB5_STATIC_LIB
-            NAMES libkrb5.a krb5
+    find_library(KRB5_LIB
+            NAMES krb5
             PATHS
             /usr/lib/x86_64-linux-gnu
             /usr/lib64
@@ -384,8 +384,8 @@ elseif(UNIX AND NOT WIN32)
             /usr/local/lib
     )
 
-    find_library(K5CRYPTO_STATIC_LIB
-            NAMES libk5crypto.a k5crypto
+    find_library(K5CRYPTO_LIB
+            NAMES k5crypto
             PATHS
             /usr/lib/x86_64-linux-gnu
             /usr/lib64
@@ -393,8 +393,8 @@ elseif(UNIX AND NOT WIN32)
             /usr/local/lib
     )
 
-    find_library(COM_ERR_STATIC_LIB
-            NAMES libcom_err.a com_err
+    find_library(COM_ERR_LIB
+            NAMES com_err
             PATHS
             /usr/lib/x86_64-linux-gnu
             /usr/lib64
@@ -454,25 +454,28 @@ elseif(UNIX AND NOT WIN32)
                 ${CURL_STATIC_LIB}
                 ${SSL_STATIC_LIB}
                 ${CRYPTO_STATIC_LIB}
+                ${Z_STATIC_LIB}
         )
 
-        # 添加 GSSAPI/Kerberos 相关库
-        if(GSSAPI_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${GSSAPI_STATIC_LIB})
-        endif()
-        if(KRB5_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${KRB5_STATIC_LIB})
-        endif()
-        if(K5CRYPTO_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${K5CRYPTO_STATIC_LIB})
-        endif()
-        if(COM_ERR_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${COM_ERR_STATIC_LIB})
+        # 添加 GSSAPI 相关库（按正确顺序）
+        if(GSSAPI_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${GSSAPI_LIB})
+            message(STATUS "Found GSSAPI: ${GSSAPI_LIB}")
         endif()
 
-        # 链接可能的依赖库
-        if(Z_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
+        if(KRB5_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${KRB5_LIB})
+            message(STATUS "Found KRB5: ${KRB5_LIB}")
+        endif()
+
+        if(K5CRYPTO_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${K5CRYPTO_LIB})
+            message(STATUS "Found K5CRYPTO: ${K5CRYPTO_LIB}")
+        endif()
+
+        if(COM_ERR_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${COM_ERR_LIB})
+            message(STATUS "Found COM_ERR: ${COM_ERR_LIB}")
         endif()
 
         # 静态链接标志
