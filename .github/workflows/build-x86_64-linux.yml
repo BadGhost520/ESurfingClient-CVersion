@@ -27,8 +27,8 @@ jobs:
         echo "📁 Go to esurfing dir"
         cd esurfing
         
-        echo "⚙️ CMake configuring"
-        cmake .
+        echo "⚙️ CMake configuring with static linking"
+        cmake . -DCMAKE_EXE_LINKER_FLAGS="-static"
         
         echo "🔨 Making Programme"
         make -j$(nproc)
@@ -52,6 +52,14 @@ jobs:
           ls -la ESurfingClient-x86_64-linux
           file ESurfingClient-x86_64-linux
           echo "📏 File size: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
+          
+          # 检查是否为静态链接
+          if ldd ESurfingClient-x86_64-linux 2>&1 | grep -q "not a dynamic executable"; then
+            echo "✅ Confirmed: Binary is statically linked"
+          else
+            echo "⚠️  Warning: Binary appears to be dynamically linked"
+            ldd ESurfingClient-x86_64-linux
+          fi
         else
           echo "❌ Binary file not found"
           exit 1

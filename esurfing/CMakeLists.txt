@@ -423,6 +423,13 @@ if(UNIX AND NOT WIN32)
     set_target_properties(ESurfingClient PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
     )
+    
+    # 添加静态链接选项
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set_target_properties(ESurfingClient PROPERTIES
+            LINK_FLAGS "-static -Wl,--strip-all"
+        )
+    endif()
 endif()
 
 include(GNUInstallDirs)
