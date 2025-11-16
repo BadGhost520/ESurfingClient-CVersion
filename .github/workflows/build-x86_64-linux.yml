@@ -7,78 +7,70 @@ permissions:
 
 on:
   workflow_dispatch:
-    
+
 jobs:
   build-x64-linux:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libnghttp2-dev libz-dev libzstd-dev libbrotli-dev libkrb5-dev libidn2-dev libssh2-1-dev libpsl-dev libunistring-dev libldap2-dev librtmp-dev libgnutls28-dev libnettle-dev libsasl2-dev
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev
 
-    - name: Build ESurfingClient
-      run: |
-        echo "🏗️ Starting x64 Linux build process"
-        echo "📁 Go to esurfing dir"
-        cd esurfing
-        
-        echo "⚙️ CMake configuring with static linking"
-        cmake . -DCMAKE_EXE_LINKER_FLAGS="-static" -DCMAKE_FIND_LIBRARY_SUFFIXES=".a"
-        
-        echo "🔨 Making Programme"
-        make -j$(nproc)
-        
-        echo "📦 Moved ESurfingClient to root dir"
-        mv bin/ESurfingClient ../ESurfingClient-x86_64-linux
-        
-        echo "🛡️ Protect1 - Strip binary"
-        strip --strip-all ../ESurfingClient-x86_64-linux
-        
-        echo "📦 Protect2 - Compress with UPX"
-        upx --best ../ESurfingClient-x86_64-linux
-        
-        echo "✅ Build completed successfully"
-
-    - name: Verify build output
-      run: |
-        echo "🔍 Verifying build output"
-        if [ -f "ESurfingClient-x86_64-linux" ]; then
-          echo "✅ Binary file exists"
-          ls -la ESurfingClient-x86_64-linux
-          file ESurfingClient-x86_64-linux
-          echo "📏 File size: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
+      - name: Build ESurfingClient
+        run: |
+          echo "🏗️ Starting x64 Linux build process"
+          echo "📁 Go to esurfing dir"
+          cd esurfing
           
-          # 检查是否为静态链接
-          if ldd ESurfingClient-x86_64-linux 2>&1 | grep -q "not a dynamic executable"; then
-            echo "✅ Confirmed: Binary is statically linked"
+          echo "⚙️ CMake configuring"
+          cmake .
+          
+          echo "🔨 Making Programme"
+          make -j$(nproc)
+          
+          echo "📦 Moved ESurfingClient to root dir"
+          mv bin/ESurfingClient ../ESurfingClient-x86_64-linux
+          
+          echo "🛡️ Protect1 - Strip binary"
+          strip --strip-all ../ESurfingClient-x86_64-linux
+          
+          echo "📦 Protect2 - Compress with UPX"
+          upx --best ../ESurfingClient-x86_64-linux
+          
+          echo "✅ Build completed successfully"
+
+      - name: Verify build output
+        run: |
+          echo "🔍 Verifying build output"
+          if [ -f "ESurfingClient-x86_64-linux" ]; then
+            echo "✅ Binary file exists"
+            ls -la ESurfingClient-x86_64-linux
+            file ESurfingClient-x86_64-linux
+            echo "📏 File size: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
           else
-            echo "⚠️  Warning: Binary appears to be dynamically linked"
-            ldd ESurfingClient-x86_64-linux
+            echo "❌ Binary file not found"
+            exit 1
           fi
-        else
-          echo "❌ Binary file not found"
-          exit 1
-        fi
 
-    - name: Create package
-      run: |
-        echo "📦 Creating package"
-        
-        # Create compressed package with executable in root
-        tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux
-        
-        echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
-        ls -la esurfingclient-x64-linux.tar.gz
+      - name: Create package
+        run: |
+          echo "📦 Creating package"
+          
+          # Create compressed package with executable in root
+          tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux
+          
+          echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
+          ls -la esurfingclient-x64-linux.tar.gz
 
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: esurfingclient-x64-linux
-        path: |
-          ESurfingClient-x86_64-linux
-        retention-days: 30
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esurfingclient-x64-linux
+          path: |
+            ESurfingClient-x86_64-linux
+          retention-days: 30

@@ -8,9 +8,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# 强制使用静态库
-set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-
 # 通用依赖（跨平台）
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -82,151 +79,151 @@ if(WIN32)
     # 设置编译定义
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
     target_compile_definitions(ESurfingClient PRIVATE CURL_STATICLIB)
-    
+
     # 强制使用静态库路径
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    
+
     # 尝试多个可能的路径查找静态库
-    find_library(CURL_STATIC_LIB 
-        NAMES libcurl.a curl 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+    find_library(CURL_STATIC_LIB
+            NAMES libcurl.a curl
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(SSL_STATIC_LIB 
-        NAMES libssl.a ssl 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(SSL_STATIC_LIB
+            NAMES libssl.a ssl
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(CRYPTO_STATIC_LIB 
-        NAMES libcrypto.a crypto 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(CRYPTO_STATIC_LIB
+            NAMES libcrypto.a crypto
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(XML2_STATIC_LIB 
-        NAMES libxml2.a xml2 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(XML2_STATIC_LIB
+            NAMES libxml2.a xml2
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(Z_STATIC_LIB 
-        NAMES libz.a z 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(Z_STATIC_LIB
+            NAMES libz.a z
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(NGHTTP2_STATIC_LIB 
-        NAMES libnghttp2.a nghttp2 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(NGHTTP2_STATIC_LIB
+            NAMES libnghttp2.a nghttp2
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(SSH2_STATIC_LIB 
-        NAMES libssh2.a ssh2 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(SSH2_STATIC_LIB
+            NAMES libssh2.a ssh2
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(ZSTD_STATIC_LIB 
-        NAMES libzstd.a zstd 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(ZSTD_STATIC_LIB
+            NAMES libzstd.a zstd
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(IDN2_STATIC_LIB 
-        NAMES libidn2.a idn2 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(IDN2_STATIC_LIB
+            NAMES libidn2.a idn2
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(PSL_STATIC_LIB 
-        NAMES libpsl.a psl 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(PSL_STATIC_LIB
+            NAMES libpsl.a psl
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(BROTLI_DEC_STATIC_LIB 
-        NAMES libbrotlidec.a brotlidec 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(BROTLI_DEC_STATIC_LIB
+            NAMES libbrotlidec.a brotlidec
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(BROTLI_COMMON_STATIC_LIB 
-        NAMES libbrotlicommon.a brotlicommon 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(BROTLI_COMMON_STATIC_LIB
+            NAMES libbrotlicommon.a brotlicommon
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(UNISTRING_STATIC_LIB 
-        NAMES libunistring.a unistring 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(UNISTRING_STATIC_LIB
+            NAMES libunistring.a unistring
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
-    find_library(ICONV_STATIC_LIB 
-        NAMES libiconv.a iconv 
-        PATHS 
-            /mingw64/lib 
-            /usr/lib 
+
+    find_library(ICONV_STATIC_LIB
+            NAMES libiconv.a iconv
+            PATHS
+            /mingw64/lib
+            /usr/lib
             /usr/local/lib
             ${CMAKE_PREFIX_PATH}/lib
-        NO_DEFAULT_PATH
+            NO_DEFAULT_PATH
     )
-    
+
     # 如果找不到静态库，回退到使用CMake的find_package
     if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB OR NOT NGHTTP2_STATIC_LIB OR NOT SSH2_STATIC_LIB)
         message(STATUS "Some static libraries not found, using find_package fallback")
@@ -251,24 +248,24 @@ if(WIN32)
         if(NOT SSH2_STATIC_LIB)
             message(STATUS "Missing: libssh2.a")
         endif()
-        
+
         find_package(CURL REQUIRED)
         find_package(OpenSSL REQUIRED)
         find_package(LibXml2 REQUIRED)
-        
-        target_link_libraries(ESurfingClient PRIVATE 
-            CURL::libcurl
-            LibXml2::LibXml2
-            OpenSSL::SSL 
-            OpenSSL::Crypto
-            ws2_32
-            wldap32
-            winmm
-            crypt32
-            normaliz
-            secur32
-            bcrypt
-            iphlpapi
+
+        target_link_libraries(ESurfingClient PRIVATE
+                CURL::libcurl
+                LibXml2::LibXml2
+                OpenSSL::SSL
+                OpenSSL::Crypto
+                ws2_32
+                wldap32
+                winmm
+                crypt32
+                normaliz
+                secur32
+                bcrypt
+                iphlpapi
         )
     else()
         # 使用找到的静态库
@@ -280,7 +277,7 @@ if(WIN32)
         message(STATUS "Z: ${Z_STATIC_LIB}")
         message(STATUS "NGHTTP2: ${NGHTTP2_STATIC_LIB}")
         message(STATUS "SSH2: ${SSH2_STATIC_LIB}")
-        
+
         # Optional libraries
         if(ZSTD_STATIC_LIB)
             message(STATUS "ZSTD: ${ZSTD_STATIC_LIB}")
@@ -303,18 +300,18 @@ if(WIN32)
         if(ICONV_STATIC_LIB)
             message(STATUS "ICONV: ${ICONV_STATIC_LIB}")
         endif()
-        
+
         # Link core libraries
-        target_link_libraries(ESurfingClient PRIVATE 
-            ${CURL_STATIC_LIB}
-            ${SSH2_STATIC_LIB}
-            ${XML2_STATIC_LIB}
-            ${SSL_STATIC_LIB}
-            ${CRYPTO_STATIC_LIB}
-            ${Z_STATIC_LIB}
-            ${NGHTTP2_STATIC_LIB}
+        target_link_libraries(ESurfingClient PRIVATE
+                ${CURL_STATIC_LIB}
+                ${SSH2_STATIC_LIB}
+                ${XML2_STATIC_LIB}
+                ${SSL_STATIC_LIB}
+                ${CRYPTO_STATIC_LIB}
+                ${Z_STATIC_LIB}
+                ${NGHTTP2_STATIC_LIB}
         )
-        
+
         # Link optional compression and IDN libraries
         if(ZSTD_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${ZSTD_STATIC_LIB})
@@ -331,7 +328,7 @@ if(WIN32)
         if(BROTLI_COMMON_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${BROTLI_COMMON_STATIC_LIB})
         endif()
-        
+
         # Link Unicode and character encoding libraries (required by IDN2 and PSL)
         if(UNISTRING_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${UNISTRING_STATIC_LIB})
@@ -339,362 +336,41 @@ if(WIN32)
         if(ICONV_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${ICONV_STATIC_LIB})
         endif()
-        
+
         # Add Windows system libraries
-        target_link_libraries(ESurfingClient PRIVATE 
-            ws2_32
-            wldap32
-            winmm
-            crypt32
-            normaliz
-            secur32
-            bcrypt
-            iphlpapi
+        target_link_libraries(ESurfingClient PRIVATE
+                ws2_32
+                wldap32
+                winmm
+                crypt32
+                normaliz
+                secur32
+                bcrypt
+                iphlpapi
         )
     endif()
-    
+
     # 设置MinGW的完全静态链接选项
     set_target_properties(ESurfingClient PROPERTIES
-        LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+            LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
     )
     # 强制使用静态库
     set_target_properties(ESurfingClient PROPERTIES
-        LINK_SEARCH_START_STATIC ON
-        LINK_SEARCH_END_STATIC ON
+            LINK_SEARCH_START_STATIC ON
+            LINK_SEARCH_END_STATIC ON
     )
 else()
-    # Unix平台（包括Linux）的链接库 - 使用静态链接
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    
-    # 尝试查找静态库
-    find_library(CURL_STATIC_LIB 
-        NAMES libcurl.a curl
-        PATHS 
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(SSL_STATIC_LIB 
-        NAMES libssl.a ssl
-        PATHS 
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(CRYPTO_STATIC_LIB 
-        NAMES libcrypto.a crypto
-        PATHS 
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    # 查找curl依赖的其他静态库
-    find_library(NGHTTP2_STATIC_LIB
-        NAMES libnghttp2.a nghttp2
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(Z_STATIC_LIB
-        NAMES libz.a z
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(ZSTD_STATIC_LIB
-        NAMES libzstd.a zstd
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(BROTLI_DEC_STATIC_LIB
-        NAMES libbrotlidec.a brotlidec
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(BROTLI_COMMON_STATIC_LIB
-        NAMES libbrotlicommon.a brotlicommon
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(GSSAPI_STATIC_LIB
-        NAMES libgssapi_krb5.a gssapi_krb5
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(KRB5_STATIC_LIB
-        NAMES libkrb5.a krb5
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(IDN2_STATIC_LIB
-        NAMES libidn2.a idn2
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(SSH2_STATIC_LIB
-        NAMES libssh2.a ssh2
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(PSL_STATIC_LIB
-        NAMES libpsl.a psl
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(UNISTRING_STATIC_LIB
-        NAMES libunistring.a unistring
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(LDAP_STATIC_LIB
-        NAMES libldap.a ldap
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(LBER_STATIC_LIB
-        NAMES liblber.a lber
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(RTMP_STATIC_LIB
-        NAMES librtmp.a rtmp
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(GNUTLS_STATIC_LIB
-        NAMES libgnutls.a gnutls
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(NETTLE_STATIC_LIB
-        NAMES libnettle.a nettle
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(HOGWEED_STATIC_LIB
-        NAMES libhogweed.a hogweed
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(GMP_STATIC_LIB
-        NAMES libgmp.a gmp
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    find_library(SASL2_STATIC_LIB
-        NAMES libsasl2.a sasl2
-        PATHS
-            /usr/lib/x86_64-linux-gnu/
-            /usr/lib/
-            /usr/local/lib
-        NO_DEFAULT_PATH
-    )
-    
-    # 检查是否找到所有静态库
-    if(CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
-        message(STATUS "✅ Found all core static libraries for Unix platform:")
-        message(STATUS "  CURL: ${CURL_STATIC_LIB}")
-        message(STATUS "  SSL: ${SSL_STATIC_LIB}")
-        message(STATUS "  CRYPTO: ${CRYPTO_STATIC_LIB}")
-        
-        # 链接核心库
-        target_link_libraries(ESurfingClient PRIVATE 
-            ${CURL_STATIC_LIB}
-            ${SSL_STATIC_LIB}
-            ${CRYPTO_STATIC_LIB}
-        )
-        
-        # 链接可选库（如果找到）
-        if(Z_STATIC_LIB)
-            message(STATUS "  Z: ${Z_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
-        endif()
-        
-        if(NGHTTP2_STATIC_LIB)
-            message(STATUS "  NGHTTP2: ${NGHTTP2_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${NGHTTP2_STATIC_LIB})
-        endif()
-        
-        if(ZSTD_STATIC_LIB)
-            message(STATUS "  ZSTD: ${ZSTD_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${ZSTD_STATIC_LIB})
-        endif()
-        
-        if(BROTLI_DEC_STATIC_LIB AND BROTLI_COMMON_STATIC_LIB)
-            message(STATUS "  BROTLI_DEC: ${BROTLI_DEC_STATIC_LIB}")
-            message(STATUS "  BROTLI_COMMON: ${BROTLI_COMMON_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE 
-                ${BROTLI_DEC_STATIC_LIB} 
-                ${BROTLI_COMMON_STATIC_LIB}
-            )
-        endif()
-        
-        if(GSSAPI_STATIC_LIB AND KRB5_STATIC_LIB)
-            message(STATUS "  GSSAPI: ${GSSAPI_STATIC_LIB}")
-            message(STATUS "  KRB5: ${KRB5_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE 
-                ${GSSAPI_STATIC_LIB} 
-                ${KRB5_STATIC_LIB}
-            )
-        endif()
-        
-        if(IDN2_STATIC_LIB)
-            message(STATUS "  IDN2: ${IDN2_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${IDN2_STATIC_LIB})
-        endif()
-        
-        if(SSH2_STATIC_LIB)
-            message(STATUS "  SSH2: ${SSH2_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${SSH2_STATIC_LIB})
-        endif()
-        
-        if(PSL_STATIC_LIB)
-            message(STATUS "  PSL: ${PSL_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${PSL_STATIC_LIB})
-        endif()
-        
-        if(UNISTRING_STATIC_LIB)
-            message(STATUS "  UNISTRING: ${UNISTRING_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${UNISTRING_STATIC_LIB})
-        endif()
-        
-        if(LDAP_STATIC_LIB AND LBER_STATIC_LIB)
-            message(STATUS "  LDAP: ${LDAP_STATIC_LIB}")
-            message(STATUS "  LBER: ${LBER_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE 
-                ${LDAP_STATIC_LIB}
-                ${LBER_STATIC_LIB}
-            )
-        endif()
-        
-        if(RTMP_STATIC_LIB)
-            message(STATUS "  RTMP: ${RTMP_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${RTMP_STATIC_LIB})
-        endif()
-        
-        if(GNUTLS_STATIC_LIB AND NETTLE_STATIC_LIB AND HOGWEED_STATIC_LIB AND GMP_STATIC_LIB)
-            message(STATUS "  GNUTLS: ${GNUTLS_STATIC_LIB}")
-            message(STATUS "  NETTLE: ${NETTLE_STATIC_LIB}")
-            message(STATUS "  HOGWEED: ${HOGWEED_STATIC_LIB}")
-            message(STATUS "  GMP: ${GMP_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE 
-                ${GNUTLS_STATIC_LIB}
-                ${NETTLE_STATIC_LIB}
-                ${HOGWEED_STATIC_LIB}
-                ${GMP_STATIC_LIB}
-            )
-        endif()
-        
-        if(SASL2_STATIC_LIB)
-            message(STATUS "  SASL2: ${SASL2_STATIC_LIB}")
-            target_link_libraries(ESurfingClient PRIVATE ${SASL2_STATIC_LIB})
-        endif()
-        
-        # 添加系统库
-        target_link_libraries(ESurfingClient PRIVATE 
-            dl 
-            pthread
-        )
-    else()
-        message(WARNING "Could not find all static libraries, falling back to standard linking")
-        message(STATUS "  CURL: ${CURL_STATIC_LIB}")
-        message(STATUS "  SSL: ${SSL_STATIC_LIB}")
-        message(STATUS "  CRYPTO: ${CRYPTO_STATIC_LIB}")
-        
-        target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
-        target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-    endif()
+    # 非Windows平台的链接库
+    target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
+    target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
 # Linux 编译选项与输出目录
 if(UNIX AND NOT WIN32)
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
     set_target_properties(ESurfingClient PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
+            RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
     )
-    
-    # 添加静态链接选项
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        set_target_properties(ESurfingClient PROPERTIES
-            LINK_FLAGS "-static -Wl,--strip-all"
-        )
-    endif()
 endif()
 
 include(GNUInstallDirs)
