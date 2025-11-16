@@ -475,17 +475,6 @@ elseif(UNIX AND NOT WIN32)
             target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
         endif()
 
-        # 如果上面的库找不到，尝试使用 pkg-config
-        if(NOT GSSAPI_STATIC_LIB)
-            find_package(PkgConfig)
-            if(PKG_CONFIG_FOUND)
-                pkg_check_modules(KRB5 REQUIRED krb5-gssapi)
-                if(KRB5_FOUND)
-                    target_link_libraries(ESurfingClient PRIVATE ${KRB5_LIBRARIES})
-                endif()
-            endif()
-        endif()
-
         # 静态链接标志
         set_target_properties(ESurfingClient PROPERTIES
                 LINK_FLAGS "-static -static-libgcc -static-libstdc++"
