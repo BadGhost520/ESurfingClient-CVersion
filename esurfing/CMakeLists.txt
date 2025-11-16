@@ -144,37 +144,6 @@ if(WIN32)
         NO_DEFAULT_PATH
     )
     
-    # HTTP/3 and QUIC libraries (disabled due to OpenSSL QUIC compatibility issues)
-# find_library(NGHTTP3_STATIC_LIB
-#     NAMES libnghttp3.a nghttp3
-#     PATHS 
-#         /mingw64/lib 
-#         /usr/lib 
-#         /usr/local/lib
-#         ${CMAKE_PREFIX_PATH}/lib
-#     NO_DEFAULT_PATH
-# )
-
-# find_library(NGTCP2_STATIC_LIB
-#     NAMES libngtcp2.a ngtcp2
-#     PATHS 
-#         /mingw64/lib 
-#         /usr/lib 
-#         /usr/local/lib
-#         ${CMAKE_PREFIX_PATH}/lib
-#     NO_DEFAULT_PATH
-# )
-
-# find_library(NGTCP2_CRYPTO_STATIC_LIB
-#     NAMES libngtcp2_crypto_ossl.a ngtcp2_crypto_ossl
-#     PATHS 
-#         /mingw64/lib 
-#         /usr/lib 
-#         /usr/local/lib
-#         ${CMAKE_PREFIX_PATH}/lib
-#     NO_DEFAULT_PATH
-# )
-    
     find_library(SSH2_STATIC_LIB 
         NAMES libssh2.a ssh2 
         PATHS 
@@ -331,16 +300,6 @@ if(WIN32)
         if(ICONV_STATIC_LIB)
             message(STATUS "ICONV: ${ICONV_STATIC_LIB}")
         endif()
-        # HTTP/3 libraries disabled
-        # if(NGHTTP3_STATIC_LIB)
-        #     message(STATUS "NGHTTP3: ${NGHTTP3_STATIC_LIB}")
-        # endif()
-        # if(NGTCP2_STATIC_LIB)
-        #     message(STATUS "NGTCP2: ${NGTCP2_STATIC_LIB}")
-        # endif()
-        # if(NGTCP2_CRYPTO_STATIC_LIB)
-        #     message(STATUS "NGTCP2_CRYPTO: ${NGTCP2_CRYPTO_STATIC_LIB}")
-        # endif()
         
         # Link core libraries
         target_link_libraries(ESurfingClient PRIVATE 
@@ -377,17 +336,6 @@ if(WIN32)
         if(ICONV_STATIC_LIB)
             target_link_libraries(ESurfingClient PRIVATE ${ICONV_STATIC_LIB})
         endif()
-        
-        # Add optional HTTP/3 libraries if available (required by libcurl) - DISABLED
-        # if(NGHTTP3_STATIC_LIB)
-        #     target_link_libraries(ESurfingClient PRIVATE ${NGHTTP3_STATIC_LIB})
-        # endif()
-        # if(NGTCP2_STATIC_LIB)
-        #     target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_STATIC_LIB})
-        # endif()
-        # if(NGTCP2_CRYPTO_STATIC_LIB)
-        #     target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_CRYPTO_STATIC_LIB})
-        # endif()
         
         # Add Windows system libraries
         target_link_libraries(ESurfingClient PRIVATE 
