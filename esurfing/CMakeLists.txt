@@ -365,43 +365,6 @@ elseif(UNIX AND NOT WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     set(BUILD_STATIC ON CACHE BOOL "Build with static linking")
 
-    # 查找 GSSAPI/Kerberos 相关库
-    find_library(GSSAPI_LIB
-            NAMES gssapi_krb5 gssapi
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-    )
-
-    find_library(KRB5_LIB
-            NAMES krb5
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-    )
-
-    find_library(K5CRYPTO_LIB
-            NAMES k5crypto
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-    )
-
-    find_library(COM_ERR_LIB
-            NAMES com_err
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-    )
-
     # 寻找静态库
     find_library(CURL_STATIC_LIB
             NAMES libcurl.a curl
