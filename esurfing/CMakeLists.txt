@@ -417,6 +417,7 @@ elseif(UNIX AND NOT WIN32)
                 /usr/local/lib/libcurl.a
                 ${SSL_STATIC_LIB}
                 ${CRYPTO_STATIC_LIB}
+                dl
                 pthread
         )
 
