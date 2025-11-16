@@ -150,4 +150,8 @@ void initialize(const ByteArray* zsm)
     {
         isInitialized = 1;
     }
+    else
+    {
+        isInitialized = 0;
+    }
 }

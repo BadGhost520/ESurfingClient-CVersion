@@ -8,6 +8,7 @@
 
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/utils/PlatformUtils.h"
+#include "../headFiles/Options.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -153,7 +154,14 @@ int ensureLogDir(char* out)
         return -1;
     }
 #else
-    char dir[] = "/var/log/esurfing";
+    if (isDebug)
+    {
+        char dir[] = "/usr/esurfing";
+    }
+    else
+    {
+        char dir[] = "/var/log/esurfing";
+    }
 #endif
 #ifdef _WIN32
     const int n = snprintf(out, 260, "%s\\logs", dir);

@@ -44,10 +44,12 @@ int main(const int argc, char* argv[]) {
     }
     if (debugMode)
     {
+        isDebug = 1;
         loggerInit(LOG_LEVEL_DEBUG);
     }
     else
     {
+        isDebug = 0;
         loggerInit(LOG_LEVEL_INFO);
     }
     if (username && password)
@@ -83,7 +85,10 @@ int main(const int argc, char* argv[]) {
         initShutdown();
         initConstants();
         refreshStates();
-        run();
+        while (isRunning)
+        {
+            run();
+        }
     }
     else
     {

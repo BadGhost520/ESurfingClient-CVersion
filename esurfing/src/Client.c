@@ -139,7 +139,7 @@ void authorization()
     initSession();
     if (!isInitialized)
     {
-        LOG_ERROR("Session initialization failed, please restart the application or retrieve the application from Release again");
+        LOG_ERROR("Session initialization failed, please restart the application or download the application from Release again");
         LOG_ERROR("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest");
         isRunning = 0;
         return;
@@ -164,51 +164,47 @@ void authorization()
 void run()
 {
     LOG_DEBUG("Enter main run");
-    while (isRunning)
+    const ConnectivityStatus networkStatus = checkStatus();
+    switch (networkStatus)
     {
-        LOG_DEBUG("Enter main check");
-        const ConnectivityStatus networkStatus = checkStatus();
-        switch (networkStatus)
+    case SUCCESS:
+        LOG_DEBUG("Connect success");
+        if (isInitialized && isLogged)
         {
-        case CONNECTIVITY_SUCCESS:
-            LOG_DEBUG("Connect success");
-            if (isInitialized && isLogged)
+            LOG_DEBUG("Type: Login connect");
+            long long keep_retry;
+            if (stringToLongLong(keepRetry, &keep_retry))
             {
-                LOG_DEBUG("Type: Login connect");
-                long long keep_retry;
-                if (stringToLongLong(keepRetry, &keep_retry))
+                if (currentTimeMillis() - tick >= keep_retry * 1000)
                 {
-                    if (currentTimeMillis() - tick >= keep_retry * 1000)
-                    {
-                        LOG_INFO("Send heartbeat packet");
-                        heartbeat();
-                        LOG_INFO("Next retry: %ss", keepRetry);
-                        tick = currentTimeMillis();
-                    }
-                }
-                else
-                {
-                    LOG_ERROR("String to int64 error");
+                    LOG_INFO("Send heartbeat packet");
+                    heartbeat();
+                    LOG_INFO("Next retry: %ss", keepRetry);
+                    tick = currentTimeMillis();
                 }
             }
             else
             {
-                LOG_INFO("The network is connected");
+                LOG_ERROR("String to int64 error");
             }
-            sleepMilliseconds(1000);
-            break;
-        case CONNECTIVITY_REQUIRE_AUTHORIZATION:
-            LOG_INFO("authentication required");
-            authorization();
-            sleepMilliseconds(1000);
-            break;
-        case CONNECTIVITY_REQUEST_ERROR:
-            LOG_ERROR("Network error");
-            sleepMilliseconds(5000);
-            break;
-        default:
-            LOG_ERROR("Unknown error");
-            sleepMilliseconds(5000);
         }
+        else
+        {
+            LOG_INFO("The network is connected");
+        }
+        sleepMilliseconds(1000);
+        break;
+    case REQUIRE_AUTHORIZATION:
+        LOG_INFO("authentication required");
+        authorization();
+        sleepMilliseconds(1000);
+        break;
+    case REQUEST_ERROR:
+        LOG_ERROR("Network error");
+        sleepMilliseconds(5000);
+        break;
+    default:
+        LOG_ERROR("Unknown error");
+        sleepMilliseconds(5000);
     }
 }
