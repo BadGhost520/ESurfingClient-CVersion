@@ -9,11 +9,7 @@
 extern "C" {
 #endif
 
-    // 最大长度定义
-#define MAX_URL_LENGTH 512
 #define MAX_HEADER_LENGTH 256
-#define MAX_DATA_LENGTH 4096
-#define MAX_RESPONSE_LENGTH 8192
 #define MAX_HEADERS_COUNT 20
 
 typedef struct {

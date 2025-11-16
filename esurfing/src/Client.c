@@ -5,14 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "headFiles/Constants.h"
 #include "headFiles/NetClient.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/utils/Logger.h"
-#include "headFiles/utils/Shutdown.h"
 
 char* keepRetry;
 char* keepUrl;

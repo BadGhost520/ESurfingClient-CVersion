@@ -11,6 +11,7 @@
 #include "headFiles/States.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/NetClient.h"
+#include "headFiles/utils/Logger.h"
 
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
@@ -29,6 +30,8 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
 
 char* extractUrlParameter(const char* url, const char* param_name)
 {
+    if (!url || !param_name) return NULL;
+    if (strlen(url) == 0 || strlen(param_name) == 0) return NULL;
     char search_pattern[256];
     snprintf(search_pattern, sizeof(search_pattern), "%s=", param_name);
     char* param_start = strstr(url, search_pattern);
@@ -37,6 +40,7 @@ char* extractUrlParameter(const char* url, const char* param_name)
     char* param_end = strchr(param_start, '&');
     if (!param_end) param_end = param_start + strlen(param_start);
     const size_t len = param_end - param_start;
+    if (len <= 0) return NULL;
     char* result = malloc(len + 1);
     if (!result) return NULL;
     strncpy(result, param_start, len);
@@ -46,11 +50,23 @@ char* extractUrlParameter(const char* url, const char* param_name)
 
 ConnectivityStatus checkStatus()
 {
+    LOG_DEBUG("Start network check");
     long response_code = 0;
     HTTPResponse response_data = {0};
+    response_data.memory = malloc(1);
+    response_data.size = 0;
+    if (!response_data.memory) {
+        LOG_ERROR("Failed to allocate initial memory for response");
+        return CONNECTIVITY_REQUEST_ERROR;
+    }
+    response_data.memory[0] = '\0';
+
     CURL* curl = curl_easy_init();
+    LOG_DEBUG("Init curl");
     if (!curl)
     {
+        LOG_ERROR("Curl init error");
+        free(response_data.memory);
         return CONNECTIVITY_REQUEST_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
@@ -74,14 +90,18 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
+        LOG_ERROR("HTTP request error: %s", curl_easy_strerror(res));
         return CONNECTIVITY_REQUEST_ERROR;
     }
+    LOG_DEBUG("HTTP request end");
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    LOG_DEBUG("Get response code: %d", response_code);
     if (response_code == 204)
     {
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
+        LOG_DEBUG("Connect success, response code: %d", response_code);
         return CONNECTIVITY_SUCCESS;
     }
     if (response_code != 200 && response_code != 302)
@@ -89,13 +109,20 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
+        LOG_ERROR("HTTP Response error, response code: %d", response_code);
         return CONNECTIVITY_REQUEST_ERROR;
     }
+    LOG_DEBUG("Check if success");
     if (response_data.memory && response_data.size > 0)
     {
+        LOG_DEBUG("Check if have response data, size: %zu", response_data.size);
+        // response_data.memory[response_data.size] = '\0';
+        LOG_DEBUG("Response data: %s", response_data.memory);
         char* portal_config = extractBetweenTags(response_data.memory, PORTAL_START_TAG, PORTAL_END_TAG);
+        LOG_DEBUG("Get portal config: %s", portal_config ? "success" : "failed or not found");
         if (portal_config && strlen(portal_config) > 0)
         {
+            LOG_DEBUG("Have portal config");
             char* auth_url_raw = XmlParser(portal_config, "auth-url");
             char* ticket_url_raw = XmlParser(portal_config, "ticket-url");
             char* auth_url = cleanCDATA(auth_url_raw);
@@ -104,17 +131,19 @@ ConnectivityStatus checkStatus()
             if (ticket_url_raw) free(ticket_url_raw);
             if (auth_url && ticket_url && strlen(auth_url) > 0 && strlen(ticket_url) > 0)
             {
-                if (authUrl) free(authUrl);
+                LOG_DEBUG("Have auth url and ticket url");
+                free(authUrl);
                 authUrl = strdup(auth_url);
-                if (ticketUrl) free(ticketUrl);
+                free(ticketUrl);
                 ticketUrl = strdup(ticket_url);
                 char* user_ip = extractUrlParameter(ticket_url, "wlanuserip");
                 char* ac_ip = extractUrlParameter(ticket_url, "wlanacip");
                 if (user_ip && ac_ip)
                 {
-                    if (userIp) free(userIp);
+                    LOG_DEBUG("Have user ip and ac ip");
+                    free(userIp);
                     userIp = strdup(user_ip);
-                    if (acIp) free(acIp);
+                    free(acIp);
                     acIp = strdup(ac_ip);
                     free(user_ip);
                     free(ac_ip);
@@ -123,19 +152,23 @@ ConnectivityStatus checkStatus()
                     free(portal_config);
                     curl_easy_cleanup(curl);
                     curl_slist_free_all(headers);
-                    free(response_data.memory);
+                    if (response_data.memory) free(response_data.memory);
                     return CONNECTIVITY_REQUIRE_AUTHORIZATION;
                 }
+                LOG_DEBUG("Free user ip and ac ip");
                 if (user_ip) free(user_ip);
                 if (ac_ip) free(ac_ip);
             }
+            LOG_DEBUG("Free auth url and ticket url");
             if (auth_url) free(auth_url);
             if (ticket_url) free(ticket_url);
-            free(portal_config);
+            if (portal_config) free(portal_config);
         }
     }
+    LOG_DEBUG("Clean curl");
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
     if (response_data.memory) free(response_data.memory);
+    LOG_DEBUG("Free response data");
     return CONNECTIVITY_SUCCESS;
 }
