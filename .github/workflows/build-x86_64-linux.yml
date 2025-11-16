@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libnghttp2-dev libz-dev libzstd-dev libbrotli-dev libkrb5-dev libidn2-dev libssh2-1-dev libpsl-dev libunistring-dev libldap2-dev librtmp-dev
+        sudo apt-get install -y build-essential cmake gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libnghttp2-dev libz-dev libzstd-dev libbrotli-dev libkrb5-dev libidn2-dev libssh2-1-dev libpsl-dev libunistring-dev libldap2-dev librtmp-dev libgnutls28-dev libnettle-dev libsasl2-dev
 
     - name: Build ESurfingClient
       run: |

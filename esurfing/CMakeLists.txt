@@ -521,6 +521,51 @@ else()
         NO_DEFAULT_PATH
     )
     
+    find_library(GNUTLS_STATIC_LIB
+        NAMES libgnutls.a gnutls
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(NETTLE_STATIC_LIB
+        NAMES libnettle.a nettle
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(HOGWEED_STATIC_LIB
+        NAMES libhogweed.a hogweed
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(GMP_STATIC_LIB
+        NAMES libgmp.a gmp
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(SASL2_STATIC_LIB
+        NAMES libsasl2.a sasl2
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
     # 检查是否找到所有静态库
     if(CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
         message(STATUS "✅ Found all core static libraries for Unix platform:")
@@ -601,6 +646,24 @@ else()
         if(RTMP_STATIC_LIB)
             message(STATUS "  RTMP: ${RTMP_STATIC_LIB}")
             target_link_libraries(ESurfingClient PRIVATE ${RTMP_STATIC_LIB})
+        endif()
+        
+        if(GNUTLS_STATIC_LIB AND NETTLE_STATIC_LIB AND HOGWEED_STATIC_LIB AND GMP_STATIC_LIB)
+            message(STATUS "  GNUTLS: ${GNUTLS_STATIC_LIB}")
+            message(STATUS "  NETTLE: ${NETTLE_STATIC_LIB}")
+            message(STATUS "  HOGWEED: ${HOGWEED_STATIC_LIB}")
+            message(STATUS "  GMP: ${GMP_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE 
+                ${GNUTLS_STATIC_LIB}
+                ${NETTLE_STATIC_LIB}
+                ${HOGWEED_STATIC_LIB}
+                ${GMP_STATIC_LIB}
+            )
+        endif()
+        
+        if(SASL2_STATIC_LIB)
+            message(STATUS "  SASL2: ${SASL2_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${SASL2_STATIC_LIB})
         endif()
         
         # 添加系统库
