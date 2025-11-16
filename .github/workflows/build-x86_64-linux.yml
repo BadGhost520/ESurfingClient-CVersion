@@ -26,32 +26,33 @@ jobs:
           wget https://curl.se/download/curl-8.8.0.tar.gz
           tar -xzf curl-8.8.0.tar.gz
           cd curl-8.8.0
-  
+          
           ./configure \
-          --disable-shared \
-          --enable-static \
-          --without-gssapi \
-          --without-libpsl \
-          --without-libssh2 \
-          --without-nghttp2 \
-          --without-brotli \
-          --without-zstd \
-          --without-libidn2 \
-          --without-ldap \
-          --without-ldaps \
-          --without-rtsp \
-          --without-dict \
-          --without-telnet \
-          --without-tftp \
-          --without-pop3 \
-          --without-imap \
-          --without-smb \
-          --without-smtp \
-          --without-gopher \
-          --without-mqtt \
-          --without-ftp \
-          --with-ssl \
-          --prefix=/usr/local
+            --disable-shared \
+            --enable-static \
+            --without-gssapi \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-nghttp2 \
+            --without-brotli \
+            --without-zstd \
+            --without-libidn2 \
+            --without-ldap \
+            --without-ldaps \
+            --without-rtsp \
+            --without-dict \
+            --without-telnet \
+            --without-tftp \
+            --without-pop3 \
+            --without-imap \
+            --without-smb \
+            --without-smtp \
+            --without-gopher \
+            --without-mqtt \
+            --without-ftp \
+            --without-zlib \
+            --with-ssl \
+            --prefix=/usr/local
   
           make -j$(nproc)
           sudo make install
