@@ -11,8 +11,6 @@ on:
 jobs:
   build-x64-linux:
     runs-on: ubuntu-latest
-    container:
-      image: debian:11
 
     steps:
       - name: Checkout repository
@@ -21,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y build-essential cmake gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev file
+          apt-get install -y build-essential cmake gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev
 
       - name: Build ESurfingClient
         run: |

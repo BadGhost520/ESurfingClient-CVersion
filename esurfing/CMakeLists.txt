@@ -17,6 +17,54 @@ if(WIN32)
     find_package(LibXml2 REQUIRED)
 endif()
 
+# Linux 静态编译配置
+if(UNIX AND NOT WIN32)
+    # 设置查找静态库
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    set(BUILD_STATIC ON CACHE BOOL "Build with static linking")
+
+    # 寻找静态库
+    find_library(CURL_STATIC_LIB
+            NAMES libcurl.a curl
+            PATHS
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib64
+            /usr/lib
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+    )
+
+    find_library(SSL_STATIC_LIB
+            NAMES libssl.a ssl
+            PATHS
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib64
+            /usr/lib
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+    )
+
+    find_library(CRYPTO_STATIC_LIB
+            NAMES libcrypto.a crypto
+            PATHS
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib64
+            /usr/lib
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+    )
+
+    find_library(Z_STATIC_LIB
+            NAMES libz.a z
+            PATHS
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib64
+            /usr/lib
+            /usr/local/lib
+            ${CMAKE_PREFIX_PATH}/lib
+    )
+endif()
+
 add_executable(ESurfingClient
         src/DialerApp.c
         src/Client.c
@@ -359,14 +407,54 @@ if(WIN32)
             LINK_SEARCH_START_STATIC ON
             LINK_SEARCH_END_STATIC ON
     )
-else()
-    # 非Windows平台的链接库
-    target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
-    target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-endif()
+    # Linux 静态编译配置
+elseif(UNIX AND NOT WIN32)
+    if(BUILD_STATIC AND CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
+        message(STATUS "✅ Building with static libraries on Linux")
+        message(STATUS "CURL: ${CURL_STATIC_LIB}")
+        message(STATUS "SSL: ${SSL_STATIC_LIB}")
+        message(STATUS "CRYPTO: ${CRYPTO_STATIC_LIB}")
 
-# Linux 编译选项与输出目录
-if(UNIX AND NOT WIN32)
+        # 链接静态库
+        target_link_libraries(ESurfingClient PRIVATE
+                ${CURL_STATIC_LIB}
+                ${SSL_STATIC_LIB}
+                ${CRYPTO_STATIC_LIB}
+        )
+
+        # 链接可能的依赖库
+        if(Z_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
+        endif()
+
+        # 静态链接标志
+        set_target_properties(ESurfingClient PROPERTIES
+                LINK_FLAGS "-static -static-libgcc -static-libstdc++"
+        )
+    else()
+        message(STATUS "ℹ️  Using dynamic linking on Linux")
+        # 动态链接回退
+        target_link_libraries(ESurfingClient PRIVATE
+                CURL::libcurl
+                OpenSSL::SSL
+                OpenSSL::Crypto
+        )
+
+        # 如果静态库查找失败，给出提示
+        if(BUILD_STATIC)
+            message(WARNING "Static libraries not found, falling back to dynamic linking")
+            if(NOT CURL_STATIC_LIB)
+                message(STATUS "Missing: libcurl.a")
+            endif()
+            if(NOT SSL_STATIC_LIB)
+                message(STATUS "Missing: libssl.a")
+            endif()
+            if(NOT CRYPTO_STATIC_LIB)
+                message(STATUS "Missing: libcrypto.a")
+            endif()
+        endif()
+    endif()
+    # Linux 编译选项与输出目录
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
     set_target_properties(ESurfingClient PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
