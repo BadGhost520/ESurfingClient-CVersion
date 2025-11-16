@@ -23,7 +23,7 @@ jobs:
           apt-get update
           apt-get install -y build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file
 
-      - name: Build ESurfingClient
+      - name: Build libcurl
         run: |
           wget https://curl.se/download/curl-8.8.0.tar.gz
           tar -xzf curl-8.8.0.tar.gz
@@ -55,14 +55,16 @@ jobs:
             --without-zlib \
             --with-ssl \
             --prefix=/usr/local
-  
+          
           make -j$(nproc)
           make install
-  
+          
           # 更新 CMake 查找路径
           export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
           cd ..
-          
+
+      - name: Build ESurfingClient
+        run: |
           echo "🏗️ Starting x64 Linux build process"
           echo "📁 Go to esurfing dir"
           cd esurfing
