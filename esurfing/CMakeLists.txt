@@ -394,17 +394,164 @@ else()
         NO_DEFAULT_PATH
     )
     
+    # 查找curl依赖的其他静态库
+    find_library(NGHTTP2_STATIC_LIB
+        NAMES libnghttp2.a nghttp2
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(Z_STATIC_LIB
+        NAMES libz.a z
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(ZSTD_STATIC_LIB
+        NAMES libzstd.a zstd
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(BROTLI_DEC_STATIC_LIB
+        NAMES libbrotlidec.a brotlidec
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(BROTLI_COMMON_STATIC_LIB
+        NAMES libbrotlicommon.a brotlicommon
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(GSSAPI_STATIC_LIB
+        NAMES libgssapi_krb5.a gssapi_krb5
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(KRB5_STATIC_LIB
+        NAMES libkrb5.a krb5
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(IDN2_STATIC_LIB
+        NAMES libidn2.a idn2
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(SSH2_STATIC_LIB
+        NAMES libssh2.a ssh2
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(PSL_STATIC_LIB
+        NAMES libpsl.a psl
+        PATHS
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
     # 检查是否找到所有静态库
     if(CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
-        message(STATUS "✅ Found all static libraries for Unix platform:")
+        message(STATUS "✅ Found all core static libraries for Unix platform:")
         message(STATUS "  CURL: ${CURL_STATIC_LIB}")
         message(STATUS "  SSL: ${SSL_STATIC_LIB}")
         message(STATUS "  CRYPTO: ${CRYPTO_STATIC_LIB}")
         
+        # 链接核心库
         target_link_libraries(ESurfingClient PRIVATE 
             ${CURL_STATIC_LIB}
             ${SSL_STATIC_LIB}
             ${CRYPTO_STATIC_LIB}
+        )
+        
+        # 链接可选库（如果找到）
+        if(Z_STATIC_LIB)
+            message(STATUS "  Z: ${Z_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
+        endif()
+        
+        if(NGHTTP2_STATIC_LIB)
+            message(STATUS "  NGHTTP2: ${NGHTTP2_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${NGHTTP2_STATIC_LIB})
+        endif()
+        
+        if(ZSTD_STATIC_LIB)
+            message(STATUS "  ZSTD: ${ZSTD_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${ZSTD_STATIC_LIB})
+        endif()
+        
+        if(BROTLI_DEC_STATIC_LIB AND BROTLI_COMMON_STATIC_LIB)
+            message(STATUS "  BROTLI_DEC: ${BROTLI_DEC_STATIC_LIB}")
+            message(STATUS "  BROTLI_COMMON: ${BROTLI_COMMON_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE 
+                ${BROTLI_DEC_STATIC_LIB} 
+                ${BROTLI_COMMON_STATIC_LIB}
+            )
+        endif()
+        
+        if(GSSAPI_STATIC_LIB AND KRB5_STATIC_LIB)
+            message(STATUS "  GSSAPI: ${GSSAPI_STATIC_LIB}")
+            message(STATUS "  KRB5: ${KRB5_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE 
+                ${GSSAPI_STATIC_LIB} 
+                ${KRB5_STATIC_LIB}
+            )
+        endif()
+        
+        if(IDN2_STATIC_LIB)
+            message(STATUS "  IDN2: ${IDN2_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${IDN2_STATIC_LIB})
+        endif()
+        
+        if(SSH2_STATIC_LIB)
+            message(STATUS "  SSH2: ${SSH2_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${SSH2_STATIC_LIB})
+        endif()
+        
+        if(PSL_STATIC_LIB)
+            message(STATUS "  PSL: ${PSL_STATIC_LIB}")
+            target_link_libraries(ESurfingClient PRIVATE ${PSL_STATIC_LIB})
+        endif()
+        
+        # 添加系统库
+        target_link_libraries(ESurfingClient PRIVATE 
+            dl 
+            pthread
         )
     else()
         message(WARNING "Could not find all static libraries, falling back to standard linking")
