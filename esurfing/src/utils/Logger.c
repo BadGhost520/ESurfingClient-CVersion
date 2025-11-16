@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #endif
 
 #ifdef _WIN32
@@ -154,13 +156,32 @@ int ensureLogDir(char* out)
         return -1;
     }
 #else
+    const char* dir = NULL;
     if (isDebug)
     {
-        char dir[] = "/usr/esurfing";
+        FILE *fp = popen("cat /etc/openwrt_release", "r");
+        if (fp == NULL)
+        {
+            LOG_ERROR("Popen error");
+            return -1;
+        }
+        int status = pclose(fp);
+        if (WIFEXITED(status))
+        {
+            int exit_status = WEXITSTATUS(status);
+            if (exit_status == 0)
+            {
+                dir = "/usr/esurfing";
+            }
+            else
+            {
+                dir = "/var/log/esurfing";
+            }
+        }
     }
     else
     {
-        char dir[] = "/var/log/esurfing";
+        dir = "/var/log/esurfing";
     }
 #endif
 #ifdef _WIN32
