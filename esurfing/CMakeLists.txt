@@ -414,31 +414,11 @@ elseif(UNIX AND NOT WIN32)
 
         # 链接静态库
         target_link_libraries(ESurfingClient PRIVATE
-                ${CURL_STATIC_LIB}
+                /usr/local/lib/libcurl.a
                 ${SSL_STATIC_LIB}
                 ${CRYPTO_STATIC_LIB}
+                pthread
         )
-
-        # 强制添加 GSSAPI/Kerberos 相关库
-        target_link_libraries(ESurfingClient PRIVATE
-                gssapi_krb5
-                krb5
-                k5crypto
-                com_err
-                psl
-                ssh2
-                nghttp2
-                brotlidec
-                brotlicommon
-                idn2
-                unistring
-                z
-        )
-
-        # 添加其他可能的依赖
-        if(Z_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
-        endif()
 
         # 静态链接标志
         set_target_properties(ESurfingClient PROPERTIES
