@@ -128,10 +128,9 @@ jobs:
 
     - name: Build libcurl for OpenWrt
       run: |
-        cd $GITHUB_WORKSPACE
-        git clone https://github.com/openwrt/packages.git openwrt-packages
-        cp -r openwrt-packages/libs/libcurl package/libs/
-        make package/libs/libcurl/compile
+        cd openwrt-sdk
+        echo "Making libcurl package"
+        make package/libs/libcurl/install V=sc -j$(nproc)
 
     - name: Compile esurfingclient package
       run: |
