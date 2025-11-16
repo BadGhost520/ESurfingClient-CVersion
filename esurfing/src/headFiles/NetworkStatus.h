@@ -7,13 +7,14 @@
 #define NETWORKSTATUS_H
 
 typedef enum {
-    CONNECTIVITY_SUCCESS = 0,
-    CONNECTIVITY_REQUIRE_AUTHORIZATION = 1,
-    CONNECTIVITY_REQUEST_ERROR = 2
+    SUCCESS = 0,
+    REQUIRE_AUTHORIZATION = 1,
+    REQUEST_ERROR = 2
 } ConnectivityStatus;
 
-/*
+/**
  * 检测网络状态
+ * @return 网络状态
  */
 ConnectivityStatus checkStatus();
 

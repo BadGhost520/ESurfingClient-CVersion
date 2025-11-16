@@ -47,13 +47,13 @@ char* extractUrlParameter(const char* url, const char* param_name)
 
 ConnectivityStatus checkStatus()
 {
-    int response_code = 0;
+    long response_code = 0;
     HTTPResponse response_data = {0};
     CURL* curl = curl_easy_init();
     if (!curl)
     {
         LOG_ERROR("Curl init error");
-        return CONNECTIVITY_REQUEST_ERROR;
+        return REQUEST_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
@@ -77,7 +77,7 @@ ConnectivityStatus checkStatus()
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
         LOG_ERROR("HTTP request error");
-        return CONNECTIVITY_REQUEST_ERROR;
+        return REQUEST_ERROR;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code == 204)
@@ -85,8 +85,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
-        LOG_DEBUG("Connect success, response code: %d", response_code);
-        return CONNECTIVITY_SUCCESS;
+        return SUCCESS;
     }
     if (response_code != 200 && response_code != 302)
     {
@@ -94,7 +93,7 @@ ConnectivityStatus checkStatus()
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
         LOG_ERROR("HTTP Response error, response code: %d", response_code);
-        return CONNECTIVITY_REQUEST_ERROR;
+        return REQUEST_ERROR;
     }
     if (response_data.memory && response_data.size > 0)
     {
@@ -129,7 +128,7 @@ ConnectivityStatus checkStatus()
                     curl_easy_cleanup(curl);
                     curl_slist_free_all(headers);
                     free(response_data.memory);
-                    return CONNECTIVITY_REQUIRE_AUTHORIZATION;
+                    return REQUIRE_AUTHORIZATION;
                 }
                 if (user_ip) free(user_ip);
                 if (ac_ip) free(ac_ip);
@@ -142,5 +141,5 @@ ConnectivityStatus checkStatus()
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
     if (response_data.memory) free(response_data.memory);
-    return CONNECTIVITY_SUCCESS;
+    return SUCCESS;
 }

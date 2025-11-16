@@ -8,6 +8,7 @@
 
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/utils/PlatformUtils.h"
+#include "../headFiles/Options.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,6 +17,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #endif
 
 #ifdef _WIN32
@@ -153,7 +156,33 @@ int ensureLogDir(char* out)
         return -1;
     }
 #else
-    char dir[] = "/var/log/esurfing";
+    const char* dir = NULL;
+    if (isDebug)
+    {
+        FILE *fp = popen("cat /etc/openwrt_release", "r");
+        if (fp == NULL)
+        {
+            LOG_ERROR("Popen error");
+            return -1;
+        }
+        int status = pclose(fp);
+        if (WIFEXITED(status))
+        {
+            int exit_status = WEXITSTATUS(status);
+            if (exit_status == 0)
+            {
+                dir = "/usr/esurfing";
+            }
+            else
+            {
+                dir = "/var/log/esurfing";
+            }
+        }
+    }
+    else
+    {
+        dir = "/var/log/esurfing";
+    }
 #endif
 #ifdef _WIN32
     const int n = snprintf(out, 260, "%s\\logs", dir);
