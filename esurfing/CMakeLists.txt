@@ -462,6 +462,14 @@ elseif(UNIX AND NOT WIN32)
                 krb5
                 k5crypto
                 com_err
+                psl
+                ssh2
+                nghttp2
+                brotlidec
+                brotlicommon
+                idn2
+                unistring
+                z
         )
 
         # 添加其他可能的依赖
