@@ -454,34 +454,27 @@ elseif(UNIX AND NOT WIN32)
                 ${CURL_STATIC_LIB}
                 ${SSL_STATIC_LIB}
                 ${CRYPTO_STATIC_LIB}
-                ${Z_STATIC_LIB}
         )
 
-        # 添加 GSSAPI 相关库（按正确顺序）
-        if(GSSAPI_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${GSSAPI_LIB})
-            message(STATUS "Found GSSAPI: ${GSSAPI_LIB}")
-        endif()
+        # 强制添加 GSSAPI/Kerberos 相关库
+        target_link_libraries(ESurfingClient PRIVATE
+                gssapi_krb5
+                krb5
+                k5crypto
+                com_err
+        )
 
-        if(KRB5_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${KRB5_LIB})
-            message(STATUS "Found KRB5: ${KRB5_LIB}")
-        endif()
-
-        if(K5CRYPTO_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${K5CRYPTO_LIB})
-            message(STATUS "Found K5CRYPTO: ${K5CRYPTO_LIB}")
-        endif()
-
-        if(COM_ERR_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${COM_ERR_LIB})
-            message(STATUS "Found COM_ERR: ${COM_ERR_LIB}")
+        # 添加其他可能的依赖
+        if(Z_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
         endif()
 
         # 静态链接标志
         set_target_properties(ESurfingClient PROPERTIES
                 LINK_FLAGS "-static -static-libgcc -static-libstdc++"
         )
+        # 打印链接状态
+        message(STATUS "Linked GSSAPI/Kerberos libraries")
     else()
         message(STATUS "ℹ️  Using dynamic linking on Linux")
         # 动态链接回退
