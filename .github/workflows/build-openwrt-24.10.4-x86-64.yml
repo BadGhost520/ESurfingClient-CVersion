@@ -114,6 +114,12 @@ jobs:
           fi
         done
 
+    - name: Build libcurl for OpenWrt
+      run: |
+        cd openwrt-sdk
+        echo "Making libcurl package"
+        make package/libs/libcurl/install V=sc -j$(nproc)
+
     - name: Compile curl package
       run: |
         cd openwrt-sdk
@@ -125,12 +131,6 @@ jobs:
         cd openwrt-sdk
         echo "Making openssl package"
         make package/openssl/compile V=sc -j$(nproc)
-
-    - name: Build libcurl for OpenWrt
-      run: |
-        cd openwrt-sdk
-        echo "Making libcurl package"
-        make package/libs/libcurl/install V=sc -j$(nproc)
 
     - name: Compile esurfingclient package
       run: |
