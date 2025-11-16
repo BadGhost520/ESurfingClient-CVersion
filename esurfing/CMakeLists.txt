@@ -8,6 +8,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# 强制使用静态库
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+
 # 通用依赖（跨平台）
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -143,37 +146,6 @@ if(WIN32)
             ${CMAKE_PREFIX_PATH}/lib
         NO_DEFAULT_PATH
     )
-    
-    # HTTP/3 and QUIC libraries (disabled due to OpenSSL QUIC compatibility issues)
-# find_library(NGHTTP3_STATIC_LIB
-#     NAMES libnghttp3.a nghttp3
-#     PATHS 
-#         /mingw64/lib 
-#         /usr/lib 
-#         /usr/local/lib
-#         ${CMAKE_PREFIX_PATH}/lib
-#     NO_DEFAULT_PATH
-# )
-
-# find_library(NGTCP2_STATIC_LIB
-#     NAMES libngtcp2.a ngtcp2
-#     PATHS 
-#         /mingw64/lib 
-#         /usr/lib 
-#         /usr/local/lib
-#         ${CMAKE_PREFIX_PATH}/lib
-#     NO_DEFAULT_PATH
-# )
-
-# find_library(NGTCP2_CRYPTO_STATIC_LIB
-#     NAMES libngtcp2_crypto_ossl.a ngtcp2_crypto_ossl
-#     PATHS 
-#         /mingw64/lib 
-#         /usr/lib 
-#         /usr/local/lib
-#         ${CMAKE_PREFIX_PATH}/lib
-#     NO_DEFAULT_PATH
-# )
     
     find_library(SSH2_STATIC_LIB 
         NAMES libssh2.a ssh2 
@@ -331,16 +303,6 @@ if(WIN32)
         if(ICONV_STATIC_LIB)
             message(STATUS "ICONV: ${ICONV_STATIC_LIB}")
         endif()
-        # HTTP/3 libraries disabled
-        # if(NGHTTP3_STATIC_LIB)
-        #     message(STATUS "NGHTTP3: ${NGHTTP3_STATIC_LIB}")
-        # endif()
-        # if(NGTCP2_STATIC_LIB)
-        #     message(STATUS "NGTCP2: ${NGTCP2_STATIC_LIB}")
-        # endif()
-        # if(NGTCP2_CRYPTO_STATIC_LIB)
-        #     message(STATUS "NGTCP2_CRYPTO: ${NGTCP2_CRYPTO_STATIC_LIB}")
-        # endif()
         
         # Link core libraries
         target_link_libraries(ESurfingClient PRIVATE 
@@ -378,17 +340,6 @@ if(WIN32)
             target_link_libraries(ESurfingClient PRIVATE ${ICONV_STATIC_LIB})
         endif()
         
-        # Add optional HTTP/3 libraries if available (required by libcurl) - DISABLED
-        # if(NGHTTP3_STATIC_LIB)
-        #     target_link_libraries(ESurfingClient PRIVATE ${NGHTTP3_STATIC_LIB})
-        # endif()
-        # if(NGTCP2_STATIC_LIB)
-        #     target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_STATIC_LIB})
-        # endif()
-        # if(NGTCP2_CRYPTO_STATIC_LIB)
-        #     target_link_libraries(ESurfingClient PRIVATE ${NGTCP2_CRYPTO_STATIC_LIB})
-        # endif()
-        
         # Add Windows system libraries
         target_link_libraries(ESurfingClient PRIVATE 
             ws2_32
@@ -412,9 +363,58 @@ if(WIN32)
         LINK_SEARCH_END_STATIC ON
     )
 else()
-    # 非Windows平台的链接库
-    target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
-    target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+    # Unix平台（包括Linux）的链接库 - 使用静态链接
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    
+    # 尝试查找静态库
+    find_library(CURL_STATIC_LIB 
+        NAMES libcurl.a curl
+        PATHS 
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(SSL_STATIC_LIB 
+        NAMES libssl.a ssl
+        PATHS 
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    find_library(CRYPTO_STATIC_LIB 
+        NAMES libcrypto.a crypto
+        PATHS 
+            /usr/lib/x86_64-linux-gnu/
+            /usr/lib/
+            /usr/local/lib
+        NO_DEFAULT_PATH
+    )
+    
+    # 检查是否找到所有静态库
+    if(CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
+        message(STATUS "✅ Found all static libraries for Unix platform:")
+        message(STATUS "  CURL: ${CURL_STATIC_LIB}")
+        message(STATUS "  SSL: ${SSL_STATIC_LIB}")
+        message(STATUS "  CRYPTO: ${CRYPTO_STATIC_LIB}")
+        
+        target_link_libraries(ESurfingClient PRIVATE 
+            ${CURL_STATIC_LIB}
+            ${SSL_STATIC_LIB}
+            ${CRYPTO_STATIC_LIB}
+        )
+    else()
+        message(WARNING "Could not find all static libraries, falling back to standard linking")
+        message(STATUS "  CURL: ${CURL_STATIC_LIB}")
+        message(STATUS "  SSL: ${SSL_STATIC_LIB}")
+        message(STATUS "  CRYPTO: ${CRYPTO_STATIC_LIB}")
+        
+        target_link_libraries(ESurfingClient PRIVATE CURL::libcurl)
+        target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+    endif()
 endif()
 
 # Linux 编译选项与输出目录
