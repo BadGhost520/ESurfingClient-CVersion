@@ -57,7 +57,7 @@ jobs:
             --prefix=/usr/local
   
           make -j$(nproc)
-          sudo make install
+          make install
   
           # 更新 CMake 查找路径
           export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
