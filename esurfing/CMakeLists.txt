@@ -291,7 +291,6 @@ elseif(UNIX AND NOT WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     set(BUILD_STATIC ON CACHE BOOL "Build with static linking")
 
-    # 首先尝试使用 OpenWrt 的 STAGING_DIR
     if(DEFINED ENV{STAGING_DIR})
         set(STAGING_DIR $ENV{STAGING_DIR})
         message(STATUS "Using OpenWrt STAGING_DIR: ${STAGING_DIR}")
