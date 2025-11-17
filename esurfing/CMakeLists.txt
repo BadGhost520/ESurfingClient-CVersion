@@ -358,7 +358,6 @@ elseif(UNIX AND NOT WIN32)
                 OpenSSL::Crypto
                 dl
                 pthread
-                z
         )
     endif()
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
