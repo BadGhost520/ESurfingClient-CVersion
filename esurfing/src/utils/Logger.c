@@ -157,18 +157,22 @@ int ensureLogDir(char* out)
     const char* dir = NULL;
     if (isDebug)
     {
-        if (access("/etc/openwrt_release", F_OK) != 0)
+        printf("Debug mode log system\n");
+        if (access("/etc/openwrt_release", F_OK) == 0)
         {
             dir = "/usr/esurfing";
+            printf("Use dir: %s\n", dir);
         } 
         else
         {
             dir = "/var/log/esurfing";
+            printf("Use dir: %s\n", dir);
         }
     }
     else
     {
         dir = "/var/log/esurfing";
+        printf("Use dir: %s\n", dir);
     }
 #endif
 #ifdef _WIN32
