@@ -356,8 +356,6 @@ elseif(UNIX AND NOT WIN32)
                 CURL::libcurl
                 OpenSSL::SSL
                 OpenSSL::Crypto
-                dl
-                pthread
         )
     endif()
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
