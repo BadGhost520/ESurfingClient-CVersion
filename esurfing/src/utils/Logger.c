@@ -17,8 +17,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <sys/wait.h>
-#include <sys/types.h>
 #endif
 
 #ifdef _WIN32
@@ -48,7 +46,6 @@ const char* loggerLevelString(const LogLevel level)
     case LOG_LEVEL_WARN:  return "WARN";
     case LOG_LEVEL_ERROR: return "ERROR";
     case LOG_LEVEL_FATAL: return "FATAL";
-    case LOG_LEVEL_OFF:   return "OFF";
     default:              return "UNKNOWN";
     }
 }
@@ -112,7 +109,7 @@ int getExecutableDir(char* out)
     {
         return -1;
     }
-    char* last = strrchr(path, '\\');
+    char* last = strrchr(path, sep);
     if (!last)
     {
         return -1;
@@ -132,7 +129,7 @@ int getExecutableDir(char* out)
         return -1;
     }
     path[len] = '\0';
-    char* last = strrchr(path, '/');
+    char* last = strrchr(path, sep);
     if (!last)
     {
         return -1;
@@ -159,24 +156,13 @@ int ensureLogDir(char* out)
     const char* dir = NULL;
     if (isDebug)
     {
-        FILE *fp = popen("cat /etc/openwrt_release", "r");
-        if (fp == NULL)
+        if (access("/etc/openwrt_release", F_OK) == 0)
         {
-            LOG_ERROR("Popen error");
-            return -1;
-        }
-        int status = pclose(fp);
-        if (WIFEXITED(status))
+            dir = "/usr/esurfing";
+        } 
+        else
         {
-            int exit_status = WEXITSTATUS(status);
-            if (exit_status == 0)
-            {
-                dir = "/usr/esurfing";
-            }
-            else
-            {
-                dir = "/var/log/esurfing";
-            }
+            dir = "/var/log/esurfing";
         }
     }
     else
@@ -185,7 +171,7 @@ int ensureLogDir(char* out)
     }
 #endif
 #ifdef _WIN32
-    const int n = snprintf(out, 260, "%s\\logs", dir);
+    const int n = snprintf(out, 260, "%s%clogs", dir, sep);
     if (n < 0 || (size_t)n >= 260)
     {
         return -1;
@@ -199,7 +185,7 @@ int ensureLogDir(char* out)
         }
     }
 #else
-    int n = snprintf(out, 260, "%s/logs", dir);
+    int n = snprintf(out, 260, "%s%clogs", dir, sep);
     if (n < 0 || (size_t)n >= 260)
     {
         return -1;
@@ -315,8 +301,7 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
         "[%s] [%s] [%s:%d] %s\n",
         timestamp,
         loggerLevelString(level),
-        strrchr(file, '/') ? strrchr(file, '/') + 1 :
-        strrchr(file, '\\') ? strrchr(file, '\\') + 1 : file,
+        strrchr(file, sep) ? strrchr(file, sep) + 1 : file,
         line,
         message);
     loggerWriteToConsole(finalMessage);

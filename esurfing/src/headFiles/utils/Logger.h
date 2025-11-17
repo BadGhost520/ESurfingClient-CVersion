@@ -16,8 +16,7 @@ typedef enum {
     LOG_LEVEL_INFO  = 1,
     LOG_LEVEL_WARN  = 2,
     LOG_LEVEL_ERROR = 3,
-    LOG_LEVEL_FATAL = 4,
-    LOG_LEVEL_OFF   = 5
+    LOG_LEVEL_FATAL = 4
 } LogLevel;
 
 typedef enum {

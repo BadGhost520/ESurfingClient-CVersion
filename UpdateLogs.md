@@ -22,3 +22,8 @@
 1. 修复因为把 response_code 参数的 long 类型改成 int 类型导致的 Segmentation fault 段错误的问题
 2. 尝试修复因为登录时长过久导致的 Invalid zsm data 并且无法上网的错误
 3. (临时)优化日志系统，现在开启 debug 模式会让日志生成在 /usr/esurfing 目录中，而不是 /var/log/esurfing 中
+
+### 2025.11.17
+
+1. 优化日志系统，现在在 OpenWrt 系统开启 debug 模式会让日志生成在 /usr/esurfing 目录中，而不是在重启后就会清除的 /var/log/esurfing 目录中，其它系统仍旧
+2. 将 Linux 版本做成静态链接版本，避免了因链接库版本不同导致的无法运行

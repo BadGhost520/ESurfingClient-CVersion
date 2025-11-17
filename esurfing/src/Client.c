@@ -139,8 +139,8 @@ void authorization()
     initSession();
     if (!isInitialized)
     {
-        LOG_ERROR("Session initialization failed, please restart the application or download the application from Release again");
-        LOG_ERROR("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest");
+        LOG_FATAL("Session initialization failed, please restart the application or download the application from Release again");
+        LOG_FATAL("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest");
         isRunning = 0;
         return;
     }
@@ -151,7 +151,7 @@ void authorization()
     login();
     if (keepUrl == NULL)
     {
-        LOG_ERROR("Keep Url is empty");
+        LOG_FATAL("Keep Url is empty");
         sessionFree();
         isRunning = 0;
         return;
@@ -163,15 +163,11 @@ void authorization()
 
 void run()
 {
-    LOG_DEBUG("Enter main run");
-    const ConnectivityStatus networkStatus = checkStatus();
-    switch (networkStatus)
+    switch (checkStatus())
     {
     case SUCCESS:
-        LOG_DEBUG("Connect success");
         if (isInitialized && isLogged)
         {
-            LOG_DEBUG("Type: Login connect");
             long long keep_retry;
             if (stringToLongLong(keepRetry, &keep_retry))
             {
