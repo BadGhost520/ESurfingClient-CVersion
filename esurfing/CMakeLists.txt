@@ -288,62 +288,77 @@ if(WIN32)
             LINK_SEARCH_END_STATIC ON
     )
 elseif(UNIX AND NOT WIN32)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    set(BUILD_STATIC ON CACHE BOOL "Build with static linking")
+    option(BUILD_STATIC "Build with static linking" OFF)
 
-    find_library(CURL_STATIC_LIB
-            NAMES libcurl.a curl
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-    )
+    if(BUILD_STATIC)
+        message(STATUS "Building with static linking")
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
-    find_library(SSL_STATIC_LIB
-            NAMES libssl.a ssl
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-    )
+        find_library(CURL_STATIC_LIB
+                NAMES libcurl.a curl
+                PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
 
-    find_library(CRYPTO_STATIC_LIB
-            NAMES libcrypto.a crypto
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-    )
+        find_library(SSL_STATIC_LIB
+                NAMES libssl.a ssl
+                PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
 
-    find_library(Z_STATIC_LIB
-            NAMES libz.a z
-            PATHS
-            /usr/lib/x86_64-linux-gnu
-            /usr/lib64
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-    )
+        find_library(CRYPTO_STATIC_LIB
+                NAMES libcrypto.a crypto
+                PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
 
-    if(BUILD_STATIC AND CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
+        find_library(Z_STATIC_LIB
+                NAMES libz.a z
+                PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib64
+                /usr/lib
+                /usr/local/lib
+                ${CMAKE_PREFIX_PATH}/lib
+        )
+
+        if(BUILD_STATIC AND CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
+            target_link_libraries(ESurfingClient PRIVATE
+                    ${CURL_STATIC_LIB}
+                    ${SSL_STATIC_LIB}
+                    ${CRYPTO_STATIC_LIB}
+                    dl
+                    pthread
+            )
+            if(Z_STATIC_LIB)
+                target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
+            endif()
+            set_target_properties(ESurfingClient PROPERTIES
+                    LINK_FLAGS "-static -static-libgcc -static-libstdc++"
+            )
+            target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
+        endif()
+    else()
+        message(STATUS "Building with dynamic linking")
         target_link_libraries(ESurfingClient PRIVATE
-                ${CURL_STATIC_LIB}
-                ${SSL_STATIC_LIB}
-                ${CRYPTO_STATIC_LIB}
+                CURL::libcurl
+                OpenSSL::SSL
+                OpenSSL::Crypto
                 dl
                 pthread
-        )
-        if(Z_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
-        endif()
-        set_target_properties(ESurfingClient PROPERTIES
-                LINK_FLAGS "-static -static-libgcc -static-libstdc++"
+                z
         )
     endif()
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
