@@ -4,6 +4,11 @@
 
 **2. 使用 opkg install 安装下载的 ipk 包**
 
+> [!NOTE]
+> 可能会缺少一些依赖包，需要手动从镜像站上面下载
+> 
+> 这里提供一个好用的镜像站地址: [南方科技大学镜像站](https://mirrors.sustech.edu.cn/openwrt/releases/)
+
 **3. `按顺序`运行下面`必要`的命令以设置服务配置文件和运行服务**
 
 > [!WARNING]
