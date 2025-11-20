@@ -155,10 +155,14 @@ int ensureLogDir(char* out)
     const char* dir = NULL;
     if (isDebug)
     {
-        if (access("/etc/openwrt_release", F_OK) == 0 && !smallDevice)
+        if (smallDevice)
+        {
+            dir = "/var/log/esurfing";
+        }
+        else if (access("/etc/openwrt_release", F_OK) == 0)
         {
             dir = "/usr/esurfing";
-        } 
+        }
         else
         {
             dir = "/var/log/esurfing";
