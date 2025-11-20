@@ -152,25 +152,10 @@ int ensureLogDir(char* out)
         return -1;
     }
 #else
-    const char* dir = NULL;
-    if (isDebug)
+    const char* dir = "/var/log/esurfing";
+    if (isDebug && !smallDevice && access("/etc/openwrt_release", F_OK) == 0)
     {
-        if (smallDevice)
-        {
-            dir = "/var/log/esurfing";
-        }
-        else if (access("/etc/openwrt_release", F_OK) == 0)
-        {
-            dir = "/usr/esurfing";
-        }
-        else
-        {
-            dir = "/var/log/esurfing";
-        }
-    }
-    else
-    {
-        dir = "/var/log/esurfing";
+        dir = "/usr/esurfing";
     }
 #endif
 #ifdef _WIN32

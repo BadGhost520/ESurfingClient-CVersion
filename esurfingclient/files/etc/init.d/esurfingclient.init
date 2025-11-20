@@ -13,7 +13,8 @@ validate_section() {
 		'username:string' \
 		'password:string' \
 		'channel:string' \
-    'debug:bool:0'
+    'debug:bool:0' \
+    'smallDevice:bool:1'
 }
 
 start_service() {
@@ -36,7 +37,7 @@ start_service() {
 		return 1
 	}
 
-    [ -n "$channel" ] || {
+  [ -n "$channel" ] || {
 		echo "channel not set"
 		return 1
 	}
