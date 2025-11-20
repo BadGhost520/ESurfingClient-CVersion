@@ -50,3 +50,8 @@
 .\ESurfingClient-x86_64-windows.exe -u 233333333 -p A1234567 -cpc
 .\ESurfingClient-x86_64-windows.exe -u 233333333 -p A1234567 -cphone
 ```
+
+> [!TIP]
+> 调试模式参数为 `-d`
+> 
+> 小容量设备模式参数为 `-s`

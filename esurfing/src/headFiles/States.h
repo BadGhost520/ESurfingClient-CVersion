@@ -4,7 +4,6 @@
 
 #ifndef ESURFINGCLIENT_STATES_H
 #define ESURFINGCLIENT_STATES_H
-#include <signal.h>
 
 extern char* clientId;
 extern char* algoId;
@@ -13,9 +12,9 @@ extern char* ticket;
 extern char* userIp;
 extern char* acIp;
 
-extern volatile sig_atomic_t isRunning;
-extern volatile sig_atomic_t isLogged;
-extern volatile sig_atomic_t isInitialized;
+extern int isRunning;
+extern int isLogged;
+extern int isInitialized;
 
 extern char* schoolId;
 extern char* domain;

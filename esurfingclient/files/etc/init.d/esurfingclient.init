@@ -13,11 +13,12 @@ validate_section() {
 		'username:string' \
 		'password:string' \
 		'channel:string' \
-    'debug:bool:0'
+    'debug:bool:0' \
+    'smallDevice:bool:1'
 }
 
 start_service() {
-	local enabled username password channel debug
+	local enabled username password channel debug smallDevice
 	
 	validate_section main || {
 		echo "validation failed"
@@ -36,7 +37,7 @@ start_service() {
 		return 1
 	}
 
-    [ -n "$channel" ] || {
+  [ -n "$channel" ] || {
 		echo "channel not set"
 		return 1
 	}
@@ -48,6 +49,8 @@ start_service() {
   procd_append_param command -c"$channel"
 	
 	[ "$debug" = "1" ] && procd_append_param command -d
+
+	[ "$smallDevice" = "1" ] && procd_append_param command -s
 	
 	procd_set_param respawn
 	procd_set_param stdout 1

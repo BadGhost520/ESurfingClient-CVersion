@@ -1,6 +1,6 @@
 # ESurfingClient-C
 
-**根据 Rsplwe 大蛇的 Kotlin 源码编写的 C 语言版本的`广东`天翼校园认证客户端** :+1:
+**根据 Rsplwe 大蛇的 Kotlin 源码编写的 C 语言版本的 `广东` 天翼校园认证客户端** :+1:
 
 **优点是程序文件超级小(所有版本均是总共占用不超过 3MB 的储存空间😋)**
 
@@ -72,6 +72,8 @@
 - 程序运行时，logs 目录下会生成实时更新的 run.log 日志文件
 
 - 程序退出时，run.log 日志文件会被重命名为<当前时间>.log
+
+- 同时满足 debug 模式开启和 smallDevice 模式关闭的条件的时候程序会将日志存储到 /usr/esurfing 目录中
 
 # [更新日志](UpdateLogs.md)
 

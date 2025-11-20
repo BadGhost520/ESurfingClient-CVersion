@@ -391,7 +391,7 @@ char* cleanCDATA(const char* text)
         return strdup(text);
     }
     const size_t len = end - start;
-    if (len <= 0) return NULL; // 添加长度检查
+    if (len <= 0) return NULL;
     char* result = malloc(len + 1);
     if (!result) return NULL;
     strncpy(result, start, len);

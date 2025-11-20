@@ -9,7 +9,7 @@
 > 
 > 这里提供一个好用的镜像站地址: [南方科技大学镜像站](https://mirrors.sustech.edu.cn/openwrt/releases/)
 
-**3. `按顺序`运行下面`必要`的命令以设置服务配置文件和运行服务**
+**3. `按顺序` 运行下面 `必要` 的命令以设置服务配置文件和运行服务**
 
 > [!WARNING]
 > **一定要按顺序！**
@@ -17,27 +17,27 @@
 ### 必要指令
 
 ```bash
-# 设置用户名 (必要)
+# 1. 设置用户名
 uci set esurfingclient.main.username='<用户名>'
 # 示例
 uci set esurfingclient.main.username='23333333'
 ```
 ```bash
-# 设置密码 (必要)
+# 2. 设置密码
 uci set esurfingclient.main.password='<密码>'
 # 示例
 uci set esurfingclient.main.password='A1234567'
 ```
 ```bash
-# 设置程序是否能被启动 (必要)
+# 3. 设置程序是否能被启动
 uci set esurfingclient.main.enabled='1'
 ```
 ```bash
-# 提交更改 (必要)
+# 4. 提交更改
 uci commit esurfingclient
 ```
 ```bash
-# 重载配置文件 (必要)
+# 5. 重载配置文件
 /etc/init.d/esurfingclient reload
 ```
 
@@ -54,6 +54,20 @@ uci set esurfingclient.main.channel='pc'
 > 目前有两个认证通道: pc 和 phone
 > 
 > **两者并没有什么太大的区别**
+
+```bash
+# 设置调试模式(默认关闭)
+uci set esurfingclient.main.debug='1 or 0'
+# 示例
+uci set esurfingclient.main.debug='0'
+```
+
+```bash
+# 设置小容量设备模式(默认开启)
+uci set esurfingclient.main.smallDevice='1 or 0'
+# 示例
+uci set esurfingclient.main.smallDevice='1'
+```
 
 ### 程序服务类指令
 
