@@ -5,4 +5,4 @@ char* usr;
 char* pwd;
 char* chn;
 int isDebug = 0;
-int smallDevice = 0;
+int isSmallDevice = 0;

@@ -9,6 +9,6 @@ extern char* usr;
 extern char* pwd;
 extern char* chn;
 extern int isDebug;
-extern int smallDevice;
+extern int isSmallDevice;
 
 #endif //ESURFINGCLIENT_OPTIONS_H

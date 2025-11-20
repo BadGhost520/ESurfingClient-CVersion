@@ -11,7 +11,7 @@
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Shutdown.h"
 
-int createBash()
+void createBash()
 {
     const char* filename = "/root/config.sh";
     FILE* file = fopen(filename, "w");
@@ -19,13 +19,16 @@ int createBash()
     if (file == NULL)
     {
         LOG_ERROR("创建文件失败");
-        return 0;
+        return;
     }
 
     fprintf(file, "#!/bin/sh\n");
     fprintf(file, "uci set esurfingclient.main.enabled='1'\n");
     fprintf(file, "uci set esurfingclient.main.username='%s'\n", usr);
     fprintf(file, "uci set esurfingclient.main.password='%s'\n", pwd);
+    fprintf(file, "uci set esurfingclient.main.channel='%s'\n", chn ? chn : "phone");
+    fprintf(file, "uci set esurfingclient.main.debug='%d'\n", isDebug);
+    fprintf(file, "uci set esurfingclient.main.smallDevice='%d'\n", isSmallDevice);
     fprintf(file, "uci commit esurfingclient\n");
     fprintf(file, "/etc/init.d/esurfingclient reload\n");
     fclose(file);
@@ -33,10 +36,9 @@ int createBash()
     if (chmod(filename, 0755) != 0)
     {
         LOG_ERROR("一键配置脚本创建失败");
-        return 0;
+        return;
     }
     LOG_INFO("一键配置脚本创建成功, 位于: %s", filename);
-    return 1;
 }
 
 int main(const int argc, char* argv[]) {
@@ -69,7 +71,7 @@ int main(const int argc, char* argv[]) {
             isDebug = 1;
             break;
         case 's':
-            smallDevice = 1;
+            isSmallDevice = 1;
             break;
         case '?':
             printf("参数错误: %c\n", optopt);
@@ -83,14 +85,8 @@ int main(const int argc, char* argv[]) {
     {
         LOG_DEBUG("用户名: %s", usr);
         LOG_DEBUG("密码: %s", pwd);
-        LOG_DEBUG("通道: %s", chn ? chn : "默认(pc)");
-
-        if (access("/etc/openwrt_release", F_OK) == 0)
-        {
-            createBash();
-        }
-
-        if (smallDevice)
+        LOG_DEBUG("通道: %s", chn ? chn : "默认(phone)");
+        if (isSmallDevice)
         {
             LOG_DEBUG("小容量设备模式已开启");
         }
@@ -116,6 +112,10 @@ int main(const int argc, char* argv[]) {
         else
         {
             initChannel(2);
+        }
+        if (access("/etc/openwrt_release", F_OK) == 0)
+        {
+            createBash();
         }
         LOG_INFO("程序启动中");
         sleepMilliseconds(5000);
