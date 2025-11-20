@@ -15,9 +15,9 @@ char* ticket;
 char* userIp;
 char* acIp;
 
-volatile sig_atomic_t isRunning = 0;
-volatile sig_atomic_t isLogged = 0;
-volatile sig_atomic_t isInitialized = 0;
+int isRunning = 0;
+int isLogged = 0;
+int isInitialized = 0;
 
 char* schoolId;
 char* domain;

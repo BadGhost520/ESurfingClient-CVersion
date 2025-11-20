@@ -11,6 +11,34 @@
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Shutdown.h"
 
+int createBash()
+{
+    const char* filename = "/root/config.sh";
+    FILE* file = fopen(filename, "w");
+
+    if (file == NULL)
+    {
+        LOG_ERROR("创建文件失败");
+        return 0;
+    }
+
+    fprintf(file, "#!/bin/sh\n");
+    fprintf(file, "uci set esurfingclient.main.enabled='1'\n");
+    fprintf(file, "uci set esurfingclient.main.username='%s'\n", usr);
+    fprintf(file, "uci set esurfingclient.main.password='%s'\n", pwd);
+    fprintf(file, "uci commit esurfingclient\n");
+    fprintf(file, "/etc/init.d/esurfingclient reload\n");
+    fclose(file);
+
+    if (chmod(filename, 0755) != 0)
+    {
+        LOG_ERROR("一键配置脚本创建失败");
+        return 0;
+    }
+    LOG_INFO("一键配置脚本创建成功, 位于: %s", filename);
+    return 1;
+}
+
 int main(const int argc, char* argv[]) {
     int opt;
     int username = 0;
@@ -56,6 +84,12 @@ int main(const int argc, char* argv[]) {
         LOG_DEBUG("用户名: %s", usr);
         LOG_DEBUG("密码: %s", pwd);
         LOG_DEBUG("通道: %s", chn ? chn : "默认(pc)");
+
+        if (access("/etc/openwrt_release", F_OK) == 0)
+        {
+            createBash();
+        }
+
         if (smallDevice)
         {
             LOG_DEBUG("小容量设备模式已开启");
@@ -81,10 +115,10 @@ int main(const int argc, char* argv[]) {
         }
         else
         {
-            initChannel(1);
+            initChannel(2);
         }
         LOG_INFO("程序启动中");
-        sleepMilliseconds(10000);
+        sleepMilliseconds(5000);
         isRunning = 1;
         initShutdown();
         initConstants();

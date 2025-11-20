@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
 PKG_VERSION:=1.0.6
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE:=esurfingclient.tar.gz
 PKG_SOURCE_URL:=file://$(TOPDIR)/dl
@@ -33,10 +33,6 @@ endef
 
 define Package/esurfingclient/description
 A lightweight esurfing authentication client
-endef
-
-define Package/esurfingclient/conffiles
-/etc/config/esurfingclient
 endef
 
 define Build/Compile
