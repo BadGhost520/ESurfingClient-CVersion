@@ -56,6 +56,10 @@ int main(const int argc, char* argv[]) {
         LOG_DEBUG("用户名: %s", usr);
         LOG_DEBUG("密码: %s", pwd);
         LOG_DEBUG("通道: %s", chn ? chn : "默认(pc)");
+        if (smallDevice)
+        {
+            LOG_DEBUG("小容量设备模式已开启");
+        }
         if (channel)
         {
             if (strcmp(chn, "pc") == 0)
@@ -80,7 +84,7 @@ int main(const int argc, char* argv[]) {
             initChannel(1);
         }
         LOG_INFO("程序启动中");
-        sleepMilliseconds(5000);
+        sleepMilliseconds(10000);
         isRunning = 1;
         initShutdown();
         initConstants();

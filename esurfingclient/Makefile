@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
 PKG_VERSION:=1.0.6
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE:=esurfingclient.tar.gz
 PKG_SOURCE_URL:=file://$(TOPDIR)/dl
