@@ -40,7 +40,7 @@ void* safeMalloc(const size_t size)
     void* ptr = malloc(size);
     if (!ptr)
     {
-        fprintf(stderr, "Memory allocation failed: %zu bytes\n", size);
+        fprintf(stderr, "内存分配失败: %zu bytes\n", size);
         exit(EXIT_FAILURE);
     }
     return ptr;
@@ -52,7 +52,7 @@ void* safeCalloc(const size_t count, const size_t size)
     void* ptr = calloc(count, size);
     if (!ptr)
     {
-        fprintf(stderr, "Memory allocation failed: %zu * %zu bytes\n", count, size);
+        fprintf(stderr, "内存分配失败: %zu * %zu bytes\n", count, size);
         exit(EXIT_FAILURE);
     }
     return ptr;

@@ -2,7 +2,6 @@
 // Created by bad_g on 2025/9/28.
 //
 #include <string.h>
-#include <time.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
@@ -41,12 +40,12 @@ const char* loggerLevelString(const LogLevel level)
 {
     switch (level)
     {
-        case LOG_LEVEL_DEBUG: return "DEBUG";
-        case LOG_LEVEL_INFO:  return "INFO";
-        case LOG_LEVEL_WARN:  return "WARN";
-        case LOG_LEVEL_ERROR: return "ERROR";
-        case LOG_LEVEL_FATAL: return "FATAL";
-        default:              return "UNKNOWN";
+        case LOG_LEVEL_DEBUG: return "调试";
+        case LOG_LEVEL_INFO:  return "信息";
+        case LOG_LEVEL_WARN:  return "警告";
+        case LOG_LEVEL_ERROR: return "错误";
+        case LOG_LEVEL_FATAL: return "致命";
+        default:              return "未知";
     }
 }
 
@@ -75,7 +74,7 @@ void loggerRotateFile()
     char* timeStr = getFileTime();
     if (timeStr == NULL)
     {
-        fprintf(stderr, "Error: Unable to get file time for rotation\n");
+        fprintf(stderr, "错误: 无法获取文件轮转时间\n");
         gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
         return;
     }
@@ -86,7 +85,7 @@ void loggerRotateFile()
 
     if (result >= (int)sizeof(rotatedFilename))
     {
-        fprintf(stderr, "Error: Rotated filename too long (max %zu)\n", sizeof(rotatedFilename) - 1);
+        fprintf(stderr, "错误: 轮转的文件名过长 (最大 %zu)\n", sizeof(rotatedFilename) - 1);
         gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
         return;
     }
@@ -96,7 +95,7 @@ void loggerRotateFile()
     gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
     if (gLoggerConfig.fileHandle == NULL)
     {
-        fprintf(stderr, "Error: Unable to reopen log file %s after rotation\n", gLoggerConfig.logFile);
+        fprintf(stderr, "错误: 无法在轮转后重新打开日志文件 %s\n", gLoggerConfig.logFile);
     }
 }
 
@@ -222,22 +221,22 @@ int loggerInit()
     }
     if (ensureLogDir(gLoggerConfig.logDir) != 0)
     {
-        fprintf(stderr, "Error: Unable to prepare log directory\n");
+        fprintf(stderr, "错误: 无法准备日志目录\n");
         return -1;
     }
     const int ln = snprintf(gLoggerConfig.logFile, sizeof(gLoggerConfig.logFile), "%s%c%s", gLoggerConfig.logDir, sep, fileName);
     if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.logFile))
     {
-        fprintf(stderr, "Error: Log file path too long (max %zu)\n", sizeof(gLoggerConfig.logFile));
+        fprintf(stderr, "错误: 日志文件路径太长 (最大 %zu)\n", sizeof(gLoggerConfig.logFile));
         return -1;
     }
     gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
     if (gLoggerConfig.fileHandle == NULL)
     {
-        fprintf(stderr, "Error: Unable to open log file %s\n", gLoggerConfig.logFile);
+        fprintf(stderr, "错误: 无法打开日志文件 %s\n", gLoggerConfig.logFile);
         return -1;
     }
-    LOG_DEBUG("Log level: %s", loggerLevelString(gLoggerConfig.level));
+    LOG_DEBUG("日志等级: %s", loggerLevelString(gLoggerConfig.level));
     return 0;
 }
 
@@ -245,7 +244,7 @@ void loggerCleanup()
 {
     if (gLoggerConfig.fileHandle != NULL)
     {
-        LOG_DEBUG("Shut down the logging system");
+        LOG_DEBUG("正在关闭日志系统");
         fclose(gLoggerConfig.fileHandle);
         gLoggerConfig.fileHandle = NULL;
         if (strlen(gLoggerConfig.logFile) > 0)
@@ -253,7 +252,7 @@ void loggerCleanup()
             char* timeStr = getFileTime();
             if (timeStr == NULL)
             {
-                fprintf(stderr, "Error: Unable to get file time for cleanup\n");
+                fprintf(stderr, "错误: 无法获取文件清理时间\n");
                 return;
             }
 
@@ -263,7 +262,7 @@ void loggerCleanup()
 
             if (result >= (int)sizeof(newFilename))
             {
-                fprintf(stderr, "Error: New filename too long (max %zu)\n", sizeof(newFilename) - 1);
+                fprintf(stderr, "错误: 新文件名过长 (最大 %zu)\n", sizeof(newFilename) - 1);
                 return;
             }
 

@@ -12,7 +12,7 @@
 
 void performCleanup()
 {
-    LOG_DEBUG("Executing the close function");
+    LOG_DEBUG("执行关闭函数");
     if (isRunning)
     {
         isRunning = 0;
@@ -30,7 +30,7 @@ void performCleanup()
 
 void shut(const int exitCode)
 {
-    LOG_INFO("Shutting down");
+    LOG_INFO("正在关闭程序");
     performCleanup();
     exit(exitCode);
 }
@@ -40,15 +40,15 @@ void signalHandler(const int sig)
     switch(sig)
     {
     case SIGINT:
-        LOG_DEBUG("Received SIGINT signal (Ctrl+C)");
+        LOG_DEBUG("接收到 SIGINT 信号 (Ctrl+C)");
         shut(0);
         break;
     case SIGTERM:
-        LOG_DEBUG("Received SIGTERM signal (Terminate request)");
+        LOG_DEBUG("接收到 SIGTERM 信号 (Terminate request)");
         shut(0);
         break;
     default:
-        LOG_DEBUG("Received unprocessed signal: %d", sig);
+        LOG_DEBUG("接收到未处理的信号: %d", sig);
         shut(0);
     }
 }
@@ -57,13 +57,13 @@ void initShutdown()
 {
     if (signal(SIGINT, signalHandler) == SIG_ERR)
     {
-        LOG_ERROR("signal SIGINT");
+        LOG_ERROR("信号 SIGINT");
         exit(1);
     }
 
     if (signal(SIGTERM, signalHandler) == SIG_ERR)
     {
-        LOG_ERROR("signal SIGTERM");
+        LOG_ERROR("信号 SIGTERM");
         exit(1);
     }
 }

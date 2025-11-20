@@ -21,8 +21,6 @@ int main(const int argc, char* argv[]) {
     system("chcp 65001 > nul");
 #endif
 
-    printf("中文测试\n");
-
     while ((opt = getopt(argc, argv, "u:p:c::ds")) != -1)
     {
         switch (opt)
@@ -46,18 +44,18 @@ int main(const int argc, char* argv[]) {
             smallDevice = 1;
             break;
         case '?':
-            printf("Parameter error：%c\n", optopt);
+            printf("参数错误: %c\n", optopt);
             return 1;
         default:
-            printf("Unknown error\n");
+            printf("未知错误\n");
         }
     }
     loggerInit();
     if (username && password)
     {
-        LOG_DEBUG("username: %s", usr);
-        LOG_DEBUG("password: %s", pwd);
-        LOG_DEBUG("Channel: %s", chn);
+        LOG_DEBUG("用户名: %s", usr);
+        LOG_DEBUG("密码: %s", pwd);
+        LOG_DEBUG("通道: %s", chn ? chn : "默认(pc)");
         if (channel)
         {
             if (strcmp(chn, "pc") == 0)
@@ -70,9 +68,9 @@ int main(const int argc, char* argv[]) {
             }
             else
             {
-                LOG_ERROR("Wrong channel");
-                LOG_ERROR("Please run in the correct format");
-                LOG_ERROR("Format: ESurfingClient -u <username> -p <password> -c <channel>");
+                LOG_ERROR("通道参数错误");
+                LOG_ERROR("请使用正确的参数运行程序");
+                LOG_ERROR("格式: ESurfingClient -u <用户名> -p <密码> -c<通道>");
                 shut(0);
                 return 0;
             }
@@ -81,7 +79,7 @@ int main(const int argc, char* argv[]) {
         {
             initChannel(1);
         }
-        LOG_INFO("Progress starting");
+        LOG_INFO("程序启动中");
         sleepMilliseconds(5000);
         isRunning = 1;
         initShutdown();
@@ -94,8 +92,8 @@ int main(const int argc, char* argv[]) {
     }
     else
     {
-        LOG_ERROR("Please run in the correct format");
-        LOG_ERROR("Format: ESurfingClient -u <username> -p <password>");
+        LOG_ERROR("请使用正确的参数运行程序");
+        LOG_ERROR("格式: ESurfingClient -u <用户名> -p <密码>");
     }
     shut(0);
 }

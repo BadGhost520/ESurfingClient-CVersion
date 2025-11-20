@@ -52,7 +52,7 @@ ConnectivityStatus checkStatus()
     CURL* curl = curl_easy_init();
     if (!curl)
     {
-        LOG_ERROR("Curl init error");
+        LOG_ERROR("初始化 Curl 错误");
         return REQUEST_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
@@ -76,7 +76,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
-        LOG_ERROR("HTTP request error");
+        LOG_ERROR("HTTP 请求错误");
         return REQUEST_ERROR;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
@@ -92,7 +92,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
-        LOG_ERROR("HTTP Response error, response code: %d", response_code);
+        LOG_ERROR("HTTP 响应错误, 响应码: %d", response_code);
         return REQUEST_ERROR;
     }
     if (response_data.memory && response_data.size > 0)

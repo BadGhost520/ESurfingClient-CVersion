@@ -102,7 +102,7 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
     {
         result->type = NET_RESULT_ERROR;
         result->data = NULL;
-        result->errorMessage = strdup("Failed to initialize CURL library");
+        result->errorMessage = strdup("初始化 Curl 库失败");
         result->statusCode = 0;
         return result;
     }
@@ -114,7 +114,7 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
     CURL* curl = curl_easy_init();
     if (!curl)
     {
-        result->errorMessage = strdup("Failed to initialize CURL");
+        result->errorMessage = strdup("初始化 Curl 失败");
         return result;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -183,7 +183,7 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
         result->type = NET_RESULT_SUCCESS;
         result->data = response.memory;
         result->dataSize = response.size;
-        response.memory = NULL; // 防止被释放
+        response.memory = NULL;
     }
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
