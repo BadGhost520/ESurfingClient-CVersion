@@ -10,5 +10,6 @@ extern char* usr;
 extern char* pwd;
 extern char* chn;
 extern volatile sig_atomic_t isDebug;
+extern volatile sig_atomic_t smallDevice;
 
 #endif //ESURFINGCLIENT_OPTIONS_H

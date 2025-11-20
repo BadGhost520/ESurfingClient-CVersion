@@ -1,3 +1,4 @@
+#include <locale.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -14,9 +15,15 @@ int main(const int argc, char* argv[]) {
     int opt;
     int username = 0;
     int password = 0;
-    int debugMode = 0;
     int channel = 0;
-    while ((opt = getopt(argc, argv, "u:p:c::d")) != -1)
+
+#ifdef _WIN32
+    system("chcp 65001 > nul");
+#endif
+
+    printf("中文测试\n");
+
+    while ((opt = getopt(argc, argv, "u:p:c::ds")) != -1)
     {
         switch (opt)
         {
@@ -33,7 +40,10 @@ int main(const int argc, char* argv[]) {
             chn = optarg;
             break;
         case 'd':
-            debugMode = 1;
+            isDebug = 1;
+            break;
+        case 's':
+            smallDevice = 1;
             break;
         case '?':
             printf("Parameter error：%c\n", optopt);
@@ -42,16 +52,7 @@ int main(const int argc, char* argv[]) {
             printf("Unknown error\n");
         }
     }
-    if (debugMode)
-    {
-        isDebug = 1;
-        loggerInit(LOG_LEVEL_DEBUG);
-    }
-    else
-    {
-        isDebug = 0;
-        loggerInit(LOG_LEVEL_INFO);
-    }
+    loggerInit();
     if (username && password)
     {
         LOG_DEBUG("username: %s", usr);
@@ -80,6 +81,7 @@ int main(const int argc, char* argv[]) {
         {
             initChannel(1);
         }
+        LOG_INFO("Progress starting");
         sleepMilliseconds(5000);
         isRunning = 1;
         initShutdown();

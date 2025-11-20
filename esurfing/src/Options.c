@@ -6,3 +6,4 @@ char* usr;
 char* pwd;
 char* chn;
 volatile sig_atomic_t isDebug = 0;
+volatile sig_atomic_t smallDevice = 0;

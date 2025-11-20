@@ -41,12 +41,12 @@ const char* loggerLevelString(const LogLevel level)
 {
     switch (level)
     {
-    case LOG_LEVEL_DEBUG: return "DEBUG";
-    case LOG_LEVEL_INFO:  return "INFO";
-    case LOG_LEVEL_WARN:  return "WARN";
-    case LOG_LEVEL_ERROR: return "ERROR";
-    case LOG_LEVEL_FATAL: return "FATAL";
-    default:              return "UNKNOWN";
+        case LOG_LEVEL_DEBUG: return "DEBUG";
+        case LOG_LEVEL_INFO:  return "INFO";
+        case LOG_LEVEL_WARN:  return "WARN";
+        case LOG_LEVEL_ERROR: return "ERROR";
+        case LOG_LEVEL_FATAL: return "FATAL";
+        default:              return "UNKNOWN";
     }
 }
 
@@ -156,7 +156,7 @@ int ensureLogDir(char* out)
     const char* dir = NULL;
     if (isDebug)
     {
-        if (access("/etc/openwrt_release", F_OK) == 0)
+        if (access("/etc/openwrt_release", F_OK) == 0 && !smallDevice)
         {
             dir = "/usr/esurfing";
         } 
@@ -210,9 +210,16 @@ int ensureLogDir(char* out)
     return 0;
 }
 
-int loggerInit(const LogLevel level)
+int loggerInit()
 {
-    gLoggerConfig.level = level;
+    if (isDebug)
+    {
+        gLoggerConfig.level = LOG_LEVEL_DEBUG;
+    }
+    else
+    {
+        gLoggerConfig.level = LOG_LEVEL_INFO;
+    }
     if (ensureLogDir(gLoggerConfig.logDir) != 0)
     {
         fprintf(stderr, "Error: Unable to prepare log directory\n");
@@ -230,7 +237,7 @@ int loggerInit(const LogLevel level)
         fprintf(stderr, "Error: Unable to open log file %s\n", gLoggerConfig.logFile);
         return -1;
     }
-    LOG_DEBUG("Log level: %s", loggerLevelString(level));
+    LOG_DEBUG("Log level: %s", loggerLevelString(gLoggerConfig.level));
     return 0;
 }
 

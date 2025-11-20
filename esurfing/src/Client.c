@@ -37,21 +37,26 @@ void heartbeat()
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         char* decrypted_data = sessionDecrypt(result->data);
-        if (decrypted_data) {
+        if (decrypted_data)
+        {
             LOG_DEBUG("result: %s", decrypted_data);
             char* parsed_interval = XmlParser(decrypted_data, "interval");
-            if (parsed_interval) {
+            if (parsed_interval)
+            {
                 free(keepRetry);
                 keepRetry = parsed_interval;
             }
             free(decrypted_data);
-        } else {
+        }
+        else
+        {
             LOG_ERROR("Failed to decrypt heartbeat response");
         }
     }
     else
     {
-        LOG_ERROR("Heartbeat request failed");
+        LOG_ERROR("Heartbeat failed");
+        if (result) LOG_ERROR("ErrorMessage: %s", result->errorMessage ? result->errorMessage : "Unknown error");
     }
     freeNetResult(result);
 }
@@ -65,26 +70,30 @@ void login()
     {
         LOG_DEBUG("result: %s", result->data);
         char* decrypted_data = sessionDecrypt(result->data);
-        if (!decrypted_data) {
+        if (!decrypted_data)
+        {
             LOG_ERROR("Failed to decrypt login response");
             freeNetResult(result);
             return;
         }
         
         char* parsed_keep_retry = XmlParser(decrypted_data, "keep-retry");
-        if (parsed_keep_retry) {
+        if (parsed_keep_retry)
+        {
             free(keepRetry);
             keepRetry = parsed_keep_retry;
         }
         
         char* parsed_keep_url = cleanCDATA(XmlParser(decrypted_data, "keep-url"));
-        if (parsed_keep_url) {
+        if (parsed_keep_url)
+        {
             free(keepUrl);
             keepUrl = parsed_keep_url;
         }
         
         char* parsed_term_url = cleanCDATA(XmlParser(decrypted_data, "term-url"));
-        if (parsed_term_url) {
+        if (parsed_term_url)
+        {
             free(termUrl);
             termUrl = parsed_term_url;
         }
@@ -95,7 +104,8 @@ void login()
     }
     else
     {
-        LOG_ERROR("Result is empty");
+        LOG_ERROR("Login failed");
+        if (result) LOG_ERROR("ErrorMessage: %s", result->errorMessage ? result->errorMessage : "Unknown error");
     }
     freeNetResult(result);
 }
@@ -109,12 +119,20 @@ void getTicket()
     {
         LOG_DEBUG("result: %s", result->data);
         char* parsed_ticket = XmlParser(sessionDecrypt(result->data), "ticket");
-        if (parsed_ticket) {
+        if (parsed_ticket)
+        {
             ticket = strdup(parsed_ticket);
             free(parsed_ticket);
-        } else {
+        }
+        else
+        {
             LOG_ERROR("Failed to parse ticket from response");
         }
+    }
+    else
+    {
+        LOG_ERROR("GetTicket failed");
+        if (result) LOG_ERROR("ErrorMessage: %s", result->errorMessage ? result->errorMessage : "Unknown error");
     }
     freeNetResult(result);
 }
@@ -128,8 +146,11 @@ void initSession()
         const ByteArray zsm = stringToBytes(result->data);
         initialize(&zsm);
         free(zsm.data);
-    } else {
-        LOG_ERROR("Initialization session error");
+    }
+    else
+    {
+        LOG_ERROR("InitSession failed");
+        if (result) LOG_ERROR("ErrorMessage: %s", result->errorMessage ? result->errorMessage : "Unknown error");
     }
     freeNetResult(result);
 }
@@ -139,7 +160,7 @@ void authorization()
     initSession();
     if (!isInitialized)
     {
-        LOG_FATAL("Session initialization failed, please restart the application or download the application from Release again");
+        LOG_FATAL("Session initialization failed, please restart the application, reboot your device or download the application from Release again");
         LOG_FATAL("Release Url: https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest");
         isRunning = 0;
         return;

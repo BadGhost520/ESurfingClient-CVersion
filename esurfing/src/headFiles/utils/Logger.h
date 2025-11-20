@@ -38,7 +38,7 @@ typedef struct {
 /**
  * 初始化日志系统函数
  */
-int loggerInit(LogLevel level);
+int loggerInit();
 
 /**
  * 清理日志系统函数
