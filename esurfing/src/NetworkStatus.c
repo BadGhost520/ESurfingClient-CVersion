@@ -76,7 +76,8 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
-        LOG_ERROR("HTTP 请求错误");
+        const char* error_msg = curl_easy_strerror(res);
+        LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
         return REQUEST_ERROR;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);

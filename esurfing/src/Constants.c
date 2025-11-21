@@ -34,7 +34,7 @@ void initChannel(const int channel)
     }
     else
     {
-        LOG_ERROR("Error device\n");
+        LOG_ERROR("通道错误\n");
         exit(1);
     }
     LOG_DEBUG("UA: %s", USER_AGENT);
