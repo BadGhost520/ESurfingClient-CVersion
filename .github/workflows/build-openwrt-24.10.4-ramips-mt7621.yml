@@ -23,7 +23,8 @@ jobs:
         # 安装多个包，最多重试3次
         PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd python3-setuptools swig"
 
-        for i in {1..3}; do
+        for ((i=1; i<=3; i++))
+        do
           echo "Attempt $i: Installing $PACKAGES"
           if apt-get update && apt-get install -y $PACKAGES; then
             echo "✅ All packages installed"
