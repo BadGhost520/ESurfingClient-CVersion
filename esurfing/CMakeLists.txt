@@ -11,10 +11,6 @@ endif()
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-if(WIN32)
-    find_package(LibXml2 REQUIRED)
-endif()
-
 add_executable(ESurfingClient
         src/DialerApp.c
         src/Client.c
@@ -72,6 +68,8 @@ add_executable(ESurfingClient
 )
 
 if(WIN32)
+    find_package(LibXml2 REQUIRED)
+
     target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
     target_compile_definitions(ESurfingClient PRIVATE CURL_STATICLIB)
 

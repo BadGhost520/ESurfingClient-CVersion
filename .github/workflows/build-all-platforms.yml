@@ -1,0 +1,354 @@
+name: Build All Platforms
+
+# 配置工作流权限
+permissions:
+  actions: write
+  contents: write  # 需要写权限来创建 Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Select platform to build'
+        type: choice
+        required: true
+        default: 'all'
+        options:
+          - all
+          - 21.02.7-ramips-mt7621
+          - 21.02.7-x86-64
+          - 22.03.7-x86-64
+          - 23.05.0-ramips-mt7621
+          - 24.10.4-mediatek-filogic
+          - 24.10.4-ramips-mt7621
+          - 24.10.4-x86-64
+          - x86_64-linux
+          - x86_64-windows
+
+jobs:
+  # 检查要构建的平台
+  check-platforms:
+    runs-on: ubuntu-latest
+    outputs:
+      selected-platform: ${{ steps.check.outputs.selected-platform }}
+    steps:
+      - name: Check platforms to build
+        id: check
+        run: |
+          platforms="${{ github.event.inputs.platforms || 'all' }}"
+          echo "Selected platform: $platforms"
+          echo "selected-platform=$platforms" >> $GITHUB_OUTPUT
+
+  # 统一构建和收集作业
+  build-and-collect:
+    needs: check-platforms
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+        
+      - name: Trigger and wait for platform builds
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const workflows = [
+              { file: 'build-openwrt-21.02.7-ramips-mt7621.yml', platform: '21.02.7-ramips-mt7621' },
+              { file: 'build-openwrt-21.02.7-x86-64.yml', platform: '21.02.7-x86-64' },
+              { file: 'build-openwrt-22.03.7-x86-64.yml', platform: '22.03.7-x86-64' },
+              { file: 'build-openwrt-23.05.0-ramips-mt7621.yml', platform: '23.05.0-ramips-mt7621' },
+              { file: 'build-openwrt-24.10.4-mediatek-filogic.yml', platform: '24.10.4-mediatek-filogic' },
+              { file: 'build-openwrt-24.10.4-ramips-mt7621.yml', platform: '24.10.4-ramips-mt7621' },
+              { file: 'build-openwrt-24.10.4-x86-64.yml', platform: '24.10.4-x86-64' },
+              { file: 'build-x86_64-linux.yml', platform: 'x86_64-linux' },
+              { file: 'build-x86_64-windows.yml', platform: 'x86_64-windows' }
+            ];
+            
+            const selectedPlatform = '${{ needs.check-platforms.outputs.selected-platform }}';
+            console.log(`Selected platform: ${selectedPlatform}`);
+            
+            // 过滤需要构建的工作流
+            const workflowsToTrigger = workflows.filter(w => {
+              if (selectedPlatform === 'all') return true;
+              return selectedPlatform === w.platform;
+            });
+            
+            console.log(`Will trigger ${workflowsToTrigger.length} workflows`);
+            
+            const triggeredRuns = [];
+            
+            // 触发工作流并记录运行ID
+            for (const workflow of workflowsToTrigger) {
+              try {
+                console.log(`Triggering ${workflow.file}...`);
+                
+                // 先获取触发前的最新运行ID
+                const beforeRuns = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.file,
+                  per_page: 1
+                });
+                
+                const beforeRunId = beforeRuns.data.workflow_runs.length > 0 ? beforeRuns.data.workflow_runs[0].id : null;
+                
+                const response = await github.rest.actions.createWorkflowDispatch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.file,
+                  ref: context.ref
+                });
+                
+                console.log(`Triggered ${workflow.file} successfully`);
+                
+                // 等待新运行出现
+                let newRunId = null;
+                let attempts = 0;
+                const maxAttempts = 12; // 最多等待60秒
+                
+                while (attempts < maxAttempts && !newRunId) {
+                  await new Promise(resolve => setTimeout(resolve, 5000));
+                  attempts++;
+                  
+                  const afterRuns = await github.rest.actions.listWorkflowRuns({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    workflow_id: workflow.file,
+                    per_page: 5
+                  });
+                  
+                  // 查找新的运行（ID不同于触发前的运行）
+                  for (const run of afterRuns.data.workflow_runs) {
+                    if (run.id !== beforeRunId && run.status !== 'completed') {
+                      newRunId = run.id;
+                      break;
+                    }
+                  }
+                }
+                
+                if (newRunId) {
+                  triggeredRuns.push({
+                    workflow: workflow.file,
+                    platform: workflow.platform,
+                    runId: newRunId
+                  });
+                  console.log(`Recorded new run ID ${newRunId} for ${workflow.file}`);
+                } else {
+                  console.log(`Failed to find new run for ${workflow.file}`);
+                }
+                
+              } catch (error) {
+                console.log(`Error triggering ${workflow.file}: ${error.message}`);
+              }
+            }
+            
+            console.log(`Triggered ${triggeredRuns.length} workflows, now waiting for completion...`);
+            
+            // 等待所有工作流完成
+            const maxWaitTime = 60 * 60 * 1000; // 1 hour
+            const checkInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+            
+            while (Date.now() - startTime < maxWaitTime) {
+              let allCompleted = true;
+              
+              for (const run of triggeredRuns) {
+                if (run.completed) continue;
+                
+                try {
+                  const runDetails = await github.rest.actions.getWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.runId
+                  });
+                  
+                  console.log(`${run.workflow} (${run.runId}): ${runDetails.data.status} - ${runDetails.data.conclusion}`);
+                  
+                  if (runDetails.data.status === 'completed') {
+                    run.completed = true;
+                    run.conclusion = runDetails.data.conclusion;
+                    console.log(`✅ ${run.workflow} completed with ${run.conclusion}`);
+                  } else {
+                    allCompleted = false;
+                  }
+                } catch (error) {
+                  console.log(`Error checking ${run.workflow}: ${error.message}`);
+                  allCompleted = false;
+                }
+              }
+              
+              if (allCompleted) {
+                console.log('🎉 All workflows completed!');
+                break;
+              }
+              
+              console.log('⏳ Waiting for workflows to complete...');
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+            
+            // 检查是否超时
+            if (Date.now() - startTime >= maxWaitTime) {
+              throw new Error('⏰ Timeout waiting for workflows to complete');
+            }
+            
+            // 收集artifacts
+            const artifactsList = [];
+            
+            for (const run of triggeredRuns) {
+              if (run.conclusion === 'success') {
+                try {
+                  const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.runId
+                  });
+                  
+                  for (const artifact of artifacts.data.artifacts) {
+                    console.log(`Found artifact: ${artifact.name} from ${run.workflow}`);
+                    artifactsList.push({
+                      name: artifact.name,
+                      workflow: run.workflow,
+                      platform: run.platform,
+                      download_url: artifact.archive_download_url,
+                      size: artifact.size_in_bytes
+                    });
+                  }
+                } catch (error) {
+                  console.log(`Error collecting artifacts from ${run.workflow}: ${error.message}`);
+                }
+              } else {
+                console.log(`⚠️ Skipping artifacts from ${run.workflow} (${run.conclusion})`);
+              }
+            }
+            
+            // 保存artifacts信息，供后续步骤使用
+            fs.writeFileSync('artifacts-list.json', JSON.stringify(artifactsList, null, 2));
+            console.log(`📦 Collected ${artifactsList.length} artifacts total`);
+            
+            return { triggeredRuns, artifactsList };
+
+      - name: Download and extract build artifacts
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { execSync } = require('child_process');
+            
+            // 读取构件列表
+            const artifactsList = JSON.parse(fs.readFileSync('artifacts-list.json', 'utf8'));
+            console.log(`📦 Processing ${artifactsList.length} artifacts`);
+            
+            // 创建发布目录结构
+            const releaseDir = 'release-files';
+            fs.mkdirSync(releaseDir, { recursive: true });
+            
+            const extractedFiles = [];
+            
+            // 为每个构件下载并解压文件
+            for (const artifact of artifactsList) {
+              try {
+                console.log(`⬇️ Downloading artifact: ${artifact.name}`);
+                
+                // 从 download_url 中提取 artifact ID
+                const artifactId = parseInt(artifact.download_url.split('/artifacts/')[1].split('/zip')[0]);
+                
+                // 下载构件
+                const download = await github.rest.actions.downloadArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifactId,
+                  archive_format: 'zip',
+                });
+                
+                // 保存临时 zip 文件
+                const tempZipPath = path.join(releaseDir, `${artifact.name}.zip`);
+                fs.writeFileSync(tempZipPath, Buffer.from(download.data));
+                
+                console.log(`✅ Downloaded: ${artifact.name}.zip (${(download.data.byteLength / 1024).toFixed(1)} KB)`);
+                
+                // 解压 zip 文件
+                console.log(`📂 Extracting ${artifact.name}.zip...`);
+                
+                try {
+                  // 使用 unzip 命令解压文件到发布目录
+                  execSync(`cd "${releaseDir}" && unzip -o "${artifact.name}.zip"`, { 
+                    stdio: 'pipe',
+                    encoding: 'utf8'
+                  });
+                  
+                  // 删除临时 zip 文件
+                  fs.unlinkSync(tempZipPath);
+                  
+                  // 查找解压出的文件
+                  const files = fs.readdirSync(releaseDir);
+                  const newFiles = files.filter(f => !extractedFiles.includes(f) && f !== `${artifact.name}.zip`);
+                  
+                  extractedFiles.push(...newFiles);
+                  
+                  console.log(`✅ Extracted files from ${artifact.name}: ${newFiles.join(', ')}`);
+                  
+                } catch (unzipError) {
+                  console.log(`❌ Failed to extract ${artifact.name}.zip: ${unzipError.message}`);
+                  // 如果解压失败，保留 zip 文件
+                  console.log(`📦 Keeping original zip file: ${artifact.name}.zip`);
+                }
+                
+              } catch (error) {
+                console.log(`❌ Failed to download ${artifact.name}: ${error.message}`);
+              }
+            }
+            
+            // 列出最终的文件
+            const finalFiles = fs.readdirSync(releaseDir);
+            console.log(`📁 Final release files: ${finalFiles.join(', ')}`);
+
+      - name: Create and clean release package
+        run: |
+          # 创建最终的发布包
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          RELEASE_PACKAGE="ESurfingClient-Build-${TIMESTAMP}"
+
+          echo "📦 Creating release package: ${RELEASE_PACKAGE}.zip"
+
+          # 创建 zip 包（从当前目录打包 release-files 目录的内容）
+          zip -r "${RELEASE_PACKAGE}.zip" release-files/*
+
+          # 清理并重新设置 release-files 目录
+          rm -rf release-files
+          mkdir release-files
+
+          # 将 zip 文件移到 release-files 目录
+          mv "${RELEASE_PACKAGE}.zip" release-files/
+
+          echo "✅ Release package ready: release-files/${RELEASE_PACKAGE}.zip"
+
+      - name: Generate release tag and name
+        id: release_info
+        run: |
+          # 生成基于时间的标签和发布名称
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          RELEASE_TAG="build-${TIMESTAMP}"
+          RELEASE_NAME="ESurfing Client Build - $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+          
+          echo "🏷️ Release tag: ${RELEASE_TAG}"
+          echo "📝 Release name: ${RELEASE_NAME}"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.release_info.outputs.release_tag }}
+          name: ${{ steps.release_info.outputs.release_name }}
+          files: release-files/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

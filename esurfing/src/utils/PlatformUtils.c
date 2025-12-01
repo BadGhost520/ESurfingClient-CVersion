@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <sys/time.h>
 #include <stdint.h>
 #include <errno.h>
 
@@ -14,16 +13,20 @@
 #include "../headFiles/States.h"
 #include "../headFiles/utils/PlatformUtils.h"
 #include "../headFiles/Options.h"
+#include "../headFiles/utils/Logger.h"
 
 #ifdef _WIN32
     #include <windows.h>
     #include <wincrypt.h>
     #include <sysinfoapi.h>
+    #include <io.h>
 #else
     #include <unistd.h>
     #include <time.h>
     #include <fcntl.h>
     #include <sys/types.h>
+    #include <sys/time.h>
+    #include <sys/stat.h>
 #endif
 
 ByteArray stringToBytes(const char* str)
@@ -397,4 +400,34 @@ char* cleanCDATA(const char* text)
     strncpy(result, start, len);
     result[len] = '\0';
     return result;
+}
+
+void createBash()
+{
+    const char* filename = "/root/config.sh";
+    FILE* file = fopen(filename, "w");
+
+    if (file == NULL)
+    {
+        LOG_ERROR("创建文件失败");
+        return;
+    }
+
+    fprintf(file, "#!/bin/sh\n");
+    fprintf(file, "uci set esurfingclient.main.enabled='1'\n");
+    fprintf(file, "uci set esurfingclient.main.username='%s'\n", usr);
+    fprintf(file, "uci set esurfingclient.main.password='%s'\n", pwd);
+    fprintf(file, "uci set esurfingclient.main.channel='%s'\n", chn ? chn : "phone");
+    fprintf(file, "uci set esurfingclient.main.debug='%d'\n", isDebug);
+    fprintf(file, "uci set esurfingclient.main.smallDevice='%d'\n", isSmallDevice);
+    fprintf(file, "uci commit esurfingclient\n");
+    fprintf(file, "/etc/init.d/esurfingclient reload\n");
+    fclose(file);
+
+    if (chmod(filename, 0755) != 0)
+    {
+        LOG_ERROR("一键配置脚本创建失败");
+        return;
+    }
+    LOG_INFO("一键配置脚本创建成功, 位于: %s", filename);
 }

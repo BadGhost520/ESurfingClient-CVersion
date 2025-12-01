@@ -1,0 +1,193 @@
+name: Build x86_64 Windows Binary
+
+# 配置工作流权限
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-x64-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-curl-winssl
+          mingw-w64-x86_64-openssl
+          mingw-w64-x86_64-libxml2
+          mingw-w64-x86_64-zlib
+          mingw-w64-x86_64-nghttp2
+          mingw-w64-x86_64-libssh2
+          mingw-w64-x86_64-zstd
+          mingw-w64-x86_64-libidn2
+          mingw-w64-x86_64-libpsl
+          mingw-w64-x86_64-brotli
+          mingw-w64-x86_64-libunistring
+          mingw-w64-x86_64-libiconv
+          mingw-w64-x86_64-pkg-config
+          mingw-w64-x86_64-upx
+          p7zip
+
+    - name: Check OpenSSL version and QUIC support
+      shell: msys2 {0}
+      run: |
+        echo "Checking OpenSSL version:"
+        openssl version -a
+        echo "Checking for QUIC support in OpenSSL:"
+        nm /mingw64/lib/libssl.a | grep -i quic || echo "No QUIC symbols found in libssl.a"
+        nm /mingw64/lib/libcrypto.a | grep -i quic || echo "No QUIC symbols found in libcrypto.a"
+        echo "Checking OpenSSL headers for QUIC functions:"
+        grep -r "SSL_set_quic" /mingw64/include/openssl/ || echo "QUIC functions not found in headers"
+
+    - name: Build ESurfingClient
+      shell: msys2 {0}
+      env:
+        PKG_CONFIG: "pkg-config --static"
+        LDFLAGS: "-static -static-libgcc -static-libstdc++"
+        CFLAGS: "-static -DCURL_STATICLIB"
+        CXXFLAGS: "-static -DCURL_STATICLIB"
+        CMAKE_FIND_LIBRARY_SUFFIXES: ".a"
+        CMAKE_EXE_LINKER_FLAGS: "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+      run: |
+        echo "🏗️ Starting Windows x64 build process"
+        
+        echo "📁 Go to esurfing dir"
+        cd esurfing
+        
+        echo "🔍 Checking available static libraries"
+        echo "Checking /mingw64/lib directory..."
+        if [ -d "/mingw64/lib" ]; then
+          echo "✅ /mingw64/lib exists"
+          echo "Key library files:"
+          ls /mingw64/lib/libcurl* 2>/dev/null || echo "❌ No libcurl found"
+          ls /mingw64/lib/libssl* 2>/dev/null || echo "❌ No libssl found"
+          ls /mingw64/lib/libcrypto* 2>/dev/null || echo "❌ No libcrypto found"
+          ls /mingw64/lib/libxml2* 2>/dev/null || echo "❌ No libxml2 found"
+          ls /mingw64/lib/libz* 2>/dev/null || echo "❌ No libz found"
+          ls /mingw64/lib/libnghttp2* 2>/dev/null || echo "❌ No libnghttp2 found"
+          ls /mingw64/lib/libssh2* 2>/dev/null || echo "❌ No libssh2 found"
+          ls /mingw64/lib/libzstd* 2>/dev/null || echo "❌ No libzstd found"
+          ls /mingw64/lib/libidn2* 2>/dev/null || echo "❌ No libidn2 found"
+          ls /mingw64/lib/libpsl* 2>/dev/null || echo "❌ No libpsl found"
+          ls /mingw64/lib/libbrotli* 2>/dev/null || echo "❌ No libbrotli found"
+          ls /mingw64/lib/libunistring* 2>/dev/null || echo "❌ No libunistring found"
+          ls /mingw64/lib/libiconv* 2>/dev/null || echo "❌ No libiconv found"
+        else
+          echo "❌ /mingw64/lib not found"
+        fi
+        
+        echo "⚙️ CMake configuring with aggressive static linking"
+        export PKG_CONFIG_ALL_STATIC=1
+        export PKG_CONFIG_ALL_STATIC_PRIVATE=1
+        cmake -G "MinGW Makefiles" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=gcc \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
+          -DCMAKE_C_FLAGS="-static -DCURL_STATICLIB" \
+          -DCMAKE_CXX_FLAGS="-static -DCURL_STATICLIB" \
+          -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCURL_STATICLIB=ON \
+          -DOPENSSL_USE_STATIC_LIBS=ON \
+          -DLIBXML2_USE_STATIC_LIBS=ON \
+          -DCMAKE_PREFIX_PATH="/mingw64" \
+          .
+        
+        echo "🔨 Building with mingw32-make"
+        mingw32-make -j$(nproc)
+        
+        echo "📦 Moving and renaming executable"
+        if [ -f "ESurfingClient.exe" ]; then
+          mv ESurfingClient.exe ESurfingClient-x86_64-windows.exe
+          echo "✅ Executable renamed to ESurfingClient-x86_64-windows.exe"
+        else
+          echo "❌ ESurfingClient.exe not found!"
+          exit 1
+        fi
+        
+        echo "🔧 Attempting to fix dynamic linking issues"
+        echo "Current dependencies:"
+        ldd ESurfingClient-x86_64-windows.exe || objdump -p ESurfingClient-x86_64-windows.exe | grep "DLL Name"
+        
+        echo "🔄 Trying to relink with full static flags"
+        gcc -static -static-libgcc -static-libstdc++ -o ESurfingClient-x86_64-windows-static.exe \
+          $(find . -name "*.o") \
+          /mingw64/lib/libcurl.a \
+          /mingw64/lib/libssh2.a \
+          /mingw64/lib/libnghttp2.a \
+          /mingw64/lib/libssl.a \
+          /mingw64/lib/libcrypto.a \
+          /mingw64/lib/libxml2.a \
+          /mingw64/lib/libz.a \
+          /mingw64/lib/libzstd.a \
+          /mingw64/lib/libidn2.a \
+          /mingw64/lib/libpsl.a \
+          /mingw64/lib/libbrotlidec.a \
+          /mingw64/lib/libbrotlicommon.a \
+          /mingw64/lib/libunistring.a \
+          /mingw64/lib/libiconv.a \
+          -lws2_32 -lwldap32 -lwinmm -lcrypt32 -lnormaliz -lsecur32 -lbcrypt -liphlpapi \
+          -lpthread || echo "⚠️ Manual relinking failed, using original"
+        
+        if [ -f "ESurfingClient-x86_64-windows-static.exe" ]; then
+          mv ESurfingClient-x86_64-windows-static.exe ESurfingClient-x86_64-windows.exe
+          echo "✅ Used manually relinked static version"
+        fi
+        
+        echo "🗜️ Compressing with UPX"
+        upx --best --lzma ESurfingClient-x86_64-windows.exe || echo "⚠️ UPX compression failed, continuing..."
+        
+        echo "📊 File information:"
+        ls -la ESurfingClient-x86_64-windows.exe
+        file ESurfingClient-x86_64-windows.exe || echo "file command not available"
+
+    - name: Verify build output
+      shell: msys2 {0}
+      run: |
+        cd esurfing
+        if [ ! -f "ESurfingClient-x86_64-windows.exe" ]; then
+          echo "❌ Build failed: ESurfingClient-x86_64-windows.exe not found"
+          exit 1
+        fi
+        
+        echo "✅ Build successful!"
+        echo "📁 Final executable: $(pwd)/ESurfingClient-x86_64-windows.exe"
+        echo "📏 File size: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
+        
+        echo "🔍 Checking dependencies (should show minimal system DLLs only):"
+        ldd ESurfingClient-x86_64-windows.exe || echo "ldd not available, using objdump"
+        objdump -p ESurfingClient-x86_64-windows.exe | grep "DLL Name" || echo "No DLL dependencies found (fully static)"
+
+    - name: Create package
+      shell: msys2 {0}
+      run: |
+        echo "📦 Creating Windows x64 package"
+        
+        # Copy executable to root directory for packaging
+        cp esurfing/ESurfingClient-x86_64-windows.exe ./
+        
+        # Create ZIP archive with executable in root
+        echo "🗜️ Creating ZIP archive"
+        7z a esurfingclient-windows-x64.zip ESurfingClient-x86_64-windows.exe
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: esurfingclient-windows-x64
+        path: |
+          ESurfingClient-x86_64-windows.exe
+        retention-days: 30

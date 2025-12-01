@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 // 创建两层AES-ECB的PC版本（零填充，加密顺序：key2->key1，解密顺序：key1->key2）
-cipher_interface_t* create_aes_ecb_pc_cipher(const uint8_t* key1, const uint8_t* key2);
+cipherInterfaceT* create_aes_ecb_pc_cipher(const uint8_t* key1, const uint8_t* key2);
 
 #ifdef __cplusplus
 }

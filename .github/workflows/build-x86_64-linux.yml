@@ -1,0 +1,128 @@
+name: Build x86_64 Linux Binary
+
+# 配置工作流权限
+permissions:
+  actions: write
+  contents: read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-x64-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install packages with retry
+        run: |
+          # 安装多个包，最多重试3次
+          PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file"
+
+          for i in 1 2 3; do
+            echo "Attempt $i: Installing $PACKAGES"
+            if apt-get update && apt-get install -y $PACKAGES; then
+              echo "✅ All packages installed"
+              break
+            fi
+            echo "❌ Attempt $i failed"
+            sleep 3
+          done
+
+      - name: Build libcurl
+        run: |
+          wget https://curl.se/download/curl-8.8.0.tar.gz
+          tar -xzf curl-8.8.0.tar.gz
+          cd curl-8.8.0
+          
+          ./configure \
+            --disable-shared \
+            --enable-static \
+            --without-gssapi \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-nghttp2 \
+            --without-brotli \
+            --without-zstd \
+            --without-libidn2 \
+            --without-ldap \
+            --without-ldaps \
+            --without-rtsp \
+            --without-dict \
+            --without-telnet \
+            --without-tftp \
+            --without-pop3 \
+            --without-imap \
+            --without-smb \
+            --without-smtp \
+            --without-gopher \
+            --without-mqtt \
+            --without-ftp \
+            --without-zlib \
+            --with-ssl \
+            --prefix=/usr/local
+          
+          make -j$(nproc)
+          make install
+          
+          # 更新 CMake 查找路径
+          export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+          cd ..
+
+      - name: Build ESurfingClient
+        run: |
+          echo "🏗️ Starting x64 Linux build process"
+          echo "📁 Go to esurfing dir"
+          cd esurfing
+          
+          echo "⚙️ CMake configuring"
+          cmake -DBUILD_STATIC=ON .
+          
+          echo "🔨 Making Programme"
+          make -j$(nproc)
+          
+          echo "📦 Moved ESurfingClient to root dir"
+          mv bin/ESurfingClient ../ESurfingClient-x86_64-linux
+          
+          echo "🛡️ Protect1 - Strip binary"
+          strip --strip-all ../ESurfingClient-x86_64-linux
+          
+          echo "📦 Protect2 - Compress with UPX"
+          upx --best ../ESurfingClient-x86_64-linux
+          
+          echo "✅ Build completed successfully"
+
+      - name: Verify build output
+        run: |
+          echo "🔍 Verifying build output"
+          if [ -f "ESurfingClient-x86_64-linux" ]; then
+            echo "✅ Binary file exists"
+            ls -la ESurfingClient-x86_64-linux
+            file ESurfingClient-x86_64-linux
+            echo "📏 File size: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
+          else
+            echo "❌ Binary file not found"
+            exit 1
+          fi
+
+      - name: Create package
+        run: |
+          echo "📦 Creating package"
+          
+          # Create compressed package with executable in root
+          tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux
+          
+          echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
+          ls -la esurfingclient-x64-linux.tar.gz
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esurfingclient-x64-linux
+          path: |
+            ESurfingClient-x86_64-linux
+          retention-days: 30

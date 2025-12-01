@@ -211,7 +211,7 @@ typedef struct {
     des_key_t ks[6];
 } des_ecb_six_pc_ctx_t;
 
-static char* des_ecb_six_pc_encrypt(cipher_interface_t* self, const char* text)
+static char* des_ecb_six_pc_encrypt(cipherInterfaceT* self, const char* text)
 {
     if (!self || !text) return NULL;
     const des_ecb_six_pc_ctx_t* ctx = self->private_data;
@@ -237,7 +237,7 @@ static char* des_ecb_six_pc_encrypt(cipher_interface_t* self, const char* text)
     return hex;
 }
 
-static char* des_ecb_six_pc_decrypt(cipher_interface_t* self, const char* hex)
+static char* des_ecb_six_pc_decrypt(cipherInterfaceT* self, const char* hex)
 {
     if (!self || !hex) return NULL;
     const des_ecb_six_pc_ctx_t* ctx = self->private_data;
@@ -269,14 +269,14 @@ static char* des_ecb_six_pc_decrypt(cipher_interface_t* self, const char* hex)
     return text;
 }
 
-static void des_ecb_six_pc_destroy(cipher_interface_t* self)
+static void des_ecb_six_pc_destroy(cipherInterfaceT* self)
 {
     if (!self) return;
     if (self->private_data) safeFree(self->private_data);
     safeFree(self);
 }
 
-cipher_interface_t* create_des_ecb_six_pc_cipher(
+cipherInterfaceT* create_des_ecb_six_pc_cipher(
     const uint8_t* key0,
     const uint8_t* key1,
     const uint8_t* key2,
@@ -286,7 +286,7 @@ cipher_interface_t* create_des_ecb_six_pc_cipher(
 )
 {
     if (!key0 || !key1 || !key2 || !key3 || !key4 || !key5) return NULL;
-    cipher_interface_t* ci = safeCalloc(1, sizeof(cipher_interface_t));
+    cipherInterfaceT* ci = safeCalloc(1, sizeof(cipherInterfaceT));
     des_ecb_six_pc_ctx_t* ctx = safeCalloc(1, sizeof(des_ecb_six_pc_ctx_t));
     ctx->ks[0] = des_schedule(key0);
     ctx->ks[1] = des_schedule(key1);

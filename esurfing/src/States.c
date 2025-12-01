@@ -19,6 +19,8 @@ int isRunning = 0;
 int isLogged = 0;
 int isInitialized = 0;
 
+long long authTime = 0;
+
 char* schoolId;
 char* domain;
 char* area;
@@ -27,15 +29,18 @@ char* authUrl;
 
 void refreshStates()
 {
-    if (clientId)
-    {
-        free(clientId);
-    }
+    if (clientId) free(clientId);
+    if (algoId) free(algoId);
+    if (macAddress) free(macAddress);
+    if (ticket) free(ticket);
+    if (userIp) free(userIp);
+    if (acIp) free(acIp);
+    if (schoolId) free(schoolId);
+    if (domain) free(domain);
+    if (area) free(area);
+    if (ticketUrl) free(ticketUrl);
+    if (authUrl) free(authUrl);
     setClientId(&clientId);
-    if (algoId)
-    {
-        free(algoId);
-    }
     algoId = strdup("00000000-0000-0000-0000-000000000000");
     macAddress = strdup(randomMacAddress());
     LOG_DEBUG("Client Id: %s", clientId);

@@ -1,9 +1,59 @@
 <component name="ProjectDictionaryState">
   <dictionary name="project">
     <words>
+      <w>abcdefghijklmnopqrstuvwxy</w>
+      <w>aescbc</w>
+      <w>bbafd</w>
+      <w>bfba</w>
+      <w>brotlicommon</w>
+      <w>brotlidec</w>
+      <w>bswap</w>
+      <w>cafbcbad</w>
+      <w>cblk</w>
+      <w>cctp</w>
       <w>chcp</w>
-      <w>cphone</w>
+      <w>chinatelecom</w>
+      <w>crun</w>
+      <w>desede</w>
+      <w>endptr</w>
+      <w>eshore</w>
       <w>esurfing</w>
+      <w>feistel</w>
+      <w>gwip</w>
+      <w>hhmmss</w>
+      <w>idn</w>
+      <w>iphlpapi</w>
+      <w>lfsr</w>
+      <w>makeu</w>
+      <w>mdctx</w>
+      <w>netclient</w>
+      <w>networkstatus</w>
+      <w>nmemb</w>
+      <w>normaliz</w>
+      <w>ostag</w>
+      <w>pblk</w>
+      <w>platformutils</w>
+      <w>popen</w>
+      <w>preout</w>
+      <w>psl</w>
+      <w>rawtime</w>
+      <w>rcon</w>
+      <w>sbox</w>
+      <w>secur</w>
+      <w>sede</w>
+      <w>staticlib</w>
+      <w>unistring</w>
+      <w>winmm</w>
+      <w>wlanacip</w>
+      <w>wlanuserip</w>
+      <w>wldap</w>
+      <w>xored</w>
+      <w>xtea</w>
+      <w>xteaiv</w>
+      <w>xtime</w>
+      <w>ymmdd</w>
+      <w>zabcdefghijklmnopqrstuvwxyz</w>
+      <w>zstd</w>
     </words>
   </dictionary>
 </component>

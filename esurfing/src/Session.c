@@ -11,36 +11,10 @@
 #include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/utils/Logger.h"
 
-cipher_interface_t* cipher = NULL;
-
-char* sessionEncrypt(const char* text)
-{
-    return cipher->encrypt(cipher, text);
-}
-
-char* sessionDecrypt(const char* text)
-{
-    return cipher->decrypt(cipher, text);
-}
-
 void sessionFree()
 {
+    LOG_DEBUG("清除会话初始化状态");
     isInitialized = 0;
-}
-
-int initCipher(const char* algo_id)
-{
-    if (cipher != NULL)
-    {
-        cipherFactoryDestroy(cipher);
-        cipher = NULL;
-    }
-    cipher = cipherFactoryCreate(algo_id);
-    if (cipher == NULL)
-    {
-        return 0;
-    }
-    return 1;
 }
 
 int load(const ByteArray* zsm)
@@ -114,19 +88,13 @@ int load(const ByteArray* zsm)
     free(str);
     LOG_INFO("Algo ID: %s", algo_id);
     LOG_INFO("Key: %s", key);
-    LOG_DEBUG("初始化加密器");
     if (!initCipher(algo_id))
     {
-        LOG_ERROR("初始化加密器失败");
         free(key);
         free(algo_id);
         return 0;
     }
-    LOG_DEBUG("初始化加密器成功");
-    if (algoId != NULL)
-    {
-        free(algoId);
-    }
+    if (algoId != NULL) free(algoId);
     algoId = malloc(strlen(algo_id) + 1);
     if (algoId == NULL)
     {
