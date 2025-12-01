@@ -6,10 +6,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <sys/time.h>
 #include <stdint.h>
 #include <errno.h>
-#include <io.h>
 
 #include "../headFiles/Constants.h"
 #include "../headFiles/States.h"
@@ -21,11 +19,13 @@
     #include <windows.h>
     #include <wincrypt.h>
     #include <sysinfoapi.h>
+    #include <io.h>
 #else
     #include <unistd.h>
     #include <time.h>
     #include <fcntl.h>
     #include <sys/types.h>
+    #include <sys/time.h>
 #endif
 
 ByteArray stringToBytes(const char* str)
