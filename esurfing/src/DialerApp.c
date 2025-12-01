@@ -6,7 +6,9 @@
 #include "headFiles/Client.h"
 #include "headFiles/Constants.h"
 #include "headFiles/Options.h"
+#include "headFiles/Session.h"
 #include "headFiles/States.h"
+#include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/utils/Logger.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Shutdown.h"
@@ -72,9 +74,9 @@ int main(const int argc, char* argv[]) {
             }
             else
             {
-                LOG_ERROR("通道参数错误");
-                LOG_ERROR("请使用正确的参数运行程序");
-                LOG_ERROR("格式: ESurfingClient -u <用户名> -p <密码> -c<通道>");
+                LOG_FATAL("通道参数错误");
+                LOG_FATAL("请使用正确的参数运行程序");
+                LOG_FATAL("格式: ESurfingClient -u <用户名> -p <密码> -c<通道>");
                 shut(0);
                 return 0;
             }
@@ -95,13 +97,31 @@ int main(const int argc, char* argv[]) {
         refreshStates();
         while (isRunning)
         {
+            if (currentTimeMillis() - authTime >= 172200000 && authTime != 0)
+            {
+                LOG_DEBUG("当前时间戳: %lld", currentTimeMillis());
+                LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟)，为避免被远程服务器踢下线，正在重新进行认证");
+                if (isInitialized)
+                {
+                    if (isLogged)
+                    {
+                        term();
+                    }
+                    cipherFactoryDestroy();
+                    sessionFree();
+                }
+                authTime = 0;
+                sleepMilliseconds(5000);
+                initConstants();
+                refreshStates();
+            }
             run();
         }
     }
     else
     {
-        LOG_ERROR("请使用正确的参数运行程序");
-        LOG_ERROR("格式: ESurfingClient -u <用户名> -p <密码>");
+        LOG_FATAL("请使用正确的参数运行程序");
+        LOG_FATAL("格式: ESurfingClient -u <用户名> -p <密码>");
     }
     shut(0);
 }

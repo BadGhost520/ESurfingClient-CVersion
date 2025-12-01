@@ -15,7 +15,7 @@
 char* keepRetry;
 char* keepUrl;
 char* termUrl;
-long long tick;
+long long tick = 0;
 
 void term()
 {
@@ -26,6 +26,7 @@ void term()
     {
         LOG_ERROR("登出错误: %s", result->errorMessage ? result->errorMessage : "未知错误");
     }
+    isLogged = 0;
     freeNetResult(result);
 }
 
@@ -100,7 +101,7 @@ void login()
         
         LOG_INFO("Keep Url: %s", keepUrl ? keepUrl : "NULL");
         LOG_INFO("Term Url: %s", termUrl ? termUrl : "NULL");
-        LOG_INFO("下一次重试: %s", keepRetry ? keepRetry : "NULL");
+        LOG_INFO("下一次重试: %s 秒后", keepRetry ? keepRetry : "NULL");
     }
     else
     {
@@ -178,6 +179,8 @@ void authorization()
         return;
     }
     tick = currentTimeMillis();
+    authTime = currentTimeMillis();
+    LOG_DEBUG("登录时间戳: %lld", authTime);
     isLogged = 1;
     LOG_INFO("已认证登录");
 }
@@ -196,7 +199,7 @@ void run()
                 {
                     LOG_INFO("发送心跳包");
                     heartbeat();
-                    LOG_INFO("下一次重试: %ss", keepRetry);
+                    LOG_INFO("下一次重试: %s 秒后", keepRetry);
                     tick = currentTimeMillis();
                 }
             }

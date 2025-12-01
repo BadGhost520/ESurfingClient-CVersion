@@ -174,7 +174,7 @@ static uint8_t* sm4_decrypt_cbc(const uint8_t* key, const uint8_t* iv, const uin
     return unpadded;
 }
 
-static char* sm4_cbc_encrypt(cipher_interface_t* self, const char* text)
+static char* sm4_cbc_encrypt(cipherInterfaceT* self, const char* text)
 {
     if(!self || !text) return NULL;
     const sm4_cbc_data_t* d = self->private_data;
@@ -186,7 +186,7 @@ static char* sm4_cbc_encrypt(cipher_interface_t* self, const char* text)
     return hex;
 }
 
-static char* sm4_cbc_decrypt(cipher_interface_t* self, const char* hex)
+static char* sm4_cbc_decrypt(cipherInterfaceT* self, const char* hex)
 {
     if(!self || !hex) return NULL;
     const sm4_cbc_data_t* d = self->private_data;
@@ -202,7 +202,7 @@ static char* sm4_cbc_decrypt(cipher_interface_t* self, const char* hex)
     return result;
 }
 
-static void sm4_cbc_destroy(cipher_interface_t* self)
+static void sm4_cbc_destroy(cipherInterfaceT* self)
 {
     if(self)
     {
@@ -210,10 +210,10 @@ static void sm4_cbc_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_sm4_cbc_cipher(const uint8_t* key, const uint8_t* iv)
+cipherInterfaceT* create_sm4_cbc_cipher(const uint8_t* key, const uint8_t* iv)
 {
     if(!key || !iv) return NULL;
-    cipher_interface_t* ci = safeMalloc(sizeof(cipher_interface_t));
+    cipherInterfaceT* ci = safeMalloc(sizeof(cipherInterfaceT));
     sm4_cbc_data_t* d = safeMalloc(sizeof(sm4_cbc_data_t));
     memcpy(d->key, key, SM4_KEY_SIZE);
     memcpy(d->iv, iv, SM4_BLOCK_SIZE);

@@ -84,7 +84,7 @@ static void ab6c8_block_encrypt(uint32_t* v0_le, uint32_t* v1_le, const uint32_t
     *v1_le = bswap32(v10);
 }
 
-static char* ab6c8_encrypt(cipher_interface_t* self, const char* text)
+static char* ab6c8_encrypt(cipherInterfaceT* self, const char* text)
 {
     if (!self || !text) return NULL;
     ab6c8_ctx_t* ctx = self->private_data;
@@ -115,7 +115,7 @@ static char* ab6c8_encrypt(cipher_interface_t* self, const char* text)
     return hex;
 }
 
-static char* ab6c8_decrypt(cipher_interface_t* self, const char* hex)
+static char* ab6c8_decrypt(cipherInterfaceT* self, const char* hex)
 {
     if (!self || !hex) return NULL;
     ab6c8_ctx_t* ctx = self->private_data;
@@ -150,18 +150,18 @@ static char* ab6c8_decrypt(cipher_interface_t* self, const char* hex)
     return text;
 }
 
-static void ab6c8_destroy(cipher_interface_t* self)
+static void ab6c8_destroy(cipherInterfaceT* self)
 {
     if (!self) return;
     if (self->private_data) safeFree(self->private_data);
     safeFree(self);
 }
 
-cipher_interface_t* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
+cipherInterfaceT* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
                                         const uint32_t* key2, const uint32_t* iv)
 {
     if (!key0 || !key1 || !key2 || !iv) return NULL;
-    cipher_interface_t* ci = safeCalloc(1, sizeof(cipher_interface_t));
+    cipherInterfaceT* ci = safeCalloc(1, sizeof(cipherInterfaceT));
     ab6c8_ctx_t* ctx = safeCalloc(1, sizeof(ab6c8_ctx_t));
     memcpy(ctx->k0, key0, 4 * sizeof(uint32_t));
     memcpy(ctx->k1, key1, 4 * sizeof(uint32_t));

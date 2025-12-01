@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "../headFiles/cipher/CipherInterface.h"
 #include "../headFiles/States.h"
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/Session.h"
@@ -23,6 +24,7 @@ void performCleanup()
         {
             term();
         }
+        cipherFactoryDestroy();
         sessionFree();
     }
     loggerCleanup();

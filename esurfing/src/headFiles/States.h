@@ -16,6 +16,8 @@ extern int isRunning;
 extern int isLogged;
 extern int isInitialized;
 
+extern long long authTime;
+
 extern char* schoolId;
 extern char* domain;
 extern char* area;

@@ -11,7 +11,7 @@ extern const char* CAPTIVE_URL;
 extern const char* PORTAL_END_TAG;
 extern const char* PORTAL_START_TAG;
 extern const char* AUTH_KEY;
-extern const char* HOST_NAME;
+extern char* HOST_NAME;
 
 /**
  * 初始化常量函数

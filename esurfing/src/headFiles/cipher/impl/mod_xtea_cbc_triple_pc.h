@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-cipher_interface_t* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
+cipherInterfaceT* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
                                         const uint32_t* key2, const uint32_t* iv);
 
 #ifdef __cplusplus
