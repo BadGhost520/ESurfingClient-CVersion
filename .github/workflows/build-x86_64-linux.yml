@@ -18,10 +18,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install packages with retry
         run: |
-          apt-get update
-          apt-get install -y build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file --fix-missing
+          # 安装多个包，最多重试3次
+          PACKAGES="cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file"
+
+          for i in {1..3}; do
+            echo "Attempt $i: Installing $PACKAGES"
+            if sudo apt-get update && sudo apt-get install -y $PACKAGES; then
+              echo "✅ All packages installed"
+              break
+            fi
+            echo "❌ Attempt $i failed"
+            sleep 3
+          done
+
+#      - name: Install dependencies
+#        run: |
+#          apt-get update
+#          apt-get install -y build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file --fix-missing
 
       - name: Build libcurl
         run: |
