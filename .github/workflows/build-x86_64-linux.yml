@@ -23,8 +23,7 @@ jobs:
           # 安装多个包，最多重试3次
           PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file"
 
-          for ((i=1; i<=3; i++))
-          do
+          for i in 1 2 3; do
             echo "Attempt $i: Installing $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
               echo "✅ All packages installed"
