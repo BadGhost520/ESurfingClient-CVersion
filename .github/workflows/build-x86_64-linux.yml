@@ -21,7 +21,7 @@ jobs:
       - name: Install packages with retry
         run: |
           # 安装多个包，最多重试3次
-          PACKAGES="cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file"
+          PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file"
 
           for i in {1..3}; do
             echo "Attempt $i: Installing $PACKAGES"
@@ -32,11 +32,6 @@ jobs:
             echo "❌ Attempt $i failed"
             sleep 3
           done
-
-#      - name: Install dependencies
-#        run: |
-#          apt-get update
-#          apt-get install -y build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file --fix-missing
 
       - name: Build libcurl
         run: |
