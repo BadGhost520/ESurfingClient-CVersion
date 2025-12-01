@@ -26,6 +26,7 @@
     #include <fcntl.h>
     #include <sys/types.h>
     #include <sys/time.h>
+    #include <sys/stat.h>
 #endif
 
 ByteArray stringToBytes(const char* str)
