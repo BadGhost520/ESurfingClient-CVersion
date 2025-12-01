@@ -307,6 +307,29 @@ jobs:
             const finalFiles = fs.readdirSync(releaseDir);
             console.log(`📁 Final release files: ${finalFiles.join(', ')}`);
 
+      - name: Create and clean release package
+        run: |
+          # 创建最终的发布包
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          RELEASE_PACKAGE="ESurfingClient-Build-${TIMESTAMP}"
+          
+          echo "📦 Creating release package: ${RELEASE_PACKAGE}.zip"
+          
+          # 进入 release-files 目录并打包
+          cd release-files
+          
+          # 创建 zip 包（只保留这个）
+          zip -r "${RELEASE_PACKAGE}.zip" ./*
+          
+          # 返回到工作目录
+          cd ..
+          
+          # 清理 release-files 目录，只保留 zip 文件
+          rm -rf release-files/*
+          mv "release-files/${RELEASE_PACKAGE}.zip" release-files/
+          
+          echo "✅ Release package ready: release-files/${RELEASE_PACKAGE}.zip"
+
       - name: Generate release tag and name
         id: release_info
         run: |
