@@ -61,7 +61,7 @@ ConnectivityStatus checkStatus()
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
     struct curl_slist *headers = NULL;
     char header_buffer[256];
-    if (USER_AGENT && strlen(USER_AGENT) > 0)
+    if (USER_AGENT && USER_AGENT[0])
     {
         snprintf(header_buffer, sizeof(header_buffer), "User-Agent: %s", USER_AGENT);
         headers = curl_slist_append(headers, header_buffer);
@@ -73,7 +73,7 @@ ConnectivityStatus checkStatus()
     }
     snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
     headers = curl_slist_append(headers, header_buffer);
-    if (clientId && strlen(clientId) > 0)
+    if (clientId && clientId[0])
     {
         snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", clientId);
         headers = curl_slist_append(headers, header_buffer);
@@ -115,7 +115,7 @@ ConnectivityStatus checkStatus()
     if (response_data.memory && response_data.size > 0)
     {
         char* portal_config = extractBetweenTags(response_data.memory, PORTAL_START_TAG, PORTAL_END_TAG);
-        if (portal_config && strlen(portal_config) > 0)
+        if (portal_config && portal_config[0])
         {
             char* auth_url_raw = XmlParser(portal_config, "auth-url");
             char* ticket_url_raw = XmlParser(portal_config, "ticket-url");
@@ -123,7 +123,7 @@ ConnectivityStatus checkStatus()
             char* ticket_url = cleanCDATA(ticket_url_raw);
             if (auth_url_raw) free(auth_url_raw);
             if (ticket_url_raw) free(ticket_url_raw);
-            if (auth_url && ticket_url && strlen(auth_url) > 0 && strlen(ticket_url) > 0)
+            if (auth_url && ticket_url && auth_url[0] && ticket_url[0])
             {
                 if (authUrl) free(authUrl);
                 authUrl = strdup(auth_url);
