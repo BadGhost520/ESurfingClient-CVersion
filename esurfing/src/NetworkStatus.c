@@ -53,7 +53,7 @@ ConnectivityStatus checkStatus()
     if (!curl)
     {
         LOG_ERROR("初始化 Curl 错误");
-        return REQUEST_ERROR;
+        return InitError;
     }
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
@@ -61,12 +61,28 @@ ConnectivityStatus checkStatus()
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
     struct curl_slist *headers = NULL;
     char header_buffer[256];
-    snprintf(header_buffer, sizeof(header_buffer), "User-Agent: %s", USER_AGENT);
-    headers = curl_slist_append(headers, header_buffer);
+    if (USER_AGENT && strlen(USER_AGENT) > 0)
+    {
+        snprintf(header_buffer, sizeof(header_buffer), "User-Agent: %s", USER_AGENT);
+        headers = curl_slist_append(headers, header_buffer);
+    }
+    else
+    {
+        LOG_ERROR("User Agent 不存在");
+        return InitError;
+    }
     snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
     headers = curl_slist_append(headers, header_buffer);
-    snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", clientId);
-    headers = curl_slist_append(headers, header_buffer);
+    if (clientId && strlen(clientId) > 0)
+    {
+        snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", clientId);
+        headers = curl_slist_append(headers, header_buffer);
+    }
+    else
+    {
+        LOG_ERROR("Client ID 不存在");
+        return InitError;
+    }
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
@@ -78,7 +94,7 @@ ConnectivityStatus checkStatus()
         if (response_data.memory) free(response_data.memory);
         const char* error_msg = curl_easy_strerror(res);
         LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
-        return REQUEST_ERROR;
+        return RequestError;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code == 204)
@@ -86,7 +102,7 @@ ConnectivityStatus checkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
-        return SUCCESS;
+        return RequestSuccess;
     }
     if (response_code != 200 && response_code != 302)
     {
@@ -94,7 +110,7 @@ ConnectivityStatus checkStatus()
         curl_slist_free_all(headers);
         if (response_data.memory) free(response_data.memory);
         LOG_ERROR("HTTP 响应错误, 响应码: %d", response_code);
-        return REQUEST_ERROR;
+        return RequestError;
     }
     if (response_data.memory && response_data.size > 0)
     {
@@ -129,7 +145,7 @@ ConnectivityStatus checkStatus()
                     curl_easy_cleanup(curl);
                     curl_slist_free_all(headers);
                     free(response_data.memory);
-                    return REQUIRE_AUTHORIZATION;
+                    return RequestAuthorization;
                 }
                 if (user_ip) free(user_ip);
                 if (ac_ip) free(ac_ip);
@@ -142,5 +158,5 @@ ConnectivityStatus checkStatus()
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
     if (response_data.memory) free(response_data.memory);
-    return SUCCESS;
+    return RequestSuccess;
 }

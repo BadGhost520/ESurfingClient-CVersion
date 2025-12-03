@@ -131,12 +131,12 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
         headers = curl_slist_append(headers, headerBuffer);
         free(MD5Hash);
     }
-    if (strlen(clientId) > 0)
+    if (clientId[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "Client-ID: %s", clientId);
         headers = curl_slist_append(headers, headerBuffer);
     }
-    if (strlen(algoId) > 0)
+    if (algoId[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "Algo-ID: %s", algoId);
         headers = curl_slist_append(headers, headerBuffer);
@@ -149,17 +149,17 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
             headers = curl_slist_append(headers, headerBuffer);
         }
     }
-    if (schoolId != NULL)
+    if (schoolId && schoolId[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "CDC-SchoolId: %s", schoolId);
         headers = curl_slist_append(headers, headerBuffer);
     }
-    if (domain != NULL)
+    if (domain && domain[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Domain: %s", domain);
         headers = curl_slist_append(headers, headerBuffer);
     }
-    if (area != NULL)
+    if (area && area[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Area: %s", area);
         headers = curl_slist_append(headers, headerBuffer);

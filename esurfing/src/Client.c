@@ -11,6 +11,7 @@
 #include "headFiles/States.h"
 #include "headFiles/NetworkStatus.h"
 #include "headFiles/utils/Logger.h"
+#include "headFiles/cipher/CipherInterface.h"
 
 char* keepRetry;
 char* keepUrl;
@@ -19,7 +20,7 @@ long long tick = 0;
 
 void term()
 {
-    const char* encrypt = sessionEncrypt(createXMLPayload("term"));
+    const char* encrypt = sessionEncrypt(createXMLPayload(Term));
     LOG_DEBUG("发送加密登出内容: %s", encrypt);
     NetResult* result = simPost(termUrl, encrypt);
     if (result && result->type == NET_RESULT_ERROR)
@@ -32,9 +33,9 @@ void term()
 
 void heartbeat()
 {
-    const char* encrypt = sessionEncrypt(createXMLPayload("heartbeat"));
+    const char* encrypt = sessionEncrypt(createXMLPayload(Heartbeat));
     LOG_DEBUG("发送加密心跳内容: %s", encrypt);
-    NetResult* result = simPost(keepUrl, sessionEncrypt(createXMLPayload("heartbeat")));
+    NetResult* result = simPost(keepUrl, encrypt);
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         char* decrypted_data = sessionDecrypt(result->data);
@@ -64,9 +65,9 @@ void heartbeat()
 
 void login()
 {
-    const char* encrypt = sessionEncrypt(createXMLPayload("login"));
+    const char* encrypt = sessionEncrypt(createXMLPayload(Login));
     LOG_DEBUG("发送加密登录内容: %s", encrypt);
-    NetResult* result = simPost(authUrl, sessionEncrypt(createXMLPayload("login")));
+    NetResult* result = simPost(authUrl, encrypt);
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("登录响应内容: %s", result->data);
@@ -113,9 +114,9 @@ void login()
 
 void getTicket()
 {
-    const char* encrypt = sessionEncrypt(createXMLPayload("getTicket"));
+    const char* encrypt = sessionEncrypt(createXMLPayload(GetTicket));
     LOG_DEBUG("发送加密获取 ticket 内容: %s", encrypt);
-    NetResult* result = simPost(ticketUrl, sessionEncrypt(createXMLPayload("getTicket")));
+    NetResult* result = simPost(ticketUrl, encrypt);
     if (result && result->type == NET_RESULT_SUCCESS)
     {
         LOG_DEBUG("获取 ticket 响应内容: %s", result->data);
@@ -189,7 +190,7 @@ void run()
 {
     switch (checkStatus())
     {
-    case SUCCESS:
+    case RequestSuccess:
         if (isInitialized && isLogged)
         {
             long long keep_retry;
@@ -214,12 +215,12 @@ void run()
         }
         sleepMilliseconds(1000);
         break;
-    case REQUIRE_AUTHORIZATION:
+    case RequestAuthorization:
         LOG_INFO("需要认证");
         authorization();
         sleepMilliseconds(1000);
         break;
-    case REQUEST_ERROR:
+    case RequestError:
         LOG_ERROR("网络错误");
         sleepMilliseconds(5000);
         break;

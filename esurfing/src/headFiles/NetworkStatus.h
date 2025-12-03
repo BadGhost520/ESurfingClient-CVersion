@@ -7,9 +7,10 @@
 #define NETWORKSTATUS_H
 
 typedef enum {
-    SUCCESS = 0,
-    REQUIRE_AUTHORIZATION = 1,
-    REQUEST_ERROR = 2
+    RequestSuccess = 0,
+    RequestAuthorization = 1,
+    RequestError = 2,
+    InitError = 3
 } ConnectivityStatus;
 
 /**

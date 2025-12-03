@@ -13,6 +13,13 @@ typedef struct {
     size_t length;
 } ByteArray;
 
+typedef enum {
+    GetTicket = 1,
+    Login = 2,
+    Heartbeat = 3,
+    Term = 4
+} XmlChoose;
+
 /**
  * 文本转字节函数
  * @param str 文本数据
@@ -50,9 +57,9 @@ void sleepMilliseconds(int milliseconds);
 
 /**
  * 设置客户端 ID 函数
- * @param client_id 客户端 ID
+ * @return 客户端 ID
  */
-void setClientId(char** client_id);
+char* setClientId();
 
 /**
  * 生成随机 MAC 地址函数
@@ -83,7 +90,7 @@ char* getFileTime();
  * @param choose 格式化选择
  * @return XML 字符串
  */
-char* createXMLPayload(const char* choose);
+char* createXMLPayload(XmlChoose choose);
 
 /**
  * 清除 CDATA 字段函数
