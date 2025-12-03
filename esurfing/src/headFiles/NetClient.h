@@ -9,44 +9,24 @@
 extern "C" {
 #endif
 
-#define MAX_HEADER_LENGTH 256
-#define MAX_HEADERS_COUNT 20
-
-typedef struct {
-    char* memory;
-    size_t size;
-} HTTPResponse;
-
 typedef enum {
-    NET_RESULT_SUCCESS,
-    NET_RESULT_ERROR
-} NetResultType;
+    RequestSuccess = 1,
+    RequestAuthorization = 2,
+    RequestError = 3,
+    InitError = 4
+} NetworkStatus;
 
 typedef struct {
-    NetResultType type;
+    NetworkStatus status;
     char* data;
     size_t dataSize;
-    char* errorMessage;
-    int statusCode;
-} NetResult;
-
-typedef struct {
-    char key[MAX_HEADER_LENGTH];
-    char value[MAX_HEADER_LENGTH];
-} HeaderPair;
-
-typedef struct {
-    HeaderPair headers[MAX_HEADERS_COUNT];
-    int count;
-} ExtraHeaders;
+} HTTPResponse;
 
 /**
  * 释放网络返回值函数
  * @param result 网络返回值
  */
-void freeNetResult(NetResult* result);
-
-size_t writeResponseCallback(const void *contents, size_t size, size_t nmemb, HTTPResponse *response);
+void freeResult(HTTPResponse* result);
 
 /**
  * POST 函数
@@ -54,7 +34,13 @@ size_t writeResponseCallback(const void *contents, size_t size, size_t nmemb, HT
  * @param data 数据
  * @return 网络返回值
  */
-NetResult* simPost(const char* url, const char* data);
+HTTPResponse* simPost(const char* url, const char* data);
+
+/**
+ * 检测网络状态
+ * @return 网络状态
+ */
+NetworkStatus checkNetworkStatus();
 
 #ifdef __cplusplus
 }

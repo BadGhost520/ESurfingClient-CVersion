@@ -5,12 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "headFiles/NetClient.h"
-#include "headFiles/utils/PlatformUtils.h"
-#include "headFiles/Session.h"
 #include "headFiles/States.h"
-#include "headFiles/NetworkStatus.h"
+#include "headFiles/Session.h"
+#include "headFiles/NetClient.h"
 #include "headFiles/utils/Logger.h"
+#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/cipher/CipherInterface.h"
 
 char* keepRetry;
@@ -22,21 +21,21 @@ void term()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload(Term));
     LOG_DEBUG("发送加密登出内容: %s", encrypt);
-    NetResult* result = simPost(termUrl, encrypt);
-    if (result && result->type == NET_RESULT_ERROR)
+    HTTPResponse* result = simPost(termUrl, encrypt);
+    if (result && result->status != RequestSuccess)
     {
-        LOG_ERROR("登出错误: %s", result->errorMessage ? result->errorMessage : "未知错误");
+        LOG_ERROR("登出错误，错误代码: %d", result->status);
     }
     isLogged = 0;
-    freeNetResult(result);
+    freeResult(result);
 }
 
 void heartbeat()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload(Heartbeat));
     LOG_DEBUG("发送加密心跳内容: %s", encrypt);
-    NetResult* result = simPost(keepUrl, encrypt);
-    if (result && result->type == NET_RESULT_SUCCESS)
+    HTTPResponse* result = simPost(keepUrl, encrypt);
+    if (result && result->status == RequestSuccess)
     {
         char* decrypted_data = sessionDecrypt(result->data);
         if (decrypted_data)
@@ -57,25 +56,24 @@ void heartbeat()
     }
     else
     {
-        LOG_ERROR("心跳响应失败");
-        if (result) LOG_ERROR("响应错误原因: %s", result->errorMessage ? result->errorMessage : "未知错误");
+        LOG_ERROR("心跳响应失败，错误代码: %d", result->status);
     }
-    freeNetResult(result);
+    freeResult(result);
 }
 
 void login()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload(Login));
     LOG_DEBUG("发送加密登录内容: %s", encrypt);
-    NetResult* result = simPost(authUrl, encrypt);
-    if (result && result->type == NET_RESULT_SUCCESS)
+    HTTPResponse* result = simPost(authUrl, encrypt);
+    if (result && result->status == RequestSuccess)
     {
         LOG_DEBUG("登录响应内容: %s", result->data);
         char* decrypted_data = sessionDecrypt(result->data);
         if (!decrypted_data)
         {
             LOG_ERROR("解密登录内容失败");
-            freeNetResult(result);
+            freeResult(result);
             return;
         }
         
@@ -106,18 +104,17 @@ void login()
     }
     else
     {
-        LOG_ERROR("登录响应失败");
-        if (result) LOG_ERROR("响应错误原因: %s", result->errorMessage ? result->errorMessage : "未知错误");
+        LOG_ERROR("登录响应失败，错误代码: %d", result->status);
     }
-    freeNetResult(result);
+    freeResult(result);
 }
 
 void getTicket()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload(GetTicket));
     LOG_DEBUG("发送加密获取 ticket 内容: %s", encrypt);
-    NetResult* result = simPost(ticketUrl, encrypt);
-    if (result && result->type == NET_RESULT_SUCCESS)
+    HTTPResponse* result = simPost(ticketUrl, encrypt);
+    if (result && result->status == RequestSuccess)
     {
         LOG_DEBUG("获取 ticket 响应内容: %s", result->data);
         char* parsed_ticket = XmlParser(sessionDecrypt(result->data), "ticket");
@@ -133,16 +130,15 @@ void getTicket()
     }
     else
     {
-        LOG_ERROR("获取 ticket 响应失败");
-        if (result) LOG_ERROR("响应错误原因: %s", result->errorMessage ? result->errorMessage : "未知错误");
+        LOG_ERROR("获取 ticket 响应失败，错误代码: %d", result->status);
     }
-    freeNetResult(result);
+    freeResult(result);
 }
 
 void initSession()
 {
-    NetResult* result = simPost(ticketUrl, algoId);
-    if (result && result->type == NET_RESULT_SUCCESS)
+    HTTPResponse* result = simPost(ticketUrl, algoId);
+    if (result && result->status == RequestSuccess)
     {
         LOG_DEBUG("会话响应内容: %s", result->data);
         const ByteArray zsm = stringToBytes(result->data);
@@ -151,10 +147,9 @@ void initSession()
     }
     else
     {
-        LOG_ERROR("初始化会话失败");
-        if (result) LOG_ERROR("响应错误原因: %s", result->errorMessage ? result->errorMessage : "未知错误");
+        LOG_ERROR("初始化会话失败，错误代码: %d", result->status);
     }
-    freeNetResult(result);
+    freeResult(result);
 }
 
 void authorization()
@@ -188,7 +183,7 @@ void authorization()
 
 void run()
 {
-    switch (checkStatus())
+    switch (checkNetworkStatus())
     {
     case RequestSuccess:
         if (isInitialized && isLogged)
