@@ -176,7 +176,7 @@ void authorization()
     }
     tick = currentTimeMillis();
     authTime = currentTimeMillis();
-    LOG_DEBUG("登录时间戳: %lld", authTime);
+    LOG_DEBUG("登录时间戳 (毫秒): %lld", authTime);
     isLogged = 1;
     LOG_INFO("已认证登录");
 }
