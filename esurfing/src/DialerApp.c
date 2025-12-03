@@ -99,7 +99,8 @@ int main(const int argc, char* argv[]) {
         sleepMilliseconds(5000);
         while (isRunning)
         {
-            if (currentTimeMillis() - authTime >= 172200000 && authTime != 0)
+            // 172200000
+            if (currentTimeMillis() - authTime >= 120000 && authTime != 0)
             {
                 LOG_DEBUG("当前时间戳: %lld", currentTimeMillis());
                 LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟)，为避免被远程服务器踢下线，正在重新进行认证");
