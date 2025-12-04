@@ -49,3 +49,4 @@
 
 1. 优化代码结构
 2. 尝试修复重新认证机制的空指针错误
+3. (OpenWrt 系统) 将 config.sh 的生成路径改为 /var/log/esurfing/config.sh 避免一些未知的权限问题
