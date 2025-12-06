@@ -6,19 +6,53 @@
 #include <openssl/evp.h>
 #include <curl/curl.h>
 
+#include "headFiles/States.h"
 #include "headFiles/NetClient.h"
 #include "headFiles/Constants.h"
-#include "headFiles/States.h"
+#include "headFiles/utils/Logger.h"
+#include "headFiles/utils/PlatformUtils.h"
+
+char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
+{
+    char* start = strstr(text, start_tag);
+    if (!start) return NULL;
+    start += strlen(start_tag);
+    char* end = strstr(start, end_tag);
+    if (!end) return NULL;
+    const size_t len = end - start;
+    char* result = malloc(len + 1);
+    if (!result) return NULL;
+    strncpy(result, start, len);
+    result[len] = '\0';
+    return result;
+}
+
+char* extractUrlParameter(const char* url, const char* param_name)
+{
+    char search_pattern[256];
+    snprintf(search_pattern, sizeof(search_pattern), "%s=", param_name);
+    char* param_start = strstr(url, search_pattern);
+    if (!param_start) return NULL;
+    param_start += strlen(search_pattern);
+    char* param_end = strchr(param_start, '&');
+    if (!param_end) param_end = param_start + strlen(param_start);
+    const size_t len = param_end - param_start;
+    char* result = malloc(len + 1);
+    if (!result) return NULL;
+    strncpy(result, param_start, len);
+    result[len] = '\0';
+    return result;
+}
 
 size_t writeResponseCallback(const void *contents, const size_t size, const size_t nmemb, HTTPResponse *response)
 {
     const size_t realSize = size * nmemb;
-    char *ptr = realloc(response->memory, response->size + realSize + 1);
+    char *ptr = realloc(response->data, response->dataSize + realSize + 1);
     if (!ptr) return 0;
-    response->memory = ptr;
-    memcpy(&response->memory[response->size], contents, realSize);
-    response->size += realSize;
-    response->memory[response->size] = 0;
+    response->data = ptr;
+    memcpy(&response->data[response->dataSize], contents, realSize);
+    response->dataSize += realSize;
+    response->data[response->dataSize] = 0;
     return realSize;
 }
 
@@ -61,60 +95,29 @@ char* calculateMD5(const char* data)
     return MD5String;
 }
 
-int ensureCurlInitialized()
-{
-    int initialized = 0;
-    if (!initialized)
-    {
-        if (curl_global_init(CURL_GLOBAL_DEFAULT) != 0) {
-            return -1;
-        }
-        initialized = 1;
-        atexit(curl_global_cleanup);
-    }
-    return 0;
-}
-
-void freeNetResult(NetResult* result)
+void freeResult(HTTPResponse* result)
 {
     if (result)
     {
-        if (result->data)
-        {
-            free(result->data);
-        }
-        if (result->errorMessage)
-        {
-            free(result->errorMessage);
-        }
+        if (result->data) free(result->data);
         free(result);
     }
 }
 
-NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHeaders)
+HTTPResponse* simPost(const char* url, const char* data)
 {
-    NetResult* result = malloc(sizeof(NetResult));
+    HTTPResponse* result = malloc(sizeof(HTTPResponse));
     HTTPResponse response = {0};
     struct curl_slist* headers = NULL;
     char headerBuffer[512];
     if (!result) return NULL;
-    if (ensureCurlInitialized() != 0)
-    {
-        result->type = NET_RESULT_ERROR;
-        result->data = NULL;
-        result->errorMessage = strdup("初始化 Curl 库失败");
-        result->statusCode = 0;
-        return result;
-    }
-    result->type = NET_RESULT_ERROR;
     result->data = NULL;
     result->dataSize = 0;
-    result->errorMessage = NULL;
-    result->statusCode = 0;
     CURL* curl = curl_easy_init();
     if (!curl)
     {
-        result->errorMessage = strdup("初始化 Curl 失败");
+        result->status = RequestError;
+        LOG_ERROR("初始化 Curl 失败");
         return result;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -131,35 +134,27 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
         headers = curl_slist_append(headers, headerBuffer);
         free(MD5Hash);
     }
-    if (strlen(clientId) > 0)
+    if (clientId[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "Client-ID: %s", clientId);
         headers = curl_slist_append(headers, headerBuffer);
     }
-    if (strlen(algoId) > 0)
+    if (algoId[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "Algo-ID: %s", algoId);
         headers = curl_slist_append(headers, headerBuffer);
     }
-    if (extraHeaders)
-    {
-        for (int i = 0; i < extraHeaders->count; i++)
-        {
-            snprintf(headerBuffer, sizeof(headerBuffer), "%s: %s", extraHeaders->headers[i].key, extraHeaders->headers[i].value);
-            headers = curl_slist_append(headers, headerBuffer);
-        }
-    }
-    if (schoolId != NULL)
+    if (schoolId && schoolId[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "CDC-SchoolId: %s", schoolId);
         headers = curl_slist_append(headers, headerBuffer);
     }
-    if (domain != NULL)
+    if (domain && domain[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Domain: %s", domain);
         headers = curl_slist_append(headers, headerBuffer);
     }
-    if (area != NULL)
+    if (area && area[0])
     {
         snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Area: %s", area);
         headers = curl_slist_append(headers, headerBuffer);
@@ -172,29 +167,139 @@ NetResult* postRequest(const char* url, const char* data, ExtraHeaders* extraHea
     const CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK)
     {
-        result->type = NET_RESULT_ERROR;
-        result->errorMessage = strdup(curl_easy_strerror(res));
+        result->status = RequestError;
+        LOG_ERROR("网络错误，原因: %s",curl_easy_strerror(res));
     }
     else
     {
         long response_code;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-        result->statusCode = (int)response_code;
-        result->type = NET_RESULT_SUCCESS;
-        result->data = response.memory;
-        result->dataSize = response.size;
-        response.memory = NULL;
+        result->data = response.data;
+        result->dataSize = response.dataSize;
+        response.data = NULL;
     }
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    if (response.memory)
+    if (response.data)
     {
-        free(response.memory);
+        free(response.data);
     }
+    result->status = RequestSuccess;
     return result;
 }
 
-NetResult* simPost(const char* url, const char* data)
+NetworkStatus checkNetworkStatus()
 {
-    return postRequest(url, data, NULL);
+    long response_code = 0;
+    HTTPResponse response_data = {0};
+    CURL* curl = curl_easy_init();
+    if (!curl)
+    {
+        LOG_ERROR("初始化 Curl 错误");
+        return InitError;
+    }
+    curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
+    struct curl_slist *headers = NULL;
+    char header_buffer[256];
+    if (USER_AGENT && USER_AGENT[0])
+    {
+        snprintf(header_buffer, sizeof(header_buffer), "User-Agent: %s", USER_AGENT);
+        headers = curl_slist_append(headers, header_buffer);
+    }
+    else
+    {
+        LOG_ERROR("User Agent 不存在");
+        return InitError;
+    }
+    snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
+    headers = curl_slist_append(headers, header_buffer);
+    if (clientId && clientId[0])
+    {
+        snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", clientId);
+        headers = curl_slist_append(headers, header_buffer);
+    }
+    else
+    {
+        LOG_ERROR("Client ID 不存在");
+        return InitError;
+    }
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+    const CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK)
+    {
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+        if (response_data.data) free(response_data.data);
+        const char* error_msg = curl_easy_strerror(res);
+        LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
+        return RequestError;
+    }
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    if (response_code == 204)
+    {
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+        if (response_data.data) free(response_data.data);
+        return RequestSuccess;
+    }
+    if (response_code != 200 && response_code != 302)
+    {
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+        if (response_data.data) free(response_data.data);
+        LOG_ERROR("HTTP 响应错误, 响应码: %d", response_code);
+        return RequestError;
+    }
+    if (response_data.data && response_data.dataSize > 0)
+    {
+        char* portal_config = extractBetweenTags(response_data.data, PORTAL_START_TAG, PORTAL_END_TAG);
+        if (portal_config && portal_config[0])
+        {
+            char* auth_url_raw = XmlParser(portal_config, "auth-url");
+            char* ticket_url_raw = XmlParser(portal_config, "ticket-url");
+            char* auth_url = cleanCDATA(auth_url_raw);
+            char* ticket_url = cleanCDATA(ticket_url_raw);
+            if (auth_url_raw) free(auth_url_raw);
+            if (ticket_url_raw) free(ticket_url_raw);
+            if (auth_url && ticket_url && auth_url[0] && ticket_url[0])
+            {
+                if (authUrl) free(authUrl);
+                authUrl = strdup(auth_url);
+                if (ticketUrl) free(ticketUrl);
+                ticketUrl = strdup(ticket_url);
+                char* user_ip = extractUrlParameter(ticket_url, "wlanuserip");
+                char* ac_ip = extractUrlParameter(ticket_url, "wlanacip");
+                if (user_ip && ac_ip)
+                {
+                    if (userIp) free(userIp);
+                    userIp = strdup(user_ip);
+                    if (acIp) free(acIp);
+                    acIp = strdup(ac_ip);
+                    free(user_ip);
+                    free(ac_ip);
+                    free(auth_url);
+                    free(ticket_url);
+                    free(portal_config);
+                    curl_easy_cleanup(curl);
+                    curl_slist_free_all(headers);
+                    free(response_data.data);
+                    return RequestAuthorization;
+                }
+                if (user_ip) free(user_ip);
+                if (ac_ip) free(ac_ip);
+            }
+            if (auth_url) free(auth_url);
+            if (ticket_url) free(ticket_url);
+            free(portal_config);
+        }
+    }
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+    if (response_data.data) free(response_data.data);
+    return RequestSuccess;
 }

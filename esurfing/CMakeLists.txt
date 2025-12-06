@@ -14,7 +14,6 @@ find_package(OpenSSL REQUIRED)
 add_executable(ESurfingClient
         src/DialerApp.c
         src/Client.c
-        src/NetworkStatus.c
         src/utils/PlatformUtils.c
         src/Constants.c
         src/headFiles/Constants.h

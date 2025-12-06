@@ -18,10 +18,4 @@ extern char* HOST_NAME;
  */
 void initConstants();
 
-/**
- * 初始化 UA 函数
- * @param channel 通道
- */
-void initChannel(int channel);
-
 #endif //ESURFINGCLIENT_CONSTANTS_H

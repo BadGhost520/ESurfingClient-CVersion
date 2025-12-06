@@ -17,18 +17,4 @@ void initialize(const ByteArray* zsm);
  */
 void sessionFree();
 
-/**
- * 加密函数
- * @param text 要加密的文本
- * @return 加密后的数据
- */
-char* sessionEncrypt(const char* text);
-
-/**
- * 解密函数
- * @param text 要解密的数据
- * @return 解密后的文本
- */
-char* sessionDecrypt(const char* text);
-
 #endif //ESURFINGCLIENT_SESSION_H

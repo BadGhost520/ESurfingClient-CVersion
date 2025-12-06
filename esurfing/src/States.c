@@ -33,14 +33,10 @@ void refreshStates()
     if (algoId) free(algoId);
     if (macAddress) free(macAddress);
     if (ticket) free(ticket);
-    if (userIp) free(userIp);
-    if (acIp) free(acIp);
     if (schoolId) free(schoolId);
     if (domain) free(domain);
     if (area) free(area);
-    if (ticketUrl) free(ticketUrl);
-    if (authUrl) free(authUrl);
-    setClientId(&clientId);
+    clientId = strdup(setClientId());
     algoId = strdup("00000000-0000-0000-0000-000000000000");
     macAddress = strdup(randomMacAddress());
     LOG_DEBUG("Client Id: %s", clientId);
