@@ -71,7 +71,7 @@
 
 # 赞助👍
 
-觉得好的话可以点击这个神秘[小链接](https://afdian.com/a/badghost)或者下边的微信赞赏码给偶打点钱哦，谢谢泥喵
+觉得好的话可以点击这个[神秘小链接](https://afdian.com/a/badghost)或者下边的微信赞赏码给偶打点钱哦，谢谢泥喵
 
 ![Please refresh](image/4.png)
 
