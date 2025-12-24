@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="../vector/关于.svg">
+    <link rel="icon" type="image/svg+xml" href="../vector/日志.svg" />
     <link rel="stylesheet" href="../css/basic.css" />
     <link rel="stylesheet" href="../css/sidebar.css" />
-    <link rel="stylesheet" href="../css/about.css" />
-    <title>关于</title>
+    <link rel="stylesheet" href="../css/logs.css" />
+    <title>日志</title>
   </head>
   <body>
     <div id="main">
@@ -24,13 +24,13 @@
           <li id="dashboard">
             <img src="../vector/仪表板.svg" alt="仪表板" /><span>仪表板</span>
           </li>
-          <li id="logs">
+          <li id="logs" class="on">
             <img src="../vector/日志.svg" alt="日志" /><span>日志</span>
           </li>
           <li id="settings">
             <img src="../vector/设置.svg" alt="设置" /><span>设置</span>
           </li>
-          <li id="about" class="on">
+          <li id="about">
             <img src="../vector/关于.svg" alt="关于" /><span>关于</span>
           </li>
         </ul>
@@ -38,19 +38,22 @@
       <!-- 内容 -->
       <div id="content">
         <div class="card">
-          <div class="card-title">关于 ESurfingClient</div>
-          <p>Copyright © 2025 BadGhost</p>
-          <p>
-            GitHub 项目地址:
-            <a href="https://github.com/BadGhost520/ESurfingClient-CVersion"
-              >[传送门]</a
-            >
-          </p>
-          <div id="about-scrollbox">
-            <span id="license">无法加载</span>
+          <div class="card-title">
+            <span>日志</span>
+            <div>
+              <span>日志滚动</span>
+              <div id="log-scroll-on" class="choose-btn btnon">开启</div>
+              <div id="log-scroll-off" class="choose-btn">关闭</div>
+            </div>
+          </div>
+          <div id="log-scrollbox">
+            <span id="log">无日志输出</span>
           </div>
         </div>
       </div>
+    </div>
     <script src="../js/basic.js"></script>
+    <script src="../import-js/axios.min.js"></script>
+    <script src="../js/logs.js"></script>
   </body>
 </html>

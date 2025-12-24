@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
-PKG_VERSION:=2.1.0
+PKG_VERSION:=2.1.1
 PKG_RELEASE:=1
 
 PKG_SOURCE:=esurfingclient.tar.gz
@@ -44,7 +44,6 @@ endef
 define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/
-	$(CP) -r $(CURDIR)/../esurfingclient/files/usr/bin/webEsurfingclient $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient

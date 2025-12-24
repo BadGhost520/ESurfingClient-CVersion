@@ -6,25 +6,30 @@
 }
 
 .card {
+  max-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
-  p {
-    font-size: 16px;
-    white-space: nowrap;
-    overflow-x: hidden;
-    margin-top: 0;
-    margin-bottom: 10px;
-    margin-left: 15px;
-    a {
-      text-decoration: none;
+}
+
+.card-title {
+  justify-content: space-between;
+  div {
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+    span {
+      font-size: 18px;
+      font-weight: bold;
+      margin-right: 10px;
     }
   }
 }
 
-#about-scrollbox {
+#log-scrollbox {
   flex: 1;
-  margin-top: 10px;
-  padding: 20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 18px;
   color: white;
   overflow-y: auto;
   overflow-wrap: break-word;
@@ -33,28 +38,32 @@
   background-color: black;
 }
 
-#license {
+#log {
+  -webkit-user-select: text;
+  user-select: text;
   font-size: 14px;
   font-weight: normal;
   line-height: 1.4;
   white-space: pre-wrap;
   word-wrap: break-word;
-  text-align: left;
 }
 
 @media (max-width: 768px) {
   .card {
-    p {
-      font-size: 14px;
+    max-height: calc(100vh - 110px);
+  }
+  .card-title {
+    div {
+      span {
+        font-size: 14px;
+      }
     }
   }
-
-  #about-scrollbox {
+  #log-scrollbox {
     padding-left: 15px;
     padding-top: 14px;
   }
-
-  #license {
+  #log {
     font-size: 12px;
   }
 }

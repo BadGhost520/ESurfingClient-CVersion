@@ -1,34 +1,62 @@
 #ifndef ESURFINGCLIENT_STATES_H
 #define ESURFINGCLIENT_STATES_H
 
-#include <pthread.h>
 #include <stdint.h>
 
-extern char* macAddress;
-extern char* clientId;
-extern char* algoId;
-extern char* ticket;
-extern char* userIp;
-extern char* acIp;
+typedef enum
+{
+    ADAPTER_1 = 1,
+    ADAPTER_2 = 2,
+} Adapter;
 
-extern int isWebserverRunning;
-extern int isSettingsChange;
-extern int webServerStatus;
-extern int isInitialized;
-extern int isConnected;
-extern int isRunning;
-extern int isLogged;
+typedef struct
+{
+    Adapter adapter;
+    char* mac_address;
+    char* ticket_url;
+    char* client_id;
+    char* school_id;
+    char* auth_url;
+    char* algo_id;
+    char* user_ip;
+    char* domain;
+    char* ticket;
+    char* ac_ip;
+    char* area;
+} AuthConfig;
 
-extern int64_t connectTime;
-extern int64_t authTime;
+typedef struct
+{
+    int is_webserver_running;
+    int is_settings_change;
+    int is_initialized;
+    int is_connected;
+    int is_running;
+    int is_logged;
+} RuntimeStatus;
 
-extern char* ticketUrl;
-extern char* schoolId;
-extern char* authUrl;
-extern char* domain;
-extern char* area;
+typedef struct
+{
+    int64_t connect_time;
+    int64_t auth_time;
+} Timestamp;
 
-extern pthread_t webServerThread;
+typedef struct
+{
+    pthread_t thread;
+    int status;
+} ThreadStatus;
+
+typedef struct
+{
+    AuthConfig auth_config;
+    RuntimeStatus status;
+    Timestamp timestamp;
+    ThreadStatus thread;
+} DialerContext;
+
+extern DialerContext dialer_adapter_1;
+extern DialerContext dialer_adapter_2;
 
 /**
  * 刷新状态函数

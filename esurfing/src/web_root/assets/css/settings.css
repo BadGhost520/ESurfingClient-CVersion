@@ -1,4 +1,17 @@
-.settings-change-btn {
+#content {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  align-content: start;
+}
+
+.card {
+  max-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+}
+
+#change-btn {
   margin-top: 15px;
   margin-left: 50px;
   width: 85px;
@@ -11,7 +24,7 @@
   transition: all 0.2s ease;
 }
 
-.settings-change-btn:hover {
+#change-btn:hover {
   background-color: #3a50fe;
   color: white;
   cursor: pointer;
@@ -48,7 +61,7 @@
   }
 }
 
-.modal {
+#modal {
   left: 250px;
   right: 0;
   bottom: 0;
@@ -62,14 +75,14 @@
   transition: all 0.2s ease;
 }
 
-.modal.modalact {
+#modal.modalact {
   z-index: 5000;
   visibility: visible;
   opacity: 1;
   backdrop-filter: blur(5px);
 }
 
-.settings-modal-container {
+#modal-container {
   width: 500px;
   height: 350px;
   margin: auto;
@@ -81,7 +94,7 @@
   flex-direction: column;
 }
 
-.modal-title {
+#modal-title {
   font-size: 24px;
   font-weight: bold;
   margin: 15px 25px 5px 25px;
@@ -91,30 +104,6 @@
   display: flex;
   justify-content: flex-end;
   margin: 10px 10px;
-}
-
-.choose-btn {
-  margin-right: 10px;
-  height: 30px;
-  width: 60px;
-  font-size: 15px;
-  text-align: center;
-  line-height: 30px;
-  border-radius: 6px;
-  border: solid 1px #e4e4e4;
-  background-color: white;
-  transition: all 0.2s ease;
-}
-
-.choose-btn.btnon {
-  border: solid 1px #374eff;
-  background-color: #3a50fe;
-  color: white;
-}
-
-.choose-btn:hover {
-  border: solid 1px #374eff;
-  cursor: pointer;
 }
 
 .choose-btn.static {
@@ -167,9 +156,5 @@
 
   .modal-btns {
     margin: 20px 5px;
-  }
-
-  .choose-btn {
-    font-size: 13px;
   }
 }

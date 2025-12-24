@@ -27,7 +27,6 @@
 #endif
 
 #include "../headFiles/utils/PlatformUtils.h"
-#include "../headFiles/utils/Shutdown.h"
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/Constants.h"
 #include "../headFiles/Options.h"
@@ -104,7 +103,7 @@ int64_t currentTimeMillis()
 #endif
 }
 
-static int secureRandomBytes(unsigned char* buffer, size_t length)
+int randomBytes(unsigned char* buffer, size_t length)
 {
 #ifdef _WIN32
     HCRYPTPROV hCryptProv;
@@ -131,81 +130,44 @@ void sleepMilliseconds(const int milliseconds)
 #endif
 }
 
-char* setClientId()
+void getTime(char** timestamp)
 {
-    char* client_id = malloc(37);
-    if (client_id)
+    time_t rawTime;
+    char* timeStr = malloc(20 * sizeof(char));
+    if (timeStr)
     {
-        unsigned char randomBytes[16];
-        secureRandomBytes(randomBytes, 16);
-        snprintf(client_id, 37,
-            "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-            randomBytes[0], randomBytes[1], randomBytes[2], randomBytes[3],
-            randomBytes[4], randomBytes[5],
-            (randomBytes[6] & 0x0F) | 0x40,
-            (randomBytes[7] & 0x3F) | 0x80,
-            randomBytes[8], randomBytes[9],
-            randomBytes[10], randomBytes[11],
-            randomBytes[12],randomBytes[13],
-            randomBytes[14], randomBytes[15]);
-        for (int i = 0; client_id[i]; i++) client_id[i] = (char)tolower((unsigned char)client_id[i]);
+        time(&rawTime);
+        const struct tm* timeInfo = localtime(&rawTime);
+        strftime(timeStr, 20, "%Y-%m-%d %H:%M:%S", timeInfo);
+        *timestamp = strdup(timeStr);
+        free(timeStr);
     }
-    return client_id;
 }
 
-char* randomMacAddress()
-{
-    char* macStr = malloc(18 * sizeof(char));
-    if (macStr == NULL) return NULL;
-    unsigned char macBytes[6];
-    secureRandomBytes(macBytes, 6);
-    macBytes[0] = macBytes[0] & 0xFEU;
-    sprintf(macStr, "%02x:%02x:%02x:%02x:%02x:%02x", macBytes[0], macBytes[1], macBytes[2], macBytes[3], macBytes[4], macBytes[5]);
-    return macStr;
-}
-
-char* randomString()
-{
-    char* str = malloc(18 * sizeof(char));
-    if (str == NULL) return NULL;
-    unsigned char strBytes[10];
-    secureRandomBytes(strBytes, 10);
-    strBytes[0] = strBytes[0] & 0xFEU;
-    sprintf(str, "%02x%02x%02x%02x%02x", strBytes[0], strBytes[1], strBytes[2], strBytes[3], strBytes[4]);
-    return str;
-}
-
-char* getTime()
+void getFileTime(char** timestamp)
 {
     time_t rawTime;
     char* timeStr = malloc(20 * sizeof(char));
-    if (timeStr == NULL) return NULL;
-    time(&rawTime);
-    const struct tm* timeInfo = localtime(&rawTime);
-    strftime(timeStr, 20, "%Y-%m-%d %H:%M:%S", timeInfo);
-    return timeStr;
+    if (timeStr)
+    {
+        time(&rawTime);
+        const struct tm* timeInfo = localtime(&rawTime);
+        strftime(timeStr, 20, "%Y%m%d-%H%M%S", timeInfo);
+        *timestamp = strdup(timeStr);
+        free(timeStr);
+    }
 }
 
-char* getFileTime()
-{
-    time_t rawTime;
-    char* timeStr = malloc(20 * sizeof(char));
-    if (timeStr == NULL) return NULL;
-    time(&rawTime);
-    const struct tm* timeInfo = localtime(&rawTime);
-    strftime(timeStr, 20, "%Y%m%d-%H%M%S", timeInfo);
-    return timeStr;
-}
-
-char* createXMLPayload(const XmlChoose choose)
+void createXMLPayload(char** payload, const XmlChoose choose, const DialerContext adapter)
 {
     char* xml = malloc(1024);
-    if (xml == NULL) return NULL;
-    char* currentTime = getTime();
+    if (xml == NULL) return;
+    char* currentTime;
+    getTime(&currentTime);
     if (currentTime == NULL)
     {
         free(xml);
-        return NULL;
+        return;
     }
     LOG_DEBUG("XML 选择代码: %d", choose);
     switch (choose)
@@ -225,13 +187,13 @@ char* createXMLPayload(const XmlChoose choose)
                 "    <gwip>%s</gwip>\n"
                 "</request>",
                 USER_AGENT ? USER_AGENT : "",
-                clientId ? clientId : "",
+                adapter.auth_config.client_id ? adapter.auth_config.client_id : "",
                 currentTime,
                 HOST_NAME ? HOST_NAME : "",
-                userIp ? userIp : "",
-                macAddress ? macAddress : "",
+                adapter.auth_config.user_ip ? adapter.auth_config.user_ip : "",
+                adapter.auth_config.mac_address ? adapter.auth_config.mac_address : "",
                 HOST_NAME ? HOST_NAME : "",
-                acIp ? acIp : ""
+                adapter.auth_config.ac_ip ? adapter.auth_config.ac_ip : ""
             );
             break;
         case Login:
@@ -246,11 +208,11 @@ char* createXMLPayload(const XmlChoose choose)
                 "    <passwd>%s</passwd>\n"
                 "</request>",
                 USER_AGENT ? USER_AGENT : "",
-                clientId ? clientId : "",
-                ticket ? ticket : "",
+                adapter.auth_config.client_id ? adapter.auth_config.client_id : "",
+                adapter.auth_config.ticket ? adapter.auth_config.ticket : "",
                 currentTime,
-                usr,
-                pwd
+                opt.usr,
+                opt.pwd
             );
             break;
         case Heartbeat:
@@ -269,17 +231,18 @@ char* createXMLPayload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "</request>",
             USER_AGENT ? USER_AGENT : "",
-            clientId ? clientId : "",
+            adapter.auth_config.client_id ? adapter.auth_config.client_id : "",
             currentTime,
             HOST_NAME ? HOST_NAME : "",
-            userIp ? userIp : "",
-            ticket ? ticket : "",
-            macAddress ? macAddress : "",
+            adapter.auth_config.user_ip ? adapter.auth_config.user_ip : "",
+            adapter.auth_config.ticket ? adapter.auth_config.ticket : "",
+            adapter.auth_config.mac_address ? adapter.auth_config.mac_address : "",
             HOST_NAME ? HOST_NAME : ""
         );
     }
     free(currentTime);
-    return xml;
+    *payload = strdup(xml);
+    free(xml);
 }
 
 char* cleanCDATA(const char* text)
@@ -301,47 +264,13 @@ char* cleanCDATA(const char* text)
     return result;
 }
 
-void createBash()
+void createThread(DialerContext* adapter, void*(* func)(void*), void* arg)
 {
-    const char* filename = "/var/log/esurfing/config.sh";
-    FILE* file = fopen(filename, "w");
+    adapter->thread.status = pthread_create(&adapter->thread.thread, NULL, func, &arg);
 
-    if (file == NULL)
-    {
-        LOG_ERROR("创建文件失败");
-        return;
-    }
-
-    fprintf(file, "#!/bin/sh\n");
-    fprintf(file, "uci set esurfingclient.main.enabled='1'\n");
-    fprintf(file, "uci set esurfingclient.main.username='%s'\n", usr);
-    fprintf(file, "uci set esurfingclient.main.password='%s'\n", pwd);
-    fprintf(file, "uci set esurfingclient.main.channel='%s'\n", chn ? chn : "phone");
-    fprintf(file, "uci set esurfingclient.main.debug='%d'\n", isDebug);
-    fprintf(file, "uci set esurfingclient.main.smallDevice='%d'\n", isSmallDevice);
-    fprintf(file, "uci commit esurfingclient\n");
-    fprintf(file, "/etc/init.d/esurfingclient reload\n");
-    fclose(file);
-
-    if (chmod(filename, 0755) != 0)
-    {
-        LOG_ERROR("一键配置脚本创建失败");
-        return;
-    }
-    LOG_INFO("一键配置脚本创建成功, 位于: %s", filename);
 }
 
-void createThread(void*(* func)(void*), void* arg)
+void waitThreadStop(const DialerContext adapter)
 {
-    webServerStatus = pthread_create(&webServerThread, NULL, func, &arg);
-    if (webServerStatus != 0)
-    {
-        LOG_FATAL("web 线程创建失败");
-        shut(webServerStatus);
-    }
-}
-
-void waitThreadStop(const pthread_t thread)
-{
-    pthread_join(thread, NULL);
+    pthread_join(adapter.thread.thread, NULL);
 }

@@ -1,8 +1,9 @@
 #ifndef PLATFORMUTILS_H
 #define PLATFORMUTILS_H
 
-#include <pthread.h>
 #include <stdint.h>
+
+#include "../States.h"
 
 typedef struct {
     unsigned char* data;
@@ -53,47 +54,36 @@ char* longLongToString(long long num);
 int64_t currentTimeMillis();
 
 /**
+ * 获取随机字节
+ * @param buffer 缓冲
+ * @param length 长度
+ * @return 随机字节
+ */
+int randomBytes(unsigned char* buffer, size_t length);
+
+/**
  * 睡眠函数
  * @param milliseconds 毫秒
  */
 void sleepMilliseconds(int milliseconds);
 
 /**
- * 设置客户端 ID 函数
- * @return 客户端 ID
- */
-char* setClientId();
-
-/**
- * 生成随机 MAC 地址函数
- * @return MAC 地址
- */
-char* randomMacAddress();
-
-/**
- * 生成10位随机字符串函数
- * @return 10位随机字符串
- */
-char* randomString();
-
-/**
  * 获取当前时间函数(终端)
- * @return 当前时间(YY-mm-dd HH-MM-SS)
  */
-char* getTime();
+void getTime(char** timestamp);
 
 /**
  * 获取当前时间函数(文件)
- * @return 当前时间(YYmmdd-HHMMSS)
  */
-char* getFileTime();
+void getFileTime(char** timestamp);
 
 /**
  * 创建 XML 字符串函数
+ * @param payload xml 指针
  * @param choose 格式化选择
- * @return XML 字符串
+ * @param adapter 适配器配置指针
  */
-char* createXMLPayload(XmlChoose choose);
+void createXMLPayload(char** payload, XmlChoose choose, DialerContext adapter);
 
 /**
  * 清除 CDATA 字段函数
@@ -109,12 +99,16 @@ void createBash();
 
 /**
  * 创建线程函数
+ * @param adapter 适配器配置指针
+ * @param func 线程要执行的函数
+ * @param arg 参数
  */
-void createThread(void*(* func)(void*), void* arg);
+void createThread(DialerContext* adapter, void*(* func)(void*), void* arg);
 
 /**
  * 等待线程结束函数
+ * @param adapter 适配器配置指针
  */
-void waitThreadStop(pthread_t thread);
+void waitThreadStop(DialerContext adapter);
 
 #endif // PLATFORMUTILS_H

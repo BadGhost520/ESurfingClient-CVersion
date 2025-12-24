@@ -1,6 +1,4 @@
-let isScrollEnabled = false;
-
-const logs = document.getElementById('logs');
+const logs = document.getElementById('log');
 
 async function updateLogs() {
     await axios({
@@ -26,15 +24,21 @@ async function updateLogs() {
         });
 }
 
-const switchBorder = document.getElementById('switch-border');
-const switchBtn = document.getElementById('switch-circle');
+const logScrollOn = document.getElementById('log-scroll-on');
+const logScrollOff = document.getElementById('log-scroll-off');
+let isScrollEnabled = true;
 
-switchBorder.addEventListener('click', () => {
-    switchBorder.classList.toggle('switchon');
-    switchBtn.classList.toggle('switchon');
-    isScrollEnabled = !isScrollEnabled;
+logScrollOn.addEventListener('click', () => {
+    isScrollEnabled = true;
+    if (!logScrollOn.classList.contains('btnon')) logScrollOn.classList.add('btnon');
+    logScrollOff.classList.remove('btnon');
 });
 
+logScrollOff.addEventListener('click', () => {
+    isScrollEnabled = false;
+    if (!logScrollOff.classList.contains('btnon')) logScrollOff.classList.add('btnon');
+    logScrollOn.classList.remove('btnon');
+});
 
 window.addEventListener('load', () => {
     updateLogs();

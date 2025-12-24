@@ -10,8 +10,8 @@ endif()
 
 if(NOT CMAKE_C_COMPILER MATCHES "openwrt")
     add_custom_target(syncWebRoot ALL
-            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/webEsurfingclient
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/../esurfingclient/files/usr/bin/webEsurfingclient ${CMAKE_BINARY_DIR}/webEsurfingclient
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/web_root
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/web_root ${CMAKE_BINARY_DIR}/web_root
             COMMENT "sync web root"
     )
 endif()
@@ -52,6 +52,8 @@ add_executable(ESurfingClient
         src/webserver/WebServer.c
         src/utils/CheckAdapters.c
         src/utils/cJSON.c
+        src/Main.c
+        src/Options.c
 )
 
 if(WIN32)

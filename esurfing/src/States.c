@@ -1,49 +1,76 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Logger.h"
 #include "headFiles/States.h"
 
-char* macAddress;
-char* clientId;
-char* algoId;
-char* ticket;
-char* userIp;
-char* acIp;
+DialerContext dialer_adapter_1 = {0};
+DialerContext dialer_adapter_2 = {0};
 
-int isWebserverRunning = 0;
-int isSettingsChange = 0;
-int webServerStatus = 0;
-int isInitialized = 0;
-int isConnected = 0;
-int isRunning = 0;
-int isLogged = 0;
-
-int64_t connectTime = 0;
-int64_t authTime = 0;
-
-char* ticketUrl;
-char* schoolId;
-char* authUrl;
-char* domain;
-char* area;
-
-pthread_t webServerThread;
-
-void refreshStates()
+void setRandomClientId(DialerContext* dialer_adapter)
 {
-    if (clientId) free(clientId);
-    if (algoId) free(algoId);
-    if (macAddress) free(macAddress);
-    if (ticket) free(ticket);
-    if (schoolId) free(schoolId);
-    if (domain) free(domain);
-    if (area) free(area);
-    clientId = strdup(setClientId());
-    algoId = strdup("00000000-0000-0000-0000-000000000000");
-    macAddress = strdup(randomMacAddress());
-    LOG_DEBUG("Client Id: %s", clientId);
-    LOG_DEBUG("MAC: %s", macAddress);
+    char* client_id = malloc(37);
+    if (client_id)
+    {
+        unsigned char random_bytes[16];
+        randomBytes(random_bytes, 16);
+        snprintf(client_id, 37,
+            "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+            random_bytes[0], random_bytes[1],
+            random_bytes[2], random_bytes[3],
+            random_bytes[4], random_bytes[5],
+            (random_bytes[6] & 0x0F) | 0x40,
+            (random_bytes[7] & 0x3F) | 0x80,
+            random_bytes[8], random_bytes[9],
+            random_bytes[10], random_bytes[11],
+            random_bytes[12],random_bytes[13],
+            random_bytes[14], random_bytes[15]);
+        for (int i = 0; client_id[i]; i++) client_id[i] = (char)tolower((unsigned char)client_id[i]);
+        LOG_DEBUG("New %d Client Id: %s",dialer_adapter->auth_config.adapter ,client_id);
+        dialer_adapter->auth_config.client_id = strdup(client_id);
+        free(client_id);
+    }
+    else
+    {
+        LOG_ERROR("分配内存失败");
+    }
+}
+
+void setRandomMacAddress(DialerContext* dialer_adapter)
+{
+    char* mac_address = malloc(18 * sizeof(char));
+    if (mac_address)
+    {
+        unsigned char macBytes[6];
+        randomBytes(macBytes, 6);
+        macBytes[0] = macBytes[0] & 0xFEU;
+        sprintf(mac_address, "%02x:%02x:%02x:%02x:%02x:%02x",
+        macBytes[0], macBytes[1],
+        macBytes[2], macBytes[3],
+        macBytes[4], macBytes[5]);
+        LOG_DEBUG("New %d MAC: %s",dialer_adapter->auth_config.adapter ,mac_address);
+        dialer_adapter->auth_config.mac_address = strdup(mac_address);
+        free(mac_address);
+    }
+    else
+    {
+        LOG_ERROR("分配内存失败");
+    }
+}
+
+void refreshStates(DialerContext* dialer_adapter)
+{
+    if (dialer_adapter->auth_config.mac_address) free(dialer_adapter->auth_config.mac_address);
+    if (dialer_adapter->auth_config.client_id) free(dialer_adapter->auth_config.client_id);
+    if (dialer_adapter->auth_config.school_id) free(dialer_adapter->auth_config.school_id);
+    if (dialer_adapter->auth_config.algo_id) free(dialer_adapter->auth_config.algo_id);
+    if (dialer_adapter->auth_config.ticket) free(dialer_adapter->auth_config.ticket);
+    if (dialer_adapter->auth_config.domain) free(dialer_adapter->auth_config.domain);
+    if (dialer_adapter->auth_config.area) free(dialer_adapter->auth_config.area);
+    dialer_adapter->auth_config.algo_id = strdup("00000000-0000-0000-0000-000000000000");
+    setRandomClientId(dialer_adapter);
+    setRandomMacAddress(dialer_adapter);
 }

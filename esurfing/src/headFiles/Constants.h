@@ -5,8 +5,8 @@ extern const char* PORTAL_START_TAG;
 extern const char* PORTAL_END_TAG;
 extern const char* REQUEST_ACCEPT;
 extern const char* CAPTIVE_URL;
-extern const char* USER_AGENT;
 extern const char* AUTH_KEY;
+extern char* USER_AGENT;
 extern char* HOST_NAME;
 
 /**

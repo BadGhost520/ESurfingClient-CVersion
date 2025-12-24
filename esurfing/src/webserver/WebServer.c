@@ -10,7 +10,7 @@
 #include "../headFiles/States.h"
 
 // TODO 记得修改版本号
-#define VERSION "v2.1.0-r1"
+#define VERSION "v2.1.1-r1"
 
 const char* listenAddr = "http://0.0.0.0:8888";
 
@@ -18,7 +18,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
 {
     if (ev == MG_EV_HTTP_MSG)
     {
-        struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+        struct mg_http_message *hm = ev_data;
 
         if (mg_match(hm->uri, mg_str("/"), NULL) || mg_match(hm->uri, mg_str(""), NULL))
         {
@@ -48,11 +48,11 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             else if (mg_match(hm->uri, mg_str("/api/getSettings"), NULL))
             {
                 cJSON* settings = cJSON_CreateObject();
-                cJSON_AddStringToObject(settings, "username", usr);
-                cJSON_AddStringToObject(settings, "password", pwd);
-                cJSON_AddStringToObject(settings, "channel", chn);
-                cJSON_AddNumberToObject(settings, "debug", isDebug);
-                cJSON_AddNumberToObject(settings, "smallDevice", isSmallDevice);
+                cJSON_AddStringToObject(settings, "username", opt.usr);
+                cJSON_AddStringToObject(settings, "password", opt.pwd);
+                cJSON_AddStringToObject(settings, "channel", opt.chn);
+                cJSON_AddNumberToObject(settings, "debug", opt.isDebug);
+                cJSON_AddNumberToObject(settings, "smallDevice", opt.isSmallDevice);
                 char* temp = cJSON_Print(settings);
                 char* response = strdup(temp);
                 cJSON_Delete(settings);
@@ -139,23 +139,23 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     const cJSON* smallDevice = cJSON_GetObjectItem(jsonData, "smallDevice");
                     if (username && cJSON_IsString(username))
                     {
-                        usr = strdup(username->valuestring);
+                        opt.usr = strdup(username->valuestring);
                     }
                     if (password && cJSON_IsString(password))
                     {
-                        pwd = strdup(password->valuestring);
+                        opt.pwd = strdup(password->valuestring);
                     }
                     if (channel && cJSON_IsString(channel))
                     {
-                        chn = strdup(channel->valuestring);
+                        opt.chn = strdup(channel->valuestring);
                     }
-                    if (isDebug && cJSON_IsNumber(debug))
+                    if (debug && cJSON_IsNumber(debug))
                     {
-                        isDebug = debug->valueint;
+                        opt.isDebug = debug->valueint;
                     }
                     if (smallDevice && cJSON_IsNumber(smallDevice))
                     {
-                        isSmallDevice = smallDevice->valueint;
+                        opt.isSmallDevice = smallDevice->valueint;
                     }
                     cJSON_Delete(jsonData);
                     isSettingsChange = 1;
@@ -173,12 +173,12 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                 }
             }
         }
-        const struct mg_http_serve_opts opts = {.root_dir = "./webEsurfingclient", .fs = &mg_fs_posix};
+        const struct mg_http_serve_opts opts = {.root_dir = "./web_root", .fs = &mg_fs_posix};
         mg_http_serve_dir(c, hm, &opts);
     }
 }
 
-void* webServerMain()
+void webServerMain()
 {
     struct mg_mgr mgr;
     mg_mgr_init(&mgr);
@@ -191,15 +191,4 @@ void* webServerMain()
 
     mg_mgr_free(&mgr);
     LOG_INFO("Web 服务器已停止");
-    return 0;
-}
-
-void startWebServer()
-{
-    createThread(webServerMain, NULL);
-}
-
-void stopWebServer()
-{
-    isWebserverRunning = 0;
 }
