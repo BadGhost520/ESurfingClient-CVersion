@@ -30,6 +30,19 @@ typedef struct {
     size_t size;
 } LogContent;
 
+typedef struct
+{
+    bool is_debug;
+    bool is_small_device;
+} LoggerSettings;
+
+extern LoggerSettings g_logger_settings;
+
+/**
+ * 检查日志输出等级
+ */
+void checkLogLevel();
+
 /**
  * 初始化日志系统函数
  */
@@ -39,11 +52,6 @@ int loggerInit();
  * 清理日志系统函数
  */
 void loggerCleanup();
-
-/**
- * 检查日志输出等级
- */
-void checkLogLevel();
 
 /**
  * 获取增量内存日志函数

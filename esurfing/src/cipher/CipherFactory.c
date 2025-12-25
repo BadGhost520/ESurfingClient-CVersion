@@ -30,9 +30,9 @@ extern cipherInterfaceT* create_des_ecb_six_pc_cipher(const uint8_t* key0, const
                                                         const uint8_t* key2, const uint8_t* key3,
                                                         const uint8_t* key4, const uint8_t* key5);
 
-cipherInterfaceT* cipher = NULL;
+static cipherInterfaceT* cipher = NULL;
 
-cipherInterfaceT* cipherFactoryCreate(const char* algorithmId)
+static cipherInterfaceT* cipherFactoryCreate(const char* algorithmId)
 {
     if (!algorithmId) return NULL;
     // AES-CBC
@@ -209,12 +209,16 @@ int initCipher(const char* algoId)
     return 1;
 }
 
-char* sessionEncrypt(const char* text)
+void sessionEncrypt(const char* text, char** encrypt)
 {
-    return cipher->encrypt(cipher, text);
+    char* result = cipher->encrypt(cipher, text);
+    *encrypt = strdup(result);
+    free(result);
 }
 
-char* sessionDecrypt(const char* text)
+void sessionDecrypt(const char* text, char** decrypt)
 {
-    return cipher->decrypt(cipher, text);
+    char* result = cipher->decrypt(cipher, text);
+    *decrypt = strdup(result);
+    free(result);
 }

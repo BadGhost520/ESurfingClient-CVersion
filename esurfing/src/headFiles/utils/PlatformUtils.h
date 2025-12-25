@@ -27,10 +27,10 @@ ByteArray stringToBytes(const char* str);
 /**
  * XML 解析函数
  * @param xmlData XML 数据
- * @param tag 标志
- * @return 解析后的数据
+ * @param tag 提取标志
+ * @param parsed 解析后储存的指针地址
  */
-char* XmlParser(const char* xmlData, const char* tag);
+void XmlParser(const char* xmlData, const char* tag, char** parsed);
 
 /**
  * 字符串转换为64位长整型函数
@@ -42,10 +42,10 @@ int stringToLongLong(const char* str, long long* result);
 
 /**
  * 64位长整型转换为字符串函数
+ * @param string 转换后要储存到的指针地址
  * @param num 要转换的64位长整型
- * @return 转换后的字符串
  */
-char* longLongToString(long long num);
+void longLongToString(char** string, long long num);
 
 /**
  * 获取当前时间的毫秒时间戳函数
@@ -69,46 +69,42 @@ void sleepMilliseconds(int milliseconds);
 
 /**
  * 获取当前时间函数(终端)
+ * @param timestamp 要储存到的指针地址
  */
 void getTime(char** timestamp);
 
 /**
  * 获取当前时间函数(文件)
+ * @param timestamp 要储存到的指针地址
  */
 void getFileTime(char** timestamp);
 
 /**
  * 创建 XML 字符串函数
- * @param payload xml 指针
  * @param choose 格式化选择
- * @param adapter 适配器配置指针
+ * @param payload 创建 xml 后储存的指针地址
  */
-void createXMLPayload(char** payload, XmlChoose choose, DialerContext adapter);
+void createXMLPayload(XmlChoose choose, char** payload);
 
 /**
  * 清除 CDATA 字段函数
  * @param text 未清除 CDATA 字段文本
- * @return 清除 CDATA 字段之后的文本
+ * @param cleaned 清除后要储存到的指针地址
  */
-char* cleanCDATA(const char* text);
-
-/**
- * OpenWrt 创建一键配置脚本
- */
-void createBash();
+void cleanCDATA(const char* text, char** cleaned);
 
 /**
  * 创建线程函数
- * @param adapter 适配器配置指针
  * @param func 线程要执行的函数
  * @param arg 参数
+ * @param index 线程下标
  */
-void createThread(DialerContext* adapter, void*(* func)(void*), void* arg);
+void createThread(void*(* func)(void*), void* arg, int index);
 
 /**
  * 等待线程结束函数
- * @param adapter 适配器配置指针
+ * @param index 线程下标
  */
-void waitThreadStop(DialerContext adapter);
+void waitThreadStop(int index);
 
 #endif // PLATFORMUTILS_H

@@ -17,7 +17,8 @@
 
 #include "../headFiles/utils/PlatformUtils.h"
 #include "../headFiles/utils/Logger.h"
-#include "../headFiles/Options.h"
+
+LoggerSettings g_logger_settings = {0};
 
 #ifdef _WIN32
     const char sep = '\\';
@@ -66,7 +67,8 @@ void loggerRotateFile()
     fclose(gLoggerConfig.fileHandle);
     gLoggerConfig.fileHandle = NULL;
 
-    char* timeStr = getFileTime();
+    char* timeStr;
+    getFileTime(&timeStr);
     if (timeStr == NULL)
     {
         fprintf(stderr, "错误: 无法获取文件轮转时间\n");
@@ -145,12 +147,17 @@ int ensureLogDir(char* out)
     return 0;
 }
 
-int loggerInit()
+void checkLogLevel()
 {
-    if (isDebug)
+    if (g_logger_settings.is_debug)
         gLoggerConfig.level = LOG_LEVEL_DEBUG;
     else
         gLoggerConfig.level = LOG_LEVEL_INFO;
+}
+
+int loggerInit()
+{
+    checkLogLevel();
     if (ensureLogDir(gLoggerConfig.logDir) != 0)
     {
         fprintf(stderr, "错误: 无法准备日志目录\n");
@@ -169,15 +176,8 @@ int loggerInit()
         return -1;
     }
     LOG_DEBUG("日志等级: %s", loggerLevelString(gLoggerConfig.level));
+    if (g_logger_settings.is_small_device && access("/etc/openwrt_release", F_OK) == 0) LOG_DEBUG("检测到 OpenWrt 环境，小容量设备模式已开启");
     return 0;
-}
-
-void checkLogLevel()
-{
-    if (isDebug)
-        gLoggerConfig.level = LOG_LEVEL_DEBUG;
-    else
-        gLoggerConfig.level = LOG_LEVEL_INFO;
 }
 
 void loggerCleanup()
@@ -189,7 +189,8 @@ void loggerCleanup()
         gLoggerConfig.fileHandle = NULL;
         if (strlen(gLoggerConfig.logFile) > 0)
         {
-            char* timeStr = getFileTime();
+            char* timeStr;
+            getFileTime(&timeStr);
             if (timeStr == NULL)
             {
                 fprintf(stderr, "错误: 无法获取文件清理时间\n");
@@ -205,7 +206,6 @@ void loggerCleanup()
                 fprintf(stderr, "错误: 新文件名过长 (最大 %zu)\n", sizeof(newFilename) - 1);
                 return;
             }
-
             rename(gLoggerConfig.logFile, newFilename);
         }
     }
@@ -279,7 +279,8 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
     va_end(args);
-    char* timestamp = getTime();
+    char* timestamp;
+    getTime(&timestamp);
     snprintf(finalMessage, sizeof(finalMessage),
         "[%s] [%s] [%s:%d] %s\n",
         timestamp,

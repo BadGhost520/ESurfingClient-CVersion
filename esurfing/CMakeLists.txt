@@ -40,7 +40,6 @@ add_executable(ESurfingClient
         src/cipher/impl/aes_ecb.c
         src/cipher/impl/aes_cbc.c
         src/utils/Shutdown.c
-        src/Options.c
         src/utils/Logger.c
         src/cipher/impl/desede_cbc_pc.c
         src/cipher/impl/aes_ecb_pc.c
@@ -53,7 +52,6 @@ add_executable(ESurfingClient
         src/utils/CheckAdapters.c
         src/utils/cJSON.c
         src/Main.c
-        src/Options.c
 )
 
 if(WIN32)

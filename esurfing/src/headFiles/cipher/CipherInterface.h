@@ -26,17 +26,17 @@ int initCipher(const char* algoId);
 
 /**
  * 加密函数
- * @param text 加密文本
- * @return 加密后文本
+ * @param text 需要加密的文本
+ * @param encrypt 加密后文本的指针
  */
-char* sessionEncrypt(const char* text);
+void sessionEncrypt(const char* text, char** encrypt);
 
 /**
  * 解密函数
- * @param text 解密文本
- * @return 解密后文本
+ * @param text 需要解密的文本
+ * @param decrypt 解密后文本的指针
  */
-char* sessionDecrypt(const char* text);
+void sessionDecrypt(const char* text, char** decrypt);
 
 #ifdef __cplusplus
 }

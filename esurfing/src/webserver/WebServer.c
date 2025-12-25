@@ -6,15 +6,15 @@
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/utils/cJSON.h"
 #include "../headFiles/NetClient.h"
-#include "../headFiles/Options.h"
-#include "../headFiles/States.h"
 
 // TODO 记得修改版本号
 #define VERSION "v2.1.1-r1"
 
+int is_webserver_running = 0;
+int is_settings_changed = 0;
 const char* listenAddr = "http://0.0.0.0:8888";
 
-static void fn(struct mg_connection *c, const int ev, void *ev_data)
+void fn(struct mg_connection *c, const int ev, void *ev_data)
 {
     if (ev == MG_EV_HTTP_MSG)
     {
@@ -158,7 +158,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                         opt.isSmallDevice = smallDevice->valueint;
                     }
                     cJSON_Delete(jsonData);
-                    isSettingsChange = 1;
+                    is_settings_changed = 1;
                     mg_http_reply(c,
                         204,
                         "",
@@ -178,7 +178,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
     }
 }
 
-void webServerMain()
+void startWebServer()
 {
     struct mg_mgr mgr;
     mg_mgr_init(&mgr);
@@ -186,9 +186,14 @@ void webServerMain()
 
     LOG_INFO("Web 服务器已启动，后台访问地址: http://127.0.0.1:8888/");
 
-    isWebserverRunning = 1;
-    while (isWebserverRunning) mg_mgr_poll(&mgr, 1000);
+    is_webserver_running = 1;
+    while (is_webserver_running) mg_mgr_poll(&mgr, 1000);
 
     mg_mgr_free(&mgr);
     LOG_INFO("Web 服务器已停止");
+}
+
+void stopWebServer()
+{
+    is_webserver_running = 0;
 }

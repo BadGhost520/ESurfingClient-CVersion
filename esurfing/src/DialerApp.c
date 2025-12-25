@@ -1,7 +1,6 @@
 #include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/webserver/WebServer.h"
 #include "headFiles/utils/PlatformUtils.h"
-#include "headFiles/utils/Shutdown.h"
 #include "headFiles/utils/Logger.h"
 #include "headFiles/Constants.h"
 #include "headFiles/Session.h"
@@ -11,13 +10,13 @@
 void restart()
 {
     checkLogLevel();
-    if (isInitialized)
+    if (dialer_adapter.runtime_status.is_initialized)
     {
-        if (isLogged) term();
+        if (dialer_adapter.runtime_status.is_logged) term();
         cipherFactoryDestroy();
         sessionFree();
     }
-    authTime = 0;
+    dialer_adapter.timestamp.auth_time = 0;
     sleepMilliseconds(5000);
     initConstants();
     refreshStates();
@@ -25,31 +24,29 @@ void restart()
 
 void dialerApp()
 {
-    isRunning = 1;
-    initShutdown();
+    dialer_adapter.runtime_status.is_running = 1;
     initConstants();
     refreshStates();
-    LOG_INFO("程序启动中");
+    LOG_INFO("程序启动中，序号: %d", dialer_adapter.auth_config.adapter);
     sleepMilliseconds(5000);
-    startWebServer();
-    while (isRunning)
+    while (dialer_adapter.runtime_status.is_running)
     {
-        if (currentTimeMillis() - authTime >= 172200000 && authTime != 0)
+        if (currentTimeMillis() - dialer_adapter.timestamp.auth_time >= 172200000 && dialer_adapter.timestamp.auth_time != 0)
         {
-            if (isSettingsChange)
+            if (is_settings_changed)
             {
                 LOG_INFO("设置已更改，正在重启认证");
-                isSettingsChange = 0;
+                is_settings_changed = 0;
             }
             LOG_DEBUG("当前时间戳(毫秒): %lld", currentTimeMillis());
             LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟)，为避免被远程服务器踢下线，正在重新进行认证");
             restart();
         }
-        else if (isSettingsChange)
+        else if (is_settings_changed)
         {
             LOG_INFO("设置已更改，正在重启认证");
             restart();
-            isSettingsChange = 0;
+            is_settings_changed = 0;
         }
         run();
     }

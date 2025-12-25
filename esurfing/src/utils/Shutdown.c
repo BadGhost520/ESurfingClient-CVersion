@@ -9,28 +9,35 @@
 #include "../headFiles/States.h"
 #include "../headFiles/Client.h"
 
-void performCleanup()
+void adapterStop()
 {
-    LOG_DEBUG("执行关闭函数");
-    if (isWebserverRunning)
+    for (int i = 0; i < MAX_DIALERS; i++)
+    {
+        LOG_DEBUG("执行关闭函数");
+        if (g_dialer_adapter[i].runtime_status.is_running) g_dialer_adapter[i].runtime_status.is_running = 0;
+        if (g_dialer_adapter[i].runtime_status.is_initialized)
+        {
+            if (g_dialer_adapter[i].runtime_status.is_logged) term();
+            cipherFactoryDestroy(); // TODO 需要处理
+            sessionFree(); // TODO 需要处理
+        }
+    }
+}
+
+void mainStop()
+{
+    if (is_webserver_running)
     {
         stopWebServer();
-        waitThreadStop(webServerThread);
-    }
-    if (isRunning) isRunning = 0;
-    if (isInitialized)
-    {
-        if (isLogged) term();
-        cipherFactoryDestroy();
-        sessionFree();
     }
     loggerCleanup();
 }
 
 void shut(const int exitCode)
 {
-    LOG_INFO("正在关闭程序");
-    performCleanup();
+
+    LOG_INFO("关闭主线程");
+    mainStop();
     exit(exitCode);
 }
 

@@ -1,17 +1,13 @@
 #ifndef ESURFINGCLIENT_STATES_H
 #define ESURFINGCLIENT_STATES_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
-typedef enum
-{
-    ADAPTER_1 = 1,
-    ADAPTER_2 = 2,
-} Adapter;
+#define MAX_DIALER_COUNT 2
 
 typedef struct
 {
-    Adapter adapter;
     char* mac_address;
     char* ticket_url;
     char* client_id;
@@ -27,12 +23,10 @@ typedef struct
 
 typedef struct
 {
-    int is_webserver_running;
-    int is_settings_change;
-    int is_initialized;
-    int is_connected;
-    int is_running;
-    int is_logged;
+    bool is_initialized;
+    bool is_connected;
+    bool is_running;
+    bool is_logged;
 } RuntimeStatus;
 
 typedef struct
@@ -49,18 +43,31 @@ typedef struct
 
 typedef struct
 {
+    char* usr;
+    char* pwd;
+    char* chn;
+} Options;
+
+typedef struct
+{
     AuthConfig auth_config;
-    RuntimeStatus status;
+    RuntimeStatus runtime_status;
     Timestamp timestamp;
-    ThreadStatus thread;
+    Options options;
 } DialerContext;
 
-extern DialerContext dialer_adapter_1;
-extern DialerContext dialer_adapter_2;
+extern __thread DialerContext dialer_adapter;
+extern ThreadStatus thread_status[MAX_DIALER_COUNT];
 
 /**
  * 刷新状态函数
  */
 void refreshStates();
+
+/**
+ * 设置适配器配置选项
+ * @param opt 选项
+ */
+void setOpt(Options opt);
 
 #endif //ESURFINGCLIENT_STATES_H

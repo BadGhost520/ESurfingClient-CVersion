@@ -29,7 +29,6 @@
 #include "../headFiles/utils/PlatformUtils.h"
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/Constants.h"
-#include "../headFiles/Options.h"
 #include "../headFiles/States.h"
 
 ByteArray stringToBytes(const char* str)
@@ -42,25 +41,28 @@ ByteArray stringToBytes(const char* str)
     return ba;
 }
 
-char* XmlParser(const char* xmlData, const char* tag)
+void XmlParser(const char* xmlData, const char* tag, char** parsed)
 {
-    if (!xmlData || !tag) return NULL;
+    if (!xmlData || !tag) return;
     char start_tag[256];
     snprintf(start_tag, sizeof(start_tag), "<%s>", tag);
     char end_tag[256];
     snprintf(end_tag, sizeof(end_tag), "</%s>", tag);
     const char* start_pos = strstr(xmlData, start_tag);
-    if (!start_pos) return NULL;
+    if (!start_pos) return;
     start_pos += strlen(start_tag);
     const char* end_pos = strstr(start_pos, end_tag);
-    if (!end_pos) return NULL;
+    if (!end_pos) return;
     const size_t content_length = end_pos - start_pos;
-    if (content_length <= 0) return NULL;
+    if (content_length <= 0) return;
     char* content = malloc(content_length + 1);
-    if (!content) return NULL;
-    strncpy(content, start_pos, content_length);
-    content[content_length] = '\0';
-    return content;
+    if (content)
+    {
+        strncpy(content, start_pos, content_length);
+        content[content_length] = '\0';
+        *parsed = strdup(content);
+        free(content);
+    }
 }
 
 int stringToLongLong(const char* str, long long* result)
@@ -79,12 +81,15 @@ int stringToLongLong(const char* str, long long* result)
     return 1;
 }
 
-char* longLongToString(const long long num)
+void longLongToString(char** string, const long long num)
 {
     char* result = malloc(32);
-    if (!result) return NULL;
-    snprintf(result, 32, "%lld", num);
-    return result;
+    if (result)
+    {
+        snprintf(result, 32, "%lld", num);
+        *string = strdup(result);
+        free(result);
+    }
 }
 
 int64_t currentTimeMillis()
@@ -103,7 +108,7 @@ int64_t currentTimeMillis()
 #endif
 }
 
-int randomBytes(unsigned char* buffer, size_t length)
+int randomBytes(unsigned char* buffer, const size_t length)
 {
 #ifdef _WIN32
     HCRYPTPROV hCryptProv;
@@ -158,7 +163,7 @@ void getFileTime(char** timestamp)
     }
 }
 
-void createXMLPayload(char** payload, const XmlChoose choose, const DialerContext adapter)
+void createXMLPayload(const XmlChoose choose, char** payload)
 {
     char* xml = malloc(1024);
     if (xml == NULL) return;
@@ -187,13 +192,13 @@ void createXMLPayload(char** payload, const XmlChoose choose, const DialerContex
                 "    <gwip>%s</gwip>\n"
                 "</request>",
                 USER_AGENT ? USER_AGENT : "",
-                adapter.auth_config.client_id ? adapter.auth_config.client_id : "",
+                dialer_adapter.auth_config.client_id ? dialer_adapter.auth_config.client_id : "",
                 currentTime,
                 HOST_NAME ? HOST_NAME : "",
-                adapter.auth_config.user_ip ? adapter.auth_config.user_ip : "",
-                adapter.auth_config.mac_address ? adapter.auth_config.mac_address : "",
+                dialer_adapter.auth_config.user_ip ? dialer_adapter.auth_config.user_ip : "",
+                dialer_adapter.auth_config.mac_address ? dialer_adapter.auth_config.mac_address : "",
                 HOST_NAME ? HOST_NAME : "",
-                adapter.auth_config.ac_ip ? adapter.auth_config.ac_ip : ""
+                dialer_adapter.auth_config.ac_ip ? dialer_adapter.auth_config.ac_ip : ""
             );
             break;
         case Login:
@@ -208,11 +213,11 @@ void createXMLPayload(char** payload, const XmlChoose choose, const DialerContex
                 "    <passwd>%s</passwd>\n"
                 "</request>",
                 USER_AGENT ? USER_AGENT : "",
-                adapter.auth_config.client_id ? adapter.auth_config.client_id : "",
-                adapter.auth_config.ticket ? adapter.auth_config.ticket : "",
+                dialer_adapter.auth_config.client_id ? dialer_adapter.auth_config.client_id : "",
+                dialer_adapter.auth_config.ticket ? dialer_adapter.auth_config.ticket : "",
                 currentTime,
-                opt.usr,
-                opt.pwd
+                dialer_adapter.options.usr,
+                dialer_adapter.options.pwd
             );
             break;
         case Heartbeat:
@@ -231,12 +236,12 @@ void createXMLPayload(char** payload, const XmlChoose choose, const DialerContex
             "    <ostag>%s</ostag>\n"
             "</request>",
             USER_AGENT ? USER_AGENT : "",
-            adapter.auth_config.client_id ? adapter.auth_config.client_id : "",
+            dialer_adapter.auth_config.client_id ? dialer_adapter.auth_config.client_id : "",
             currentTime,
             HOST_NAME ? HOST_NAME : "",
-            adapter.auth_config.user_ip ? adapter.auth_config.user_ip : "",
-            adapter.auth_config.ticket ? adapter.auth_config.ticket : "",
-            adapter.auth_config.mac_address ? adapter.auth_config.mac_address : "",
+            dialer_adapter.auth_config.user_ip ? dialer_adapter.auth_config.user_ip : "",
+            dialer_adapter.auth_config.ticket ? dialer_adapter.auth_config.ticket : "",
+            dialer_adapter.auth_config.mac_address ? dialer_adapter.auth_config.mac_address : "",
             HOST_NAME ? HOST_NAME : ""
         );
     }
@@ -245,32 +250,46 @@ void createXMLPayload(char** payload, const XmlChoose choose, const DialerContex
     free(xml);
 }
 
-char* cleanCDATA(const char* text)
+void cleanCDATA(const char* text, char** cleaned)
 {
-    if (!text) return NULL;
+    if (!text) return;
     const char* cdataStart = "<![CDATA[";
     const char* cdataEnd = "]]>";
     const char* start = strstr(text, cdataStart);
-    if (!start) return strdup(text);
+    if (!start)
+    {
+        *cleaned = strdup(text);
+        return;
+    }
     start += strlen(cdataStart);
     const char* end = strstr(start, cdataEnd);
-    if (!end) return strdup(text);
+    if (!end)
+    {
+        *cleaned = strdup(text);
+        return;
+    }
     const size_t len = end - start;
-    if (len <= 0) return NULL;
+    if (len <= 0) return;
     char* result = malloc(len + 1);
-    if (!result) return NULL;
-    strncpy(result, start, len);
-    result[len] = '\0';
-    return result;
+    if (result)
+    {
+        strncpy(result, start, len);
+        result[len] = '\0';
+        *cleaned = strdup(result);
+        free(result);
+    }
 }
 
-void createThread(DialerContext* adapter, void*(* func)(void*), void* arg)
+void createThread(void*(* func)(void*), void* arg, const int index)
 {
-    adapter->thread.status = pthread_create(&adapter->thread.thread, NULL, func, &arg);
-
+    thread_status[index].status = pthread_create(&thread_status[index].thread, NULL, func, &arg);
+    if (thread_status[index].status != 0)
+    {
+        LOG_ERROR("认证线程启动失败，序号 %d", index);
+    }
 }
 
-void waitThreadStop(const DialerContext adapter)
+void waitThreadStop(const int index)
 {
-    pthread_join(adapter.thread.thread, NULL);
+    pthread_join(thread_status[index].thread, NULL);
 }
