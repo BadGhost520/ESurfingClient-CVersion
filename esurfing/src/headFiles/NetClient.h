@@ -2,10 +2,10 @@
 #define ESURFINGCLIENT_NETCLIENT_H
 
 typedef enum {
-    RequestError = 0,
-    RequestSuccess = 1,
-    RequestAuthorization = 2,
-    InitError = 3
+    REQUEST_ERROR = 0,
+    REQUEST_SUCCESS = 1,
+    REQUEST_AUTHORIZATION = 2,
+    INIT_ERROR = 3
 } NetworkStatus;
 
 typedef struct {

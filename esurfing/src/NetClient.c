@@ -7,9 +7,8 @@
 #include "headFiles/utils/Logger.h"
 #include "headFiles/Constants.h"
 #include "headFiles/NetClient.h"
-#include "headFiles/States.h"
 
-char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
+static char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
     char* start = strstr(text, start_tag);
     if (!start) return NULL;
@@ -24,7 +23,7 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
     return result;
 }
 
-char* extractUrlParameter(const char* url, const char* param_name)
+static char* extractUrlParameter(const char* url, const char* param_name)
 {
     char search_pattern[256];
     snprintf(search_pattern, sizeof(search_pattern), "%s=", param_name);
@@ -41,7 +40,7 @@ char* extractUrlParameter(const char* url, const char* param_name)
     return result;
 }
 
-size_t writeResponseCallback(const void *contents, const size_t size, const size_t nmemb, HTTPResponse *response)
+static size_t writeResponseCallback(const void *contents, const size_t size, const size_t nmemb, HTTPResponse *response)
 {
     const size_t realSize = size * nmemb;
     char *ptr = realloc(response->data, response->dataSize + realSize + 1);
@@ -53,7 +52,7 @@ size_t writeResponseCallback(const void *contents, const size_t size, const size
     return realSize;
 }
 
-char* calculateMD5(const char* data)
+static char* calculateMD5(const char* data)
 {
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digestLen;
@@ -91,11 +90,13 @@ char* calculateMD5(const char* data)
 
 void freeResult(HTTPResponse* result)
 {
-    if (result)
+    if (!result) return;
+    if (result->data)
     {
-        if (result->data) free(result->data);
-        free(result);
+        free(result->data);
+        result->data = NULL;
     }
+    free(result);
 }
 
 HTTPResponse* simPost(const char* url, const char* data)
@@ -110,7 +111,7 @@ HTTPResponse* simPost(const char* url, const char* data)
     CURL* curl = curl_easy_init();
     if (!curl)
     {
-        result->status = RequestError;
+        result->status = REQUEST_ERROR;
         LOG_ERROR("初始化 Curl 失败");
         return result;
     }
@@ -161,7 +162,7 @@ HTTPResponse* simPost(const char* url, const char* data)
     const CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK)
     {
-        result->status = RequestError;
+        result->status = REQUEST_ERROR;
         LOG_ERROR("网络错误，原因: %s",curl_easy_strerror(res));
     }
     else
@@ -175,7 +176,7 @@ HTTPResponse* simPost(const char* url, const char* data)
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
     if (response.data) free(response.data);
-    result->status = RequestSuccess;
+    result->status = REQUEST_SUCCESS;
     return result;
 }
 
@@ -187,7 +188,7 @@ NetworkStatus checkNetworkStatus()
     if (!curl)
     {
         LOG_ERROR("初始化 Curl 错误");
-        return InitError;
+        return INIT_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, CAPTIVE_URL);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
@@ -203,7 +204,7 @@ NetworkStatus checkNetworkStatus()
     else
     {
         LOG_ERROR("User Agent 不存在");
-        return InitError;
+        return INIT_ERROR;
     }
     snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
     headers = curl_slist_append(headers, header_buffer);
@@ -215,7 +216,7 @@ NetworkStatus checkNetworkStatus()
     else
     {
         LOG_ERROR("Client ID 不存在");
-        return InitError;
+        return INIT_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
@@ -228,7 +229,7 @@ NetworkStatus checkNetworkStatus()
         if (response_data.data) free(response_data.data);
         const char* error_msg = curl_easy_strerror(res);
         LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
-        return RequestError;
+        return REQUEST_ERROR;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code == 204)
@@ -236,7 +237,7 @@ NetworkStatus checkNetworkStatus()
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         if (response_data.data) free(response_data.data);
-        return RequestSuccess;
+        return REQUEST_SUCCESS;
     }
     if (response_code != 200 && response_code != 302)
     {
@@ -244,17 +245,21 @@ NetworkStatus checkNetworkStatus()
         curl_slist_free_all(headers);
         if (response_data.data) free(response_data.data);
         LOG_ERROR("HTTP 响应错误, 响应码: %d", response_code);
-        return RequestError;
+        return REQUEST_ERROR;
     }
     if (response_data.data && response_data.dataSize > 0)
     {
         char* portal_config = extractBetweenTags(response_data.data, PORTAL_START_TAG, PORTAL_END_TAG);
         if (portal_config && portal_config[0])
         {
-            char* auth_url_raw = XmlParser(portal_config, "auth-url");
-            char* ticket_url_raw = XmlParser(portal_config, "ticket-url");
-            char* auth_url = cleanCDATA(auth_url_raw);
-            char* ticket_url = cleanCDATA(ticket_url_raw);
+            char* auth_url_raw;
+            XmlParser(portal_config, "auth-url", &auth_url_raw);
+            char* auth_url;
+            cleanCDATA(auth_url_raw, &auth_url);
+            char* ticket_url_raw;
+            XmlParser(portal_config, "ticket-url", &ticket_url_raw);
+            char* ticket_url;
+            cleanCDATA(ticket_url_raw, &ticket_url);
             if (auth_url_raw) free(auth_url_raw);
             if (ticket_url_raw) free(ticket_url_raw);
             if (auth_url && ticket_url && auth_url[0] && ticket_url[0])
@@ -279,7 +284,7 @@ NetworkStatus checkNetworkStatus()
                     curl_easy_cleanup(curl);
                     curl_slist_free_all(headers);
                     free(response_data.data);
-                    return RequestAuthorization;
+                    return REQUEST_AUTHORIZATION;
                 }
                 if (user_ip) free(user_ip);
                 if (ac_ip) free(ac_ip);
@@ -292,7 +297,7 @@ NetworkStatus checkNetworkStatus()
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
     if (response_data.data) free(response_data.data);
-    return RequestSuccess;
+    return REQUEST_SUCCESS;
 }
 
 NetworkStatus simGet(char* url)
@@ -301,7 +306,7 @@ NetworkStatus simGet(char* url)
     if (!curl)
     {
         LOG_ERROR("curl 初始化失败");
-        return InitError;
+        return INIT_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
@@ -313,13 +318,13 @@ NetworkStatus simGet(char* url)
         curl_easy_cleanup(curl);
         const char* error_msg = curl_easy_strerror(res);
         LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
-        return RequestError;
+        return REQUEST_ERROR;
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     curl_easy_cleanup(curl);
     if (response_code >= 200 && response_code < 300)
     {
-        return RequestSuccess;
+        return REQUEST_SUCCESS;
     }
-    return RequestError;
+    return REQUEST_ERROR;
 }

@@ -19,24 +19,24 @@ void cipherFactoryDestroy();
 
 /**
  * 初始化加解密工厂
- * @param algoId 算法 ID
+ * @param algo_id 算法 ID
  * @return 初始化状态
  */
-int initCipher(const char* algoId);
+int initCipher(const char* algo_id);
 
 /**
  * 加密函数
  * @param text 需要加密的文本
- * @param encrypt 加密后文本的指针
+ * @return 加密后文本
  */
-void sessionEncrypt(const char* text, char** encrypt);
+char* sessionEncrypt(const char* text);
 
 /**
  * 解密函数
  * @param text 需要解密的文本
- * @param decrypt 解密后文本的指针
+ * @return 加密后文本
  */
-void sessionDecrypt(const char* text, char** decrypt);
+char* sessionDecrypt(const char* text);
 
 #ifdef __cplusplus
 }

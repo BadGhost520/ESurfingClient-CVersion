@@ -3,52 +3,63 @@
 
 #include <stdint.h>
 
-#include "../States.h"
-
 typedef struct {
     unsigned char* data;
     size_t length;
 } ByteArray;
 
 typedef enum {
-    GetTicket = 1,
-    Login = 2,
-    Heartbeat = 3,
-    Term = 4
+    GET_TICKET = 1,
+    LOGIN = 2,
+    HEART_BEAT = 3,
+    TERM = 4
 } XmlChoose;
 
+typedef enum
+{
+    CONSOLE_FORMAT = 1,
+    FILE_FORMAT = 2
+} TimeFormat;
+
+#define XML_BUFFER_SIZE 1024
+
+static const char* xml_header =
+    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+    "<request>\n";
+
+static const char* xml_footer = "</request>\n";
+
 /**
- * 文本转字节函数
+ * 文本转字节
  * @param str 文本数据
  * @return 字节数据
  */
 ByteArray stringToBytes(const char* str);
 
 /**
- * XML 解析函数
+ * XML 解析
  * @param xmlData XML 数据
  * @param tag 提取标志
- * @param parsed 解析后储存的指针地址
+ * @return 解析后的数据
  */
-void XmlParser(const char* xmlData, const char* tag, char** parsed);
+char* XmlParser(const char* xmlData, const char* tag);
 
 /**
- * 字符串转换为64位长整型函数
+ * 字符串转换为 64 位长整型
  * @param str 要转换的字符串
- * @param result 转换结果的指针
- * @return 是否成功
+ * @return 转换后的 64 位长整型
  */
-int stringToLongLong(const char* str, long long* result);
+long long stringToLongLong(const char* str);
 
 /**
- * 64位长整型转换为字符串函数
- * @param string 转换后要储存到的指针地址
- * @param num 要转换的64位长整型
+ * 64位长整型转换为字符串
+ * @param num 要转换的 64 位长整型
+ * @return 转换后的字符串
  */
-void longLongToString(char** string, long long num);
+char* longLongToString(long long num);
 
 /**
- * 获取当前时间的毫秒时间戳函数
+ * 获取当前时间的毫秒时间戳
  * @return 64位时间戳
  */
 int64_t currentTimeMillis();
@@ -62,36 +73,31 @@ int64_t currentTimeMillis();
 int randomBytes(unsigned char* buffer, size_t length);
 
 /**
- * 睡眠函数
+ * 睡眠
  * @param milliseconds 毫秒
  */
 void sleepMilliseconds(int milliseconds);
 
 /**
- * 获取当前时间函数(终端)
- * @param timestamp 要储存到的指针地址
+ * 获取当前时间
+ * @param format 格式
+ * @return 格式化的当前时间
  */
-void getTime(char** timestamp);
+char* getTime(TimeFormat format);
 
 /**
- * 获取当前时间函数(文件)
- * @param timestamp 要储存到的指针地址
- */
-void getFileTime(char** timestamp);
-
-/**
- * 创建 XML 字符串函数
+ * 创建 XML 字符串
  * @param choose 格式化选择
- * @param payload 创建 xml 后储存的指针地址
+ * @return XML 字符串
  */
-void createXMLPayload(XmlChoose choose, char** payload);
+char* createXMLPayload(XmlChoose choose);
 
 /**
- * 清除 CDATA 字段函数
+ * 清除 CDATA 字段
  * @param text 未清除 CDATA 字段文本
- * @param cleaned 清除后要储存到的指针地址
+ * @return 清除后的文本
  */
-void cleanCDATA(const char* text, char** cleaned);
+char* cleanCDATA(const char* text);
 
 /**
  * 创建线程函数

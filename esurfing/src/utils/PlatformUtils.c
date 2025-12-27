@@ -41,33 +41,30 @@ ByteArray stringToBytes(const char* str)
     return ba;
 }
 
-void XmlParser(const char* xmlData, const char* tag, char** parsed)
+char* XmlParser(const char* xmlData, const char* tag)
 {
-    if (!xmlData || !tag) return;
+    if (!xmlData || !tag) return NULL;
     char start_tag[256];
     snprintf(start_tag, sizeof(start_tag), "<%s>", tag);
     char end_tag[256];
     snprintf(end_tag, sizeof(end_tag), "</%s>", tag);
     const char* start_pos = strstr(xmlData, start_tag);
-    if (!start_pos) return;
+    if (!start_pos) return NULL;
     start_pos += strlen(start_tag);
     const char* end_pos = strstr(start_pos, end_tag);
-    if (!end_pos) return;
+    if (!end_pos) return NULL;
     const size_t content_length = end_pos - start_pos;
-    if (content_length <= 0) return;
+    if (content_length <= 0) return NULL;
     char* content = malloc(content_length + 1);
-    if (content)
-    {
-        strncpy(content, start_pos, content_length);
-        content[content_length] = '\0';
-        *parsed = strdup(content);
-        free(content);
-    }
+    if (!content) return NULL;
+    strncpy(content, start_pos, content_length);
+    content[content_length] = '\0';
+    return content;
 }
 
-int stringToLongLong(const char* str, long long* result)
+long long stringToLongLong(const char* str)
 {
-    if (!str || !result) return 0;
+    if (!str) return 0;
     while (isspace(*str)) str++;
     if (*str == '\0') return 0;
     char* endptr;
@@ -77,19 +74,17 @@ int stringToLongLong(const char* str, long long* result)
     if (endptr == str) return 0;
     while (isspace(*endptr)) endptr++;
     if (*endptr != '\0') return 0;
-    *result = value;
-    return 1;
+    return value;
 }
 
-void longLongToString(char** string, const long long num)
+char* longLongToString(const long long num)
 {
-    char* result = malloc(32);
-    if (result)
-    {
-        snprintf(result, 32, "%lld", num);
-        *string = strdup(result);
-        free(result);
-    }
+    const int max_digits = 20;
+    const int buf_size = max_digits + 2;
+    char* result = malloc(buf_size);
+    if (!result) return NULL;
+    snprintf(result, buf_size, "%lld", num);
+    return result;
 }
 
 int64_t currentTimeMillis()
@@ -135,96 +130,126 @@ void sleepMilliseconds(const int milliseconds)
 #endif
 }
 
-void getTime(char** timestamp)
+char* getTime(const TimeFormat format)
 {
-    time_t rawTime;
-    char* timeStr = malloc(20 * sizeof(char));
-    if (timeStr)
+    char* timeStr = malloc(32);
+    if (!timeStr) return NULL;
+    time_t raw_time;
+    if (time(&raw_time) == (time_t)-1)
     {
-        time(&rawTime);
-        const struct tm* timeInfo = localtime(&rawTime);
-        strftime(timeStr, 20, "%Y-%m-%d %H:%M:%S", timeInfo);
-        *timestamp = strdup(timeStr);
         free(timeStr);
+        LOG_ERROR("获取系统时间失败");
+        return NULL;
+    }
+    struct tm local_time;
+#ifdef _WIN32
+    if (localtime_s(&local_time, &raw_time) != 0)
+    {
+        free(timeStr);
+        LOG_ERROR("时间转换失败");
+        return NULL;
+    }
+#else
+    if (localtime_r(&raw_time, &local_time) == NULL)
+    {
+        free(timeStr);
+        LOG_ERROR("时间转换失败");
+        return NULL;
+    }
+#endif
+    LOG_DEBUG("时间格式代码: %d", format);
+    switch (format)
+    {
+    case CONSOLE_FORMAT:
+        if (strftime(timeStr, 32, "%Y-%m-%d %H:%M:%S", &local_time) == 0)
+        {
+            free(timeStr);
+            LOG_ERROR("格式化时间失败");
+            return NULL;
+        }
+        return timeStr;
+    case FILE_FORMAT:
+        if (strftime(timeStr, 32, "%Y%m%d-%H%M%S", &local_time) == 0)
+        {
+            free(timeStr);
+            LOG_ERROR("格式化时间失败");
+            return NULL;
+        }
+        return timeStr;
+    default:
+        free(timeStr);
+        return NULL;
     }
 }
 
-void getFileTime(char** timestamp)
+static const char* safeStr(const char* str)
 {
-    time_t rawTime;
-    char* timeStr = malloc(20 * sizeof(char));
-    if (timeStr)
-    {
-        time(&rawTime);
-        const struct tm* timeInfo = localtime(&rawTime);
-        strftime(timeStr, 20, "%Y%m%d-%H%M%S", timeInfo);
-        *timestamp = strdup(timeStr);
-        free(timeStr);
-    }
+    return str ? str : "";
 }
 
-void createXMLPayload(const XmlChoose choose, char** payload)
+char* createXMLPayload(const XmlChoose choose)
 {
-    char* xml = malloc(1024);
-    if (xml == NULL) return;
-    char* currentTime;
-    getTime(&currentTime);
-    if (currentTime == NULL)
+    char* currentTime = getTime(CONSOLE_FORMAT);
+    if (!currentTime) return NULL;
+    char* xml = malloc(XML_BUFFER_SIZE);
+    if (!xml)
     {
-        free(xml);
-        return;
+        free(currentTime);
+        return NULL;
     }
     LOG_DEBUG("XML 选择代码: %d", choose);
+    int xml_len = 0;
     switch (choose)
     {
-        case GetTicket:
-            snprintf(xml, 1024,
-                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-                "<request>\n"
-                "    <user-agent>%s</user-agent>\n"
-                "    <client-id>%s</client-id>\n"
-                "    <local-time>%s</local-time>\n"
-                "    <host-name>%s</host-name>\n"
-                "    <ipv4>%s</ipv4>\n"
-                "    <ipv6></ipv6>\n"
-                "    <mac>%s</mac>\n"
-                "    <ostag>%s</ostag>\n"
-                "    <gwip>%s</gwip>\n"
-                "</request>",
-                USER_AGENT ? USER_AGENT : "",
-                dialer_adapter.auth_config.client_id ? dialer_adapter.auth_config.client_id : "",
-                currentTime,
-                HOST_NAME ? HOST_NAME : "",
-                dialer_adapter.auth_config.user_ip ? dialer_adapter.auth_config.user_ip : "",
-                dialer_adapter.auth_config.mac_address ? dialer_adapter.auth_config.mac_address : "",
-                HOST_NAME ? HOST_NAME : "",
-                dialer_adapter.auth_config.ac_ip ? dialer_adapter.auth_config.ac_ip : ""
-            );
-            break;
-        case Login:
-            snprintf(xml, 1024,
-                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-                "<request>\n"
-                "    <user-agent>%s</user-agent>\n"
-                "    <client-id>%s</client-id>\n"
-                "    <ticket>%s</ticket>\n"
-                "    <local-time>%s</local-time>\n"
-                "    <userid>%s</userid>\n"
-                "    <passwd>%s</passwd>\n"
-                "</request>",
-                USER_AGENT ? USER_AGENT : "",
-                dialer_adapter.auth_config.client_id ? dialer_adapter.auth_config.client_id : "",
-                dialer_adapter.auth_config.ticket ? dialer_adapter.auth_config.ticket : "",
-                currentTime,
-                dialer_adapter.options.usr,
-                dialer_adapter.options.pwd
-            );
-            break;
-        case Heartbeat:
-        case Term:
-            snprintf(xml, 1024,
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-            "<request>\n"
+    case GET_TICKET:
+        xml_len = snprintf(xml, XML_BUFFER_SIZE,
+            "%s"
+            "    <user-agent>%s</user-agent>\n"
+            "    <client-id>%s</client-id>\n"
+            "    <local-time>%s</local-time>\n"
+            "    <host-name>%s</host-name>\n"
+            "    <ipv4>%s</ipv4>\n"
+            "    <ipv6></ipv6>\n"
+            "    <mac>%s</mac>\n"
+            "    <ostag>%s</ostag>\n"
+            "    <gwip>%s</gwip>\n"
+            "%s",
+            xml_header,
+            safeStr(USER_AGENT),
+            safeStr(dialer_adapter.auth_config.client_id),
+            currentTime,
+            safeStr(HOST_NAME),
+            safeStr(dialer_adapter.auth_config.user_ip),
+            safeStr(dialer_adapter.auth_config.mac_address),
+            safeStr(HOST_NAME),
+            safeStr(dialer_adapter.auth_config.ac_ip),
+            xml_footer
+        );
+        break;
+    case LOGIN:
+        xml_len = snprintf(xml, XML_BUFFER_SIZE,
+            "%s"
+            "    <user-agent>%s</user-agent>\n"
+            "    <client-id>%s</client-id>\n"
+            "    <local-time>%s</local-time>\n"
+            "    <host-name>%s</host-name>\n"
+            "    <userid>%s</userid>\n"
+            "    <passwd>%s</passwd>\n"
+            "%s",
+            xml_header,
+            safeStr(USER_AGENT),
+            safeStr(dialer_adapter.auth_config.client_id),
+            currentTime,
+            safeStr(HOST_NAME),
+            safeStr(dialer_adapter.options.usr),
+            safeStr(dialer_adapter.options.pwd),
+            xml_footer
+        );
+        break;
+    case HEART_BEAT:
+    case TERM:
+        xml_len = snprintf(xml, XML_BUFFER_SIZE,
+            "%s"
             "    <user-agent>%s</user-agent>\n"
             "    <client-id>%s</client-id>\n"
             "    <local-time>%s</local-time>\n"
@@ -234,50 +259,66 @@ void createXMLPayload(const XmlChoose choose, char** payload)
             "    <ipv6></ipv6>\n"
             "    <mac>%s</mac>\n"
             "    <ostag>%s</ostag>\n"
-            "</request>",
-            USER_AGENT ? USER_AGENT : "",
-            dialer_adapter.auth_config.client_id ? dialer_adapter.auth_config.client_id : "",
+            "%s",
+            xml_header,
+            safeStr(USER_AGENT),
+            safeStr(dialer_adapter.auth_config.client_id),
             currentTime,
-            HOST_NAME ? HOST_NAME : "",
-            dialer_adapter.auth_config.user_ip ? dialer_adapter.auth_config.user_ip : "",
-            dialer_adapter.auth_config.ticket ? dialer_adapter.auth_config.ticket : "",
-            dialer_adapter.auth_config.mac_address ? dialer_adapter.auth_config.mac_address : "",
-            HOST_NAME ? HOST_NAME : ""
+            safeStr(HOST_NAME),
+            safeStr(dialer_adapter.auth_config.user_ip),
+            safeStr(dialer_adapter.auth_config.ticket),
+            safeStr(dialer_adapter.auth_config.mac_address),
+            safeStr(HOST_NAME),
+            xml_footer
         );
+        break;
+    default:
+        free(xml);
+        free(currentTime);
+        LOG_ERROR("XML 选择代码错误");
+        return NULL;
     }
     free(currentTime);
-    *payload = strdup(xml);
-    free(xml);
+    if (xml_len <= 0)
+    {
+        LOG_ERROR("XML 创建失败");
+        free(xml);
+        return NULL;
+    }
+    if (xml_len >= XML_BUFFER_SIZE)
+    {
+        LOG_ERROR("XML内容过长（需要%d字节，但缓冲区只有%d字节）", xml_len + 1, XML_BUFFER_SIZE);
+        free(xml);
+        return NULL;
+    }
+    return xml;
 }
 
-void cleanCDATA(const char* text, char** cleaned)
+char* cleanCDATA(const char* text)
 {
-    if (!text) return;
+    if (!text) return NULL;
     const char* cdataStart = "<![CDATA[";
     const char* cdataEnd = "]]>";
     const char* start = strstr(text, cdataStart);
     if (!start)
     {
-        *cleaned = strdup(text);
-        return;
+        LOG_WARN("未找到 CDATA 标志");
+        return NULL;
     }
     start += strlen(cdataStart);
     const char* end = strstr(start, cdataEnd);
-    if (!end)
-    {
-        *cleaned = strdup(text);
-        return;
-    }
+    if (!end) return strdup(start);
     const size_t len = end - start;
-    if (len <= 0) return;
-    char* result = malloc(len + 1);
-    if (result)
+    if (len == 0)
     {
-        strncpy(result, start, len);
-        result[len] = '\0';
-        *cleaned = strdup(result);
-        free(result);
+        LOG_WARN("CDATA 内容为空");
+        return strdup("");
     }
+    char* result = malloc(len + 1);
+    if (!result) return NULL;
+    memcpy(result, start, len);
+    result[len] = '\0';
+    return result;
 }
 
 void createThread(void*(* func)(void*), void* arg, const int index)

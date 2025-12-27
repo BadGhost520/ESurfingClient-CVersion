@@ -69,7 +69,7 @@ void fn(struct mg_connection *c, const int ev, void *ev_data)
             {
                 switch (simGet("http://www.baidu.com"))
                 {
-                case RequestSuccess:
+                case REQUEST_SUCCESS:
                     isConnected = 1;
                     if (connectTime == 0) connectTime = currentTimeMillis();
                     break;

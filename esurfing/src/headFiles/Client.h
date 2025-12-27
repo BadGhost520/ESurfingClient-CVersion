@@ -9,14 +9,28 @@ typedef struct
     char* term_url;
 } ClientData;
 
+typedef enum
+{
+    RUNNING_FAILURE = 0,
+    RUNNING_SUCCESS = 1,
+} RunningStatus;
+
+typedef enum
+{
+    AUTH_FAILURE = 0,
+    AUTH_SUCCESS = 1,
+} AuthStatus;
+
 /**
  * 主运行函数
+ * @return 运行状态码
  */
-void run();
+RunningStatus run();
 
 /**
  * 登出函数
+ * @return 认证状态码
  */
-void term();
+RunningStatus term();
 
 #endif // CLIENT_H

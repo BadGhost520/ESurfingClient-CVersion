@@ -14,7 +14,7 @@ void restart()
     {
         if (dialer_adapter.runtime_status.is_logged) term();
         cipherFactoryDestroy();
-        sessionFree();
+        freeSession();
     }
     dialer_adapter.timestamp.auth_time = 0;
     sleepMilliseconds(5000);
@@ -27,7 +27,7 @@ void dialerApp()
     dialer_adapter.runtime_status.is_running = 1;
     initConstants();
     refreshStates();
-    LOG_INFO("程序启动中，序号: %d", dialer_adapter.auth_config.adapter);
+    LOG_INFO("程序启动中，序号: %d", dialer_adapter.index);
     sleepMilliseconds(5000);
     while (dialer_adapter.runtime_status.is_running)
     {

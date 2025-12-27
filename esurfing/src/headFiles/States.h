@@ -54,6 +54,7 @@ typedef struct
     RuntimeStatus runtime_status;
     Timestamp timestamp;
     Options options;
+    int index;
 } DialerContext;
 
 extern __thread DialerContext dialer_adapter;

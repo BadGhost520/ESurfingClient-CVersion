@@ -18,8 +18,8 @@ void adapterStop()
         if (g_dialer_adapter[i].runtime_status.is_initialized)
         {
             if (g_dialer_adapter[i].runtime_status.is_logged) term();
-            cipherFactoryDestroy(); // TODO 需要处理
-            sessionFree(); // TODO 需要处理
+            cipherFactoryDestroy();
+            freeSession();
         }
     }
 }
