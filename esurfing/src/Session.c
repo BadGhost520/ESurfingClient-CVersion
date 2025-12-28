@@ -106,5 +106,6 @@ void initialize(const ByteArray zsm)
 void freeSession()
 {
     LOG_DEBUG("清除会话初始化状态");
+    cipherFactoryDestroy();
     dialer_adapter.runtime_status.is_initialized = 0;
 }

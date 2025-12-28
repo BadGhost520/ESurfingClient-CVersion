@@ -22,12 +22,6 @@ typedef enum
 } AuthStatus;
 
 /**
- * 主运行函数
- * @return 运行状态码
- */
-RunningStatus run();
-
-/**
  * 登出函数
  * @return 认证状态码
  */

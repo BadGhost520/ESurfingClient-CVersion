@@ -1,6 +1,7 @@
 #ifndef ESURFINGCLIENT_LOGGER_H
 #define ESURFINGCLIENT_LOGGER_H
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #ifndef PATH_MAX
@@ -15,14 +16,19 @@ typedef enum {
     LOG_LEVEL_FATAL = 4
 } LogLevel;
 
+typedef enum
+{
+    INIT_LOGGER_FAILURE = 0,
+    INIT_LOGGER_SUCCESS = 1,
+} LoggerInitStatus;
+
 typedef struct {
     LogLevel    level;
-    char        logDir[PATH_MAX];
-    char        logFile[PATH_MAX];
-    FILE*       fileHandle;
-    int         maxBackupFiles;
-    size_t      maxLines;
-    size_t      currentLines;
+    char        log_dir[PATH_MAX];
+    char        log_file[PATH_MAX];
+    FILE*       file_handle;
+    size_t      max_lines;
+    size_t      current_lines;
 } LoggerConfig;
 
 typedef struct {
@@ -36,30 +42,6 @@ typedef struct
     bool is_small_device;
 } LoggerSettings;
 
-extern LoggerSettings g_logger_settings;
-
-/**
- * 检查日志输出等级
- */
-void checkLogLevel();
-
-/**
- * 初始化日志系统函数
- */
-int loggerInit();
-
-/**
- * 清理日志系统函数
- */
-void loggerCleanup();
-
-/**
- * 获取增量内存日志函数
- * @return 增量内存日志
- */
-LogContent getLog();
-
-void loggerLog(LogLevel level, const char* file, int line, const char* format, ...);
 #define LOG_DEBUG(format, ...) \
 loggerLog(LOG_LEVEL_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
@@ -74,5 +56,33 @@ loggerLog(LOG_LEVEL_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 #define LOG_FATAL(format, ...) \
 loggerLog(LOG_LEVEL_FATAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
+
+/**
+ * 打印日志
+ * @param level 日志等级
+ * @param file 日志文件路径
+ * @param line 行数
+ * @param format 格式
+ * @param ... 其它参数
+ */
+void loggerLog(LogLevel level, const char* file, int line, const char* format, ...);
+
+/**
+ * 初始化日志系统
+ * @param logger_settings 日志设置
+ * @return 初始化状态
+ */
+LoggerInitStatus loggerInit(LoggerSettings logger_settings);
+
+/**
+ * 清理日志系统
+ */
+void loggerCleanup();
+
+/**
+ * 获取内存日志
+ * @return 增量内存日志
+ */
+LogContent getLog();
 
 #endif //ESURFINGCLIENT_LOGGER_H

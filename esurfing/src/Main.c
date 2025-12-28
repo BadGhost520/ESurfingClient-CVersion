@@ -13,24 +13,30 @@ int main(const int argc, char* argv[])
     system("chcp 65001 > nul");
 #endif
     int opt;
+    LoggerSettings logger_settings = {
+        .is_debug = false,
+        .is_small_device = true
+    };
     while ((opt = getopt(argc, argv, "ds")) != -1)
     {
         switch (opt)
         {
         case 'd':
-            g_logger_settings.is_debug = true;
+            logger_settings.is_debug = true;
             break;
         case 's':
-            g_logger_settings.is_small_device = true;
+            logger_settings.is_small_device = true;
             break;
         case '?':
             printf("参数错误: %c\n", optopt);
-            return 1;
+            return 0;
         default:
             printf("未知错误\n");
+            return 0;
         }
     }
-    loggerInit();
+    loggerInit(logger_settings);
     initShutdown();
     startWebServer();
+    return 1;
 }

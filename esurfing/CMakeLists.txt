@@ -20,37 +20,36 @@ find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 add_executable(ESurfingClient
-        src/DialerApp.c
-        src/Client.c
-        src/utils/PlatformUtils.c
-        src/Constants.c
-        src/States.c
-        src/NetClient.c
-        src/Session.c
-        src/cipher/KeyData.c
-        src/cipher/CipherUtils.c
-        src/cipher/CipherFactory.c
-        src/cipher/impl/zuc.c
-        src/cipher/impl/sm4_ecb.c
-        src/cipher/impl/sm4_cbc.c
-        src/cipher/impl/mod_xtea_iv.c
-        src/cipher/impl/mod_xtea.c
-        src/cipher/impl/desede_ecb.c
-        src/cipher/impl/desede_cbc.c
-        src/cipher/impl/aes_ecb.c
-        src/cipher/impl/aes_cbc.c
-        src/utils/Shutdown.c
-        src/utils/Logger.c
-        src/cipher/impl/desede_cbc_pc.c
-        src/cipher/impl/aes_ecb_pc.c
-        src/cipher/impl/aes_cbc_pc.c
-        src/cipher/impl/mod_xtea_pc.c
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
         src/cipher/impl/des_ecb_six_pc.c
-        src/webserver/mongoose.c
+        src/cipher/impl/desede_cbc_pc.c
+        src/cipher/impl/mod_xtea_pc.c
+        src/cipher/impl/mod_xtea_iv.c
+        src/cipher/impl/aes_ecb_pc.c
+        src/cipher/impl/aes_cbc_pc.c
+        src/cipher/impl/desede_ecb.c
+        src/cipher/impl/desede_cbc.c
+        src/cipher/impl/mod_xtea.c
+        src/cipher/impl/sm4_ecb.c
+        src/cipher/impl/sm4_cbc.c
+        src/cipher/impl/aes_ecb.c
+        src/cipher/impl/aes_cbc.c
+        src/cipher/impl/zuc.c
+        src/cipher/CipherFactory.c
+        src/cipher/CipherUtils.c
+        src/cipher/KeyData.c
         src/webserver/WebServer.c
+        src/webserver/mongoose.c
         src/utils/CheckAdapters.c
+        src/utils/PlatformUtils.c
+        src/utils/Shutdown.c
+        src/utils/Logger.c
         src/utils/cJSON.c
+        src/DialerClient.c
+        src/Constants.c
+        src/NetClient.c
+        src/Session.c
+        src/States.c
         src/Main.c
 )
 

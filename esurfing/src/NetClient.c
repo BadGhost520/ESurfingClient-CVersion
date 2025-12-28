@@ -8,35 +8,25 @@
 #include "headFiles/Constants.h"
 #include "headFiles/NetClient.h"
 
-static char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
-{
-    char* start = strstr(text, start_tag);
-    if (!start) return NULL;
-    start += strlen(start_tag);
-    char* end = strstr(start, end_tag);
-    if (!end) return NULL;
-    const size_t len = end - start;
-    char* result = malloc(len + 1);
-    if (!result) return NULL;
-    strncpy(result, start, len);
-    result[len] = '\0';
-    return result;
-}
+#include "headFiles/States.h"
 
-static char* extractUrlParameter(const char* url, const char* param_name)
+static char* extractUrlParam(const char* url, const char* search_string_start)
 {
-    char search_pattern[256];
-    snprintf(search_pattern, sizeof(search_pattern), "%s=", param_name);
-    char* param_start = strstr(url, search_pattern);
-    if (!param_start) return NULL;
-    param_start += strlen(search_pattern);
-    char* param_end = strchr(param_start, '&');
-    if (!param_end) param_end = param_start + strlen(param_start);
-    const size_t len = param_end - param_start;
-    char* result = malloc(len + 1);
-    if (!result) return NULL;
-    strncpy(result, param_start, len);
-    result[len] = '\0';
+    if (!url)
+    {
+        LOG_ERROR("URL 为空");
+        return NULL;
+    }
+    const size_t len = strlen(search_string_start);
+    char* search_pattern = malloc(len + 2);
+    if (!search_pattern)
+    {
+        LOG_ERROR("分配内存失败");
+        return NULL;
+    }
+    snprintf(search_pattern, len + 2, "%s=", search_string_start);
+    char* result = extractBetweenTags(url, search_pattern, "&");
+    free(search_pattern);
     return result;
 }
 
@@ -57,9 +47,13 @@ static char* calculateMD5(const char* data)
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digestLen;
     char* MD5String = malloc(33);
-    if (MD5String == NULL) return NULL;
+    if (!MD5String)
+    {
+        LOG_ERROR("分配内存失败");
+        return NULL;
+    }
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-    if (mdctx == NULL)
+    if (!mdctx)
     {
         free(MD5String);
         return NULL;
@@ -90,7 +84,11 @@ static char* calculateMD5(const char* data)
 
 void freeResult(HTTPResponse* result)
 {
-    if (!result) return;
+    if (!result)
+    {
+        LOG_DEBUG("返回值为空");
+        return;
+    }
     if (result->data)
     {
         free(result->data);
@@ -102,17 +100,21 @@ void freeResult(HTTPResponse* result)
 HTTPResponse* simPost(const char* url, const char* data)
 {
     HTTPResponse* result = malloc(sizeof(HTTPResponse));
+    if (!result)
+    {
+        LOG_ERROR("分配内存失败");
+        return NULL;
+    }
     HTTPResponse response = {0};
     struct curl_slist* headers = NULL;
     char headerBuffer[512];
-    if (!result) return NULL;
     result->data = NULL;
     result->dataSize = 0;
     CURL* curl = curl_easy_init();
     if (!curl)
     {
+        LOG_ERROR("初始化 Curl 错误");
         result->status = REQUEST_ERROR;
-        LOG_ERROR("初始化 Curl 失败");
         return result;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -123,37 +125,55 @@ HTTPResponse* simPost(const char* url, const char* data)
     snprintf(headerBuffer, sizeof(headerBuffer), "Accept: %s", REQUEST_ACCEPT);
     headers = curl_slist_append(headers, headerBuffer);
     char* MD5Hash = calculateMD5(data);
-    if (MD5Hash)
+    if (!MD5Hash)
     {
-        snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Checksum: %s", MD5Hash);
-        headers = curl_slist_append(headers, headerBuffer);
-        free(MD5Hash);
+        LOG_ERROR("计算 MD5 失败");
+        result->status = REQUEST_ERROR;
+        return result;
     }
-    if (clientId[0])
+    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Checksum: %s", MD5Hash);
+    headers = curl_slist_append(headers, headerBuffer);
+    free(MD5Hash);
+    if (!dialer_adapter.auth_config.client_id)
     {
-        snprintf(headerBuffer, sizeof(headerBuffer), "Client-ID: %s", clientId);
-        headers = curl_slist_append(headers, headerBuffer);
+        LOG_ERROR("Client ID 为空");
+        result->status = REQUEST_ERROR;
+        return result;
     }
-    if (algoId[0])
+    if (!dialer_adapter.auth_config.algo_id)
     {
-        snprintf(headerBuffer, sizeof(headerBuffer), "Algo-ID: %s", algoId);
-        headers = curl_slist_append(headers, headerBuffer);
+        LOG_ERROR("Algo ID 为空");
+        result->status = REQUEST_ERROR;
+        return result;
     }
-    if (schoolId && schoolId[0])
+    if (!dialer_adapter.auth_config.school_id)
     {
-        snprintf(headerBuffer, sizeof(headerBuffer), "CDC-SchoolId: %s", schoolId);
-        headers = curl_slist_append(headers, headerBuffer);
+        LOG_ERROR("School ID 为空");
+        result->status = REQUEST_ERROR;
+        return result;
     }
-    if (domain && domain[0])
+    if (!dialer_adapter.auth_config.domain)
     {
-        snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Domain: %s", domain);
-        headers = curl_slist_append(headers, headerBuffer);
+        LOG_ERROR("Domain 为空");
+        result->status = REQUEST_ERROR;
+        return result;
     }
-    if (area && area[0])
+    if (!dialer_adapter.auth_config.area)
     {
-        snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Area: %s", area);
-        headers = curl_slist_append(headers, headerBuffer);
+        LOG_ERROR("Area 为空");
+        result->status = REQUEST_ERROR;
+        return result;
     }
+    snprintf(headerBuffer, sizeof(headerBuffer), "Client-ID: %s", dialer_adapter.auth_config.client_id);
+    headers = curl_slist_append(headers, headerBuffer);
+    snprintf(headerBuffer, sizeof(headerBuffer), "Algo-ID: %s", dialer_adapter.auth_config.algo_id);
+    headers = curl_slist_append(headers, headerBuffer);
+    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-SchoolId: %s", dialer_adapter.auth_config.school_id);
+    headers = curl_slist_append(headers, headerBuffer);
+    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Domain: %s", dialer_adapter.auth_config.domain);
+    headers = curl_slist_append(headers, headerBuffer);
+    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Area: %s", dialer_adapter.auth_config.area);
+    headers = curl_slist_append(headers, headerBuffer);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
@@ -164,25 +184,21 @@ HTTPResponse* simPost(const char* url, const char* data)
     {
         result->status = REQUEST_ERROR;
         LOG_ERROR("网络错误，原因: %s",curl_easy_strerror(res));
+        return result;
     }
-    else
-    {
-        long response_code;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-        result->data = response.data;
-        result->dataSize = response.dataSize;
-        response.data = NULL;
-    }
+    result->data = response.data;
+    result->dataSize = response.dataSize;
+    free(response.data);
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    if (response.data) free(response.data);
     result->status = REQUEST_SUCCESS;
     return result;
 }
 
 NetworkStatus checkNetworkStatus()
 {
-    long response_code = 0;
+    const char PORTAL_START_TAG[] = "<!--//config.campus.js.chinatelecom.com";
+    const char PORTAL_END_TAG[] = "//config.campus.js.chinatelecom.com-->";
     HTTPResponse response_data = {0};
     CURL* curl = curl_easy_init();
     if (!curl)
@@ -196,108 +212,87 @@ NetworkStatus checkNetworkStatus()
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
     struct curl_slist *headers = NULL;
     char header_buffer[256];
-    if (USER_AGENT && USER_AGENT[0])
-    {
-        snprintf(header_buffer, sizeof(header_buffer), "User-Agent: %s", USER_AGENT);
-        headers = curl_slist_append(headers, header_buffer);
-    }
-    else
+    if (!USER_AGENT)
     {
         LOG_ERROR("User Agent 不存在");
         return INIT_ERROR;
     }
-    snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
-    headers = curl_slist_append(headers, header_buffer);
-    if (clientId && clientId[0])
-    {
-        snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", clientId);
-        headers = curl_slist_append(headers, header_buffer);
-    }
-    else
+    if (!dialer_adapter.auth_config.client_id)
     {
         LOG_ERROR("Client ID 不存在");
         return INIT_ERROR;
     }
+    snprintf(header_buffer, sizeof(header_buffer), "User-Agent: %s", USER_AGENT);
+    headers = curl_slist_append(headers, header_buffer);
+    snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
+    headers = curl_slist_append(headers, header_buffer);
+    snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", dialer_adapter.auth_config.client_id);
+    headers = curl_slist_append(headers, header_buffer);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
     const CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK)
     {
+        const char* error_msg = curl_easy_strerror(res);
+        LOG_ERROR("HTTP 请求错误: %s, 错误码: %d", error_msg, res);
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
-        if (response_data.data) free(response_data.data);
-        const char* error_msg = curl_easy_strerror(res);
-        LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
+        free(response_data.data);
         return REQUEST_ERROR;
     }
+    long response_code = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
     if (response_code == 204)
     {
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-        if (response_data.data) free(response_data.data);
+        free(response_data.data);
         return REQUEST_SUCCESS;
     }
     if (response_code != 200 && response_code != 302)
     {
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-        if (response_data.data) free(response_data.data);
         LOG_ERROR("HTTP 响应错误, 响应码: %d", response_code);
+        free(response_data.data);
         return REQUEST_ERROR;
     }
-    if (response_data.data && response_data.dataSize > 0)
+    char* portal_config = extractBetweenTags(response_data.data, PORTAL_START_TAG, PORTAL_END_TAG);
+    free(response_data.data);
+    if (!portal_config)
     {
-        char* portal_config = extractBetweenTags(response_data.data, PORTAL_START_TAG, PORTAL_END_TAG);
-        if (portal_config && portal_config[0])
-        {
-            char* auth_url_raw;
-            XmlParser(portal_config, "auth-url", &auth_url_raw);
-            char* auth_url;
-            cleanCDATA(auth_url_raw, &auth_url);
-            char* ticket_url_raw;
-            XmlParser(portal_config, "ticket-url", &ticket_url_raw);
-            char* ticket_url;
-            cleanCDATA(ticket_url_raw, &ticket_url);
-            if (auth_url_raw) free(auth_url_raw);
-            if (ticket_url_raw) free(ticket_url_raw);
-            if (auth_url && ticket_url && auth_url[0] && ticket_url[0])
-            {
-                if (authUrl) free(authUrl);
-                authUrl = strdup(auth_url);
-                if (ticketUrl) free(ticketUrl);
-                ticketUrl = strdup(ticket_url);
-                char* user_ip = extractUrlParameter(ticket_url, "wlanuserip");
-                char* ac_ip = extractUrlParameter(ticket_url, "wlanacip");
-                if (user_ip && ac_ip)
-                {
-                    if (userIp) free(userIp);
-                    userIp = strdup(user_ip);
-                    if (acIp) free(acIp);
-                    acIp = strdup(ac_ip);
-                    free(user_ip);
-                    free(ac_ip);
-                    free(auth_url);
-                    free(ticket_url);
-                    free(portal_config);
-                    curl_easy_cleanup(curl);
-                    curl_slist_free_all(headers);
-                    free(response_data.data);
-                    return REQUEST_AUTHORIZATION;
-                }
-                if (user_ip) free(user_ip);
-                if (ac_ip) free(ac_ip);
-            }
-            if (auth_url) free(auth_url);
-            if (ticket_url) free(ticket_url);
-            free(portal_config);
-        }
+        LOG_ERROR("提取门户配置失败");
+        return REQUEST_ERROR;
     }
-    curl_easy_cleanup(curl);
-    curl_slist_free_all(headers);
-    if (response_data.data) free(response_data.data);
-    return REQUEST_SUCCESS;
+    char* auth_url = XmlParser(portal_config, "auth-url");
+    char* ticket_url = XmlParser(portal_config, "ticket-url");
+    free(portal_config);
+    if (!auth_url || !ticket_url)
+    {
+        if (!auth_url) LOG_ERROR("提取 Auth URL 失败");
+        else LOG_ERROR("提取 Ticket URL 失败");
+        return REQUEST_ERROR;
+    }
+    char* new_auth_url = cleanCDATA(auth_url);
+    char* new_ticket_url = cleanCDATA(ticket_url);
+    free(auth_url);
+    free(ticket_url);
+    if (!new_auth_url || !new_ticket_url)
+    {
+        if (!new_auth_url) LOG_ERROR("清除 Auth URL 失败");
+        else LOG_ERROR("清除 Ticket URL CDATA 失败");
+        return REQUEST_ERROR;
+    }
+    dialer_adapter.auth_config.auth_url = new_auth_url;
+    dialer_adapter.auth_config.ticket_url = new_ticket_url;
+    char* user_ip = extractUrlParam(new_ticket_url, "wlanuserip");
+    char* ac_ip = extractUrlParam(new_ticket_url, "wlanacip");
+    if (!user_ip || !ac_ip)
+    {
+        if (!user_ip) LOG_ERROR("提取 User IP 失败");
+        else LOG_ERROR("提取 AC IP 失败");
+        return REQUEST_ERROR;
+    }
+    return REQUEST_AUTHORIZATION;
 }
 
 NetworkStatus simGet(char* url)
@@ -305,26 +300,27 @@ NetworkStatus simGet(char* url)
     CURL* curl = curl_easy_init();
     if (!curl)
     {
-        LOG_ERROR("curl 初始化失败");
+        LOG_ERROR("初始化 Curl 错误");
         return INIT_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
     const CURLcode res = curl_easy_perform(curl);
-    long response_code = 0;
     if (res != CURLE_OK)
     {
-        curl_easy_cleanup(curl);
         const char* error_msg = curl_easy_strerror(res);
         LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
+        curl_easy_cleanup(curl);
         return REQUEST_ERROR;
     }
+    long response_code = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     curl_easy_cleanup(curl);
-    if (response_code >= 200 && response_code < 300)
+    if (response_code < 200 || response_code >= 300)
     {
-        return REQUEST_SUCCESS;
+        LOG_ERROR("HTTP 响应错误, 响应码: %d", response_code);
+        return REQUEST_ERROR;
     }
-    return REQUEST_ERROR;
+    return REQUEST_SUCCESS;
 }

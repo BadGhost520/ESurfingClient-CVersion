@@ -10,15 +10,12 @@ CONF=/etc/config/esurfingclient
 validate_section() {
 	uci_validate_section esurfingclient esurfingclient "${1}" \
 		'enabled:bool:0' \
-		'username:string' \
-		'password:string' \
-		'channel:string' \
     'debug:bool:0' \
     'smallDevice:bool:1'
 }
 
 start_service() {
-	local enabled username password channel debug smallDevice
+	local enabled debug smallDevice
 	
 	validate_section main || {
 		echo "validation failed"
@@ -27,26 +24,8 @@ start_service() {
 	
 	[ "$enabled" = "1" ] || return 1
 	
-	[ -n "$username" ] || {
-		echo "username not set"
-		return 1
-	}
-	
-	[ -n "$password" ] || {
-		echo "password not set"
-		return 1
-	}
-
-  [ -n "$channel" ] || {
-		echo "channel not set"
-		return 1
-	}
-	
 	procd_open_instance
 	procd_set_param command "$PROG"
-	procd_append_param command -u "$username"
-	procd_append_param command -p "$password"
-  procd_append_param command -c"$channel"
 	
 	[ "$debug" = "1" ] && procd_append_param command -d
 

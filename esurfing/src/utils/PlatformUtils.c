@@ -294,40 +294,48 @@ char* createXMLPayload(const XmlChoose choose)
     return xml;
 }
 
-char* cleanCDATA(const char* text)
+char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
-    if (!text) return NULL;
-    const char* cdataStart = "<![CDATA[";
-    const char* cdataEnd = "]]>";
-    const char* start = strstr(text, cdataStart);
-    if (!start)
+    if (!text)
     {
-        LOG_WARN("未找到 CDATA 标志");
+        LOG_ERROR("传入文本为空");
         return NULL;
     }
-    start += strlen(cdataStart);
-    const char* end = strstr(start, cdataEnd);
-    if (!end) return strdup(start);
-    const size_t len = end - start;
-    if (len == 0)
+    char* start = strstr(text, start_tag);
+    if (!start)
     {
-        LOG_WARN("CDATA 内容为空");
-        return strdup("");
+        LOG_ERROR("未找到开头标签: %s", start_tag);
+        return NULL;
     }
+    start += strlen(start_tag);
+    char* end = strstr(start, end_tag);
+    if (!end)
+    {
+        LOG_WARN("未找到结尾标签: %s, 返回", end_tag);
+        return NULL;
+    }
+    const size_t len = end - start;
+    if (len == 0) LOG_WARN("提取到空内容 (标签: %s...%s)", start_tag, end_tag);
     char* result = malloc(len + 1);
-    if (!result) return NULL;
+    if (!result)
+    {
+        LOG_ERROR("分配内存失败");
+        return NULL;
+    }
     memcpy(result, start, len);
     result[len] = '\0';
     return result;
 }
 
+char* cleanCDATA(const char* text)
+{
+    return extractBetweenTags(text, "<![CDATA[", "]]>");
+}
+
 void createThread(void*(* func)(void*), void* arg, const int index)
 {
     thread_status[index].status = pthread_create(&thread_status[index].thread, NULL, func, &arg);
-    if (thread_status[index].status != 0)
-    {
-        LOG_ERROR("认证线程启动失败，序号 %d", index);
-    }
+    if (thread_status[index].status != 0) LOG_ERROR("认证线程启动失败，序号 %d", index);
 }
 
 void waitThreadStop(const int index)

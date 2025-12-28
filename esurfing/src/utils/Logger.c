@@ -18,27 +18,26 @@
 #include "../headFiles/utils/PlatformUtils.h"
 #include "../headFiles/utils/Logger.h"
 
-LoggerSettings g_logger_settings = {0};
-
 #ifdef _WIN32
-    const char sep = '\\';
+    static const char sep = '\\';
 #else
-    const char sep = '/';
+    static const char sep = '/';
 #endif
 
-const char* fileName = "run.log";
+static LoggerSettings g_logger_settings = {0};
+static const char fileName[] = "run.log";
+static const char rotateFileName[] = ".rotate.log";
 
-LoggerConfig gLoggerConfig = {
+static LoggerConfig gLoggerConfig = {
     .level = LOG_LEVEL_INFO,
-    .logDir = "",
-    .logFile = "",
-    .fileHandle = NULL,
-    .maxBackupFiles = 5,
-    .maxLines = 100000,
-    .currentLines = 0
+    .log_dir = "",
+    .log_file = "",
+    .file_handle = NULL,
+    .max_lines = 10000,
+    .current_lines = 0
 };
 
-const char* loggerLevelString(const LogLevel level)
+static char* loggerLevelString(const LogLevel level)
 {
     switch (level)
     {
@@ -51,49 +50,34 @@ const char* loggerLevelString(const LogLevel level)
     }
 }
 
-long loggerGetFileSize(const char* filename)
+static void loggerRotateFile()
 {
-    FILE* file = fopen(filename, "r");
-    if (file == NULL) return 0;
-    fseek(file, 0, SEEK_END);
-    const long size = ftell(file);
-    fclose(file);
-    return size;
-}
-
-void loggerRotateFile()
-{
-    if (gLoggerConfig.fileHandle == NULL || strlen(gLoggerConfig.logFile) == 0 || gLoggerConfig.currentLines < gLoggerConfig.maxLines) return;
-    fclose(gLoggerConfig.fileHandle);
-    gLoggerConfig.fileHandle = NULL;
-
-    char* timeStr;
-    getFileTime(&timeStr);
-    if (timeStr == NULL)
+    if (!gLoggerConfig.file_handle || strlen(gLoggerConfig.log_file) == 0 || gLoggerConfig.current_lines < gLoggerConfig.max_lines) return;
+    fclose(gLoggerConfig.file_handle);
+    gLoggerConfig.file_handle = NULL;
+    char* timeStr = getTime(FILE_FORMAT);
+    if (!timeStr)
     {
         fprintf(stderr, "错误: 无法获取文件轮转时间\n");
-        gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
+        gLoggerConfig.file_handle = fopen(gLoggerConfig.log_file, "a");
         return;
     }
-
     char rotatedFilename[PATH_MAX];
-    const int result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
+    const int result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s%s", gLoggerConfig.log_dir, sep, timeStr, rotateFileName);
     free(timeStr);
-
     if (result >= (int)sizeof(rotatedFilename))
     {
         fprintf(stderr, "错误: 轮转的文件名过长 (最大 %zu)\n", sizeof(rotatedFilename) - 1);
-        gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
+        gLoggerConfig.file_handle = fopen(gLoggerConfig.log_file, "a");
         return;
     }
-
-    rename(gLoggerConfig.logFile, rotatedFilename);
-    gLoggerConfig.currentLines = 0;
-    gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
-    if (gLoggerConfig.fileHandle == NULL) fprintf(stderr, "错误: 无法在轮转后重新打开日志文件 %s\n", gLoggerConfig.logFile);
+    rename(gLoggerConfig.log_file, rotatedFilename);
+    gLoggerConfig.current_lines = 0;
+    gLoggerConfig.file_handle = fopen(gLoggerConfig.log_file, "a");
+    if (gLoggerConfig.file_handle == NULL) fprintf(stderr, "错误: 无法在轮转后重新打开日志文件 %s\n", gLoggerConfig.log_file);
 }
 
-int getExecutableDir(char* out)
+static int getExecutableDir(char* out)
 {
 #ifdef _WIN32
     char path[MAX_PATH];
@@ -119,7 +103,7 @@ int getExecutableDir(char* out)
 #endif
 }
 
-int ensureLogDir(char* out)
+static int ensureLogDir(char* out)
 {
 #ifdef _WIN32
     char dir[PATH_MAX];
@@ -147,126 +131,18 @@ int ensureLogDir(char* out)
     return 0;
 }
 
-void checkLogLevel()
-{
-    if (g_logger_settings.is_debug)
-        gLoggerConfig.level = LOG_LEVEL_DEBUG;
-    else
-        gLoggerConfig.level = LOG_LEVEL_INFO;
-}
-
-int loggerInit()
-{
-    checkLogLevel();
-    if (ensureLogDir(gLoggerConfig.logDir) != 0)
-    {
-        fprintf(stderr, "错误: 无法准备日志目录\n");
-        return -1;
-    }
-    const int ln = snprintf(gLoggerConfig.logFile, sizeof(gLoggerConfig.logFile), "%s%c%s", gLoggerConfig.logDir, sep, fileName);
-    if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.logFile))
-    {
-        fprintf(stderr, "错误: 日志文件路径太长 (最大 %zu)\n", sizeof(gLoggerConfig.logFile));
-        return -1;
-    }
-    gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
-    if (gLoggerConfig.fileHandle == NULL)
-    {
-        fprintf(stderr, "错误: 无法打开日志文件 %s\n", gLoggerConfig.logFile);
-        return -1;
-    }
-    LOG_DEBUG("日志等级: %s", loggerLevelString(gLoggerConfig.level));
-    if (g_logger_settings.is_small_device && access("/etc/openwrt_release", F_OK) == 0) LOG_DEBUG("检测到 OpenWrt 环境，小容量设备模式已开启");
-    return 0;
-}
-
-void loggerCleanup()
-{
-    if (gLoggerConfig.fileHandle != NULL)
-    {
-        LOG_DEBUG("正在关闭日志系统");
-        fclose(gLoggerConfig.fileHandle);
-        gLoggerConfig.fileHandle = NULL;
-        if (strlen(gLoggerConfig.logFile) > 0)
-        {
-            char* timeStr;
-            getFileTime(&timeStr);
-            if (timeStr == NULL)
-            {
-                fprintf(stderr, "错误: 无法获取文件清理时间\n");
-                return;
-            }
-
-            char newFilename[PATH_MAX];
-            const int result = snprintf(newFilename, sizeof(newFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
-            free(timeStr);
-
-            if (result >= (int)sizeof(newFilename))
-            {
-                fprintf(stderr, "错误: 新文件名过长 (最大 %zu)\n", sizeof(newFilename) - 1);
-                return;
-            }
-            rename(gLoggerConfig.logFile, newFilename);
-        }
-    }
-}
-
-void loggerWriteToConsole(const char* message)
+static void loggerWriteToConsole(const char* message)
 {
     printf("%s", message);
     fflush(stdout);
 }
 
-LogContent getLog()
+static void loggerWriteToFile(const char* message)
 {
-    LogContent result = {NULL, 0};
-    FILE* file = fopen(gLoggerConfig.logFile, "rb");
-
-    if (!file)
+    if (gLoggerConfig.file_handle)
     {
-        perror("Failed to open file");
-        return result;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    if (file_size < 0)
-    {
-        fclose(file);
-        return result;
-    }
-
-    result.data = (char*)malloc(file_size + 1);
-    if (!result.data)
-    {
-        fclose(file);
-        return result;
-    }
-
-    size_t bytes_read = fread(result.data, 1, file_size, file);
-    if (bytes_read != (size_t)file_size)
-    {
-        free(result.data);
-        result.data = NULL;
-    }
-    else
-    {
-        result.data[file_size] = '\0';
-        result.size = file_size;
-    }
-
-    fclose(file);
-    return result;
-}
-
-void loggerWriteToFile(const char* message)
-{
-    if (gLoggerConfig.fileHandle != NULL)
-    {
-        fprintf(gLoggerConfig.fileHandle, "%s", message);
-        fflush(gLoggerConfig.fileHandle);
+        fprintf(gLoggerConfig.file_handle, "%s", message);
+        fflush(gLoggerConfig.file_handle);
     }
 }
 
@@ -279,8 +155,7 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
     va_end(args);
-    char* timestamp;
-    getTime(&timestamp);
+    char* timestamp = getTime(CONSOLE_FORMAT);
     snprintf(finalMessage, sizeof(finalMessage),
         "[%s] [%s] [%s:%d] %s\n",
         timestamp,
@@ -290,7 +165,105 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
         message);
     loggerWriteToConsole(finalMessage);
     loggerWriteToFile(finalMessage);
-    if (gLoggerConfig.fileHandle != NULL) gLoggerConfig.currentLines++;
+    if (gLoggerConfig.file_handle) gLoggerConfig.current_lines++;
     loggerRotateFile();
     free(timestamp);
+}
+
+LoggerInitStatus loggerInit(const LoggerSettings logger_settings)
+{
+    g_logger_settings.is_debug = logger_settings.is_debug;
+    if (g_logger_settings.is_debug) gLoggerConfig.level = LOG_LEVEL_DEBUG;
+    else gLoggerConfig.level = LOG_LEVEL_INFO;
+    g_logger_settings.is_small_device = logger_settings.is_small_device;
+    if (ensureLogDir(gLoggerConfig.log_dir) != 0)
+    {
+        fprintf(stderr, "错误: 无法准备日志目录\n");
+        return INIT_LOGGER_FAILURE;
+    }
+    const int ln = snprintf(gLoggerConfig.log_file, sizeof(gLoggerConfig.log_file), "%s%c%s", gLoggerConfig.log_dir, sep, fileName);
+    if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.log_file))
+    {
+        fprintf(stderr, "错误: 日志文件路径太长 (最大 %zu)\n", sizeof(gLoggerConfig.log_file));
+        return INIT_LOGGER_FAILURE;
+    }
+    gLoggerConfig.file_handle = fopen(gLoggerConfig.log_file, "a");
+    if (!gLoggerConfig.file_handle)
+    {
+        fprintf(stderr, "错误: 无法打开日志文件 %s\n", gLoggerConfig.log_file);
+        return INIT_LOGGER_FAILURE;
+    }
+    LOG_DEBUG("日志等级: %s", loggerLevelString(gLoggerConfig.level));
+    if (g_logger_settings.is_small_device && access("/etc/openwrt_release", F_OK) == 0) LOG_DEBUG("检测到 OpenWrt 环境，小容量设备模式已开启");
+    return INIT_LOGGER_SUCCESS;
+}
+
+void loggerCleanup()
+{
+    LOG_DEBUG("正在关闭日志系统");
+    if (!gLoggerConfig.file_handle)
+    {
+        LOG_WARN("日志系统未启动");
+        return;
+    }
+    fclose(gLoggerConfig.file_handle);
+    gLoggerConfig.file_handle = NULL;
+    if (strlen(gLoggerConfig.log_file) == 0)
+    {
+        LOG_ERROR("日志路径为空");
+        return;
+    }
+    char* timeStr = getTime(FILE_FORMAT);
+    if (!timeStr)
+    {
+        fprintf(stderr, "错误: 无法获取文件清理时间\n");
+        return;
+    }
+    char newFilename[PATH_MAX];
+    const int result = snprintf(newFilename, sizeof(newFilename), "%s%c%s.log", gLoggerConfig.log_dir, sep, timeStr);
+    free(timeStr);
+    if (result >= (int)sizeof(newFilename))
+    {
+        fprintf(stderr, "错误: 新文件名过长 (最大 %zu)\n", sizeof(newFilename) - 1);
+        return;
+    }
+    rename(gLoggerConfig.log_file, newFilename);
+}
+
+LogContent getLog()
+{
+    LogContent result = {NULL, 0};
+    FILE* file = fopen(gLoggerConfig.log_file, "rb");
+    if (!file)
+    {
+        perror("打开文件失败");
+        return result;
+    }
+    fseek(file, 0, SEEK_END);
+    const long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    if (file_size < 0)
+    {
+        fclose(file);
+        return result;
+    }
+    result.data = (char*)malloc(file_size + 1);
+    if (!result.data)
+    {
+        fclose(file);
+        return result;
+    }
+    const size_t bytes_read = fread(result.data, 1, file_size, file);
+    if (bytes_read != (size_t)file_size)
+    {
+        free(result.data);
+        result.data = NULL;
+    }
+    else
+    {
+        result.data[file_size] = '\0';
+        result.size = file_size;
+    }
+    fclose(file);
+    return result;
 }

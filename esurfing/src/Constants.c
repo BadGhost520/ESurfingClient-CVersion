@@ -5,8 +5,6 @@
 #include "headFiles/utils/Logger.h"
 
 const char* REQUEST_ACCEPT = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
-const char* PORTAL_START_TAG = "<!--//config.campus.js.chinatelecom.com";
-const char* PORTAL_END_TAG = "//config.campus.js.chinatelecom.com-->";
 const char* CAPTIVE_URL = "http://connect.rom.miui.com/generate_204";
 const char* AUTH_KEY = "Eshore!@#";
 char* USER_AGENT;

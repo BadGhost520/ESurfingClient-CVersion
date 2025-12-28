@@ -7,7 +7,7 @@
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/Session.h"
 #include "../headFiles/States.h"
-#include "../headFiles/Client.h"
+#include "../headFiles/DialerClient.h"
 
 void adapterStop()
 {
@@ -18,7 +18,6 @@ void adapterStop()
         if (g_dialer_adapter[i].runtime_status.is_initialized)
         {
             if (g_dialer_adapter[i].runtime_status.is_logged) term();
-            cipherFactoryDestroy();
             freeSession();
         }
     }

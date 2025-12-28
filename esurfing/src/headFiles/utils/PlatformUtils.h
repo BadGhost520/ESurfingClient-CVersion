@@ -93,8 +93,17 @@ char* getTime(TimeFormat format);
 char* createXMLPayload(XmlChoose choose);
 
 /**
+ * 清除指定标签字段
+ * @param text 需要清除的文本
+ * @param start_tag 开始标签
+ * @param end_tag 结束标签
+ * @return 清除后的文本
+ */
+char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag);
+
+/**
  * 清除 CDATA 字段
- * @param text 未清除 CDATA 字段文本
+ * @param text 需要清除的文本
  * @return 清除后的文本
  */
 char* cleanCDATA(const char* text);
