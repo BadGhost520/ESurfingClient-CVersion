@@ -4,6 +4,7 @@
 #include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/webserver/WebServer.h"
 #include "headFiles/utils/PlatformUtils.h"
+#include "headFiles/utils/Shutdown.h"
 #include "headFiles/utils/Logger.h"
 #include "headFiles/DialerClient.h"
 #include "headFiles/Constants.h"
@@ -345,8 +346,9 @@ static void restart()
     refreshStates();
 }
 
-void dialerApp()
+void dialerApp(const int index)
 {
+    dialer_adapter.index = index;
     dialer_adapter.runtime_status.is_running = 1;
     initConstants();
     refreshStates();
@@ -372,5 +374,6 @@ void dialerApp()
             is_settings_changed = 0;
         }
         run();
+        checkAdapterStop();
     }
 }

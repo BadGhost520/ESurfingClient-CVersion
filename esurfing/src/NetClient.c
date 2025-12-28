@@ -7,7 +7,6 @@
 #include "headFiles/utils/Logger.h"
 #include "headFiles/Constants.h"
 #include "headFiles/NetClient.h"
-
 #include "headFiles/States.h"
 
 static char* extractUrlParam(const char* url, const char* search_string_start)

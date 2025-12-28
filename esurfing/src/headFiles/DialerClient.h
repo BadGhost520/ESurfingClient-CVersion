@@ -27,4 +27,6 @@ typedef enum
  */
 RunningStatus term();
 
+void dialerApp(int index);
+
 #endif // CLIENT_H

@@ -1,46 +1,14 @@
 #include <signal.h>
 #include <stdlib.h>
 
-#include "../headFiles/cipher/CipherInterface.h"
 #include "../headFiles/webserver/WebServer.h"
 #include "../headFiles/utils/Shutdown.h"
 #include "../headFiles/utils/Logger.h"
+#include "../headFiles/DialerClient.h"
 #include "../headFiles/Session.h"
 #include "../headFiles/States.h"
-#include "../headFiles/DialerClient.h"
 
-void adapterStop()
-{
-    for (int i = 0; i < MAX_DIALERS; i++)
-    {
-        LOG_DEBUG("执行关闭函数");
-        if (g_dialer_adapter[i].runtime_status.is_running) g_dialer_adapter[i].runtime_status.is_running = 0;
-        if (g_dialer_adapter[i].runtime_status.is_initialized)
-        {
-            if (g_dialer_adapter[i].runtime_status.is_logged) term();
-            freeSession();
-        }
-    }
-}
-
-void mainStop()
-{
-    if (is_webserver_running)
-    {
-        stopWebServer();
-    }
-    loggerCleanup();
-}
-
-void shut(const int exitCode)
-{
-
-    LOG_INFO("关闭主线程");
-    mainStop();
-    exit(exitCode);
-}
-
-void signalHandler(const int sig)
+static void signalHandler(const int sig)
 {
     switch(sig)
     {
@@ -56,6 +24,41 @@ void signalHandler(const int sig)
         LOG_DEBUG("接收到未处理的信号: %d", sig);
         shut(0);
     }
+}
+
+static void mainStop()
+{
+    LOG_DEBUG("执行主线程关闭函数");
+    if (is_webserver_running) stopWebServer();
+    loggerCleanup();
+}
+
+static void adapterStop()
+{
+    LOG_DEBUG("执行关闭函数");
+    dialer_adapter.runtime_status.is_running = 0;
+    if (dialer_adapter.runtime_status.is_initialized)
+    {
+        if (dialer_adapter.runtime_status.is_logged) term();
+        freeSession();
+    }
+}
+
+void checkAdapterStop()
+{
+    if (adapter_need_stop[dialer_adapter.index])
+    {
+        adapter_need_stop[dialer_adapter.index] = false;
+        adapterStop();
+    }
+}
+
+void shut(const int exitCode)
+{
+    LOG_INFO("关闭主线程");
+    mainStop();
+    for (int i = 0; i < MAX_DIALER_COUNT; i++) adapter_need_stop[i] = true;
+    exit(exitCode);
 }
 
 void initShutdown()

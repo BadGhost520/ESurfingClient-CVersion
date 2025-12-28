@@ -332,10 +332,11 @@ char* cleanCDATA(const char* text)
     return extractBetweenTags(text, "<![CDATA[", "]]>");
 }
 
-void createThread(void*(* func)(void*), void* arg, const int index)
+void createThread(void*(* func)(void*), void* arg)
 {
-    thread_status[index].status = pthread_create(&thread_status[index].thread, NULL, func, &arg);
-    if (thread_status[index].status != 0) LOG_ERROR("认证线程启动失败，序号 %d", index);
+    const int index = (int)(intptr_t)arg;
+    thread_status[index - 1].status = pthread_create(&thread_status[index - 1].thread, NULL, func, arg);
+    if (thread_status[index - 1].status != 0) LOG_ERROR("认证线程启动失败，序号 %d", index);
 }
 
 void waitThreadStop(const int index)

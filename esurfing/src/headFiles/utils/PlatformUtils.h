@@ -112,9 +112,8 @@ char* cleanCDATA(const char* text);
  * 创建线程函数
  * @param func 线程要执行的函数
  * @param arg 参数
- * @param index 线程下标
  */
-void createThread(void*(* func)(void*), void* arg, int index);
+void createThread(void*(* func)(void*), void* arg);
 
 /**
  * 等待线程结束函数

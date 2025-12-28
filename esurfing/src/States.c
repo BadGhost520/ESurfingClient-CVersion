@@ -10,6 +10,7 @@
 
 __thread DialerContext dialer_adapter = {0};
 ThreadStatus thread_status[MAX_DIALER_COUNT] = {0};
+bool adapter_need_stop[MAX_DIALER_COUNT] = {0};
 
 static void setRandomClientId()
 {

@@ -59,6 +59,7 @@ typedef struct
 
 extern __thread DialerContext dialer_adapter;
 extern ThreadStatus thread_status[MAX_DIALER_COUNT];
+extern bool adapter_need_stop[MAX_DIALER_COUNT];
 
 /**
  * 刷新状态函数
