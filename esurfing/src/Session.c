@@ -83,8 +83,8 @@ static InitStatus load(const ByteArray zsm)
         return INIT_FAILURE;
     }
     LOG_DEBUG("全局 AlgoId 已更新: '%s'", new_algo_id);
-    if (dialer_adapter.auth_config.algo_id) free(dialer_adapter.auth_config.algo_id);
-    dialer_adapter.auth_config.algo_id = new_algo_id;
+    if (thread_status[thread_index].dialer_context.auth_config.algo_id) free(thread_status[thread_index].dialer_context.auth_config.algo_id);
+    thread_status[thread_index].dialer_context.auth_config.algo_id = new_algo_id;
     return INIT_SUCCESS;
 }
 
@@ -94,12 +94,12 @@ void initialize(const ByteArray zsm)
     if (load(zsm) == INIT_SUCCESS)
     {
         LOG_DEBUG("初始化会话成功");
-        dialer_adapter.runtime_status.is_initialized = 1;
+        thread_status[thread_index].dialer_context.runtime_status.is_initialized = 1;
     }
     else
     {
         LOG_DEBUG("初始化会话失败");
-        dialer_adapter.runtime_status.is_initialized = 0;
+        thread_status[thread_index].dialer_context.runtime_status.is_initialized = 0;
     }
 }
 
@@ -107,5 +107,5 @@ void freeSession()
 {
     LOG_DEBUG("清除会话初始化状态");
     cipherFactoryDestroy();
-    dialer_adapter.runtime_status.is_initialized = 0;
+    thread_status[thread_index].dialer_context.runtime_status.is_initialized = 0;
 }

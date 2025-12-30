@@ -1,7 +1,7 @@
 async function getLicense() {
     await axios({
         method: 'get',
-        url: '../license/LICENSE.txt',
+        url: '/license/LICENSE',
         timeout: 5000,
         responseType: 'text',
         responseEncoding: 'utf-8'

@@ -3,17 +3,12 @@ project(ESurfingClient C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
+
+add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif()
-
-if(NOT CMAKE_C_COMPILER MATCHES "openwrt")
-    add_custom_target(syncWebRoot ALL
-            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/web_root
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/web_root ${CMAKE_BINARY_DIR}/web_root
-            COMMENT "sync web root"
-    )
 endif()
 
 find_package(CURL REQUIRED)
@@ -354,7 +349,3 @@ install(TARGETS ESurfingClient RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 target_compile_options(ESurfingClient PRIVATE -s)
 target_compile_options(ESurfingClient PRIVATE -O3)
 set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
-
-if(NOT CMAKE_C_COMPILER MATCHES "openwrt")
-    add_dependencies(ESurfingClient syncWebRoot)
-endif()

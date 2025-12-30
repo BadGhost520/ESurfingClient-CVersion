@@ -5,21 +5,32 @@
 #content {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   grid-template-areas:
     "network software"
+    "thread1 thread2"
     "adapters adapters";
   gap: 20px;
   align-content: start;
 }
 
-.card.network:nth-child(1) {
+.card.network {
   grid-area: network;
   height: 190px;
 }
 
-.card.software:nth-child(2) {
+.card.software {
   grid-area: software;
+  height: 190px;
+}
+
+.card.thread1 {
+  grid-area: thread1;
+  height: 190px;
+}
+
+.card.thread2 {
+  grid-area: thread2;
   height: 190px;
 }
 
@@ -28,16 +39,10 @@
   height: auto;
 }
 
-.card-content {
-  margin-left: 5px;
+.switch {
   display: flex;
-  overflow-x: auto;
-  flex-direction: column;
   div {
-    margin-bottom: 10px;
-    span {
-      margin-left: 10px;
-    }
+    margin-left: 10px;
   }
 }
 
@@ -58,10 +63,12 @@
   #content {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
       "network"
       "software"
+      "thread1"
+      "thread2"
       "adapters";
     gap: 20px;
     align-content: start;
@@ -69,18 +76,6 @@
 }
 
 @media (max-width: 768px) {
-  #content {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    grid-template-areas:
-      "network"
-      "software"
-      "adapters";
-    gap: 20px;
-    align-content: start;
-  }
-
   .card.network:nth-child(1) {
     grid-area: network;
     height: 165px;

@@ -3,9 +3,11 @@
 #include <unistd.h>
 #include <stdio.h>
 
+#include "headFiles/States.h"
 #include "headFiles/webserver/WebServer.h"
 #include "headFiles/utils/Shutdown.h"
 #include "headFiles/utils/Logger.h"
+#include "headFiles/utils/PlatformUtils.h"
 
 int main(const int argc, char* argv[])
 {
@@ -13,19 +15,13 @@ int main(const int argc, char* argv[])
     system("chcp 65001 > nul");
 #endif
     int opt;
-    LoggerSettings logger_settings = {
-        .is_debug = false,
-        .is_small_device = true
-    };
-    while ((opt = getopt(argc, argv, "ds")) != -1)
+    bool is_debug = false;
+    while ((opt = getopt(argc, argv, "d")) != -1)
     {
         switch (opt)
         {
         case 'd':
-            logger_settings.is_debug = true;
-            break;
-        case 's':
-            logger_settings.is_small_device = true;
+            is_debug = true;
             break;
         case '?':
             printf("参数错误: %c\n", optopt);
@@ -35,7 +31,8 @@ int main(const int argc, char* argv[])
             return 0;
         }
     }
-    loggerInit(logger_settings);
+    loggerInit(is_debug);
+    g_running_time = currentTimeMillis();
     initShutdown();
     startWebServer();
     return 1;

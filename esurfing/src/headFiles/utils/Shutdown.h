@@ -1,6 +1,9 @@
 #ifndef ESURFINGCLIENT_SHUTDOWN_H
 #define ESURFINGCLIENT_SHUTDOWN_H
 
+/**
+ * 检查适配器线程是否需要关闭
+ */
 void checkAdapterStop();
 
 /**

@@ -82,10 +82,10 @@ settingsModalBtn.addEventListener("click", () => {
 
 document.addEventListener("click", (e) => {
   if (
-    (!modalContainer.contains(e.target) &&
-      !settingsModalBtn.contains(e.target) &&
-      settingsModal.classList.contains("modalact")) ||
-    cancelBtn.contains(e.target)
+      (!modalContainer.contains(e.target) &&
+          !settingsModalBtn.contains(e.target) &&
+          settingsModal.classList.contains("modalact")) ||
+      cancelBtn.contains(e.target)
   ) {
     settingsModal.classList.remove("modalact");
     resetModal();
@@ -101,38 +101,38 @@ async function getSettings() {
     responseType: "json",
     responseEncoding: "utf-8",
   })
-    .then((response) => {
-      const data = response.data;
-      staticUsrInput.value = data.username;
-      staticPwdInput.value = data.password;
+      .then((response) => {
+        const data = response.data;
+        staticUsrInput.value = data.username;
+        staticPwdInput.value = data.password;
 
-      if (data.channel === "pc") {
-        staticChnPhone.classList.remove("btnon");
-        staticChnPC.classList.add("btnon");
-      } else {
-        staticChnPC.classList.remove("btnon");
-        staticChnPhone.classList.add("btnon");
-      }
+        if (data.channel === "pc") {
+          staticChnPhone.classList.remove("btnon");
+          staticChnPC.classList.add("btnon");
+        } else {
+          staticChnPC.classList.remove("btnon");
+          staticChnPhone.classList.add("btnon");
+        }
 
-      if (data.debug) {
-        staticDebugOff.classList.remove("btnon");
-        staticDebugOn.classList.add("btnon");
-      } else {
-        staticDebugOn.classList.remove("btnon");
-        staticDebugOff.classList.add("btnon");
-      }
+        if (data.debug) {
+          staticDebugOff.classList.remove("btnon");
+          staticDebugOn.classList.add("btnon");
+        } else {
+          staticDebugOn.classList.remove("btnon");
+          staticDebugOff.classList.add("btnon");
+        }
 
-      if (data.smallDevice) {
-        staticSmallOff.classList.remove("btnon");
-        staticSmallOn.classList.add("btnon");
-      } else {
-        staticSmallOn.classList.remove("btnon");
-        staticSmallOff.classList.add("btnon");
-      }
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+        if (data.smallDevice) {
+          staticSmallOff.classList.remove("btnon");
+          staticSmallOn.classList.add("btnon");
+        } else {
+          staticSmallOn.classList.remove("btnon");
+          staticSmallOff.classList.add("btnon");
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
 }
 
 // 设置表单提交
@@ -158,16 +158,16 @@ async function updateSettings() {
       smallDevice: smallDeviceNum,
     },
   })
-    .then((response) => {
-      if (response.status === 204) {
-        alert("设置已保存");
-      } else {
-        alert("设置保存失败");
-      }
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+      .then((response) => {
+        if (response.status === 204) {
+          alert("设置已保存");
+        } else {
+          alert("设置保存失败");
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
 }
 
 settingsSubmitBtn.addEventListener("click", () => {

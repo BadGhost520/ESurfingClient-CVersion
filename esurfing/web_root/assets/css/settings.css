@@ -1,19 +1,37 @@
 #content {
   display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "thread1 thread2"
+    "log-settings log-settings";
+  gap: 20px;
   align-content: start;
 }
 
 .card {
-  max-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
 }
 
-#change-btn {
+.card.thread1 {
+  grid-area: thread1;
+  height: 260px;
+}
+
+.card.thread2 {
+  grid-area: thread2;
+  height: 260px;
+}
+
+.card.log-settings {
+  grid-area: log-settings;
+  height: 120px;
+}
+
+.change-btn {
   margin-top: 15px;
-  margin-left: 50px;
+  margin-left: 15px;
   width: 85px;
   height: 30px;
   text-align: center;
@@ -24,7 +42,7 @@
   transition: all 0.2s ease;
 }
 
-#change-btn:hover {
+.change-btn:hover {
   background-color: #3a50fe;
   color: white;
   cursor: pointer;
@@ -33,12 +51,9 @@
 .form-group {
   display: flex;
   margin-top: 15px;
-}
-
-.form-group {
   label {
     width: 135px;
-    font-size: 14px;
+    font-size: 16px;
     text-align: right;
     margin: auto 15px;
   }
@@ -118,6 +133,20 @@
   color: white;
 }
 
+@media (max-width: 991px) {
+  #content {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "thread1"
+      "thread2"
+      "log-settings";
+    gap: 20px;
+    align-content: start;
+  }
+}
+
 @media (max-width: 768px) {
   .settings-change-btn {
     margin-left: 25px;
@@ -139,6 +168,31 @@
     label {
       width: 110px;
     }
+  }
+
+  .card.thread1 {
+    height: 240px;
+  }
+
+  .card.thread2 {
+    height: 240px;
+  }
+
+  .card.log-settings {
+    height: 180px;
+  }
+
+  #change-btn {
+    margin-top: 15px;
+    margin-left: 50px;
+    width: 85px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: solid 1px #374eff;
+    transition: all 0.2s ease;
   }
 
   .modal {

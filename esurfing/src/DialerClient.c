@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "headFiles/cipher/CipherInterface.h"
-#include "headFiles/webserver/WebServer.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Shutdown.h"
 #include "headFiles/utils/Logger.h"
@@ -39,7 +38,7 @@ RunningStatus term()
         return RUNNING_FAILURE;
     }
     freeResult(result);
-    dialer_adapter.runtime_status.is_logged = 0;
+    thread_status[thread_index].dialer_context.runtime_status.is_authed = 0;
     return RUNNING_SUCCESS;
 }
 
@@ -110,7 +109,7 @@ static AuthStatus login()
         return AUTH_FAILURE;
     }
     LOG_DEBUG("发送加密登录内容: %s", encrypt);
-    HTTPResponse* result = simPost(dialer_adapter.auth_config.auth_url, encrypt);
+    HTTPResponse* result = simPost(thread_status[thread_index].dialer_context.auth_config.auth_url, encrypt);
     free(encrypt);
     if (!result || result->status == REQUEST_ERROR)
     {
@@ -208,7 +207,7 @@ static AuthStatus getTicket()
         return AUTH_FAILURE;
     }
     LOG_DEBUG("发送加密获取 ticket 内容: %s", encrypt);
-    HTTPResponse* result = simPost(dialer_adapter.auth_config.auth_url, encrypt);
+    HTTPResponse* result = simPost(thread_status[thread_index].dialer_context.auth_config.auth_url, encrypt);
     free(encrypt);
     if (!result || result->status == REQUEST_ERROR)
     {
@@ -238,14 +237,14 @@ static AuthStatus getTicket()
         LOG_ERROR("复制新 Ticket 失败");
         return AUTH_FAILURE;
     }
-    if (dialer_adapter.auth_config.ticket) free(dialer_adapter.auth_config.ticket);
-    dialer_adapter.auth_config.ticket = new_ticket;
+    if (thread_status[thread_index].dialer_context.auth_config.ticket) free(thread_status[thread_index].dialer_context.auth_config.ticket);
+    thread_status[thread_index].dialer_context.auth_config.ticket = new_ticket;
     return AUTH_SUCCESS;
 }
 
 static AuthStatus initSession()
 {
-    HTTPResponse* result = simPost(dialer_adapter.auth_config.ticket_url, dialer_adapter.auth_config.algo_id);
+    HTTPResponse* result = simPost(thread_status[thread_index].dialer_context.auth_config.ticket_url, thread_status[thread_index].dialer_context.auth_config.algo_id);
     if (!result || result->status == REQUEST_ERROR)
     {
         LOG_ERROR("初始化会话失败，错误代码: %d", result->status);
@@ -268,16 +267,16 @@ static RunningStatus authorization()
         else if (getTicket() == AUTH_FAILURE) LOG_FATAL("获取 Ticket 失败");
         else if (login() == AUTH_FAILURE) LOG_FATAL("登录失败");
         freeSession();
-        dialer_adapter.runtime_status.is_running = false;
+        thread_status[thread_index].dialer_context.runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
-    LOG_INFO("Client IP: %s", dialer_adapter.auth_config.user_ip);
-    LOG_INFO("AC IP: %s", dialer_adapter.auth_config.ac_ip);
-    LOG_INFO("Ticket: %s", dialer_adapter.auth_config.ticket);
+    LOG_INFO("Client IP: %s", thread_status[thread_index].dialer_context.auth_config.user_ip);
+    LOG_INFO("AC IP: %s", thread_status[thread_index].dialer_context.auth_config.ac_ip);
+    LOG_INFO("Ticket: %s", thread_status[thread_index].dialer_context.auth_config.ticket);
     client_data.tick = currentTimeMillis();
-    dialer_adapter.timestamp.auth_time = currentTimeMillis();
-    LOG_DEBUG("登录时间戳 (毫秒): %lld", dialer_adapter.timestamp.auth_time);
-    dialer_adapter.runtime_status.is_logged = true;
+    thread_status[thread_index].dialer_context.auth_time = currentTimeMillis();
+    LOG_DEBUG("登录时间戳 (毫秒): %lld", thread_status[thread_index].dialer_context.auth_time);
+    thread_status[thread_index].dialer_context.runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
     return RUNNING_SUCCESS;
 }
@@ -287,7 +286,7 @@ static RunningStatus run()
     switch (checkNetworkStatus())
     {
     case REQUEST_SUCCESS:
-        if (dialer_adapter.runtime_status.is_initialized && dialer_adapter.runtime_status.is_logged)
+        if (thread_status[thread_index].dialer_context.runtime_status.is_initialized && thread_status[thread_index].dialer_context.runtime_status.is_authed)
         {
             const long long keep_retry = stringToLongLong(client_data.keep_retry);
             if (keep_retry != 0)
@@ -335,45 +334,46 @@ static RunningStatus run()
 
 static void restart()
 {
-    if (dialer_adapter.runtime_status.is_initialized)
+    if (thread_status[thread_index].dialer_context.runtime_status.is_initialized)
     {
-        if (dialer_adapter.runtime_status.is_logged) term();
+        if (thread_status[thread_index].dialer_context.runtime_status.is_authed) term();
         freeSession();
     }
-    dialer_adapter.timestamp.auth_time = 0;
+    thread_status[thread_index].dialer_context.auth_time = 0;
     sleepMilliseconds(5000);
     initConstants();
     refreshStates();
 }
 
-void dialerApp(const int index)
+void* dialerApp(void* arg)
 {
-    dialer_adapter.index = index;
-    dialer_adapter.runtime_status.is_running = 1;
+    thread_index = (int)(intptr_t)arg;
+    thread_status[thread_index].dialer_context.runtime_status.is_running = 1;
     initConstants();
     refreshStates();
-    LOG_INFO("程序启动中，序号: %d", dialer_adapter.index);
+    LOG_INFO("程序启动中，序号: %d", thread_index + 1);
     sleepMilliseconds(5000);
-    while (dialer_adapter.runtime_status.is_running)
+    while (thread_status[thread_index].dialer_context.runtime_status.is_running)
     {
-        if (currentTimeMillis() - dialer_adapter.timestamp.auth_time >= 172200000 && dialer_adapter.timestamp.auth_time != 0)
+        if (currentTimeMillis() - thread_status[thread_index].dialer_context.auth_time >= 172200000 && thread_status[thread_index].dialer_context.auth_time != 0)
         {
-            if (is_settings_changed)
+            if (thread_status[thread_index].dialer_context.runtime_status.is_settings_changed)
             {
                 LOG_INFO("设置已更改，正在重启认证");
-                is_settings_changed = 0;
+                thread_status[thread_index].dialer_context.runtime_status.is_settings_changed = false;
             }
             LOG_DEBUG("当前时间戳(毫秒): %lld", currentTimeMillis());
             LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟)，为避免被远程服务器踢下线，正在重新进行认证");
             restart();
         }
-        else if (is_settings_changed)
+        else if (thread_status[thread_index].dialer_context.runtime_status.is_settings_changed)
         {
             LOG_INFO("设置已更改，正在重启认证");
             restart();
-            is_settings_changed = 0;
+            thread_status[thread_index].dialer_context.runtime_status.is_settings_changed = false;
         }
         run();
         checkAdapterStop();
     }
+    return NULL;
 }

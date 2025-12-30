@@ -27,6 +27,11 @@ typedef enum
  */
 RunningStatus term();
 
-void dialerApp(int index);
+/**
+ * 认证线程主函数
+ * @param arg 参数
+ * @return NULL
+ */
+void* dialerApp(void* arg);
 
 #endif // CLIENT_H

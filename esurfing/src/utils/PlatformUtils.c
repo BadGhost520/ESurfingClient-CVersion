@@ -138,7 +138,7 @@ char* getTime(const TimeFormat format)
     if (time(&raw_time) == (time_t)-1)
     {
         free(timeStr);
-        LOG_ERROR("获取系统时间失败");
+        fprintf(stderr, "错误: 获取系统时间失败\n");
         return NULL;
     }
     struct tm local_time;
@@ -146,25 +146,24 @@ char* getTime(const TimeFormat format)
     if (localtime_s(&local_time, &raw_time) != 0)
     {
         free(timeStr);
-        LOG_ERROR("时间转换失败");
+        fprintf(stderr, "错误: 时间转换失败\n");
         return NULL;
     }
 #else
     if (localtime_r(&raw_time, &local_time) == NULL)
     {
         free(timeStr);
-        LOG_ERROR("时间转换失败");
+        fprintf(stderr, "错误: 时间转换失败\n");
         return NULL;
     }
 #endif
-    LOG_DEBUG("时间格式代码: %d", format);
     switch (format)
     {
     case CONSOLE_FORMAT:
         if (strftime(timeStr, 32, "%Y-%m-%d %H:%M:%S", &local_time) == 0)
         {
             free(timeStr);
-            LOG_ERROR("格式化时间失败");
+            fprintf(stderr, "错误: 格式化时间失败\n");
             return NULL;
         }
         return timeStr;
@@ -172,7 +171,7 @@ char* getTime(const TimeFormat format)
         if (strftime(timeStr, 32, "%Y%m%d-%H%M%S", &local_time) == 0)
         {
             free(timeStr);
-            LOG_ERROR("格式化时间失败");
+            fprintf(stderr, "错误: 格式化时间失败\n");
             return NULL;
         }
         return timeStr;
@@ -216,13 +215,13 @@ char* createXMLPayload(const XmlChoose choose)
             "%s",
             xml_header,
             safeStr(USER_AGENT),
-            safeStr(dialer_adapter.auth_config.client_id),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
             currentTime,
             safeStr(HOST_NAME),
-            safeStr(dialer_adapter.auth_config.user_ip),
-            safeStr(dialer_adapter.auth_config.mac_address),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.user_ip),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.mac_address),
             safeStr(HOST_NAME),
-            safeStr(dialer_adapter.auth_config.ac_ip),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.ac_ip),
             xml_footer
         );
         break;
@@ -238,11 +237,11 @@ char* createXMLPayload(const XmlChoose choose)
             "%s",
             xml_header,
             safeStr(USER_AGENT),
-            safeStr(dialer_adapter.auth_config.client_id),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
             currentTime,
             safeStr(HOST_NAME),
-            safeStr(dialer_adapter.options.usr),
-            safeStr(dialer_adapter.options.pwd),
+            safeStr(thread_status[thread_index].dialer_context.options.usr),
+            safeStr(thread_status[thread_index].dialer_context.options.pwd),
             xml_footer
         );
         break;
@@ -262,12 +261,12 @@ char* createXMLPayload(const XmlChoose choose)
             "%s",
             xml_header,
             safeStr(USER_AGENT),
-            safeStr(dialer_adapter.auth_config.client_id),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
             currentTime,
             safeStr(HOST_NAME),
-            safeStr(dialer_adapter.auth_config.user_ip),
-            safeStr(dialer_adapter.auth_config.ticket),
-            safeStr(dialer_adapter.auth_config.mac_address),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.user_ip),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.ticket),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.mac_address),
             safeStr(HOST_NAME),
             xml_footer
         );
@@ -335,11 +334,26 @@ char* cleanCDATA(const char* text)
 void createThread(void*(* func)(void*), void* arg)
 {
     const int index = (int)(intptr_t)arg;
-    thread_status[index - 1].status = pthread_create(&thread_status[index - 1].thread, NULL, func, arg);
-    if (thread_status[index - 1].status != 0) LOG_ERROR("认证线程启动失败，序号 %d", index);
+    thread_status[index].thread_status = pthread_create(&thread_status[index].thread, NULL, func, arg);
+    thread_status[index].thread_is_running = true;
 }
 
-void waitThreadStop(const int index)
+void stopThread(const int index)
 {
     pthread_join(thread_status[index].thread, NULL);
+}
+
+const char* getThreadName()
+{
+    switch (thread_index)
+    {
+    case -1:
+        return "主线程";
+    case 0:
+        return "线程 1";
+    case 1:
+        return "线程 2";
+    default:
+        return "unknown";
+    }
 }

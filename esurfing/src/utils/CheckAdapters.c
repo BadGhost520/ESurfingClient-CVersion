@@ -25,43 +25,37 @@ char* getAdapterJSON()
     cJSON* root = cJSON_CreateObject();
     cJSON* adapters = cJSON_CreateArray();
 #ifdef _WIN32
-    PIP_ADAPTER_INFO pAdapter = NULL;
-    ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
-
-    PIP_ADAPTER_INFO pAdapterInfo = malloc(sizeof(IP_ADAPTER_INFO));
-
+    PIP_ADAPTER_INFO pAdapterInfo = NULL;
+    ULONG ulOutBufLen = 0;
     if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW)
     {
-        free(pAdapterInfo);
-        pAdapterInfo = (IP_ADAPTER_INFO *) malloc(ulOutBufLen);
-    }
-
-    if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == NO_ERROR)
-    {
-        pAdapter = pAdapterInfo;
-        while (pAdapter)
+        pAdapterInfo = (PIP_ADAPTER_INFO)malloc(ulOutBufLen);
+        if (pAdapterInfo && GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == NO_ERROR)
         {
-
-            cJSON* adapter = cJSON_CreateObject();
-            cJSON_AddStringToObject(adapter, "name", pAdapter->Description);
-            cJSON_AddStringToObject(adapter, "ip", pAdapter->IpAddressList.IpAddress.String);
-            cJSON_AddItemToArray(adapters, adapter);
-            pAdapter = pAdapter->Next;
+            PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
+            while (pAdapter)
+            {
+                cJSON* adapter = cJSON_CreateObject();
+                cJSON_AddStringToObject(adapter, "name", pAdapter->Description);
+                cJSON_AddStringToObject(adapter, "ip", pAdapter->IpAddressList.IpAddress.String);
+                cJSON_AddItemToArray(adapters, adapter);
+                pAdapter = pAdapter->Next;
+            }
         }
     }
     if (pAdapterInfo) free(pAdapterInfo);
 #else
     struct ifaddrs *ifaddrs_ptr, *ifa;
-
     if (getifaddrs(&ifaddrs_ptr) == 0)
     {
         for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next)
         {
-            if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET && strcmp(ifa->ifa_name, "lo") != 0)
+            if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
+            if (strcmp(ifa->ifa_name, "lo") == 0) continue;
+            char ip[INET_ADDRSTRLEN];
+            struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
+            if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)))
             {
-                struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
-                char ip[INET_ADDRSTRLEN];
-                inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
                 cJSON* adapter = cJSON_CreateObject();
                 cJSON_AddStringToObject(adapter, "name", ifa->ifa_name);
                 cJSON_AddStringToObject(adapter, "ip", ip);
@@ -72,9 +66,7 @@ char* getAdapterJSON()
     }
 #endif
     cJSON_AddItemToObject(root, "adapters", adapters);
-    char* temp = cJSON_Print(root);
-    char* json = strdup(temp);
-    cJSON_free(temp);
+    char* json = cJSON_Print(root);
     cJSON_Delete(root);
     return json;
 }

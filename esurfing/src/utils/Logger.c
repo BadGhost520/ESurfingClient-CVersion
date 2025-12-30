@@ -24,7 +24,6 @@
     static const char sep = '/';
 #endif
 
-static LoggerSettings g_logger_settings = {0};
 static const char fileName[] = "run.log";
 static const char rotateFileName[] = ".rotate.log";
 
@@ -37,7 +36,7 @@ static LoggerConfig gLoggerConfig = {
     .current_lines = 0
 };
 
-static char* loggerLevelString(const LogLevel level)
+static const char* loggerLevelString(const LogLevel level)
 {
     switch (level)
     {
@@ -79,7 +78,6 @@ static void loggerRotateFile()
 
 static int getExecutableDir(char* out)
 {
-#ifdef _WIN32
     char path[MAX_PATH];
     const DWORD len = GetModuleFileNameA(NULL, path, MAX_PATH);
     if (len == 0 || len >= MAX_PATH) return -1;
@@ -89,18 +87,6 @@ static int getExecutableDir(char* out)
     const int n = snprintf(out, 260, "%s", path);
     if (n < 0 || (size_t)n >= 260) return -1;
     return 0;
-#else
-    char path[PATH_MAX];
-    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (len <= 0 || len >= (ssize_t)sizeof(path)) return -1;
-    path[len] = '\0';
-    char* last = strrchr(path, sep);
-    if (!last) return -1;
-    *last = '\0';
-    int n = snprintf(out, 260, "%s", path);
-    if (n < 0 || (size_t)n >= 260) return -1;
-    return 0;
-#endif
 }
 
 static int ensureLogDir(char* out)
@@ -116,8 +102,7 @@ static int ensureLogDir(char* out)
         if (err != ERROR_ALREADY_EXISTS) return -1;
     }
 #else
-    const char* dir = "/var/log/esurfing";
-    if (isDebug && !isSmallDevice && access("/etc/openwrt_release", F_OK) == 0) dir = "/usr/esurfing";
+    char dir[PATH_MAX] = "/var/log/esurfing";
     int n = snprintf(out, 260, "%s%clogs", dir, sep);
     if (n < 0 || (size_t)n >= 260) return -1;
     struct stat st;
@@ -157,10 +142,11 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
     va_end(args);
     char* timestamp = getTime(CONSOLE_FORMAT);
     snprintf(finalMessage, sizeof(finalMessage),
-        "[%s] [%s] [%s:%d] %s\n",
+        "[%s] [%s] [%s] [%s:%d] %s\n",
         timestamp,
+        getThreadName(),
         loggerLevelString(level),
-        strrchr(file, sep) ? strrchr(file, sep) + 1 : file,
+        strrchr(file, '/') ? strrchr(file, '/') + 1 : file,
         line,
         message);
     loggerWriteToConsole(finalMessage);
@@ -170,12 +156,21 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
     free(timestamp);
 }
 
-LoggerInitStatus loggerInit(const LoggerSettings logger_settings)
+void resetLoggerSettings(const bool is_debug)
 {
-    g_logger_settings.is_debug = logger_settings.is_debug;
-    if (g_logger_settings.is_debug) gLoggerConfig.level = LOG_LEVEL_DEBUG;
+    if (is_debug) gLoggerConfig.level = LOG_LEVEL_DEBUG;
     else gLoggerConfig.level = LOG_LEVEL_INFO;
-    g_logger_settings.is_small_device = logger_settings.is_small_device;
+}
+
+LogLevel getLoggerSettings()
+{
+    return gLoggerConfig.level;
+}
+
+LoggerInitStatus loggerInit(const bool is_debug)
+{
+    if (is_debug) gLoggerConfig.level = LOG_LEVEL_DEBUG;
+    else gLoggerConfig.level = LOG_LEVEL_INFO;
     if (ensureLogDir(gLoggerConfig.log_dir) != 0)
     {
         fprintf(stderr, "错误: 无法准备日志目录\n");
@@ -194,7 +189,6 @@ LoggerInitStatus loggerInit(const LoggerSettings logger_settings)
         return INIT_LOGGER_FAILURE;
     }
     LOG_DEBUG("日志等级: %s", loggerLevelString(gLoggerConfig.level));
-    if (g_logger_settings.is_small_device && access("/etc/openwrt_release", F_OK) == 0) LOG_DEBUG("检测到 OpenWrt 环境，小容量设备模式已开启");
     return INIT_LOGGER_SUCCESS;
 }
 

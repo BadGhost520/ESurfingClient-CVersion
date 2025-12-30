@@ -133,45 +133,45 @@ HTTPResponse* simPost(const char* url, const char* data)
     snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Checksum: %s", MD5Hash);
     headers = curl_slist_append(headers, headerBuffer);
     free(MD5Hash);
-    if (!dialer_adapter.auth_config.client_id)
+    if (!thread_status[thread_index].dialer_context.auth_config.client_id)
     {
         LOG_ERROR("Client ID 为空");
         result->status = REQUEST_ERROR;
         return result;
     }
-    if (!dialer_adapter.auth_config.algo_id)
+    if (!thread_status[thread_index].dialer_context.auth_config.algo_id)
     {
         LOG_ERROR("Algo ID 为空");
         result->status = REQUEST_ERROR;
         return result;
     }
-    if (!dialer_adapter.auth_config.school_id)
+    if (!thread_status[thread_index].dialer_context.auth_config.school_id)
     {
         LOG_ERROR("School ID 为空");
         result->status = REQUEST_ERROR;
         return result;
     }
-    if (!dialer_adapter.auth_config.domain)
+    if (!thread_status[thread_index].dialer_context.auth_config.domain)
     {
         LOG_ERROR("Domain 为空");
         result->status = REQUEST_ERROR;
         return result;
     }
-    if (!dialer_adapter.auth_config.area)
+    if (!thread_status[thread_index].dialer_context.auth_config.area)
     {
         LOG_ERROR("Area 为空");
         result->status = REQUEST_ERROR;
         return result;
     }
-    snprintf(headerBuffer, sizeof(headerBuffer), "Client-ID: %s", dialer_adapter.auth_config.client_id);
+    snprintf(headerBuffer, sizeof(headerBuffer), "Client-ID: %s", thread_status[thread_index].dialer_context.auth_config.client_id);
     headers = curl_slist_append(headers, headerBuffer);
-    snprintf(headerBuffer, sizeof(headerBuffer), "Algo-ID: %s", dialer_adapter.auth_config.algo_id);
+    snprintf(headerBuffer, sizeof(headerBuffer), "Algo-ID: %s", thread_status[thread_index].dialer_context.auth_config.algo_id);
     headers = curl_slist_append(headers, headerBuffer);
-    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-SchoolId: %s", dialer_adapter.auth_config.school_id);
+    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-SchoolId: %s", thread_status[thread_index].dialer_context.auth_config.school_id);
     headers = curl_slist_append(headers, headerBuffer);
-    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Domain: %s", dialer_adapter.auth_config.domain);
+    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Domain: %s", thread_status[thread_index].dialer_context.auth_config.domain);
     headers = curl_slist_append(headers, headerBuffer);
-    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Area: %s", dialer_adapter.auth_config.area);
+    snprintf(headerBuffer, sizeof(headerBuffer), "CDC-Area: %s", thread_status[thread_index].dialer_context.auth_config.area);
     headers = curl_slist_append(headers, headerBuffer);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
@@ -216,7 +216,7 @@ NetworkStatus checkNetworkStatus()
         LOG_ERROR("User Agent 不存在");
         return INIT_ERROR;
     }
-    if (!dialer_adapter.auth_config.client_id)
+    if (!thread_status[thread_index].dialer_context.auth_config.client_id)
     {
         LOG_ERROR("Client ID 不存在");
         return INIT_ERROR;
@@ -225,7 +225,7 @@ NetworkStatus checkNetworkStatus()
     headers = curl_slist_append(headers, header_buffer);
     snprintf(header_buffer, sizeof(header_buffer), "Accept: %s", REQUEST_ACCEPT);
     headers = curl_slist_append(headers, header_buffer);
-    snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", dialer_adapter.auth_config.client_id);
+    snprintf(header_buffer, sizeof(header_buffer), "Client-ID: %s", thread_status[thread_index].dialer_context.auth_config.client_id);
     headers = curl_slist_append(headers, header_buffer);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeResponseCallback);
@@ -281,8 +281,8 @@ NetworkStatus checkNetworkStatus()
         else LOG_ERROR("清除 Ticket URL CDATA 失败");
         return REQUEST_ERROR;
     }
-    dialer_adapter.auth_config.auth_url = new_auth_url;
-    dialer_adapter.auth_config.ticket_url = new_ticket_url;
+    thread_status[thread_index].dialer_context.auth_config.auth_url = new_auth_url;
+    thread_status[thread_index].dialer_context.auth_config.ticket_url = new_ticket_url;
     char* user_ip = extractUrlParam(new_ticket_url, "wlanuserip");
     char* ac_ip = extractUrlParam(new_ticket_url, "wlanacip");
     if (!user_ip || !ac_ip)

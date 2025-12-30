@@ -20,7 +20,7 @@ img {
 
 #main {
   display: flex;
-  min-height: 100vh;
+  max-height: 100vh;
 }
 
 #content {
@@ -36,7 +36,7 @@ img {
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   padding: 10px;
-  transition: transform 0.3s;
+  transition: transform 0.1s;
 }
 
 .card-title {
@@ -49,10 +49,23 @@ img {
   margin-top: 5px;
 }
 
+.card-content {
+  margin-left: 5px;
+  display: flex;
+  overflow-x: auto;
+  flex-direction: column;
+  div {
+    margin-bottom: 10px;
+    span {
+      margin-left: 10px;
+    }
+  }
+}
+
 .choose-btn {
   margin-right: 10px;
   height: 30px;
-  width: 60px;
+  width: 55px;
   font-size: 15px;
   text-align: center;
   line-height: 30px;

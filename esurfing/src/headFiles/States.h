@@ -1,6 +1,7 @@
 #ifndef ESURFINGCLIENT_STATES_H
 #define ESURFINGCLIENT_STATES_H
 
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -23,23 +24,11 @@ typedef struct
 
 typedef struct
 {
+    bool is_settings_changed;
     bool is_initialized;
-    bool is_connected;
     bool is_running;
-    bool is_logged;
+    bool is_authed;
 } RuntimeStatus;
-
-typedef struct
-{
-    int64_t connect_time;
-    int64_t auth_time;
-} Timestamp;
-
-typedef struct
-{
-    pthread_t thread;
-    int status;
-} ThreadStatus;
 
 typedef struct
 {
@@ -52,14 +41,28 @@ typedef struct
 {
     AuthConfig auth_config;
     RuntimeStatus runtime_status;
-    Timestamp timestamp;
+    int64_t auth_time;
     Options options;
-    int index;
 } DialerContext;
 
-extern __thread DialerContext dialer_adapter;
+typedef struct
+{
+    DialerContext dialer_context;
+    pthread_t thread;
+    int thread_status;
+    bool thread_is_running;
+    bool need_stop;
+} ThreadStatus;
+
+typedef struct
+{
+    bool is_connected;
+    int64_t connect_time;
+} ConnectionStatus;
+
+extern __thread int thread_index;
 extern ThreadStatus thread_status[MAX_DIALER_COUNT];
-extern bool adapter_need_stop[MAX_DIALER_COUNT];
+extern int64_t g_running_time;
 
 /**
  * 刷新状态函数

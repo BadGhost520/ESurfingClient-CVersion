@@ -3,17 +3,17 @@ document.getElementById("short-switch").addEventListener("click", () => {
 });
 
 document.getElementById("dashboard").addEventListener("click", () => {
-  window.location.replace("dashboard.html");
+  window.location.replace("/dashboard");
 });
 
 document.getElementById("logs").addEventListener("click", () => {
-  window.location.replace("logs.html");
+  window.location.replace("/logs");
 });
 
 document.getElementById("settings").addEventListener("click", () => {
-  window.location.replace("settings.html");
+  window.location.replace("/settings");
 });
 
 document.getElementById("about").addEventListener("click", () => {
-  window.location.replace("about.html");
+  window.location.replace("/about");
 });

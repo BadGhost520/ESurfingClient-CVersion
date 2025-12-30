@@ -36,12 +36,6 @@ typedef struct {
     size_t size;
 } LogContent;
 
-typedef struct
-{
-    bool is_debug;
-    bool is_small_device;
-} LoggerSettings;
-
 #define LOG_DEBUG(format, ...) \
 loggerLog(LOG_LEVEL_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
@@ -68,11 +62,23 @@ loggerLog(LOG_LEVEL_FATAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
 void loggerLog(LogLevel level, const char* file, int line, const char* format, ...);
 
 /**
+ * 重设日志系统设置
+ * @param is_debug 调试模式
+ */
+void resetLoggerSettings(bool is_debug);
+
+/**
+ * 获取当前日志等级
+ * @return 日志等级
+ */
+LogLevel getLoggerSettings();
+
+/**
  * 初始化日志系统
- * @param logger_settings 日志设置
+ * @param is_debug 调试模式
  * @return 初始化状态
  */
-LoggerInitStatus loggerInit(LoggerSettings logger_settings);
+LoggerInitStatus loggerInit(bool is_debug);
 
 /**
  * 清理日志系统
@@ -80,8 +86,8 @@ LoggerInitStatus loggerInit(LoggerSettings logger_settings);
 void loggerCleanup();
 
 /**
- * 获取内存日志
- * @return 增量内存日志
+ * 获取日志
+ * @return 日志内容
  */
 LogContent getLog();
 

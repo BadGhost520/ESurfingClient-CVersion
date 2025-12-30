@@ -1,8 +1,10 @@
 #ifndef ESURFINGCLIENT_WEBSERVER_H
 #define ESURFINGCLIENT_WEBSERVER_H
 
+// TODO 记得修改版本号
+#define VERSION "v2.0.0-r1"
+
 extern int is_webserver_running;
-extern int is_settings_changed;
 
 /**
  * 启动Web服务器
