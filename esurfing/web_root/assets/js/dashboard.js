@@ -212,6 +212,7 @@ const threadSwitch = document.querySelectorAll(".thread-switch");
 let threadIsRunning = [false, false];
 
 async function manageThread(index) {
+    waitSettingsSave();
     await axios({
         method: "post",
         url: "/api/manageThread",
@@ -225,23 +226,14 @@ async function manageThread(index) {
             index: index,
         },
     })
-        .then((response) => {
+        .then(async response => {
+            await sleep(5000);
             if (response.status === 204) {
-                if (threadIsRunning[index]) {
-                    alert(`线程 ${index + 1} 关闭成功`);
-                    threadIsRunning[index] = false;
-                    threadSwitch[index].textContent = "开启";
-                } else {
-                    alert(`线程 ${index + 1} 启动成功`);
-                    threadIsRunning[index] = true;
-                    threadSwitch[index].textContent = "关闭";
-                }
+                closeLoadingModal(true);
+                threadIsRunning[index] = !threadIsRunning[index];
+                threadSwitch[index].textContent = threadIsRunning[index] ? "关闭" : "开启";
             } else {
-                if (threadIsRunning[index]) {
-                    alert(`线程 ${index + 1} 关闭失败`);
-                } else {
-                    alert(`线程 ${index + 1} 启动失败`);
-                }
+                closeLoadingModal(false);
             }
         })
         .catch((error) => {

@@ -40,12 +40,12 @@ static const char* loggerLevelString(const LogLevel level)
 {
     switch (level)
     {
-        case LOG_LEVEL_DEBUG: return "调试";
-        case LOG_LEVEL_INFO:  return "信息";
-        case LOG_LEVEL_WARN:  return "警告";
-        case LOG_LEVEL_ERROR: return "错误";
-        case LOG_LEVEL_FATAL: return "致命";
-        default:              return "未知";
+        case LOG_LEVEL_DEBUG: return "DEBUG";
+        case LOG_LEVEL_INFO:  return "INFO";
+        case LOG_LEVEL_WARN:  return "WARN";
+        case LOG_LEVEL_ERROR: return "ERROR";
+        case LOG_LEVEL_FATAL: return "FATAL";
+        default:              return "UNKNOWN";
     }
 }
 

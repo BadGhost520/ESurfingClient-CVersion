@@ -76,13 +76,23 @@
 }
 
 @media (max-width: 768px) {
-  .card.network:nth-child(1) {
+  .card.network {
     grid-area: network;
     height: 165px;
   }
 
-  .card.software:nth-child(2) {
+  .card.software {
     grid-area: software;
+    height: 165px;
+  }
+
+  .card.thread1 {
+    grid-area: thread1;
+    height: 165px;
+  }
+
+  .card.thread2 {
+    grid-area: thread2;
     height: 165px;
   }
 

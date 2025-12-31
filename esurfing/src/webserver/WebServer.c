@@ -19,6 +19,7 @@ INCTXT(web_settings, WEB_ROOT_PATH "/assets/web/settings.html");
 INCTXT(web_about, WEB_ROOT_PATH "/assets/web/about.html");
 // SVG
 INCTXT(vector_more, WEB_ROOT_PATH "/assets/vector/more.svg");
+INCTXT(vector_loading, WEB_ROOT_PATH "/assets/vector/loading.svg");
 INCTXT(vector_dashboard, WEB_ROOT_PATH "/assets/vector/dashboard.svg");
 INCTXT(vector_logs, WEB_ROOT_PATH "/assets/vector/logs.svg");
 INCTXT(vector_settings, WEB_ROOT_PATH "/assets/vector/settings.svg");
@@ -91,6 +92,13 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                 200,
             "Content-Type: image/svg+xml\r\n",
             gvector_moreData);
+        }
+        if (mg_match(hm->uri, mg_str("/vector/loading.svg"), NULL))
+        {
+            mg_http_reply(c,
+                200,
+            "Content-Type: image/svg+xml\r\n",
+            gvector_loadingData);
         }
         if (mg_match(hm->uri, mg_str("/vector/dashboard.svg"), NULL))
         {
