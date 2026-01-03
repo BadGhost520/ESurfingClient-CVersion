@@ -1,12 +1,10 @@
 #include <stdlib.h>
-#include <string.h>
 
 #include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Shutdown.h"
 #include "headFiles/utils/Logger.h"
 #include "headFiles/DialerClient.h"
-#include "headFiles/Constants.h"
 #include "headFiles/NetClient.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
@@ -29,15 +27,15 @@ RunningStatus term()
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("发送加密登出内容: %s", encrypt);
-    HTTPResponse* result = simPost(client_data.term_url, encrypt);
+    const HTTPResponse result = sessionPost(client_data.term_url, encrypt);
     free(encrypt);
-    if (!result || result->status == REQUEST_ERROR)
+    if (result.status == REQUEST_ERROR)
     {
-        LOG_ERROR("登出错误，错误代码: %d", result->status);
-        freeResult(result);
+        LOG_ERROR("登出错误，错误代码: %d", result.status);
+        free(result.body_data);
         return RUNNING_FAILURE;
     }
-    freeResult(result);
+    free(result.body_data);
     thread_status[thread_index].dialer_context.runtime_status.is_authed = 0;
     return RUNNING_SUCCESS;
 }
@@ -58,16 +56,16 @@ static RunningStatus heartbeat()
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("发送加密心跳内容: %s", encrypt);
-    HTTPResponse* result = simPost(client_data.keep_url, encrypt);
+    const HTTPResponse result = sessionPost(client_data.keep_url, encrypt);
     free(encrypt);
-    if (!result || result->status == REQUEST_ERROR)
+    if (result.status == REQUEST_ERROR)
     {
-        LOG_ERROR("心跳响应失败，错误代码: %d", result->status);
-        freeResult(result);
+        LOG_ERROR("心跳响应失败，错误代码: %d", result.status);
+        free(result.body_data);
         return RUNNING_FAILURE;
     }
-    char* decrypted_data = sessionDecrypt(result->data);
-    freeResult(result);
+    char* decrypted_data = sessionDecrypt(result.body_data);
+    free(result.body_data);
     if (!decrypted_data)
     {
         LOG_ERROR("解密心跳内容失败");
@@ -81,15 +79,8 @@ static RunningStatus heartbeat()
         LOG_ERROR("心跳内容解析失败");
         return RUNNING_FAILURE;
     }
-    char* new_interval = strdup(parsed_interval);
+    snprintf(client_data.keep_retry, KEEP_RETRY_LENGTH, "%s", parsed_interval);
     free(parsed_interval);
-    if (!new_interval)
-    {
-        LOG_ERROR("复制心跳间隔失败");
-        return RUNNING_FAILURE;
-    }
-    if (client_data.keep_retry) free(client_data.keep_retry);
-    client_data.keep_retry = new_interval;
     return RUNNING_SUCCESS;
 }
 
@@ -109,37 +100,22 @@ static AuthStatus login()
         return AUTH_FAILURE;
     }
     LOG_DEBUG("发送加密登录内容: %s", encrypt);
-    HTTPResponse* result = simPost(thread_status[thread_index].dialer_context.auth_config.auth_url, encrypt);
+    const HTTPResponse result = sessionPost(thread_status[thread_index].dialer_context.auth_config.auth_url, encrypt);
     free(encrypt);
-    if (!result || result->status == REQUEST_ERROR)
+    if (result.status == REQUEST_ERROR)
     {
-        LOG_ERROR("登录响应失败，错误代码: %d", result->status);
-        freeResult(result);
+        LOG_ERROR("登录响应失败，错误代码: %d", result.status);
+        free(result.body_data);
         return AUTH_FAILURE;
     }
-    LOG_DEBUG("登录响应内容: %s", result->data);
-    char* decrypted_data = sessionDecrypt(result->data);
-    freeResult(result);
+    LOG_DEBUG("登录响应内容: %s", result.body_data);
+    char* decrypted_data = sessionDecrypt(result.body_data);
+    free(result.body_data);
     if (!decrypted_data)
     {
         LOG_ERROR("解密登录响应内容失败");
         return AUTH_FAILURE;
     }
-    char* parsed_keep_retry = XmlParser(decrypted_data, "keep-retry");
-    if (!parsed_keep_retry)
-    {
-        LOG_ERROR("解析 KeepRetry 失败");
-        return AUTH_FAILURE;
-    }
-    char* new_keep_retry = strdup(parsed_keep_retry);
-    free(parsed_keep_retry);
-    if (!new_keep_retry)
-    {
-        LOG_ERROR("复制新 KeepRetry 失败");
-        return AUTH_FAILURE;
-    }
-    if (client_data.keep_retry) free(client_data.keep_retry);
-    client_data.keep_retry = new_keep_retry;
     char* parsed_keep_url = XmlParser(decrypted_data, "keep-url");
     if (!parsed_keep_url)
     {
@@ -153,17 +129,10 @@ static AuthStatus login()
         LOG_ERROR("清除 KeepURL CDATA 失败");
         return AUTH_FAILURE;
     }
-    char* new_keep_url = strdup(cleaned_keep_url);
+    snprintf(client_data.keep_url, KEEP_URL_LENGTH, "%s", cleaned_keep_url);
     free(cleaned_keep_url);
-    if (!new_keep_url)
-    {
-        LOG_ERROR("复制新 KeepURL 失败");
-        return AUTH_FAILURE;
-    }
-    if (client_data.keep_url) free(client_data.keep_url);
-    client_data.keep_url = new_keep_url;
+    LOG_INFO("Keep-Url: %s", client_data.keep_url);
     char* parsed_term_url = XmlParser(decrypted_data, "term-url");
-    free(decrypted_data);
     if (!parsed_term_url)
     {
         LOG_ERROR("解析 TermURL 失败");
@@ -176,18 +145,19 @@ static AuthStatus login()
         LOG_ERROR("清除 TermURL CDATA 失败");
         return AUTH_FAILURE;
     }
-    char* new_term_url = strdup(cleaned_term_url);
+    snprintf(client_data.term_url, TERM_URL_LENGTH, "%s", cleaned_term_url);
     free(cleaned_term_url);
-    if (!new_term_url)
+    LOG_INFO("Term-Url: %s", client_data.term_url);
+    char* parsed_interval = XmlParser(decrypted_data, "keep-retry");
+    free(decrypted_data);
+    if (!parsed_interval)
     {
-        LOG_ERROR("复制新 TermURL 失败");
+        LOG_ERROR("解析 KeepRetry 失败");
         return AUTH_FAILURE;
     }
-    if (client_data.term_url) free(client_data.term_url);
-    client_data.term_url = new_term_url;
-    LOG_INFO("Keep Url: %s", client_data.keep_url ? client_data.keep_url : "NULL");
-    LOG_INFO("Term Url: %s", client_data.term_url ? client_data.term_url : "NULL");
-    LOG_INFO("下一次重试: %s 秒后", client_data.keep_retry ? client_data.keep_retry : "NULL");
+    snprintf(client_data.keep_retry, KEEP_RETRY_LENGTH, "%s", parsed_interval);
+    free(parsed_interval);
+    LOG_INFO("下一次重试: %s 秒后", client_data.keep_retry);
     return AUTH_SUCCESS;
 }
 
@@ -207,17 +177,17 @@ static AuthStatus getTicket()
         return AUTH_FAILURE;
     }
     LOG_DEBUG("发送加密获取 ticket 内容: %s", encrypt);
-    HTTPResponse* result = simPost(thread_status[thread_index].dialer_context.auth_config.auth_url, encrypt);
+    const HTTPResponse result = sessionPost(thread_status[thread_index].dialer_context.auth_config.auth_url, encrypt);
     free(encrypt);
-    if (!result || result->status == REQUEST_ERROR)
+    if (result.status == REQUEST_ERROR)
     {
-        LOG_ERROR("获取 Ticket 响应失败，错误代码: %d", result->status);
-        freeResult(result);
+        LOG_ERROR("获取 Ticket 响应失败，错误代码: %d", result.status);
+        free(result.body_data);
         return AUTH_FAILURE;
     }
-    LOG_DEBUG("获取 Ticket 响应内容: %s", result->data);
-    char* decrypt = sessionDecrypt(result->data);
-    freeResult(result);
+    LOG_DEBUG("获取 Ticket 响应内容: %s", result.body_data);
+    char* decrypt = sessionDecrypt(result.body_data);
+    free(result.body_data);
     if (!decrypt)
     {
         LOG_ERROR("解密 Ticket 内容失败");
@@ -230,30 +200,22 @@ static AuthStatus getTicket()
         LOG_ERROR("解析 Ticket 失败");
         return AUTH_FAILURE;
     }
-    char* new_ticket = strdup(parsed_ticket);
-    free(parsed_ticket);
-    if (!new_ticket)
-    {
-        LOG_ERROR("复制新 Ticket 失败");
-        return AUTH_FAILURE;
-    }
-    if (thread_status[thread_index].dialer_context.auth_config.ticket) free(thread_status[thread_index].dialer_context.auth_config.ticket);
-    thread_status[thread_index].dialer_context.auth_config.ticket = new_ticket;
+    snprintf(thread_status[thread_index].dialer_context.auth_config.ticket, TICKET_LENGTH, "%s", parsed_ticket);
     return AUTH_SUCCESS;
 }
 
 static AuthStatus initSession()
 {
-    HTTPResponse* result = simPost(thread_status[thread_index].dialer_context.auth_config.ticket_url, thread_status[thread_index].dialer_context.auth_config.algo_id);
-    if (!result || result->status == REQUEST_ERROR)
+    const HTTPResponse result = sessionPost(thread_status[thread_index].dialer_context.auth_config.ticket_url, thread_status[thread_index].dialer_context.auth_config.algo_id);
+    if (result.status == REQUEST_ERROR)
     {
-        LOG_ERROR("初始化会话失败，错误代码: %d", result->status);
-        freeResult(result);
+        LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
+        free(result.body_data);
         return AUTH_FAILURE;
     }
-    LOG_DEBUG("会话响应内容: %s", result->data);
-    const ByteArray zsm = stringToBytes(result->data);
-    freeResult(result);
+    LOG_DEBUG("会话响应内容: %s", result.body_data);
+    const ByteArray zsm = stringToBytes(result.body_data);
+    free(result.body_data);
     initialize(zsm);
     free(zsm.data);
     return AUTH_SUCCESS;
@@ -264,13 +226,13 @@ static RunningStatus authorization()
     if (initSession() == AUTH_FAILURE || getTicket() == AUTH_FAILURE || login() == AUTH_FAILURE)
     {
         if (initSession() == AUTH_FAILURE) LOG_FATAL("初始化会话失败");
-        else if (getTicket() == AUTH_FAILURE) LOG_FATAL("获取 Ticket 失败");
-        else if (login() == AUTH_FAILURE) LOG_FATAL("登录失败");
+        if (getTicket() == AUTH_FAILURE) LOG_FATAL("获取 Ticket 失败");
+        if (login() == AUTH_FAILURE) LOG_FATAL("登录失败");
         freeSession();
         thread_status[thread_index].dialer_context.runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
-    LOG_INFO("Client IP: %s", thread_status[thread_index].dialer_context.auth_config.user_ip);
+    LOG_INFO("Client IP: %s", thread_status[thread_index].dialer_context.auth_config.client_ip);
     LOG_INFO("AC IP: %s", thread_status[thread_index].dialer_context.auth_config.ac_ip);
     LOG_INFO("Ticket: %s", thread_status[thread_index].dialer_context.auth_config.ticket);
     client_data.tick = currentTimeMillis();
@@ -283,7 +245,7 @@ static RunningStatus authorization()
 
 static RunningStatus run()
 {
-    switch (checkNetworkStatus())
+    switch (checkAuthStatus())
     {
     case REQUEST_SUCCESS:
         if (thread_status[thread_index].dialer_context.runtime_status.is_initialized && thread_status[thread_index].dialer_context.runtime_status.is_authed)
@@ -341,7 +303,6 @@ static void restart()
     }
     thread_status[thread_index].dialer_context.auth_time = 0;
     sleepMilliseconds(5000);
-    initConstants();
     refreshStates();
 }
 
@@ -349,7 +310,6 @@ void* dialerApp(void* arg)
 {
     thread_index = (int)(intptr_t)arg;
     thread_status[thread_index].dialer_context.runtime_status.is_running = 1;
-    initConstants();
     refreshStates();
     LOG_INFO("程序启动中，序号: %d", thread_index + 1);
     sleepMilliseconds(5000);

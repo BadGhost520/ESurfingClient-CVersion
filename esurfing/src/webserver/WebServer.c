@@ -271,7 +271,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     cJSON* thread = cJSON_CreateObject();
                     cJSON_AddBoolToObject(thread, "isAuth", thread_status[i].dialer_context.runtime_status.is_authed);
                     cJSON_AddStringToObject(thread, "authTime", longLongToString(thread_status[i].dialer_context.auth_time));
-                    cJSON_AddStringToObject(thread, "userIp", thread_status[i].dialer_context.auth_config.user_ip);
+                    cJSON_AddStringToObject(thread, "userIp", thread_status[i].dialer_context.auth_config.client_ip);
                     cJSON_AddBoolToObject(thread, "isRunning", thread_status[i].dialer_context.runtime_status.is_running);
                     cJSON_AddItemToArray(threads, thread);
                 }
@@ -400,9 +400,9 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     const cJSON* index = cJSON_GetObjectItem(updateThread, "index");
                     if (index && cJSON_IsNumber(index))
                     {
-                        if (username && cJSON_IsString(username)) thread_status[index->valueint].dialer_context.options.usr = strdup(username->valuestring);
-                        if (password && cJSON_IsString(password)) thread_status[index->valueint].dialer_context.options.pwd = strdup(password->valuestring);
-                        if (channel && cJSON_IsString(channel)) thread_status[index->valueint].dialer_context.options.chn = strdup(channel->valuestring);
+                        if (username && cJSON_IsString(username)) snprintf(thread_status[index->valueint].dialer_context.options.usr, USR_LENGTH, "%s", username->valuestring);
+                        if (password && cJSON_IsString(password)) snprintf(thread_status[index->valueint].dialer_context.options.pwd, PWD_LENGTH, "%s", password->valuestring);
+                        if (channel && cJSON_IsString(channel)) snprintf(thread_status[index->valueint].dialer_context.options.chn, CHN_LENGTH, "%s", channel->valuestring);
                         thread_status[index->valueint].dialer_context.runtime_status.is_settings_changed = true;
                     }
                     cJSON_Delete(updateThread);
@@ -434,7 +434,7 @@ void startWebServer()
     is_webserver_running = 1;
     while (is_webserver_running)
     {
-        switch (simGet("http://www.baidu.com"))
+        switch (checkNetworkStatus("http://www.baidu.com"))
         {
         case REQUEST_SUCCESS:
             connection_status.is_connected = true;

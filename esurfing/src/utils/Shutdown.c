@@ -3,9 +3,6 @@
 
 #include "../headFiles/webserver/WebServer.h"
 #include "../headFiles/utils/Shutdown.h"
-
-#include <pthread.h>
-
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/DialerClient.h"
 #include "../headFiles/Session.h"
@@ -36,32 +33,6 @@ static void mainStop()
     loggerCleanup();
 }
 
-static void freeThread(AuthConfig* config)
-{
-    free(config->mac_address);
-    free(config->ticket_url);
-    free(config->client_id);
-    free(config->school_id);
-    free(config->auth_url);
-    free(config->user_ip);
-    free(config->algo_id);
-    free(config->domain);
-    free(config->ticket);
-    free(config->ac_ip);
-    free(config->area);
-    config->mac_address = NULL;
-    config->ticket_url = NULL;
-    config->client_id = NULL;
-    config->school_id = NULL;
-    config->auth_url = NULL;
-    config->user_ip = NULL;
-    config->algo_id = NULL;
-    config->domain = NULL;
-    config->ticket = NULL;
-    config->ac_ip = NULL;
-    config->area = NULL;
-}
-
 static void resetThread(RuntimeStatus* runtime_status)
 {
     runtime_status->is_settings_changed = false;
@@ -73,7 +44,6 @@ static void resetThread(RuntimeStatus* runtime_status)
 static void cleanThread()
 {
     resetThread(&thread_status[thread_index].dialer_context.runtime_status);
-    freeThread(&thread_status[thread_index].dialer_context.auth_config);
     thread_status[thread_index].dialer_context.auth_time = 0;
     thread_status[thread_index].thread_is_running = false;
     thread_status[thread_index].thread_status = 0;

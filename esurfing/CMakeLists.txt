@@ -39,9 +39,9 @@ add_executable(ESurfingClient
         src/utils/PlatformUtils.c
         src/utils/Shutdown.c
         src/utils/Logger.c
+        src/utils/minIni.c
         src/utils/cJSON.c
         src/DialerClient.c
-        src/Constants.c
         src/NetClient.c
         src/Session.c
         src/States.c

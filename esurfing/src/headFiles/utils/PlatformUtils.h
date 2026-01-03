@@ -3,12 +3,17 @@
 
 #include <stdint.h>
 
-typedef struct {
-    unsigned char* data;
-    size_t length;
-} ByteArray;
+#define XML_BUFFER_SIZE 1024
+#define DIALER_CONFIG_FILE "dialer.ini"
 
-typedef enum {
+typedef enum
+{
+    INI_SUCCESS = 0,
+    INI_FAILURE = 1,
+} IniStatus;
+
+typedef enum
+{
     GET_TICKET = 1,
     LOGIN = 2,
     HEART_BEAT = 3,
@@ -21,13 +26,18 @@ typedef enum
     FILE_FORMAT = 2
 } TimeFormat;
 
-#define XML_BUFFER_SIZE 1024
+typedef struct
+{
+    char usr[16];
+    char pwd[128];
+    char chn[8];
+} IniConfig;
 
-static const char* xml_header =
-    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-    "<request>\n";
-
-static const char* xml_footer = "</request>\n";
+typedef struct
+{
+    unsigned char* data;
+    size_t length;
+} ByteArray;
 
 /**
  * 文本转字节
@@ -81,7 +91,7 @@ void sleepMilliseconds(int milliseconds);
 /**
  * 获取当前时间
  * @param format 格式
- * @return 格式化的当前时间
+ * @return 格式化后的当前时间
  */
 char* getTime(TimeFormat format);
 
@@ -126,5 +136,15 @@ void stopThread(int index);
  * @return 线程名
  */
 const char* getThreadName();
+
+/**
+ * 保存配置文件
+ */
+void saveIni();
+
+/**
+ * 加载配置文件
+ */
+void loadIni();
 
 #endif // PLATFORMUTILS_H

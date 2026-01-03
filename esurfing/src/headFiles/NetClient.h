@@ -8,37 +8,38 @@ typedef enum {
     INIT_ERROR = 3
 } NetworkStatus;
 
+typedef enum
+{
+    CURL_INIT_SUCCESS = 0,
+    CURL_INIT_FAILURE = 1,
+} CurlStatus;
+
 typedef struct {
     NetworkStatus status;
-    char* data;
-    size_t dataSize;
+    char* body_data;
+    size_t body_size;
+    long response_code;
 } HTTPResponse;
 
 /**
- * 释放网络返回值函数
- * @param result 网络返回值
- */
-void freeResult(HTTPResponse* result);
-
-/**
- * 简单 POST 函数
+ * 会话 POST
  * @param url 网址
  * @param data 数据
- * @return 网络返回值
+ * @return 响应数据
  */
-HTTPResponse* simPost(const char* url, const char* data);
+HTTPResponse sessionPost(const char* url, const char* data);
 
 /**
  * 检测网络状态
- * @return 网络状态
- */
-NetworkStatus checkNetworkStatus();
-
-/**
- * 简单 GET 函数
  * @param url 网址
  * @return 网络状态
  */
-NetworkStatus simGet(char* url);
+NetworkStatus checkNetworkStatus(const char* url);
+
+/**
+ * 检测认证状态
+ * @return 网络状态
+ */
+NetworkStatus checkAuthStatus();
 
 #endif //ESURFINGCLIENT_NETCLIENT_H

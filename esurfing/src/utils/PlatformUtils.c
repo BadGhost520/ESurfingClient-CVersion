@@ -27,9 +27,15 @@
 #endif
 
 #include "../headFiles/utils/PlatformUtils.h"
+#include "../headFiles/utils/minIni.h"
 #include "../headFiles/utils/Logger.h"
-#include "../headFiles/Constants.h"
 #include "../headFiles/States.h"
+
+static const char* xml_header =
+    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+    "<request>\n";
+
+static const char* xml_footer = "</request>\n";
 
 ByteArray stringToBytes(const char* str)
 {
@@ -214,13 +220,13 @@ char* createXMLPayload(const XmlChoose choose)
             "    <gwip>%s</gwip>\n"
             "%s",
             xml_header,
-            safeStr(USER_AGENT),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.user_agent),
             safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
             currentTime,
-            safeStr(HOST_NAME),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.user_ip),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.client_ip),
             safeStr(thread_status[thread_index].dialer_context.auth_config.mac_address),
-            safeStr(HOST_NAME),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
             safeStr(thread_status[thread_index].dialer_context.auth_config.ac_ip),
             xml_footer
         );
@@ -236,10 +242,10 @@ char* createXMLPayload(const XmlChoose choose)
             "    <passwd>%s</passwd>\n"
             "%s",
             xml_header,
-            safeStr(USER_AGENT),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.user_agent),
             safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
             currentTime,
-            safeStr(HOST_NAME),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
             safeStr(thread_status[thread_index].dialer_context.options.usr),
             safeStr(thread_status[thread_index].dialer_context.options.pwd),
             xml_footer
@@ -260,14 +266,14 @@ char* createXMLPayload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "%s",
             xml_header,
-            safeStr(USER_AGENT),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.user_agent),
             safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
             currentTime,
-            safeStr(HOST_NAME),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.user_ip),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.client_ip),
             safeStr(thread_status[thread_index].dialer_context.auth_config.ticket),
             safeStr(thread_status[thread_index].dialer_context.auth_config.mac_address),
-            safeStr(HOST_NAME),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
             xml_footer
         );
         break;
@@ -356,4 +362,57 @@ const char* getThreadName()
     default:
         return "unknown";
     }
+}
+
+void saveIni()
+{
+    LOG_INFO("正在保存配置文件");
+    ini_puts("Adapter1", "usr", thread_status[0].dialer_context.options.usr, DIALER_CONFIG_FILE);
+    ini_puts("Adapter1", "pwd", thread_status[0].dialer_context.options.pwd, DIALER_CONFIG_FILE);
+    ini_puts("Adapter1", "chn", thread_status[0].dialer_context.options.chn, DIALER_CONFIG_FILE);
+
+    ini_puts("Adapter2", "usr", thread_status[1].dialer_context.options.usr, DIALER_CONFIG_FILE);
+    ini_puts("Adapter2", "pwd", thread_status[1].dialer_context.options.pwd, DIALER_CONFIG_FILE);
+    ini_puts("Adapter2", "chn", thread_status[1].dialer_context.options.chn, DIALER_CONFIG_FILE);
+
+    ini_putbool("Logger", "debug", !getLoggerSettings(), DIALER_CONFIG_FILE);
+    LOG_INFO("保存完成");
+}
+
+void loadIni()
+{
+    char* time_stamp = getTime(CONSOLE_FORMAT);
+    printf("[%s] [Preload] [INFO] 正在加载配置文件\n", time_stamp);
+    if (access(DIALER_CONFIG_FILE, F_OK) != 0)
+    {
+        time_stamp = getTime(CONSOLE_FORMAT);
+        printf("[%s] [Preload] [WARN] 配置文件不存在，正在创建默认配置文件\n", time_stamp);
+        free(time_stamp);
+        ini_puts("Adapter1", "usr", "未配置", DIALER_CONFIG_FILE);
+        ini_puts("Adapter1", "pwd", "未配置", DIALER_CONFIG_FILE);
+        ini_puts("Adapter1", "chn", "phone", DIALER_CONFIG_FILE);
+        ini_puts("Adapter2", "usr", "未配置", DIALER_CONFIG_FILE);
+        ini_puts("Adapter2", "pwd", "未配置", DIALER_CONFIG_FILE);
+        ini_puts("Adapter2", "chn", "phone", DIALER_CONFIG_FILE);
+        ini_putbool("Logger", "debug", false, DIALER_CONFIG_FILE);
+        const Options opt = {
+            .usr = "未配置",
+            .pwd = "未配置",
+            .chn = "phone",
+        };
+        for (int i = 0; i < MAX_DIALER_COUNT; i++) setOpt(opt, i);
+        loggerInit(false);
+        LOG_INFO("创建完成并加载默认配置文件");
+        return;
+    }
+    free(time_stamp);
+    ini_gets("Adapter1", "usr", "未配置", thread_status[0].dialer_context.options.usr, USR_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter1", "pwd", "未配置", thread_status[0].dialer_context.options.pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter1", "chn", "phone", thread_status[0].dialer_context.options.chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter2", "usr", "未配置", thread_status[1].dialer_context.options.usr, USR_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter2", "pwd", "未配置", thread_status[1].dialer_context.options.pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter2", "chn", "phone", thread_status[1].dialer_context.options.chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    const bool debug = ini_getbool("Logger", "debug", false, DIALER_CONFIG_FILE);
+    loggerInit(debug);
+    LOG_INFO("配置文件加载完成");
 }

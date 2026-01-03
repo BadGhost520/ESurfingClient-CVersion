@@ -42,14 +42,11 @@ define Build/Compile
 endef
 
 define Package/esurfingclient/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/
+	$(INSTALL_DIR) $(1)/usr/esurfingclient
+	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/esurfingclient/
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
-
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
 endef
 
 $(eval $(call BuildPackage,esurfingclient))

@@ -1,12 +1,16 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#define KEEP_RETRY_LENGTH 8
+#define KEEP_URL_LENGTH 40
+#define TERM_URL_LENGTH 40
+
 typedef struct
 {
     long long tick;
-    char* keep_retry;
-    char* keep_url;
-    char* term_url;
+    char keep_retry[KEEP_RETRY_LENGTH];
+    char keep_url[KEEP_URL_LENGTH];
+    char term_url[TERM_URL_LENGTH];
 } ClientData;
 
 typedef enum

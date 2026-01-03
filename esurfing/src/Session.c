@@ -15,76 +15,27 @@ static InitStatus load(const ByteArray zsm)
         LOG_ERROR("无效的 zsm 数据");
         return INIT_FAILURE;
     }
-    char* str = malloc(zsm.length + 1);
-    if (!str)
-    {
-        LOG_ERROR("分配 zsm 字符串数据内存失败");
-        return INIT_FAILURE;
-    }
+    char str[zsm.length + 1];
     memcpy(str, zsm.data, zsm.length);
     str[zsm.length] = '\0';
+    const size_t length = strlen(str);
     LOG_DEBUG("原始字符串: %s", str);
-    LOG_DEBUG("字符串长度: %zu", strlen(str));
-    if (strlen(str) < 4 + 38)
+    LOG_DEBUG("字符串长度: %zu", length);
+    if (length < 4 + 38)
     {
         LOG_ERROR("字符串长度不足");
-        free(str);
         return INIT_FAILURE;
     }
-    const size_t key_length = strlen(str) - 4 - 38;
-    if (key_length <= 0)
-    {
-        LOG_ERROR("Key 长度计算错误");
-        free(str);
-        return INIT_FAILURE;
-    }
-    char* key = malloc(key_length + 1);
-    if (!key)
-    {
-        LOG_ERROR("分配 Key 内存失败");
-        free(str);
-        return INIT_FAILURE;
-    }
-    memcpy(key, str + 4, key_length);
-    key[key_length] = '\0';
-    LOG_INFO("Key: %s", key);
-    free(key);
-    LOG_DEBUG("Key 长度: %zu", key_length);
-    const size_t total_length = strlen(str);
-    if (total_length < 38)
-    {
-        LOG_ERROR("字符串长度不足以提取 AlgoId");
-        free(str);
-        return INIT_FAILURE;
-    }
-    const size_t algo_id_length = 36;
-    char* algo_id = malloc(algo_id_length + 1);
-    if (!algo_id)
-    {
-        LOG_ERROR("分配 AlgoId 内存失败");
-        free(str);
-        return INIT_FAILURE;
-    }
-    memcpy(algo_id, str + total_length - 37, algo_id_length);
-    free(str);
-    algo_id[algo_id_length] = '\0';
+    char algo_id[ALGO_ID_LENGTH];
+    memcpy(algo_id, str + length - 37, ALGO_ID_LENGTH);
     LOG_INFO("Algo ID: %s", algo_id);
     if (!initCipher(algo_id))
     {
         LOG_ERROR("初始化加解密工厂失败");
-        free(algo_id);
         return INIT_FAILURE;
     }
-    char* new_algo_id = strdup(algo_id);
-    free(algo_id);
-    if (!new_algo_id)
-    {
-        LOG_ERROR("复制全局 AlgoId 失败");
-        return INIT_FAILURE;
-    }
-    LOG_DEBUG("全局 AlgoId 已更新: '%s'", new_algo_id);
-    if (thread_status[thread_index].dialer_context.auth_config.algo_id) free(thread_status[thread_index].dialer_context.auth_config.algo_id);
-    thread_status[thread_index].dialer_context.auth_config.algo_id = new_algo_id;
+    LOG_DEBUG("全局 AlgoID 已更新: '%s'", algo_id);
+    snprintf(thread_status[thread_index].dialer_context.auth_config.algo_id, ALGO_ID_LENGTH, "%s", algo_id);
     return INIT_SUCCESS;
 }
 

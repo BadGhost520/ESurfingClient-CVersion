@@ -1,37 +1,14 @@
-#include <process.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <stdio.h>
-
-#include "headFiles/States.h"
 #include "headFiles/webserver/WebServer.h"
-#include "headFiles/utils/Shutdown.h"
-#include "headFiles/utils/Logger.h"
 #include "headFiles/utils/PlatformUtils.h"
+#include "headFiles/utils/Shutdown.h"
+#include "headFiles/States.h"
 
-int main(const int argc, char* argv[])
+int main()
 {
 #ifdef _WIN32
-    system("chcp 65001 > nul");
+    system("chcp 65001 >nul");
 #endif
-    int opt;
-    bool is_debug = false;
-    while ((opt = getopt(argc, argv, "d")) != -1)
-    {
-        switch (opt)
-        {
-        case 'd':
-            is_debug = true;
-            break;
-        case '?':
-            printf("参数错误: %c\n", optopt);
-            return 0;
-        default:
-            printf("未知错误\n");
-            return 0;
-        }
-    }
-    loggerInit(is_debug);
+    loadIni();
     g_running_time = currentTimeMillis();
     initShutdown();
     startWebServer();
