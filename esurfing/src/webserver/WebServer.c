@@ -226,6 +226,16 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             // 获取联网状态信息
             if (mg_match(hm->uri, mg_str("/api/getNetworkStatus"), NULL))
             {
+                switch (checkNetworkStatus())
+                {
+                case REQUEST_SUCCESS:
+                    connection_status.is_connected = true;
+                    if (connection_status.connect_time == 0) connection_status.connect_time = currentTimeMillis();
+                    break;
+                default:
+                    connection_status.is_connected = false;
+                    connection_status.connect_time = 0;
+                }
                 cJSON* status = cJSON_CreateObject();
                 cJSON_AddBoolToObject(status, "isConnected", connection_status.is_connected);
                 cJSON_AddStringToObject(status, "connectTime", longLongToString(connection_status.connect_time));
@@ -434,16 +444,6 @@ void startWebServer()
     is_webserver_running = 1;
     while (is_webserver_running)
     {
-        switch (checkNetworkStatus("http://www.baidu.com"))
-        {
-        case REQUEST_SUCCESS:
-            connection_status.is_connected = true;
-            if (connection_status.connect_time == 0) connection_status.connect_time = currentTimeMillis();
-            break;
-        default:
-            connection_status.is_connected = false;
-            connection_status.connect_time = 0;
-        }
         mg_mgr_poll(&mgr, 1000);
     }
 

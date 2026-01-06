@@ -223,15 +223,28 @@ static AuthStatus initSession()
 
 static RunningStatus authorization()
 {
-    if (initSession() == AUTH_FAILURE || getTicket() == AUTH_FAILURE || login() == AUTH_FAILURE)
+    if (initSession() == AUTH_FAILURE)
     {
-        if (initSession() == AUTH_FAILURE) LOG_FATAL("初始化会话失败");
-        if (getTicket() == AUTH_FAILURE) LOG_FATAL("获取 Ticket 失败");
-        if (login() == AUTH_FAILURE) LOG_FATAL("登录失败");
+        LOG_FATAL("初始化会话失败");
         freeSession();
         thread_status[thread_index].dialer_context.runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
+    if (getTicket() == AUTH_FAILURE)
+    {
+        LOG_FATAL("获取 Ticket 失败");
+        freeSession();
+        thread_status[thread_index].dialer_context.runtime_status.is_running = false;
+        return RUNNING_FAILURE;
+    }
+    if (login() == AUTH_FAILURE)
+    {
+        LOG_FATAL("登录失败");
+        freeSession();
+        thread_status[thread_index].dialer_context.runtime_status.is_running = false;
+        return RUNNING_FAILURE;
+    }
+
     LOG_INFO("Client IP: %s", thread_status[thread_index].dialer_context.auth_config.client_ip);
     LOG_INFO("AC IP: %s", thread_status[thread_index].dialer_context.auth_config.ac_ip);
     LOG_INFO("Ticket: %s", thread_status[thread_index].dialer_context.auth_config.ticket);
@@ -266,8 +279,9 @@ static RunningStatus run()
                 }
             }
         }
-        else
+        else{
             LOG_INFO("网络已连接");
+        }
         sleepMilliseconds(1000);
         return RUNNING_SUCCESS;
     case REQUEST_AUTHORIZATION:

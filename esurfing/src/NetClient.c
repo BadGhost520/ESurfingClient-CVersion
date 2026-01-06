@@ -8,8 +8,11 @@
 #include "headFiles/NetClient.h"
 #include "headFiles/States.h"
 
-static const char REQUEST_ACCEPT[] = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
-static const char CAPTIVE_URL[] = "http://www.gstatic.com/generate_204";
+static const char request_accept[] = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
+static const char generate_url[] = "http://www.gstatic.com/generate_204";
+static char base_url[LOCATION_LENGTH] = "";
+static char last_location[LOCATION_LENGTH] = "";
+static size_t location_size = 0;
 
 static char* extractUrlParam(const char* url, const char* search_string_start)
 {
@@ -41,24 +44,48 @@ static size_t headerCallback(const void *contents, const size_t size, const size
         return real_size;
     if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0)
     {
-        const char *value = header + 9;
+        const char* value = header + 9;
         while (*value == ' ') value++;
         const size_t valid_len = strcspn(value, "\r\n");
         snprintf(thread_status[thread_index].dialer_context.auth_config.school_id, SCHOOL_ID_LENGTH, "%.*s", (int)valid_len, value);
     }
-    else if (real_size >= 7 && strncmp(header, "domain:", 7) == 0)
+    if (real_size >= 7 && strncmp(header, "domain:", 7) == 0)
     {
-        const char *value = header + 7;
+        const char* value = header + 7;
         while (*value == ' ') value++;
         const size_t valid_len = strcspn(value, "\r\n");
         snprintf(thread_status[thread_index].dialer_context.auth_config.domain, DOMAIN_LENGTH, "%.*s", (int)valid_len, value);
     }
-    else if (real_size >= 5 && strncmp(header, "area:", 5) == 0)
+    if (real_size >= 5 && strncmp(header, "area:", 5) == 0)
     {
-        const char *value = header + 5;
+        const char* value = header + 5;
         while (*value == ' ') value++;
         const size_t valid_len = strcspn(value, "\r\n");
         snprintf(thread_status[thread_index].dialer_context.auth_config.area, AREA_LENGTH, "%.*s", (int)valid_len, value);
+    }
+    if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
+    {
+        const char* value = header + 9;
+        while (*value == ' ') value++;
+        const size_t valid_len = strcspn(value, "\r\n");
+        snprintf(last_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
+        if (strstr(last_location, "http://") != NULL || strstr(last_location, "https://") != NULL)
+        {
+            const char* start = last_location;
+            if (strstr(last_location, "http://") != NULL) start += 7;
+            else if (strstr(last_location, "https://") != NULL) start += 8;
+            const char* end = strchr(start, '/');
+            const size_t len = end - last_location;
+            memcpy(base_url, last_location, len);
+            base_url[len] = '\0';
+        }
+        else
+        {
+            char* tmp = strdup(last_location);
+            snprintf(last_location, LOCATION_LENGTH, "%s%s", base_url, tmp);
+            free(tmp);
+        }
+        location_size = strlen(last_location);
     }
     return real_size;
 }
@@ -197,6 +224,12 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
     }
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.response_code);
     curl_easy_cleanup(curl);
+    if (response.response_code == 302)
+    {
+        LOG_DEBUG("重定向至: %s", last_location);
+        response.status = REQUEST_REDIRECT;
+        return response;
+    }
     if (response.response_code < 200 || response.response_code >= 300)
     {
         LOG_ERROR("HTTP 响应错误, 响应码: %d", response.response_code);
@@ -222,7 +255,7 @@ HTTPResponse sessionPost(const char* url, const char* data)
     free(MD5Hash);
     addCurlHeader(&headers, "Content-Type: application/x-www-form-urlencoded");
     addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_index].dialer_context.auth_config.user_agent);
-    addCurlHeader(&headers, "Accept: %s", REQUEST_ACCEPT);
+    addCurlHeader(&headers, "Accept: %s", request_accept);
     addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_index].dialer_context.auth_config.client_id);
     addCurlHeader(&headers, "Algo-ID: %s", thread_status[thread_index].dialer_context.auth_config.algo_id);
     addCurlHeader(&headers, "CDC-SchoolId: %s", thread_status[thread_index].dialer_context.auth_config.school_id);
@@ -232,9 +265,28 @@ HTTPResponse sessionPost(const char* url, const char* data)
     return response;
 }
 
-NetworkStatus checkNetworkStatus(const char* url)
+NetworkStatus checkNetworkStatus()
 {
-    const HTTPResponse response = get(url, NULL);
+    CURL* curl = curl_easy_init();
+    HTTPResponse response = {0};
+    const char url[] = "http://www.baidu.com";
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+    const CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK)
+    {
+        const char* error_msg = curl_easy_strerror(res);
+        LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
+        curl_easy_cleanup(curl);
+        response.status = REQUEST_ERROR;
+        return response.status;
+    }
+    long response_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    curl_easy_cleanup(curl);
+    if (response_code < 200 || response_code >= 300) response.status = REQUEST_ERROR;
+    else response.status = REQUEST_SUCCESS;
     return response.status;
 }
 
@@ -245,9 +297,10 @@ NetworkStatus checkAuthStatus()
     HTTPResponse response = {0};
     struct curl_slist *headers = NULL;
     addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_index].dialer_context.auth_config.user_agent);
-    addCurlHeader(&headers, "Accept: %s", REQUEST_ACCEPT);
+    addCurlHeader(&headers, "Accept: %s", request_accept);
     addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_index].dialer_context.auth_config.client_id);
-    response = get(CAPTIVE_URL, headers);
+    response = get(generate_url, headers);
+    while (response.status == REQUEST_REDIRECT) get(last_location, headers);
     if (response.status == REQUEST_ERROR)
     {
         LOG_ERROR("GET 错误");
@@ -294,7 +347,7 @@ NetworkStatus checkAuthStatus()
     char* client_ip = extractUrlParam(new_ticket_url, "wlanuserip");
     if (!client_ip)
     {
-        LOG_ERROR("提取 User IP 失败");
+        LOG_ERROR("提取 Client IP 失败");
         return REQUEST_ERROR;
     }
     snprintf(thread_status[thread_index].dialer_context.auth_config.client_ip, CLIENT_IP_LENGTH, "%s", client_ip);

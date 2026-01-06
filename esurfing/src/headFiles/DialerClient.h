@@ -2,8 +2,8 @@
 #define CLIENT_H
 
 #define KEEP_RETRY_LENGTH 8
-#define KEEP_URL_LENGTH 40
-#define TERM_URL_LENGTH 40
+#define KEEP_URL_LENGTH 80
+#define TERM_URL_LENGTH 80
 
 typedef struct
 {

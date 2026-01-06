@@ -100,6 +100,8 @@ async function getSoftwareStatus() {
         });
 }
 
+const threadSwitch = document.querySelectorAll(".thread-switch");
+
 async function getThreadStatus() {
     await axios({
         method: "get",
@@ -136,9 +138,7 @@ async function getThreadStatus() {
                 const seconds = String(
                     Math.floor((authDuration % (1000 * 60)) / 1000)
                 ).padStart(2, "0");
-                threadAuthTime[
-                    i
-                    ].textContent = `${day} 天 ${hours} 时 ${minutes} 分 ${seconds} 秒`;
+                threadAuthTime[i].textContent = `${day} 天 ${hours} 时 ${minutes} 分 ${seconds} 秒`;
             } else {
                 threadAuthTime[i].textContent = "00 天 00 时 00 分 00 秒";
             }
@@ -151,6 +151,7 @@ async function getThreadStatus() {
             } else {
                 threadAdapter[i].textContent = "无";
             }
+            threadSwitch[i].textContent = thread.isRunning ? "关闭" : "开启";
             i++;
         }
     });
@@ -208,9 +209,6 @@ async function getAdapterInfo() {
         });
 }
 
-const threadSwitch = document.querySelectorAll(".thread-switch");
-let threadIsRunning = [false, false];
-
 async function manageThread(index) {
     waitSettingsSave();
     await axios({
@@ -230,8 +228,6 @@ async function manageThread(index) {
             await sleep(5000);
             if (response.status === 204) {
                 closeLoadingModal(true);
-                threadIsRunning[index] = !threadIsRunning[index];
-                threadSwitch[index].textContent = threadIsRunning[index] ? "关闭" : "开启";
             } else {
                 closeLoadingModal(false);
             }

@@ -1,10 +1,13 @@
 #ifndef ESURFINGCLIENT_NETCLIENT_H
 #define ESURFINGCLIENT_NETCLIENT_H
 
+#define LOCATION_LENGTH 256
+
 typedef enum {
     REQUEST_ERROR = 0,
     REQUEST_SUCCESS = 1,
     REQUEST_AUTHORIZATION = 2,
+    REQUEST_REDIRECT = 3,
     INIT_ERROR = 3
 } NetworkStatus;
 
@@ -31,10 +34,9 @@ HTTPResponse sessionPost(const char* url, const char* data);
 
 /**
  * 检测网络状态
- * @param url 网址
  * @return 网络状态
  */
-NetworkStatus checkNetworkStatus(const char* url);
+NetworkStatus checkNetworkStatus();
 
 /**
  * 检测认证状态
