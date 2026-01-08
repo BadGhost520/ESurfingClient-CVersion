@@ -17,6 +17,7 @@ typedef enum
 {
     RUNNING_FAILURE = 0,
     RUNNING_SUCCESS = 1,
+    RUNNING_WARNING = 2,
 } RunningStatus;
 
 typedef enum

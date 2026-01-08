@@ -3,6 +3,9 @@
 
 #include "../headFiles/webserver/WebServer.h"
 #include "../headFiles/utils/Shutdown.h"
+
+#include <string.h>
+
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/DialerClient.h"
 #include "../headFiles/Session.h"
@@ -28,43 +31,25 @@ static void signalHandler(const int sig)
 
 static void mainStop()
 {
-    LOG_DEBUG("执行主线程关闭函数");
     if (is_webserver_running) stopWebServer();
     loggerCleanup();
 }
 
-static void resetThread(RuntimeStatus* runtime_status)
-{
-    runtime_status->is_settings_changed = false;
-    runtime_status->is_initialized = false;
-    runtime_status->is_running = false;
-    runtime_status->is_authed = false;
-}
-
-static void cleanThread()
-{
-    resetThread(&thread_status[thread_index].dialer_context.runtime_status);
-    thread_status[thread_index].dialer_context.auth_time = 0;
-    thread_status[thread_index].thread_is_running = false;
-    thread_status[thread_index].thread_status = 0;
-    thread_status[thread_index].need_stop = false;
-}
-
 static void adapterStop()
 {
-    LOG_DEBUG("执行线程关闭函数");
     if (thread_status[thread_index].dialer_context.runtime_status.is_initialized)
     {
         if (thread_status[thread_index].dialer_context.runtime_status.is_authed) term();
         freeSession();
     }
-    cleanThread();
+    memset(&thread_status[thread_index], 0, sizeof(ThreadStatus));
 }
 
 void checkAdapterStop()
 {
     if (thread_status[thread_index].need_stop)
     {
+        LOG_INFO("线程 %d 正在关闭", thread_index + 1);
         thread_status[thread_index].need_stop = false;
         adapterStop();
     }
@@ -78,7 +63,7 @@ void shut(const int exitCode)
         for (int i = 0; i < MAX_DIALER_COUNT; i++) thread_status[i].need_stop = true;
         sleepMilliseconds(5000);
     }
-    LOG_INFO("关闭主线程");
+    LOG_INFO("主线程正在关闭");
     mainStop();
     exit(exitCode);
 }

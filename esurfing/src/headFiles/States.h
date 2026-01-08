@@ -13,13 +13,10 @@
 #define CLIENT_ID_LENGTH 40
 #define HOST_NAME_LENGTH 16
 #define CLIENT_IP_LENGTH 16
-#define SCHOOL_ID_LENGTH 8
 #define AUTH_URL_LENGTH 80
-#define ALGO_ID_LENGTH 40
+#define ALGO_ID_LENGTH 37
 #define TICKET_LENGTH 40
-#define DOMAIN_LENGTH 16
 #define AC_IP_LENGTH 16
-#define AREA_LENGTH 8
 
 #define USR_LENGTH 16
 #define PWD_LENGTH 128
@@ -33,13 +30,10 @@ typedef struct
     char client_id[CLIENT_ID_LENGTH];
     char host_name[HOST_NAME_LENGTH];
     char client_ip[CLIENT_IP_LENGTH];
-    char school_id[SCHOOL_ID_LENGTH];
     char auth_url[AUTH_URL_LENGTH];
     char algo_id[ALGO_ID_LENGTH];
     char ticket[TICKET_LENGTH];
-    char domain[DOMAIN_LENGTH];
     char ac_ip[AC_IP_LENGTH];
-    char area[AREA_LENGTH];
 } AuthConfig;
 
 typedef struct

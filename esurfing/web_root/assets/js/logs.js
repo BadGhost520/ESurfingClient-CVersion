@@ -10,7 +10,7 @@ async function updateLogs() {
     })
         .then(response => {
             const data = response.data;
-            if (data !== '') {
+            if (data !== '' && data !== logs.textContent) {
                 logs.innerHTML = data;
                 if (isScrollEnabled) {
                     const scrollBox = logs.parentElement;

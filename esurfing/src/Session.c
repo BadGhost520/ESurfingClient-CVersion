@@ -27,7 +27,7 @@ static InitStatus load(const ByteArray zsm)
         return INIT_FAILURE;
     }
     char algo_id[ALGO_ID_LENGTH];
-    memcpy(algo_id, str + length - 37, ALGO_ID_LENGTH);
+    memcpy(algo_id, str + length - 37, ALGO_ID_LENGTH - 1);
     LOG_INFO("Algo ID: %s", algo_id);
     if (!initCipher(algo_id))
     {

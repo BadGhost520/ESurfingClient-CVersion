@@ -129,7 +129,7 @@ void createThread(void*(* func)(void*), void* arg);
  * 等待线程结束函数
  * @param index 线程下标
  */
-void stopThread(int index);
+void waitThreadStop(int index);
 
 /**
  * 获取当前线程名

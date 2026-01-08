@@ -2,13 +2,18 @@
 #define ESURFINGCLIENT_NETCLIENT_H
 
 #define LOCATION_LENGTH 256
+#define SCHOOL_ID_LENGTH 8
+#define DOMAIN_LENGTH 16
+#define AREA_LENGTH 8
 
 typedef enum {
     REQUEST_ERROR = 0,
     REQUEST_SUCCESS = 1,
     REQUEST_AUTHORIZATION = 2,
     REQUEST_REDIRECT = 3,
-    INIT_ERROR = 3
+    REQUEST_WARNING = 4,
+    REQUEST_HAVE_RES = 5,
+    INIT_ERROR = 6
 } NetworkStatus;
 
 typedef enum
@@ -21,7 +26,6 @@ typedef struct {
     NetworkStatus status;
     char* body_data;
     size_t body_size;
-    long response_code;
 } HTTPResponse;
 
 /**

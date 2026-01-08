@@ -177,7 +177,7 @@ static AuthStatus getTicket()
         return AUTH_FAILURE;
     }
     LOG_DEBUG("发送加密获取 ticket 内容: %s", encrypt);
-    const HTTPResponse result = sessionPost(thread_status[thread_index].dialer_context.auth_config.auth_url, encrypt);
+    const HTTPResponse result = sessionPost(thread_status[thread_index].dialer_context.auth_config.ticket_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -230,6 +230,7 @@ static RunningStatus authorization()
         thread_status[thread_index].dialer_context.runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
+    LOG_DEBUG("初始化会话完成");
     if (getTicket() == AUTH_FAILURE)
     {
         LOG_FATAL("获取 Ticket 失败");
@@ -237,6 +238,8 @@ static RunningStatus authorization()
         thread_status[thread_index].dialer_context.runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
+    LOG_DEBUG("完成获取 Ticket");
+    LOG_INFO("Ticket: %s", thread_status[thread_index].dialer_context.auth_config.ticket);
     if (login() == AUTH_FAILURE)
     {
         LOG_FATAL("登录失败");
@@ -244,10 +247,7 @@ static RunningStatus authorization()
         thread_status[thread_index].dialer_context.runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
-
-    LOG_INFO("Client IP: %s", thread_status[thread_index].dialer_context.auth_config.client_ip);
-    LOG_INFO("AC IP: %s", thread_status[thread_index].dialer_context.auth_config.ac_ip);
-    LOG_INFO("Ticket: %s", thread_status[thread_index].dialer_context.auth_config.ticket);
+    LOG_DEBUG("完成登录");
     client_data.tick = currentTimeMillis();
     thread_status[thread_index].dialer_context.auth_time = currentTimeMillis();
     LOG_DEBUG("登录时间戳 (毫秒): %lld", thread_status[thread_index].dialer_context.auth_time);
@@ -297,6 +297,14 @@ static RunningStatus run()
         LOG_ERROR("网络错误");
         sleepMilliseconds(5000);
         return RUNNING_FAILURE;
+    case REQUEST_REDIRECT:
+        LOG_WARN("需要重定向");
+        sleepMilliseconds(1000);
+        return RUNNING_WARNING;
+    case REQUEST_WARNING:
+        LOG_WARN("网络超时");
+        sleepMilliseconds(5000);
+        return RUNNING_WARNING;
     case INIT_ERROR:
         LOG_ERROR("初始化错误");
         sleepMilliseconds(5000);
@@ -325,7 +333,7 @@ void* dialerApp(void* arg)
     thread_index = (int)(intptr_t)arg;
     thread_status[thread_index].dialer_context.runtime_status.is_running = 1;
     refreshStates();
-    LOG_INFO("程序启动中，序号: %d", thread_index + 1);
+    LOG_INFO("认证线程启动中，序号: %d", thread_index + 1);
     sleepMilliseconds(5000);
     while (thread_status[thread_index].dialer_context.runtime_status.is_running)
     {
@@ -346,7 +354,7 @@ void* dialerApp(void* arg)
             restart();
             thread_status[thread_index].dialer_context.runtime_status.is_settings_changed = false;
         }
-        run();
+        if (run() == RUNNING_FAILURE) thread_status[thread_index].need_stop = true;
         checkAdapterStop();
     }
     return NULL;

@@ -1,6 +1,9 @@
+#include <fcntl.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <time.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
 
@@ -224,40 +227,113 @@ void loggerCleanup()
     rename(gLoggerConfig.log_file, newFilename);
 }
 
+static int createAtomicCopy(const char* src, const char* dst)
+{
+    // 方法B: 回退到复制（对于几百KB的文件很快）
+    int src_fd = open(src, O_RDONLY);
+    if (src_fd < 0) return -1;
+
+    int dst_fd = open(dst, O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if (dst_fd < 0)
+    {
+        close(src_fd);
+        return -1;
+    }
+
+    struct stat st;
+    if (fstat(src_fd, &st) != 0 || st.st_size == 0)
+    {
+        close(src_fd);
+        close(dst_fd);
+        remove(dst);
+        return -1;
+    }
+
+    // 对于小文件，使用sendfile更高效（Linux）
+#ifdef __linux__
+    off_t offset = 0;
+    if (sendfile(dst_fd, src_fd, &offset, st.st_size) == st.st_size)
+    {
+        close(src_fd);
+        close(dst_fd);
+        return 0;
+    }
+#endif
+
+    // 回退到普通复制
+    char buffer[8192];
+    ssize_t bytes;
+    while ((bytes = read(src_fd, buffer, sizeof(buffer))) > 0)
+    {
+        if (write(dst_fd, buffer, bytes) != bytes)
+            break;
+    }
+
+    close(src_fd);
+    close(dst_fd);
+
+    if (bytes < 0)
+    {
+        remove(dst);
+        return -1;
+    }
+
+    return 0;
+}
+
 LogContent getLog()
 {
     LogContent result = {NULL, 0};
-    FILE* file = fopen(gLoggerConfig.log_file, "rb");
+    static char temp_path[256];
+    static long temp_counter = 0;
+
+    // 1. 生成唯一的临时文件名
+    snprintf(temp_path, sizeof(temp_path),
+             "%s.web_%ld_%ld.tmp",
+             gLoggerConfig.log_file,
+             (long)time(NULL),
+             __sync_fetch_and_add(&temp_counter, 1));
+
+    // 2. 使用rename实现原子复制（比copy更高效）
+    createAtomicCopy(gLoggerConfig.log_file, temp_path);
+
+    // 3. 安全读取临时文件
+    FILE* file = fopen(temp_path, "r");
     if (!file)
     {
-        perror("打开文件失败");
+        remove(temp_path);
         return result;
     }
+
+    // 获取文件大小（临时文件不会被修改，所以安全）
     fseek(file, 0, SEEK_END);
-    const long file_size = ftell(file);
+    long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
-    if (file_size < 0)
+
+    if (file_size <= 0 || file_size > 10 * 1024 * 1024) // 限制10MB
     {
         fclose(file);
+        remove(temp_path);
         return result;
     }
+
+    // 分配内存
     result.data = (char*)malloc(file_size + 1);
     if (!result.data)
     {
         fclose(file);
+        remove(temp_path);
         return result;
     }
-    const size_t bytes_read = fread(result.data, 1, file_size, file);
-    if (bytes_read != (size_t)file_size)
-    {
-        free(result.data);
-        result.data = NULL;
-    }
-    else
-    {
-        result.data[file_size] = '\0';
-        result.size = file_size;
-    }
+
+    // 一次性读取（临时文件不会被并发写入）
+    size_t bytes_read = fread(result.data, 1, file_size, file);
+    result.data[bytes_read] = '\0';
+    result.size = bytes_read;
+
+    // 4. 清理
     fclose(file);
+    remove(temp_path);
+
     return result;
 }

@@ -358,8 +358,9 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                         const int tmp_index = index->valueint;
                         if (thread_status[tmp_index].thread_is_running)
                         {
-                            LOG_INFO("等待子线程关闭");
+                            LOG_INFO("等待线程 %d 关闭", tmp_index + 1);
                             thread_status[tmp_index].need_stop = true;
+                            waitThreadStop(tmp_index);
                             sleepMilliseconds(1000);
                             mg_http_reply(c,
                                 204,

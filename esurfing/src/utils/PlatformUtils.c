@@ -236,16 +236,16 @@ char* createXMLPayload(const XmlChoose choose)
             "%s"
             "    <user-agent>%s</user-agent>\n"
             "    <client-id>%s</client-id>\n"
+            "    <ticket>%s</ticket>\n"
             "    <local-time>%s</local-time>\n"
-            "    <host-name>%s</host-name>\n"
             "    <userid>%s</userid>\n"
             "    <passwd>%s</passwd>\n"
             "%s",
             xml_header,
             safeStr(thread_status[thread_index].dialer_context.auth_config.user_agent),
             safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
+            safeStr(thread_status[thread_index].dialer_context.auth_config.ticket),
             currentTime,
-            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
             safeStr(thread_status[thread_index].dialer_context.options.usr),
             safeStr(thread_status[thread_index].dialer_context.options.pwd),
             xml_footer
@@ -342,11 +342,14 @@ void createThread(void*(* func)(void*), void* arg)
     const int index = (int)(intptr_t)arg;
     thread_status[index].thread_status = pthread_create(&thread_status[index].thread, NULL, func, arg);
     thread_status[index].thread_is_running = true;
+    LOG_INFO("线程: %d 已启动", index + 1);
 }
 
-void stopThread(const int index)
+void waitThreadStop(const int index)
 {
     pthread_join(thread_status[index].thread, NULL);
+    thread_status[index].thread_is_running = false;
+    LOG_INFO("线程: %d 已退出", index + 1);
 }
 
 const char* getThreadName()
@@ -406,12 +409,14 @@ void loadIni()
         return;
     }
     free(time_stamp);
-    ini_gets("Adapter1", "usr", "未配置", thread_status[0].dialer_context.options.usr, USR_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter1", "pwd", "未配置", thread_status[0].dialer_context.options.pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter1", "chn", "phone", thread_status[0].dialer_context.options.chn, CHN_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter2", "usr", "未配置", thread_status[1].dialer_context.options.usr, USR_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter2", "pwd", "未配置", thread_status[1].dialer_context.options.pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter2", "chn", "phone", thread_status[1].dialer_context.options.chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    Options opt[MAX_DIALER_COUNT];
+    ini_gets("Adapter1", "usr", "未配置", opt[0].usr, USR_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter1", "pwd", "未配置", opt[0].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter1", "chn", "phone", opt[0].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter2", "usr", "未配置", opt[1].usr, USR_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter2", "pwd", "未配置", opt[1].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
+    ini_gets("Adapter2", "chn", "phone", opt[1].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    for (int i = 0; i < MAX_DIALER_COUNT; i++) setOpt(opt[i], i);
     const bool debug = ini_getbool("Logger", "debug", false, DIALER_CONFIG_FILE);
     loggerInit(debug);
     LOG_INFO("配置文件加载完成");
