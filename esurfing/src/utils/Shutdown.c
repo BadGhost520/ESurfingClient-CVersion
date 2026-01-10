@@ -6,6 +6,7 @@
 #include "../headFiles/utils/Shutdown.h"
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/DialerClient.h"
+#include "../headFiles/NetClient.h"
 #include "../headFiles/Session.h"
 #include "../headFiles/States.h"
 
@@ -40,8 +41,11 @@ static void adapterStop()
         if (thread_status[thread_index].dialer_context.runtime_status.is_authed) term();
         freeSession();
     }
-    memset(&thread_status[thread_index], 0, sizeof(ThreadStatus));
-    thread_status[thread_index].thread_is_running = true;
+    memset(&thread_status[thread_index].dialer_context, 0, sizeof(DialerContext));
+    if (!thread_status[0].dialer_context.runtime_status.is_running && !thread_status[1].dialer_context.runtime_status.is_running)
+    {
+        memset(&last_location, 0, sizeof(last_location));
+    }
 }
 
 void checkAdapterStop()

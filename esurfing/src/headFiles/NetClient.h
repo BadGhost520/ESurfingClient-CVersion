@@ -31,6 +31,7 @@ typedef struct {
     size_t body_size;
 } HTTPResponse;
 
+extern char last_location[LOCATION_LENGTH];
 extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
 
 /**
@@ -42,7 +43,7 @@ extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
 HTTPResponse sessionPost(const char* url, const char* data);
 
 /**
- * 检测网络状态
+ * 检查网络状态
  * @return 网络状态
  */
 NetworkStatus checkNetworkStatus();

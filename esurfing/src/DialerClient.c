@@ -337,7 +337,7 @@ static void restart()
         if (thread_status[thread_index].dialer_context.runtime_status.is_authed) term();
         freeSession();
     }
-    thread_status[thread_index].dialer_context.auth_time = 0;
+    memset(&thread_status[thread_index].dialer_context, 0, sizeof(DialerContext));
     sleepMilliseconds(5000);
     refreshStates();
 }
