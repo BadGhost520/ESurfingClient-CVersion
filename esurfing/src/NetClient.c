@@ -5,22 +5,20 @@
 
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Logger.h"
+#include "headFiles/DialerClient.h"
 #include "headFiles/NetClient.h"
 #include "headFiles/States.h"
 
 static const char request_content_type[] = "application/x-www-form-urlencoded";
 static const char request_accept[] = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
 static const char generate_url[] = "http://connect.rom.miui.com/generate_204";
-static char latest_location[LOCATION_LENGTH];
-static char check_location[LOCATION_LENGTH];
+__thread char latest_location[LOCATION_LENGTH];
+__thread char check_location[LOCATION_LENGTH];
 static char school_id[SCHOOL_ID_LENGTH];
 static char domain[DOMAIN_LENGTH];
 static char area[AREA_LENGTH];
 
-char last_location[LOCATION_LENGTH];
 char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
-
-static __thread char thread_last_location[LOCATION_LENGTH];
 
 static char* extractUrlParam(const char* url, const char* search_string_start)
 {
@@ -48,24 +46,33 @@ static size_t headerCallback(const void *contents, const size_t size, const size
     const char* header = contents;
     if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0 && !school_id[0])
     {
-        const char* value = header + 9;
-        while (*value == ' ') value++;
-        const size_t valid_len = strcspn(value, "\r\n");
-        snprintf(school_id, SCHOOL_ID_LENGTH, "%.*s", (int)valid_len, value);
+        if (school_id[0] == '\0')
+        {
+            const char* value = header + 9;
+            while (*value == ' ') value++;
+            const size_t valid_len = strcspn(value, "\r\n");
+            snprintf(school_id, SCHOOL_ID_LENGTH, "%.*s", (int)valid_len, value);
+        }
     }
     if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !domain[0])
     {
-        const char* value = header + 7;
-        while (*value == ' ') value++;
-        const size_t valid_len = strcspn(value, "\r\n");
-        snprintf(domain, DOMAIN_LENGTH, "%.*s", (int)valid_len, value);
+        if (domain[0] == '\0')
+        {
+            const char* value = header + 7;
+            while (*value == ' ') value++;
+            const size_t valid_len = strcspn(value, "\r\n");
+            snprintf(domain, DOMAIN_LENGTH, "%.*s", (int)valid_len, value);
+        }
     }
     if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !area[0])
     {
-        const char* value = header + 5;
-        while (*value == ' ') value++;
-        const size_t valid_len = strcspn(value, "\r\n");
-        snprintf(area, AREA_LENGTH, "%.*s", (int)valid_len, value);
+        if (area[0] == '\0')
+        {
+            const char* value = header + 5;
+            while (*value == ' ') value++;
+            const size_t valid_len = strcspn(value, "\r\n");
+            snprintf(area, AREA_LENGTH, "%.*s", (int)valid_len, value);
+        }
     }
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
     {
@@ -73,7 +80,11 @@ static size_t headerCallback(const void *contents, const size_t size, const size
         while (*value == ' ') value++;
         const size_t valid_len = strcspn(value, "\r\n");
         snprintf(latest_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
-        snprintf(check_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
+        if (check_location[0] == '\0')
+        {
+            snprintf(check_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
+            LOG_DEBUG("获取到 Check Location: %s", check_location);
+        }
     }
     return real_size;
 }
@@ -142,6 +153,7 @@ static CurlStatus createPostCurlClient(CURL** curl, struct curl_slist** headers,
     curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_CONNECTTIMEOUT, 5L);
+    if (thread_local_args.thread_index != -1) curl_easy_setopt(*curl, CURLOPT_INTERFACE, thread_local_args.ip);
     return CURL_INIT_SUCCESS;
 }
 
@@ -157,16 +169,17 @@ static CurlStatus createGetCurlClient(CURL** curl, struct curl_slist** headers, 
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
+    if (thread_local_args.thread_index != -1) curl_easy_setopt(*curl, CURLOPT_INTERFACE, thread_local_args.ip);
     return CURL_INIT_SUCCESS;
 }
 
 static void addCurlHeader(struct curl_slist** headers, const char* format, ...)
 {
-    va_list args;
+    va_list local_args;
     char header_buffer[128];
-    va_start(args, format);
-    vsnprintf(header_buffer, sizeof(header_buffer), format, args);
-    va_end(args);
+    va_start(local_args, format);
+    vsnprintf(header_buffer, sizeof(header_buffer), format, local_args);
+    va_end(local_args);
     *headers = curl_slist_append(*headers, header_buffer);
 }
 
@@ -208,7 +221,7 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
     if (res != CURLE_OK)
     {
         const char* error_msg = curl_easy_strerror(res);
-        LOG_ERROR("HTTP 请求错误: %s (错误码: %d)", error_msg, res);
+        LOG_ERROR("HTTP 请求错误: %s ,错误码: %d, GET URL: %s", error_msg, res, url);
         curl_easy_cleanup(curl);
         if (res == 28) response.status = REQUEST_WARNING;
         else response.status = REQUEST_ERROR;
@@ -253,10 +266,10 @@ HTTPResponse sessionPost(const char* url, const char* data)
     addCurlHeader(&headers, "CDC-Checksum: %s", MD5Hash);
     free(MD5Hash);
     addCurlHeader(&headers, "Content-Type: %s", request_content_type);
-    addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_index].dialer_context.auth_config.user_agent);
+    addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent);
     addCurlHeader(&headers, "Accept: %s", request_accept);
-    addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_index].dialer_context.auth_config.client_id);
-    addCurlHeader(&headers, "Algo-ID: %s", thread_status[thread_index].dialer_context.auth_config.algo_id);
+    addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id);
+    addCurlHeader(&headers, "Algo-ID: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.algo_id);
     addCurlHeader(&headers, "CDC-SchoolId: %s", school_id);
     addCurlHeader(&headers, "CDC-Domain: %s", domain);
     addCurlHeader(&headers, "CDC-Area: %s", area);
@@ -266,97 +279,30 @@ HTTPResponse sessionPost(const char* url, const char* data)
 
 static void getSchoolNetworkSymbol()
 {
-    if (school_network_symbol[0] != '\0') return;
-    const char* wlan_user_ip_tag = strstr(check_location, "wlanuserip");
-    if (wlan_user_ip_tag)
+    if (school_network_symbol[0] != '\0')
     {
-        const char* wlan_user_ip_first_start = wlan_user_ip_tag + 11;
-        const char* wlan_user_ip_first_end = strchr(wlan_user_ip_first_start, '.');
-        if (wlan_user_ip_first_end)
-        {
-            const char* wlan_user_ip_second_start = wlan_user_ip_first_end + 1;
-            const char* wlan_user_ip_second_end = strchr(wlan_user_ip_second_start, '.');
-            const size_t len = wlan_user_ip_second_end - wlan_user_ip_first_start;
-            memcpy(school_network_symbol, wlan_user_ip_first_start, len);
-            school_network_symbol[len] = '\0';
-            LOG_DEBUG("获取到校园网 IP 特征: %s", school_network_symbol);
-        }
+        LOG_VERBOSE("已有特征值: %s", school_network_symbol);
+        return;
     }
-}
-
-static NetworkStatus getLastLocation()
-{
-    if (thread_last_location[0] != '\0' || thread_status[thread_index].dialer_context.runtime_status.is_authed) return REQUEST_SUCCESS;
-    HTTPResponse response = {0};
-    struct curl_slist* headers = NULL;
-    addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_index].dialer_context.auth_config.user_agent);
-    addCurlHeader(&headers, "Accept: %s", request_accept);
-    addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_index].dialer_context.auth_config.client_id);
-    response = get(generate_url, headers);
-    while (response.status == REQUEST_REDIRECT) response = get(latest_location, headers);
-    if (last_location[0] == '\0') snprintf(last_location, LOCATION_LENGTH, "%s", latest_location);
-    LOG_DEBUG("Last location: %s", last_location);
-    const char* location = last_location;
-    const char* wlan_user_ip_tag = strstr(location, "wlanuserip");
+    const char* wlan_user_ip_tag = strstr(check_location, "wlanuserip");
     if (!wlan_user_ip_tag)
     {
-        LOG_ERROR("查找 wlanuserip 标志失败");
-        return REQUEST_ERROR;
+        LOG_WARN("未找到校园网特征, 检查 Location: %s", check_location);
+        return;
     }
-    const char* wlan_user_ip_start = wlan_user_ip_tag + 11;
-    const size_t len = wlan_user_ip_start - location;
-    char* modified_location_head = malloc(len + 1);
-    if (!modified_location_head)
+    const char* wlan_user_ip_first_start = wlan_user_ip_tag + 11;
+    const char* wlan_user_ip_first_end = strchr(wlan_user_ip_first_start, '.');
+    if (!wlan_user_ip_first_end)
     {
-        LOG_ERROR("分配内存失败");
-        return REQUEST_ERROR;
+        LOG_ERROR("未找到尾部");
+        return;
     }
-    memcpy(modified_location_head, location, len);
-    modified_location_head[len] = '\0';
-    const char* wlan_user_ip_end = strchr(wlan_user_ip_start, '&');
-    if (!wlan_user_ip_end)
-    {
-        LOG_ERROR("查找 wlanuserip 结尾失败");
-        return REQUEST_ERROR;
-    }
-    const size_t wlan_user_ip_len = wlan_user_ip_end - wlan_user_ip_start;
-    char* wlan_user_ip = malloc(wlan_user_ip_len + 1);
-    memcpy(wlan_user_ip, wlan_user_ip_start, wlan_user_ip_len);
-    wlan_user_ip[wlan_user_ip_len] = '\0';
-    if (strstr(school_connection_status[0].ip, wlan_user_ip) != NULL)
-    {
-        if (school_connection_status[0].is_used)
-        {
-            snprintf(thread_status[thread_index].dialer_context.auth_config.client_ip, IP_LENGTH, "%s", school_connection_status[1].ip);
-            school_connection_status[1].is_used = true;
-        }
-        else
-        {
-            snprintf(thread_status[thread_index].dialer_context.auth_config.client_ip, IP_LENGTH, "%s", school_connection_status[0].ip);
-            school_connection_status[0].is_used = true;
-        }
-    }
-    else
-    {
-        if (school_connection_status[1].is_used)
-        {
-            snprintf(thread_status[thread_index].dialer_context.auth_config.client_ip, IP_LENGTH, "%s", school_connection_status[0].ip);
-            school_connection_status[0].is_used = true;
-        }
-        else
-        {
-            snprintf(thread_status[thread_index].dialer_context.auth_config.client_ip, IP_LENGTH, "%s", school_connection_status[1].ip);
-            school_connection_status[1].is_used = true;
-        }
-    }
-    char modified_location[LOCATION_LENGTH] = {0};
-    strcat(modified_location, modified_location_head);
-    strcat(modified_location, thread_status[thread_index].dialer_context.auth_config.client_ip);
-    strcat(modified_location, wlan_user_ip_end);
-    snprintf(thread_last_location, LOCATION_LENGTH, "%s", modified_location);
-    LOG_DEBUG("Thread last location: %s", thread_last_location);
-    free(modified_location_head);
-    return REQUEST_SUCCESS;
+    const char* wlan_user_ip_second_start = wlan_user_ip_first_end + 1;
+    const char* wlan_user_ip_second_end = strchr(wlan_user_ip_second_start, '.');
+    const size_t len = wlan_user_ip_second_end - wlan_user_ip_first_start;
+    memcpy(school_network_symbol, wlan_user_ip_first_start, len);
+    school_network_symbol[len] = '\0';
+    LOG_DEBUG("获取到校园网 IP 特征: %s", school_network_symbol);
 }
 
 NetworkStatus checkNetworkStatus()
@@ -376,18 +322,12 @@ NetworkStatus checkAuthStatus()
     const char PORTAL_END_TAG[] = "//config.campus.js.chinatelecom.com-->";
     HTTPResponse response = {0};
     struct curl_slist *headers = NULL;
-    addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_index].dialer_context.auth_config.user_agent);
+    addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent);
     addCurlHeader(&headers, "Accept: %s", request_accept);
-    addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_index].dialer_context.auth_config.client_id);
-    switch (getLastLocation())
-    {
-    case REQUEST_SUCCESS:
-        if (thread_status[thread_index].dialer_context.runtime_status.is_authed) return REQUEST_SUCCESS;
-        break;
-    default:
-        return REQUEST_ERROR;
-    }
-    response = get(thread_last_location, headers);
+    addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id);
+    response.status = checkNetworkStatus();
+    while (response.status == REQUEST_REDIRECT) response = get(latest_location, headers);
+    if (response.status == REQUEST_SUCCESS || response.status == REQUEST_WARNING) return response.status;
     LOG_INFO("School Id: %s", school_id);
     LOG_INFO("Domain: %s", domain);
     LOG_INFO("Area: %s", area);
@@ -417,7 +357,7 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("Auth URL: %s", cleaned_auth_url);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.auth_url, AUTH_URL_LENGTH, "%s", cleaned_auth_url);
+    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.auth_url, AUTH_URL_LENGTH, "%s", cleaned_auth_url);
     free(cleaned_auth_url);
     char* ticket_url = XmlParser(portal_config, "ticket-url");
     free(portal_config);
@@ -434,8 +374,8 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("Ticket URL: %s", cleaned_ticket_url);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.ticket_url, TICKET_URL_LENGTH, "%s", cleaned_ticket_url);
-    LOG_INFO("Client IP: %s", thread_status[thread_index].dialer_context.auth_config.client_ip);
+    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket_url, TICKET_URL_LENGTH, "%s", cleaned_ticket_url);
+    LOG_INFO("Client IP: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_ip);
     char* ac_ip = extractUrlParam(cleaned_ticket_url, "wlanacip");
     free(cleaned_ticket_url);
     if (!ac_ip)
@@ -444,7 +384,7 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("AC IP: %s", ac_ip);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.ac_ip, IP_LENGTH, "%s", ac_ip);
+    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ac_ip, IP_LENGTH, "%s", ac_ip);
     free(ac_ip);
     return REQUEST_AUTHORIZATION;
 }

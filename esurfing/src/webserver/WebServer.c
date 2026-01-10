@@ -226,6 +226,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             // 获取联网状态信息
             if (mg_match(hm->uri, mg_str("/api/getNetworkStatus"), NULL))
             {
+                network_status = checkNetworkStatus();
                 switch (network_status)
                 {
                 case REQUEST_SUCCESS:
@@ -256,7 +257,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                 for (int i = 0; i < MAX_DIALER_COUNT; i++)
                 {
                     cJSON* thread = cJSON_CreateObject();
-                    cJSON_AddBoolToObject(thread, "threadIsRunning", thread_status[i].thread_is_running);
+                    cJSON_AddBoolToObject(thread, "isRunning", thread_status[i].dialer_context.runtime_status.is_running);
                     cJSON_AddItemToArray(threads, thread);
                 }
                 cJSON_AddItemToObject(software_status, "threads", threads);
@@ -366,7 +367,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
         // POST 请求
         if (mg_strcmp(hm->method, mg_str("POST")) == 0)
         {
-            // 启动或关闭指定线程
+            // 启动或关闭指定线程的认证程序
             if (mg_match(hm->uri, mg_str("/api/manageThread"), NULL))
             {
                 const struct mg_str body = hm->body;
@@ -377,12 +378,10 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     if (index && cJSON_IsNumber(index))
                     {
                         const int tmp_index = index->valueint;
-                        if (thread_status[tmp_index].thread_is_running)
+                        if (thread_status[tmp_index].dialer_context.runtime_status.is_running)
                         {
-                            LOG_INFO("等待线程 %d 关闭", tmp_index + 1);
-                            thread_status[tmp_index].need_stop = true;
-                            waitThreadStop(tmp_index);
-                            sleepMilliseconds(1000);
+                            LOG_INFO("等待线程 %d 认证程序关闭", tmp_index + 1);
+                            restartThread(tmp_index);
                             mg_http_reply(c,
                                 204,
                                 "",
@@ -390,9 +389,11 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                         }
                         else
                         {
-                            createThread(dialerApp, (void*)(intptr_t)tmp_index);
-                            if (thread_status[tmp_index].thread_status == 0)
+                            LOG_INFO("正在启动认证程序, 序号: %d", tmp_index + 1);
+                            thread_status[tmp_index].dialer_context.runtime_status.is_running = true;
+                            if (thread_status[tmp_index].dialer_context.runtime_status.is_running)
                             {
+                                LOG_INFO("认证程序启动成功, 序号: %d", tmp_index + 1);
                                 mg_http_reply(c,
                                     204,
                                     "",
@@ -400,12 +401,11 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                             }
                             else
                             {
-                                LOG_ERROR("认证线程启动失败，序号 %d", tmp_index);
+                                LOG_ERROR("认证程序启动失败, 序号: %d", tmp_index + 1);
                                 mg_http_reply(c,
                                     400,
                                     "Content-Type: text/plain;charset=utf-8\r\n",
-                                    "启动认证线程失败, 状态码: %d",
-                                    thread_status[tmp_index].thread_status);
+                                    "启动认证程序失败");
                             }
                         }
                     }
@@ -531,9 +531,6 @@ static void logFn(const char ch, void *param)
 
 void startWebServer()
 {
-    network_status = checkNetworkStatus();
-    getAdapters();
-    threadAutoStart();
     struct mg_mgr mgr;
     mg_log_level = MG_LL_VERBOSE;
     mg_log_set_fn(logFn, NULL);
@@ -543,9 +540,6 @@ void startWebServer()
     LOG_INFO("Web 服务器已启动，后台访问地址: http://127.0.0.1:8888/");
     while (is_webserver_running)
     {
-        for (int i = 0; i < MAX_DIALER_COUNT; i++) checkThreadStatus();
-        network_status = checkNetworkStatus();
-        getAdapters();
         mg_mgr_poll(&mgr, 1000);
     }
     mg_mgr_free(&mgr);

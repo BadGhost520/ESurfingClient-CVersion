@@ -4,11 +4,12 @@
 
 #include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/utils/Logger.h"
+#include "headFiles/DialerClient.h"
 #include "headFiles/States.h"
+
 
 SchoolConnectionStatus school_connection_status[MAX_DIALER_COUNT] = {0};
 ThreadStatus thread_status[MAX_DIALER_COUNT] = {0};
-__thread int thread_index = -1;
 int64_t g_running_time;
 Adapters adaptor[16] = {0};
 
@@ -23,7 +24,7 @@ static void setHostname()
     strBytes[2], strBytes[3],
     strBytes[4]);
     LOG_DEBUG("HOST_NAME: %s", host_name);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.host_name, HOST_NAME_LENGTH, "%s", host_name);
+    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name, HOST_NAME_LENGTH, "%s", host_name);
 }
 
 static void setRandomClientId()
@@ -44,7 +45,7 @@ static void setRandomClientId()
         random_bytes[14], random_bytes[15]);
     for (int i = 0; client_id[i]; i++) client_id[i] = (char)tolower((unsigned char)client_id[i]);
     LOG_DEBUG("New Client Id: %s", client_id);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.client_id, CLIENT_ID_LENGTH, "%s", client_id);
+    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id, CLIENT_ID_LENGTH, "%s", client_id);
 }
 
 static void setRandomMacAddress()
@@ -58,12 +59,12 @@ static void setRandomMacAddress()
     macBytes[2], macBytes[3],
     macBytes[4], macBytes[5]);
     LOG_DEBUG("New MAC: %s", mac_address);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.mac_address, MAC_ADDRESS_LENGTH, "%s", mac_address);
+    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.mac_address, MAC_ADDRESS_LENGTH, "%s", mac_address);
 }
 
 void refreshStates()
 {
-    snprintf(thread_status[thread_index].dialer_context.auth_config.algo_id, ALGO_ID_LENGTH, "00000000-0000-0000-0000-000000000000");
+    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.algo_id, ALGO_ID_LENGTH, "00000000-0000-0000-0000-000000000000");
     setHostname();
     setRandomClientId();
     setRandomMacAddress();

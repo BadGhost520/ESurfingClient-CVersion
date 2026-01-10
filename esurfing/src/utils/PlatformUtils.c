@@ -62,20 +62,21 @@ void getAdapters()
             int i = 0, j = 0;
             while (pAdapter)
             {
-                if (strstr(pAdapter->Description, "Virtual") != NULL)
-                {
-                    pAdapter = pAdapter->Next;
-                    continue;
-                }
                 snprintf(adaptor[i].name, ADAPTER_NAME_LENGTH, "%s", pAdapter->Description);
                 snprintf(adaptor[i].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
+                LOG_VERBOSE("IP: %s", pAdapter->IpAddressList.IpAddress.String);
                 if (school_network_symbol[0] != '\0')
                 {
+                    LOG_VERBOSE("尝试匹配校园网 IP, 正在匹配的 IP: %s, 匹配特征: %s", pAdapter->IpAddressList.IpAddress.String, school_network_symbol);
                     if (strstr(pAdapter->IpAddressList.IpAddress.String, school_network_symbol) != NULL && j < MAX_DIALER_COUNT)
                     {
                         snprintf(school_connection_status[j].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
                         LOG_VERBOSE("获取到校园网 IP: %s", school_connection_status[j].ip);
                         j++;
+                    }
+                    else
+                    {
+                        LOG_VERBOSE("未能匹配校园网 IP");
                     }
                 }
                 pAdapter = pAdapter->Next;
@@ -97,7 +98,6 @@ void getAdapters()
             struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
             if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)))
             {
-                if (strstr(ifa->ifa_name, "docker") != NULL) continue;
                 snprintf(adaptor[count].name, ADAPTER_NAME_LENGTH, "%s", ifa->ifa_name);
                 snprintf(adaptor[count].ip, IP_LENGTH, "%s", ip);
                 count++;
@@ -310,14 +310,14 @@ char* createXMLPayload(const XmlChoose choose)
             "    <gwip>%s</gwip>\n"
             "%s",
             xml_header,
-            safeStr(thread_status[thread_index].dialer_context.auth_config.user_agent),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id),
             currentTime,
-            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.client_ip),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.mac_address),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.ac_ip),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_ip),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.mac_address),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ac_ip),
             xml_footer
         );
         break;
@@ -332,12 +332,12 @@ char* createXMLPayload(const XmlChoose choose)
             "    <passwd>%s</passwd>\n"
             "%s",
             xml_header,
-            safeStr(thread_status[thread_index].dialer_context.auth_config.user_agent),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.ticket),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket),
             currentTime,
-            safeStr(thread_status[thread_index].dialer_context.options.usr),
-            safeStr(thread_status[thread_index].dialer_context.options.pwd),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.options.usr),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.options.pwd),
             xml_footer
         );
         break;
@@ -356,14 +356,14 @@ char* createXMLPayload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "%s",
             xml_header,
-            safeStr(thread_status[thread_index].dialer_context.auth_config.user_agent),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.client_id),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id),
             currentTime,
-            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.client_ip),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.ticket),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.mac_address),
-            safeStr(thread_status[thread_index].dialer_context.auth_config.host_name),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_ip),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.mac_address),
+            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
             xml_footer
         );
         break;
@@ -428,18 +428,6 @@ char* cleanCDATA(const char* text)
     return extractBetweenTags(text, "<![CDATA[", "]]>");
 }
 
-void checkThreadStatus()
-{
-    for (int i = 0; i < MAX_DIALER_COUNT; i++)
-    {
-        if (thread_status[i].thread_is_running && !thread_status[i].dialer_context.runtime_status.is_running)
-        {
-            LOG_INFO("线程 %d 程序已停止运行, 但线程未退出, 正在退出", i + 1);
-            waitThreadStop(i);
-        }
-    }
-}
-
 void createThread(void*(* func)(void*), void* arg)
 {
     const int index = (int)(intptr_t)arg;
@@ -451,8 +439,20 @@ void createThread(void*(* func)(void*), void* arg)
 void waitThreadStop(const int index)
 {
     pthread_join(thread_status[index].thread, NULL);
-    thread_status[index].thread_is_running = false;
     LOG_INFO("线程: %d 已退出", index + 1);
+}
+
+void restartThread(const int index)
+{
+    LOG_INFO("重启认证线程 %d", index + 1);
+    thread_status[index].need_stop = true;
+    while (thread_status[index].need_stop)
+    {
+        sleepMilliseconds(1000);
+    }
+    thread_status[index].thread_is_running = false;
+    waitThreadStop(index);
+    createThread(dialerApp, (void*)(intptr_t)index);
 }
 
 void threadAutoStart()
@@ -462,15 +462,15 @@ void threadAutoStart()
         if (thread_status[i].dialer_context.options.auto_start)
         {
             LOG_INFO("线程 %d 自启中", i + 1);
-            createThread(dialerApp, (void*)(intptr_t)i);
-            sleepMilliseconds(6000);
+            sleepMilliseconds(3000);
+            thread_status[i].dialer_context.runtime_status.is_running = true;
         }
     }
 }
 
 const char* getThreadName()
 {
-    switch (thread_index)
+    switch (thread_local_args.thread_index)
     {
     case -1:
         return "主线程";

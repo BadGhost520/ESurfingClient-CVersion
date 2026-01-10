@@ -1,6 +1,8 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include "States.h"
+
 #define KEEP_RETRY_LENGTH 8
 #define KEEP_URL_LENGTH 80
 #define TERM_URL_LENGTH 80
@@ -12,6 +14,13 @@ typedef struct
     char keep_url[KEEP_URL_LENGTH];
     char term_url[TERM_URL_LENGTH];
 } ClientData;
+
+typedef struct
+{
+    int thread_index;
+    char ip[IP_LENGTH];
+    bool can_run;
+} ThreadArgs;
 
 typedef enum
 {
@@ -25,6 +34,10 @@ typedef enum
     AUTH_FAILURE = 0,
     AUTH_SUCCESS = 1,
 } AuthStatus;
+
+extern __thread ClientData client_data;
+extern __thread ThreadArgs thread_local_args;
+extern ThreadArgs args[MAX_DIALER_COUNT];
 
 /**
  * 登出函数

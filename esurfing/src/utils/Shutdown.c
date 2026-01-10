@@ -36,25 +36,24 @@ static void mainStop()
 
 static void adapterStop()
 {
-    if (thread_status[thread_index].dialer_context.runtime_status.is_initialized)
+    if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_initialized)
     {
-        if (thread_status[thread_index].dialer_context.runtime_status.is_authed) term();
+        if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_authed) term();
         freeSession();
     }
-    memset(&thread_status[thread_index].dialer_context, 0, sizeof(DialerContext));
-    if (!thread_status[0].dialer_context.runtime_status.is_running && !thread_status[1].dialer_context.runtime_status.is_running)
-    {
-        memset(&last_location, 0, sizeof(last_location));
-    }
+    LOG_DEBUG("清理资源中");
+    memset(&thread_status[thread_local_args.thread_index].dialer_context, 0, sizeof(DialerContext));
+    LOG_DEBUG("清理完成");
 }
 
 void checkAdapterStop()
 {
-    if (thread_status[thread_index].need_stop)
+    if (thread_status[thread_local_args.thread_index].need_stop)
     {
-        LOG_INFO("线程 %d 正在关闭", thread_index + 1);
-        thread_status[thread_index].need_stop = false;
+        LOG_INFO("认证程序 %d 正在关闭", thread_local_args.thread_index + 1);
         adapterStop();
+        thread_status[thread_local_args.thread_index].need_stop = false;
+        LOG_INFO("认证程序 %d 已关闭", thread_local_args.thread_index + 1);
     }
 }
 
@@ -63,9 +62,12 @@ void shut(const int exitCode)
     if (thread_status[0].thread_is_running || thread_status[1].thread_is_running)
     {
         LOG_INFO("等待子线程关闭");
-        for (int i = 0; i < MAX_DIALER_COUNT; i++) thread_status[i].need_stop = true;
-        sleepMilliseconds(5000);
-        checkThreadStatus();
+        for (int i = 0; i < MAX_DIALER_COUNT; i++)
+        {
+            thread_status[i].thread_is_running = false;
+            thread_status[i].need_stop = true;
+            waitThreadStop(i);
+        }
     }
     LOG_INFO("主线程正在关闭");
     mainStop();

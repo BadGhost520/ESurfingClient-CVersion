@@ -90,7 +90,6 @@ typedef struct
 
 extern SchoolConnectionStatus school_connection_status[MAX_DIALER_COUNT];
 extern ThreadStatus thread_status[MAX_DIALER_COUNT];
-extern __thread int thread_index;
 extern int64_t g_running_time;
 extern Adapters adaptor[16];
 

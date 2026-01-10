@@ -130,11 +130,6 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
 char* cleanCDATA(const char* text);
 
 /**
- * 检查线程是否需要退出
- */
-void checkThreadStatus();
-
-/**
  * 创建线程函数
  * @param func 线程要执行的函数
  * @param arg 参数
@@ -146,6 +141,12 @@ void createThread(void*(* func)(void*), void* arg);
  * @param index 线程下标
  */
 void waitThreadStop(int index);
+
+/**
+ * 重启线程
+ * @param index 线程下标
+ */
+void restartThread(int index);
 
 /**
  * 线程自启

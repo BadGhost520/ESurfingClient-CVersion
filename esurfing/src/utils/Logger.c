@@ -140,13 +140,13 @@ static void loggerWriteToFile(const char* message)
 void loggerLog(const LogLevel level, const char* file, const int line, const char* format, ...)
 {
     if (level > gLoggerConfig.level) return;
-    va_list args;
+    va_list local_args;
     char message[2048];
     char finalMessage[2560];
     update_time = currentTimeMillis();
-    va_start(args, format);
-    vsnprintf(message, sizeof(message), format, args);
-    va_end(args);
+    va_start(local_args, format);
+    vsnprintf(message, sizeof(message), format, local_args);
+    va_end(local_args);
     char* timestamp = getTime(CONSOLE_FORMAT);
     snprintf(finalMessage, sizeof(finalMessage),
         "[%s] [%s] [%s] [%s:%d] %s\n",

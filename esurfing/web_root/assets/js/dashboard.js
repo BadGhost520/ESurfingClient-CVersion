@@ -74,7 +74,7 @@ async function getSoftwareStatus() {
             );
             let i = 0;
             for (const thread of data.threads) {
-                if (thread.threadIsRunning) {
+                if (thread.isRunning) {
                     threadRunningStatus[i].textContent = "运行中";
                     threadRunningStatus[i].style.color = "green";
                 } else {
