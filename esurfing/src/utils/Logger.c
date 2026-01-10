@@ -29,6 +29,8 @@
 
 static const char fileName[] = "run.log";
 static const char rotateFileName[] = ".rotate.log";
+static int64_t update_time = 0;
+static int64_t last_get_time = 0;
 
 static LoggerConfig gLoggerConfig = {
     .level = LOG_LEVEL_INFO,
@@ -43,12 +45,13 @@ static const char* loggerLevelString(const LogLevel level)
 {
     switch (level)
     {
-        case LOG_LEVEL_DEBUG: return "DEBUG";
-        case LOG_LEVEL_INFO:  return "INFO";
-        case LOG_LEVEL_WARN:  return "WARN";
-        case LOG_LEVEL_ERROR: return "ERROR";
-        case LOG_LEVEL_FATAL: return "FATAL";
-        default:              return "UNKNOWN";
+    case LOG_LEVEL_VERBOSE: return "VERBOSE";
+    case LOG_LEVEL_DEBUG:   return "DEBUG";
+    case LOG_LEVEL_INFO:    return "INFO";
+    case LOG_LEVEL_WARN:    return "WARN";
+    case LOG_LEVEL_ERROR:   return "ERROR";
+    case LOG_LEVEL_FATAL:   return "FATAL";
+    default:                return "UNKNOWN";
     }
 }
 
@@ -136,10 +139,11 @@ static void loggerWriteToFile(const char* message)
 
 void loggerLog(const LogLevel level, const char* file, const int line, const char* format, ...)
 {
-    if (level < gLoggerConfig.level) return;
+    if (level > gLoggerConfig.level) return;
     va_list args;
     char message[2048];
     char finalMessage[2560];
+    update_time = currentTimeMillis();
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
     va_end(args);
@@ -159,21 +163,14 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
     free(timestamp);
 }
 
-void resetLoggerSettings(const bool is_debug)
-{
-    if (is_debug) gLoggerConfig.level = LOG_LEVEL_DEBUG;
-    else gLoggerConfig.level = LOG_LEVEL_INFO;
-}
-
-LogLevel getLoggerSettings()
+LogLevel getLoggerLevel()
 {
     return gLoggerConfig.level;
 }
 
-LoggerInitStatus loggerInit(const bool is_debug)
+LoggerInitStatus loggerInit(const LogLevel logger_level)
 {
-    if (is_debug) gLoggerConfig.level = LOG_LEVEL_DEBUG;
-    else gLoggerConfig.level = LOG_LEVEL_INFO;
+    gLoggerConfig.level = logger_level;
     if (ensureLogDir(gLoggerConfig.log_dir) != 0)
     {
         fprintf(stderr, "错误: 无法准备日志目录\n");
@@ -229,17 +226,14 @@ void loggerCleanup()
 
 static int createAtomicCopy(const char* src, const char* dst)
 {
-    // 方法B: 回退到复制（对于几百KB的文件很快）
     int src_fd = open(src, O_RDONLY);
     if (src_fd < 0) return -1;
-
     int dst_fd = open(dst, O_WRONLY | O_CREAT | O_EXCL, 0644);
     if (dst_fd < 0)
     {
         close(src_fd);
         return -1;
     }
-
     struct stat st;
     if (fstat(src_fd, &st) != 0 || st.st_size == 0)
     {
@@ -248,8 +242,6 @@ static int createAtomicCopy(const char* src, const char* dst)
         remove(dst);
         return -1;
     }
-
-    // 对于小文件，使用sendfile更高效（Linux）
 #ifdef __linux__
     off_t offset = 0;
     if (sendfile(dst_fd, src_fd, &offset, st.st_size) == st.st_size)
@@ -259,8 +251,6 @@ static int createAtomicCopy(const char* src, const char* dst)
         return 0;
     }
 #endif
-
-    // 回退到普通复制
     char buffer[8192];
     ssize_t bytes;
     while ((bytes = read(src_fd, buffer, sizeof(buffer))) > 0)
@@ -268,56 +258,48 @@ static int createAtomicCopy(const char* src, const char* dst)
         if (write(dst_fd, buffer, bytes) != bytes)
             break;
     }
-
     close(src_fd);
     close(dst_fd);
-
     if (bytes < 0)
     {
         remove(dst);
         return -1;
     }
-
     return 0;
 }
 
-LogContent getLog()
+LogContent getLog(const bool check)
 {
-    LogContent result = {NULL, 0};
+    LogContent result = {NULL, 0, true};
     static char temp_path[256];
     static long temp_counter = 0;
-
-    // 1. 生成唯一的临时文件名
     snprintf(temp_path, sizeof(temp_path),
              "%s.web_%ld_%ld.tmp",
              gLoggerConfig.log_file,
              (long)time(NULL),
              __sync_fetch_and_add(&temp_counter, 1));
-
-    // 2. 使用rename实现原子复制（比copy更高效）
+    if (last_get_time == update_time && check)
+    {
+        result.is_new = false;
+        return result;
+    }
+    last_get_time = update_time;
     createAtomicCopy(gLoggerConfig.log_file, temp_path);
-
-    // 3. 安全读取临时文件
     FILE* file = fopen(temp_path, "r");
     if (!file)
     {
         remove(temp_path);
         return result;
     }
-
-    // 获取文件大小（临时文件不会被修改，所以安全）
     fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
+    const long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
-
-    if (file_size <= 0 || file_size > 10 * 1024 * 1024) // 限制10MB
+    if (file_size <= 0 || file_size > 10 * 1024 * 1024)
     {
         fclose(file);
         remove(temp_path);
         return result;
     }
-
-    // 分配内存
     result.data = (char*)malloc(file_size + 1);
     if (!result.data)
     {
@@ -325,15 +307,10 @@ LogContent getLog()
         remove(temp_path);
         return result;
     }
-
-    // 一次性读取（临时文件不会被并发写入）
-    size_t bytes_read = fread(result.data, 1, file_size, file);
+    const size_t bytes_read = fread(result.data, 1, file_size, file);
     result.data[bytes_read] = '\0';
     result.size = bytes_read;
-
-    // 4. 清理
     fclose(file);
     remove(temp_path);
-
     return result;
 }

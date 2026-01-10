@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include "../headFiles/utils/PlatformUtils.h"
-#include "../headFiles/utils/CheckAdapters.h"
 #include "../headFiles/webserver/WebServer.h"
 #include "../headFiles/webserver/mongoose.h"
 #include "../headFiles/DialerClient.h"
@@ -44,6 +43,7 @@ INCTXT(license, WEB_ROOT_PATH "/assets/license/LICENSE");
 int is_webserver_running = 0;
 static ConnectionStatus connection_status = {0};
 static const char* listenAddr = "http://0.0.0.0:8888";
+static NetworkStatus network_status = {0};
 
 static void fn(struct mg_connection *c, const int ev, void *ev_data)
 {
@@ -226,7 +226,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             // 获取联网状态信息
             if (mg_match(hm->uri, mg_str("/api/getNetworkStatus"), NULL))
             {
-                switch (checkNetworkStatus())
+                switch (network_status)
                 {
                 case REQUEST_SUCCESS:
                     connection_status.is_connected = true;
@@ -298,7 +298,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             // 获取适配器状态
             if (mg_match(hm->uri, mg_str("/api/getAdapterInfo"), NULL))
             {
-                char* response = getAdapterJSON();
+                char* response = getAdaptersJSON();
                 mg_http_reply(c,
                     200,
                     "Content-Type: application/json;charset=utf-8\r\n",
@@ -306,16 +306,37 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     response);
                 cJSON_free(response);
             }
+            // 更新内存日志内容
+            if (mg_match(hm->uri, mg_str("/api/updateLogs"), NULL))
+            {
+                const LogContent response = getLog(true);
+                if (response.is_new)
+                {
+                    mg_http_reply(c,
+                        200,
+                        "Content-Type: text/plain;charset=utf-8\r\n",
+                        "%s",
+                    response.data);
+                }
+                else
+                {
+                    mg_http_reply(c,
+                        204,
+                        "Content-Type: text/plain;charset=utf-8\r\n",
+                        "");
+                }
+                if (response.data) free(response.data);
+            }
             // 获取内存日志内容
             if (mg_match(hm->uri, mg_str("/api/getLogs"), NULL))
             {
-                const LogContent response = getLog();
+                const LogContent response = getLog(false);
                 mg_http_reply(c,
                     200,
                     "Content-Type: text/plain;charset=utf-8\r\n",
                     "%s",
-                    response.data);
-                free(response.data);
+                response.data);
+                if (response.data) free(response.data);
             }
             // 获取当前设置
             if (mg_match(hm->uri, mg_str("/api/getSettings"), NULL))
@@ -331,7 +352,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     cJSON_AddItemToArray(threads, thread);
                 }
                 cJSON_AddItemToObject(threads_settings, "threads", threads);
-                cJSON_AddBoolToObject(threads_settings, "debug", getLoggerSettings());
+                cJSON_AddBoolToObject(threads_settings, "debug", getLoggerLevel());
                 char* response = cJSON_Print(threads_settings);
                 cJSON_Delete(threads_settings);
                 mg_http_reply(c,
@@ -434,20 +455,99 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
     }
 }
 
+static void logFn(const char ch, void *param)
+{
+    static char buffer[512];
+    static int pos = 0;
+    if (ch == '\n' || pos >= sizeof(buffer) - 1)
+    {
+        if (pos > 0)
+        {
+            const char* web_log_level = strchr(buffer, ' ');
+            if (!web_log_level)
+            {
+                LOG_WARN("未知的 Web 日志: %s", buffer);
+                return;
+            }
+            const char* file_start = web_log_level + 3;
+            const char* file_end = strchr(file_start, ':');
+            if (!file_end)
+            {
+                LOG_WARN("未知的 Web 日志: %s", buffer);
+                return;
+            }
+            const size_t file_length = file_end - file_start;
+            char* file = malloc(file_length + 1);
+            if (!file)
+            {
+                LOG_WARN("分配内存失败");
+                return;
+            }
+            memcpy(file, file_start, file_length);
+            file[file_length] = '\0';
+            const char* file_line_start = file_end + 1;
+            const char* file_line_end = strchr(file_line_start, ':');
+            if (!file_line_end)
+            {
+                LOG_WARN("未知的 Web 日志: %s", buffer);
+                return;
+            }
+            const size_t file_line_length = file_line_end - file_line_start;
+            char* file_line_str = malloc(file_line_length + 1);
+            if (!file_line_str)
+            {
+                LOG_WARN("分配内存失败");
+                return;
+            }
+            memcpy(file_line_str, file_line_start, file_line_length);
+            file_line_str[file_line_length] = '\0';
+            const long long file_line = stringToLongLong(file_line_str);
+            const char* msg = file_line_end + 1;
+            switch(web_log_level[1])
+            {
+            case '1':
+                LOG_WEB_ERROR(file, file_line, "%s", msg);
+                break;
+            case '2':
+                LOG_WEB_INFO(file, file_line, "%s", msg);
+                break;
+            case '3':
+            case '4':
+                LOG_WEB_VERBOSE(file, file_line, "%s", msg);
+                break;
+            default:
+                LOG_WARN("未知等级的 Web 日志: %s", msg);
+            }
+            free(file);
+            free(file_line_str);
+        }
+        pos = 0;
+    }
+    else if (ch != '\r')
+    {
+        buffer[pos++] = ch;
+    }
+}
+
 void startWebServer()
 {
+    network_status = checkNetworkStatus();
+    getAdapters();
+    threadAutoStart();
     struct mg_mgr mgr;
+    mg_log_level = MG_LL_VERBOSE;
+    mg_log_set_fn(logFn, NULL);
     mg_mgr_init(&mgr);
     mg_http_listen(&mgr, listenAddr, fn, NULL);
-
-    LOG_INFO("Web 服务器已启动，后台访问地址: http://127.0.0.1:8888/");
-
     is_webserver_running = 1;
+    LOG_INFO("Web 服务器已启动，后台访问地址: http://127.0.0.1:8888/");
     while (is_webserver_running)
     {
+        for (int i = 0; i < MAX_DIALER_COUNT; i++) checkThreadStatus();
+        network_status = checkNetworkStatus();
+        getAdapters();
         mg_mgr_poll(&mgr, 1000);
     }
-
     mg_mgr_free(&mgr);
     LOG_INFO("Web 服务器已停止");
 }

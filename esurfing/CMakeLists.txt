@@ -35,7 +35,6 @@ add_executable(ESurfingClient
         src/cipher/KeyData.c
         src/webserver/WebServer.c
         src/webserver/mongoose.c
-        src/utils/CheckAdapters.c
         src/utils/PlatformUtils.c
         src/utils/Shutdown.c
         src/utils/Logger.c

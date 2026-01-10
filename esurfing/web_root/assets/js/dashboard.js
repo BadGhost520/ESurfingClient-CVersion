@@ -1,5 +1,8 @@
 let adapterName = [];
 let adapterIp = [];
+
+let schoolNetworkConnected = false;
+
 async function getNetworkStatus() {
     await axios({
         method: "get",
@@ -8,13 +11,13 @@ async function getNetworkStatus() {
         responseType: "json",
         responseEncoding: "utf-8",
     })
-        .then((response) => {
+        .then(response => {
             const data = response.data;
             const networkStatus = document.getElementById("network-status");
             const connectTime = document.getElementById("connect-time");
             const currentTime = document.getElementById("current-time");
             if (data.isConnected) {
-                networkStatus.textContent = "已连接";
+                networkStatus.textContent = "已连接互联网";
                 networkStatus.style.color = "green";
                 const now = Date.now();
                 const connectDuration = now - data.connectTime;
@@ -33,8 +36,12 @@ async function getNetworkStatus() {
                     Math.floor((connectDuration % (1000 * 60)) / 1000)
                 ).padStart(2, "0");
                 connectTime.textContent = `${day} 天 ${hours} 时 ${minutes} 分 ${seconds} 秒`;
+            } else if (schoolNetworkConnected) {
+                networkStatus.textContent = "已接入校园网, 未连接互联网";
+                networkStatus.style.color = "orange";
+                connectTime.textContent = "00 天 00 时 00 分 00 秒";
             } else {
-                networkStatus.textContent = "未连接";
+                networkStatus.textContent = "未接入校园网, 未连接互联网";
                 networkStatus.style.color = "red";
                 connectTime.textContent = "00 天 00 时 00 分 00 秒";
             }
@@ -60,7 +67,7 @@ async function getSoftwareStatus() {
         responseType: "json",
         responseEncoding: "utf-8",
     })
-        .then((response) => {
+        .then(response => {
             const data = response.data;
             const threadRunningStatus = document.querySelectorAll(
                 ".thread-running-status"
@@ -109,7 +116,7 @@ async function getThreadStatus() {
         timeout: 5000,
         responseType: "json",
         responseEncoding: "utf-8",
-    }).then((response) => {
+    }).then(response => {
         const data = response.data;
         const threadAuthStatus = document.querySelectorAll(".thread-auth-status");
         const threadAuthTime = document.querySelectorAll(".thread-auth-time");
@@ -165,25 +172,17 @@ async function getAdapterInfo() {
         responseType: "json",
         responseEncoding: "utf-8",
     })
-        .then((response) => {
+        .then(response => {
             const data = response.data;
             const adapterInfo = document.getElementById("adapter-info");
-            const schoolNetworkStatus = document.getElementById(
-                "school-network-status"
-            );
             adapterInfo.innerHTML = "";
             let count = 1;
+            let schoolNetworkCount = 0;
             for (const adapter of data.adapters) {
                 adapterName[count] = adapter.name;
                 adapterIp[count] = adapter.ip;
-                if (adapter.name.includes("Virtual") || adapter.name.includes("docker"))
-                    continue;
-                if (adapter.ip.includes("172.19")) {
-                    schoolNetworkStatus.textContent = "已连接";
-                    schoolNetworkStatus.style.color = "green";
-                } else {
-                    schoolNetworkStatus.textContent = "未连接";
-                    schoolNetworkStatus.style.color = "red";
+                if (adapter.ip.includes(data.school_network_symbol) && data.school_network_symbol !== '') {
+                    schoolNetworkCount++;
                 }
                 if (adapter.ip !== "0.0.0.0") {
                     adapterInfo.innerHTML += `
@@ -203,6 +202,7 @@ async function getAdapterInfo() {
                 }
                 count++;
             }
+            schoolNetworkConnected = schoolNetworkCount >= 1;
         })
         .catch((error) => {
             console.error(error);

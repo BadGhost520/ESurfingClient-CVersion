@@ -40,6 +40,17 @@ typedef struct
 } ByteArray;
 
 /**
+ * 获取适配器数据
+ */
+void getAdapters();
+
+/**
+ * 打包适配器数据
+ * @return JSON 文本
+ */
+char* getAdaptersJSON();
+
+/**
  * 文本转字节
  * @param str 文本数据
  * @return 字节数据
@@ -86,7 +97,7 @@ int randomBytes(unsigned char* buffer, size_t length);
  * 睡眠
  * @param milliseconds 毫秒
  */
-void sleepMilliseconds(int milliseconds);
+void sleepMilliseconds(long long milliseconds);
 
 /**
  * 获取当前时间
@@ -119,6 +130,11 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
 char* cleanCDATA(const char* text);
 
 /**
+ * 检查线程是否需要退出
+ */
+void checkThreadStatus();
+
+/**
  * 创建线程函数
  * @param func 线程要执行的函数
  * @param arg 参数
@@ -130,6 +146,11 @@ void createThread(void*(* func)(void*), void* arg);
  * @param index 线程下标
  */
 void waitThreadStop(int index);
+
+/**
+ * 线程自启
+ */
+void threadAutoStart();
 
 /**
  * 获取当前线程名

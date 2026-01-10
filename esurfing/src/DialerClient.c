@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/utils/PlatformUtils.h"
@@ -9,7 +10,7 @@
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
 
-static ClientData client_data = {0};
+static __thread ClientData client_data = {0};
 
 RunningStatus term()
 {
@@ -29,7 +30,7 @@ RunningStatus term()
     LOG_DEBUG("发送加密登出内容: %s", encrypt);
     const HTTPResponse result = sessionPost(client_data.term_url, encrypt);
     free(encrypt);
-    if (result.status == REQUEST_ERROR)
+    if (result.status != REQUEST_SUCCESS)
     {
         LOG_ERROR("登出错误，错误代码: %d", result.status);
         free(result.body_data);
@@ -37,6 +38,19 @@ RunningStatus term()
     }
     free(result.body_data);
     thread_status[thread_index].dialer_context.runtime_status.is_authed = 0;
+    for (int i = 0; i < MAX_DIALER_COUNT; i++)
+    {
+        if (school_connection_status[i].ip[0] == '\0')
+        {
+            continue;
+        }
+        if (strcmp(thread_status[thread_index].dialer_context.auth_config.client_ip, school_connection_status[i].ip) == 0)
+        {
+            school_connection_status[i].is_used = false;
+            LOG_DEBUG("校园网 IP: %s 标记为未在被使用", school_connection_status[i].ip);
+            break;
+        }
+    }
     return RUNNING_SUCCESS;
 }
 
@@ -334,7 +348,7 @@ void* dialerApp(void* arg)
     thread_status[thread_index].dialer_context.runtime_status.is_running = 1;
     refreshStates();
     LOG_INFO("认证线程启动中，序号: %d", thread_index + 1);
-    sleepMilliseconds(5000);
+    sleepMilliseconds(3000);
     while (thread_status[thread_index].dialer_context.runtime_status.is_running)
     {
         if (currentTimeMillis() - thread_status[thread_index].dialer_context.auth_time >= 172200000 && thread_status[thread_index].dialer_context.auth_time != 0)

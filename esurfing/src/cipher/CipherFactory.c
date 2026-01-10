@@ -30,7 +30,7 @@ extern cipherInterfaceT* create_des_ecb_six_pc_cipher(const uint8_t* key0, const
                                                         const uint8_t* key2, const uint8_t* key3,
                                                         const uint8_t* key4, const uint8_t* key5);
 
-static cipherInterfaceT* cipher = NULL;
+static __thread cipherInterfaceT* cipher = NULL;
 
 static cipherInterfaceT* cipherFactoryCreate(const char* algo_id)
 {

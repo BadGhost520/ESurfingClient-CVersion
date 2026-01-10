@@ -1,11 +1,9 @@
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../headFiles/webserver/WebServer.h"
 #include "../headFiles/utils/Shutdown.h"
-
-#include <string.h>
-
 #include "../headFiles/utils/Logger.h"
 #include "../headFiles/DialerClient.h"
 #include "../headFiles/Session.h"
@@ -43,6 +41,7 @@ static void adapterStop()
         freeSession();
     }
     memset(&thread_status[thread_index], 0, sizeof(ThreadStatus));
+    thread_status[thread_index].thread_is_running = true;
 }
 
 void checkAdapterStop()
@@ -62,6 +61,7 @@ void shut(const int exitCode)
         LOG_INFO("等待子线程关闭");
         for (int i = 0; i < MAX_DIALER_COUNT; i++) thread_status[i].need_stop = true;
         sleepMilliseconds(5000);
+        checkThreadStatus();
     }
     LOG_INFO("主线程正在关闭");
     mainStop();
@@ -75,7 +75,6 @@ void initShutdown()
         LOG_ERROR("信号 SIGINT");
         exit(1);
     }
-
     if (signal(SIGTERM, signalHandler) == SIG_ERR)
     {
         LOG_ERROR("信号 SIGTERM");

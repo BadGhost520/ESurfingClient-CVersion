@@ -6,9 +6,11 @@
 #include "headFiles/utils/Logger.h"
 #include "headFiles/States.h"
 
-__thread int thread_index = -1;
+SchoolConnectionStatus school_connection_status[MAX_DIALER_COUNT] = {0};
 ThreadStatus thread_status[MAX_DIALER_COUNT] = {0};
+__thread int thread_index = -1;
 int64_t g_running_time;
+Adapters adaptor[16] = {0};
 
 static void setHostname()
 {
@@ -69,12 +71,15 @@ void refreshStates()
 
 void setOpt(const Options opt, const int index)
 {
+    LOG_DEBUG("配置: #%d", index + 1);
     LOG_DEBUG("用户名: %s", opt.usr);
     LOG_DEBUG("密码: %s", opt.pwd);
     LOG_DEBUG("通道: %s", opt.chn);
+    LOG_DEBUG("自启: %s", opt.auto_start ? "是" : "否");
     snprintf(thread_status[index].dialer_context.options.usr, USR_LENGTH, "%s", opt.usr);
     snprintf(thread_status[index].dialer_context.options.pwd, PWD_LENGTH, "%s", opt.pwd);
     snprintf(thread_status[index].dialer_context.options.chn, CHN_LENGTH, "%s", opt.chn);
+    thread_status[index].dialer_context.options.auto_start = opt.auto_start;
     if (strcmp(opt.chn, "pc") == 0) snprintf(thread_status[index].dialer_context.auth_config.user_agent, USER_AGENT_LENGTH,  "CCTP/Linux64/1003");
     else if (strcmp(opt.chn, "phone") == 0) snprintf(thread_status[index].dialer_context.auth_config.user_agent, USER_AGENT_LENGTH, "CCTP/android64_vpn/2093");
     LOG_DEBUG("UA: %s", thread_status[index].dialer_context.auth_config.user_agent);

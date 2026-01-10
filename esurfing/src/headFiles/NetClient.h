@@ -1,6 +1,9 @@
 #ifndef ESURFINGCLIENT_NETCLIENT_H
 #define ESURFINGCLIENT_NETCLIENT_H
 
+#include <stddef.h>
+
+#define SCHOOL_NETWORK_SYMBOL 8
 #define LOCATION_LENGTH 256
 #define SCHOOL_ID_LENGTH 8
 #define DOMAIN_LENGTH 16
@@ -27,6 +30,8 @@ typedef struct {
     char* body_data;
     size_t body_size;
 } HTTPResponse;
+
+extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
 
 /**
  * 会话 POST

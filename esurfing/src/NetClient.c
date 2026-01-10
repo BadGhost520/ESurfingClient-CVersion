@@ -11,7 +11,8 @@
 static const char request_content_type[] = "application/x-www-form-urlencoded";
 static const char request_accept[] = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
 static const char generate_url[] = "http://connect.rom.miui.com/generate_204";
-static size_t location_size = 0;
+char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
+static char check_location[LOCATION_LENGTH];
 static char last_location[LOCATION_LENGTH];
 static char school_id[SCHOOL_ID_LENGTH];
 static char domain[DOMAIN_LENGTH];
@@ -68,7 +69,21 @@ static size_t headerCallback(const void *contents, const size_t size, const size
         while (*value == ' ') value++;
         const size_t valid_len = strcspn(value, "\r\n");
         snprintf(last_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
-        location_size = strlen(last_location);
+    }
+    return real_size;
+}
+
+static size_t headerCallbackCheck(const void *contents, const size_t size, const size_t nmemb, void* userdata)
+{
+    const size_t real_size = size * nmemb;
+    const char* header = contents;
+    if (strlen(check_location) > 0) return real_size;
+    if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
+    {
+        const char* value = header + 9;
+        while (*value == ' ') value++;
+        const size_t valid_len = strcspn(value, "\r\n");
+        snprintf(check_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
     }
     return real_size;
 }
@@ -263,6 +278,7 @@ NetworkStatus checkNetworkStatus()
     CURL* curl = curl_easy_init();
     HTTPResponse response = {0};
     curl_easy_setopt(curl, CURLOPT_URL, generate_url);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallbackCheck);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
     const CURLcode res = curl_easy_perform(curl);
@@ -277,7 +293,28 @@ NetworkStatus checkNetworkStatus()
     long response_code = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     curl_easy_cleanup(curl);
-    if (response_code < 200 || response_code >= 300) response.status = REQUEST_ERROR;
+    if (response_code < 200 || response_code >= 300)
+    {
+        if (response_code == 302 && school_network_symbol[0] == '\0')
+        {
+            const char* wlan_user_ip_tag = strstr(check_location, "wlanuserip");
+            if (wlan_user_ip_tag)
+            {
+                const char* wlan_user_ip_first_start = wlan_user_ip_tag + 11;
+                const char* wlan_user_ip_first_end = strchr(wlan_user_ip_first_start, '.');
+                if (wlan_user_ip_first_end)
+                {
+                    const char* wlan_user_ip_second_start = wlan_user_ip_first_end + 1;
+                    const char* wlan_user_ip_second_end = strchr(wlan_user_ip_second_start, '.');
+                    const size_t len = wlan_user_ip_second_end - wlan_user_ip_first_start;
+                    memcpy(school_network_symbol, wlan_user_ip_first_start, len);
+                    school_network_symbol[len] = '\0';
+                    LOG_DEBUG("获取到校园网 IP 特征: %s", school_network_symbol);
+                }
+            }
+        }
+        response.status = REQUEST_ERROR;
+    }
     else response.status = REQUEST_SUCCESS;
     return response.status;
 }
@@ -314,18 +351,10 @@ NetworkStatus checkAuthStatus()
         LOG_ERROR("提取门户配置失败");
         return REQUEST_ERROR;
     }
-    LOG_DEBUG("Portal Config: %s", portal_config);
     char* auth_url = XmlParser(portal_config, "auth-url");
     if (!auth_url)
     {
         LOG_ERROR("提取 Auth URL 失败");
-        return REQUEST_ERROR;
-    }
-    char* ticket_url = XmlParser(portal_config, "ticket-url");
-    free(portal_config);
-    if (!ticket_url)
-    {
-        LOG_ERROR("提取 Ticket URL 失败");
         return REQUEST_ERROR;
     }
     char* cleaned_auth_url = cleanCDATA(auth_url);
@@ -338,6 +367,13 @@ NetworkStatus checkAuthStatus()
     LOG_INFO("Auth URL: %s", cleaned_auth_url);
     snprintf(thread_status[thread_index].dialer_context.auth_config.auth_url, AUTH_URL_LENGTH, "%s", cleaned_auth_url);
     free(cleaned_auth_url);
+    char* ticket_url = XmlParser(portal_config, "ticket-url");
+    free(portal_config);
+    if (!ticket_url)
+    {
+        LOG_ERROR("提取 Ticket URL 失败");
+        return REQUEST_ERROR;
+    }
     char* cleaned_ticket_url = cleanCDATA(ticket_url);
     free(ticket_url);
     if (!cleaned_ticket_url)
@@ -354,7 +390,69 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("Client IP: %s", client_ip);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.client_ip, CLIENT_IP_LENGTH, "%s", client_ip);
+    snprintf(thread_status[thread_index].dialer_context.auth_config.client_ip, IP_LENGTH, "%s", client_ip);
+    int i = 0;
+    for (i = 0; i < MAX_DIALER_COUNT; i++)
+    {
+        if (school_connection_status[i].ip[0] == '\0')
+        {
+            continue;
+        }
+        if (school_connection_status[i].is_used)
+        {
+            LOG_WARN("校园网 IP #%d: %s 正在被使用", i + 1, school_connection_status[i].ip);
+        }
+        else if (strstr(school_connection_status[i].ip, client_ip) != NULL)
+        {
+            LOG_INFO("校园网 IP #%d: %s 标记为正在被使用", i + 1, school_connection_status[i].ip);
+            school_connection_status[i].is_used = true;
+            break;
+        }
+        else if (school_connection_status[0].is_used || school_connection_status[1].is_used)
+        {
+            const char* location = last_location;
+            const char* wlan_user_ip_tag = strstr(location, "wlanuserip");
+            if (!wlan_user_ip_tag)
+            {
+                LOG_ERROR("查找 wlanuserip 标志失败");
+                return REQUEST_ERROR;
+            }
+            const char* wlan_user_ip_start = wlan_user_ip_tag + 11;
+            const size_t len = wlan_user_ip_start - location;
+            char* modified_location_head = malloc(len + 1);
+            if (!modified_location_head)
+            {
+                LOG_ERROR("分配内存失败");
+                return REQUEST_ERROR;
+            }
+            memcpy(modified_location_head, location, len);
+            modified_location_head[len] = '\0';
+            const char* wlan_user_ip_end = strchr(wlan_user_ip_start, '&');
+            if (!wlan_user_ip_end)
+            {
+                LOG_ERROR("查找 wlanuserip 结尾失败");
+                return REQUEST_ERROR;
+            }
+            char modified_location[LOCATION_LENGTH] = {0};
+            strcat(modified_location, modified_location_head);
+            strcat(modified_location, school_connection_status[i].ip);
+            strcat(modified_location, wlan_user_ip_end);
+            LOG_DEBUG(modified_location);
+            snprintf(last_location, LOCATION_LENGTH, "%s", modified_location);
+            LOG_DEBUG("Last location: %s", last_location);
+            free(modified_location_head);
+            // LOG_INFO("校园网 IP #%d: %s 标记为正在被使用", i + 1, school_connection_status[i].ip);
+            // school_connection_status[i].is_used = true;
+            return REQUEST_REDIRECT;
+        }
+    }
+    if (i == MAX_DIALER_COUNT)
+    {
+        LOG_ERROR("没有可用的校园网 IP");
+        return REQUEST_ERROR;
+    }
+    LOG_INFO("Ticket URL: %s", thread_status[thread_index].dialer_context.auth_config.ticket_url);
+    LOG_INFO("Client IP: %s", thread_status[thread_index].dialer_context.auth_config.client_ip);
     char* ac_ip = extractUrlParam(cleaned_ticket_url, "wlanacip");
     free(cleaned_ticket_url);
     if (!ac_ip)
@@ -363,6 +461,7 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("AC IP: %s", ac_ip);
-    snprintf(thread_status[thread_index].dialer_context.auth_config.ac_ip, AC_IP_LENGTH, "%s", ac_ip);
+    snprintf(thread_status[thread_index].dialer_context.auth_config.ac_ip, IP_LENGTH, "%s", ac_ip);
+    free(ac_ip);
     return REQUEST_AUTHORIZATION;
 }

@@ -12,5 +12,4 @@ int main()
     g_running_time = currentTimeMillis();
     initShutdown();
     startWebServer();
-    return 1;
 }

@@ -12,14 +12,22 @@
 
 #include <sysinfoapi.h>
 #include <wincrypt.h>
+#include <winsock2.h>
+#include <iphlpapi.h>
 #include <windows.h>
 #include <io.h>
 
+#pragma comment(lib, "IPHLPAPI.lib")
+
 #else
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <ifaddrs.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
@@ -27,15 +35,97 @@
 #endif
 
 #include "../headFiles/utils/PlatformUtils.h"
+#include "../headFiles/DialerClient.h"
 #include "../headFiles/utils/minIni.h"
 #include "../headFiles/utils/Logger.h"
+#include "../headFiles/utils/cJSON.h"
+#include "../headFiles/NetClient.h"
 #include "../headFiles/States.h"
 
-static const char* xml_header =
+static const char xml_header[] =
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
     "<request>\n";
 
-static const char* xml_footer = "</request>\n";
+static const char xml_footer[] = "</request>\n";
+
+void getAdapters()
+{
+#ifdef _WIN32
+    PIP_ADAPTER_INFO pAdapterInfo = NULL;
+    ULONG ulOutBufLen = 0;
+    if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW)
+    {
+        pAdapterInfo = (PIP_ADAPTER_INFO)malloc(ulOutBufLen);
+        if (pAdapterInfo && GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == NO_ERROR)
+        {
+            PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
+            int i = 0, j = 0;
+            while (pAdapter)
+            {
+                if (strstr(pAdapter->Description, "Virtual") != NULL)
+                {
+                    pAdapter = pAdapter->Next;
+                    continue;
+                }
+                snprintf(adaptor[i].name, ADAPTER_NAME_LENGTH, "%s", pAdapter->Description);
+                snprintf(adaptor[i].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
+                if (school_network_symbol[0] != '\0')
+                {
+                    if (strstr(pAdapter->IpAddressList.IpAddress.String, school_network_symbol) != NULL && j < MAX_DIALER_COUNT)
+                    {
+                        snprintf(school_connection_status[j].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
+                        LOG_VERBOSE("获取到校园网 IP: %s", school_connection_status[j].ip);
+                        j++;
+                    }
+                }
+                pAdapter = pAdapter->Next;
+                i++;
+            }
+        }
+    }
+    if (pAdapterInfo) free(pAdapterInfo);
+#else
+    struct ifaddrs *ifaddrs_ptr, *ifa;
+    if (getifaddrs(&ifaddrs_ptr) == 0)
+    {
+        int count = 0;
+        for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next)
+        {
+            if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
+            if (strcmp(ifa->ifa_name, "lo") == 0) continue;
+            char ip[INET_ADDRSTRLEN];
+            struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
+            if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)))
+            {
+                if (strstr(ifa->ifa_name, "docker") != NULL) continue;
+                snprintf(adaptor[count].name, ADAPTER_NAME_LENGTH, "%s", ifa->ifa_name);
+                snprintf(adaptor[count].ip, IP_LENGTH, "%s", ip);
+                count++;
+            }
+        }
+        freeifaddrs(ifaddrs_ptr);
+    }
+#endif
+}
+
+char* getAdaptersJSON()
+{
+    cJSON* root = cJSON_CreateObject();
+    cJSON* adapters = cJSON_CreateArray();
+    for (int i = 0; i < 16; i++)
+    {
+        if (strlen(adaptor[i].name) == 0) break;
+        cJSON* adapter = cJSON_CreateObject();
+        cJSON_AddStringToObject(adapter, "name", adaptor[i].name);
+        cJSON_AddStringToObject(adapter, "ip", adaptor[i].ip);
+        cJSON_AddItemToArray(adapters, adapter);
+    }
+    cJSON_AddItemToObject(root, "adapters", adapters);
+    cJSON_AddStringToObject(root, "school_network_symbol", school_network_symbol);
+    char* json = cJSON_Print(root);
+    cJSON_Delete(root);
+    return json;
+}
 
 ByteArray stringToBytes(const char* str)
 {
@@ -126,7 +216,7 @@ int randomBytes(unsigned char* buffer, const size_t length)
 #endif
 }
 
-void sleepMilliseconds(const int milliseconds)
+void sleepMilliseconds(const long long milliseconds)
 {
     if (milliseconds <= 0) return;
 #ifdef _WIN32
@@ -296,6 +386,7 @@ char* createXMLPayload(const XmlChoose choose)
         free(xml);
         return NULL;
     }
+    LOG_DEBUG("创建 XML 完成");
     return xml;
 }
 
@@ -337,6 +428,18 @@ char* cleanCDATA(const char* text)
     return extractBetweenTags(text, "<![CDATA[", "]]>");
 }
 
+void checkThreadStatus()
+{
+    for (int i = 0; i < MAX_DIALER_COUNT; i++)
+    {
+        if (thread_status[i].thread_is_running && !thread_status[i].dialer_context.runtime_status.is_running)
+        {
+            LOG_INFO("线程 %d 程序已停止运行, 但线程未退出, 正在退出", i + 1);
+            waitThreadStop(i);
+        }
+    }
+}
+
 void createThread(void*(* func)(void*), void* arg)
 {
     const int index = (int)(intptr_t)arg;
@@ -350,6 +453,19 @@ void waitThreadStop(const int index)
     pthread_join(thread_status[index].thread, NULL);
     thread_status[index].thread_is_running = false;
     LOG_INFO("线程: %d 已退出", index + 1);
+}
+
+void threadAutoStart()
+{
+    for (int i = 0; i < MAX_DIALER_COUNT; i++)
+    {
+        if (thread_status[i].dialer_context.options.auto_start)
+        {
+            LOG_INFO("线程 %d 自启中", i + 1);
+            createThread(dialerApp, (void*)(intptr_t)i);
+            sleepMilliseconds(6000);
+        }
+    }
 }
 
 const char* getThreadName()
@@ -369,55 +485,67 @@ const char* getThreadName()
 
 void saveIni()
 {
-    LOG_INFO("正在保存配置文件");
+    LOG_INFO("正在更新配置文件");
     ini_puts("Adapter1", "usr", thread_status[0].dialer_context.options.usr, DIALER_CONFIG_FILE);
     ini_puts("Adapter1", "pwd", thread_status[0].dialer_context.options.pwd, DIALER_CONFIG_FILE);
     ini_puts("Adapter1", "chn", thread_status[0].dialer_context.options.chn, DIALER_CONFIG_FILE);
-
+    ini_putbool("Adapter1", "auto_start", thread_status[0].dialer_context.options.auto_start, DIALER_CONFIG_FILE);
     ini_puts("Adapter2", "usr", thread_status[1].dialer_context.options.usr, DIALER_CONFIG_FILE);
     ini_puts("Adapter2", "pwd", thread_status[1].dialer_context.options.pwd, DIALER_CONFIG_FILE);
     ini_puts("Adapter2", "chn", thread_status[1].dialer_context.options.chn, DIALER_CONFIG_FILE);
-
-    ini_putbool("Logger", "debug", !getLoggerSettings(), DIALER_CONFIG_FILE);
-    LOG_INFO("保存完成");
+    ini_putbool("Adapter2", "auto_start", thread_status[1].dialer_context.options.auto_start, DIALER_CONFIG_FILE);
+    ini_putl("Logger", "logger_level", getLoggerLevel(), DIALER_CONFIG_FILE);
+    LOG_INFO("更新完成");
 }
 
 void loadIni()
 {
     char* time_stamp = getTime(CONSOLE_FORMAT);
-    printf("[%s] [Preload] [INFO] 正在加载配置文件\n", time_stamp);
+    printf("[%s] [PRELOAD] [INFO] 正在加载配置文件\n", time_stamp);
     if (access(DIALER_CONFIG_FILE, F_OK) != 0)
     {
         time_stamp = getTime(CONSOLE_FORMAT);
-        printf("[%s] [Preload] [WARN] 配置文件不存在，正在创建默认配置文件\n", time_stamp);
+        printf("[%s] [PRELOAD] [WARN] 配置文件不存在，正在创建默认配置文件\n", time_stamp);
         free(time_stamp);
         ini_puts("Adapter1", "usr", "未配置", DIALER_CONFIG_FILE);
         ini_puts("Adapter1", "pwd", "未配置", DIALER_CONFIG_FILE);
         ini_puts("Adapter1", "chn", "phone", DIALER_CONFIG_FILE);
+        ini_putbool("Adapter1", "auto_start", false, DIALER_CONFIG_FILE);
         ini_puts("Adapter2", "usr", "未配置", DIALER_CONFIG_FILE);
         ini_puts("Adapter2", "pwd", "未配置", DIALER_CONFIG_FILE);
         ini_puts("Adapter2", "chn", "phone", DIALER_CONFIG_FILE);
-        ini_putbool("Logger", "debug", false, DIALER_CONFIG_FILE);
+        ini_putbool("Adapter2", "auto_start", false, DIALER_CONFIG_FILE);
+        ini_putl("Logger", "logger_level", 4, DIALER_CONFIG_FILE);
         const Options opt = {
             .usr = "未配置",
             .pwd = "未配置",
             .chn = "phone",
         };
         for (int i = 0; i < MAX_DIALER_COUNT; i++) setOpt(opt, i);
-        loggerInit(false);
+        loggerInit(4);
         LOG_INFO("创建完成并加载默认配置文件");
         return;
     }
     free(time_stamp);
+    const int logger_level = ini_getl("Logger", "logger_level", 4, DIALER_CONFIG_FILE);
+    loggerInit(logger_level);
     Options opt[MAX_DIALER_COUNT];
-    ini_gets("Adapter1", "usr", "未配置", opt[0].usr, USR_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter1", "pwd", "未配置", opt[0].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter1", "chn", "phone", opt[0].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter2", "usr", "未配置", opt[1].usr, USR_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter2", "pwd", "未配置", opt[1].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
-    ini_gets("Adapter2", "chn", "phone", opt[1].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    int len = 0;
+    len = ini_gets("Adapter1", "usr", "未配置", opt[0].usr, USR_LENGTH, DIALER_CONFIG_FILE);
+    if (len == 0) LOG_WARN("用户名 1 读取失败, 请检查配置");
+    len = ini_gets("Adapter1", "pwd", "未配置", opt[0].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
+    if (len == 0) LOG_WARN("密码 1 读取失败, 请检查配置");
+    len = ini_gets("Adapter1", "chn", "phone", opt[0].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    if (len == 0) LOG_WARN("通道 1 读取失败, 使用默认通道");
+    opt[0].auto_start = ini_getbool("Adapter1", "auto_start", false, DIALER_CONFIG_FILE);
+    len = ini_gets("Adapter2", "usr", "未配置", opt[1].usr, USR_LENGTH, DIALER_CONFIG_FILE);
+    if (len == 0) LOG_WARN("用户名 2 读取失败, 请检查配置");
+    len = ini_gets("Adapter2", "pwd", "未配置", opt[1].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
+    if (len == 0) LOG_WARN("密码 2 读取失败, 请检查配置");
+    len = ini_gets("Adapter2", "chn", "phone", opt[1].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
+    if (len == 0) LOG_WARN("通道 2 读取失败, 使用默认通道");
+    opt[1].auto_start = ini_getbool("Adapter2", "auto_start", false, DIALER_CONFIG_FILE);
     for (int i = 0; i < MAX_DIALER_COUNT; i++) setOpt(opt[i], i);
-    const bool debug = ini_getbool("Logger", "debug", false, DIALER_CONFIG_FILE);
-    loggerInit(debug);
     LOG_INFO("配置文件加载完成");
+    saveIni();
 }
