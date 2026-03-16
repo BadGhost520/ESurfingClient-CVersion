@@ -15,11 +15,11 @@ on:
         default: 'all'
         options:
           - all
-          - 19.07.0~22.03.7-x86-64
-          - 23.05.0~24.10.5-x86-64
-          - 19.07.0~22.03.7-ramips-mt7621
-          - 23.05.0~24.10.5-ramips-mt7621
-          - 23.05.0~24.10.5-mediatek-filogic
+          - 19.07.0to22.03.7-x86-64
+          - 23.05.0to24.10.5-x86-64
+          - 19.07.0to22.03.7-ramips-mt7621
+          - 23.05.0to24.10.5-ramips-mt7621
+          - 23.05.0to24.10.5-mediatek-filogic
           - x86_64-linux
           - x86_64-windows
 
@@ -54,11 +54,11 @@ jobs:
           script: |
             const fs = require('fs');
             const workflows = [
-              { file: 'build-openwrt-19.07.0~22.03.7-x86-64.yml', platform: '19.07.0~22.03.7-x86-64' },
-              { file: 'build-openwrt-23.05.0~24.10.5-x86-64.yml', platform: '23.05.0~24.10.5-x86-64' },
-              { file: 'build-openwrt-19.07.0~22.03.7-ramips-mt7621.yml', platform: '19.07.0~22.03.7-ramips-mt7621' },
-              { file: 'build-openwrt-23.05.0~24.10.5-ramips-mt7621.yml', platform: '23.05.0~24.10.5-ramips-mt7621' },
-              { file: 'build-openwrt-23.05.0~24.10.5-mediatek-filogic.yml', platform: '23.05.0~24.10.5-mediatek-filogic' },
+              { file: 'build-openwrt-19.07.0to22.03.7-x86-64.yml', platform: '19.07.0to22.03.7-x86-64' },
+              { file: 'build-openwrt-23.05.0to24.10.5-x86-64.yml', platform: '23.05.0to24.10.5-x86-64' },
+              { file: 'build-openwrt-19.07.0to22.03.7-ramips-mt7621.yml', platform: '19.07.0to22.03.7-ramips-mt7621' },
+              { file: 'build-openwrt-23.05.0to24.10.5-ramips-mt7621.yml', platform: '23.05.0to24.10.5-ramips-mt7621' },
+              { file: 'build-openwrt-23.05.0to24.10.5-mediatek-filogic.yml', platform: '23.05.0to24.10.5-mediatek-filogic' },
               { file: 'build-x86_64-linux.yml', platform: 'x86_64-linux' },
               { file: 'build-x86_64-windows.yml', platform: 'x86_64-windows' }
             ];
