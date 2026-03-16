@@ -33,6 +33,7 @@ typedef struct {
 
 extern __thread char latest_location[LOCATION_LENGTH];
 extern __thread char check_location[LOCATION_LENGTH];
+
 extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
 
 /**
