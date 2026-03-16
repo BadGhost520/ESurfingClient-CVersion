@@ -1,31 +1,25 @@
-//
-// Created by bad_g on 2025/9/14.
-//
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "headFiles/States.h"
-#include "headFiles/Session.h"
-#include "headFiles/NetClient.h"
-#include "headFiles/utils/Logger.h"
-#include "headFiles/utils/PlatformUtils.h"
 #include "headFiles/cipher/CipherInterface.h"
+#include "headFiles/utils/PlatformUtils.h"
+#include "headFiles/utils/Logger.h"
+#include "headFiles/NetClient.h"
+#include "headFiles/Session.h"
+#include "headFiles/States.h"
+
+long long tick = 0;
 
 char* keepRetry;
 char* keepUrl;
 char* termUrl;
-long long tick = 0;
 
 void term()
 {
     const char* encrypt = sessionEncrypt(createXMLPayload(Term));
     LOG_DEBUG("发送加密登出内容: %s", encrypt);
     HTTPResponse* result = simPost(termUrl, encrypt);
-    if (result && result->status != RequestSuccess)
-    {
-        LOG_ERROR("登出错误，错误代码: %d", result->status);
-    }
+    if (result && result->status != RequestSuccess) LOG_ERROR("登出错误，错误代码: %d", result->status);
     isLogged = 0;
     freeResult(result);
 }
@@ -50,14 +44,10 @@ void heartbeat()
             free(decrypted_data);
         }
         else
-        {
             LOG_ERROR("解密心跳内容失败");
-        }
     }
     else
-    {
         LOG_ERROR("心跳响应失败，错误代码: %d", result->status);
-    }
     freeResult(result);
 }
 
@@ -103,9 +93,7 @@ void login()
         LOG_INFO("下一次重试: %s 秒后", keepRetry ? keepRetry : "NULL");
     }
     else
-    {
         LOG_ERROR("登录响应失败，错误代码: %d", result->status);
-    }
     freeResult(result);
 }
 
@@ -124,14 +112,10 @@ void getTicket()
             free(parsed_ticket);
         }
         else
-        {
             LOG_ERROR("获取 ticket 响应内容分析失败");
-        }
     }
     else
-    {
         LOG_ERROR("获取 ticket 响应失败，错误代码: %d", result->status);
-    }
     freeResult(result);
 }
 
@@ -146,9 +130,7 @@ void initSession()
         free(zsm.data);
     }
     else
-    {
         LOG_ERROR("初始化会话失败，错误代码: %d", result->status);
-    }
     freeResult(result);
 }
 
@@ -200,14 +182,10 @@ void run()
                 }
             }
             else
-            {
                 LOG_ERROR("String 转 int64 失败");
-            }
         }
         else
-        {
             LOG_INFO("网络已连接");
-        }
         sleepMilliseconds(1000);
         break;
     case RequestAuthorization:

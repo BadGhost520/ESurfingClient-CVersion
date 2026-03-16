@@ -1,16 +1,13 @@
-//
-// Created by bad_g on 2025/9/23.
-//
-#include <stdio.h>
-#include <string.h>
 #include <openssl/evp.h>
 #include <curl/curl.h>
+#include <string.h>
+#include <stdio.h>
 
-#include "headFiles/States.h"
+#include "headFiles/utils/PlatformUtils.h"
+#include "headFiles/utils/Logger.h"
 #include "headFiles/NetClient.h"
 #include "headFiles/Constants.h"
-#include "headFiles/utils/Logger.h"
-#include "headFiles/utils/PlatformUtils.h"
+#include "headFiles/States.h"
 
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
 {
@@ -88,10 +85,7 @@ char* calculateMD5(const char* data)
         return NULL;
     }
     EVP_MD_CTX_free(mdctx);
-    for (unsigned int i = 0; i < digestLen; i++)
-    {
-        sprintf(&MD5String[i*2], "%02x", (unsigned int)digest[i]);
-    }
+    for (unsigned int i = 0; i < digestLen; i++) sprintf(&MD5String[i*2], "%02x", (unsigned int)digest[i]);
     return MD5String;
 }
 
@@ -180,10 +174,7 @@ HTTPResponse* simPost(const char* url, const char* data)
     }
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    if (response.data)
-    {
-        free(response.data);
-    }
+    if (response.data) free(response.data);
     result->status = RequestSuccess;
     return result;
 }

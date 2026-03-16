@@ -124,5 +124,5 @@ jobs:
         with:
           name: esurfingclient-x64-linux
           path: |
-            ESurfingClient-x86_64-linux
+            esurfingclient-x64-linux.tar.gz
           retention-days: 30

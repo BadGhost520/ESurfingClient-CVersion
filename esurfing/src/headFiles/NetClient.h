@@ -1,7 +1,3 @@
-//
-// Created by bad_g on 2025/9/23.
-//
-
 #ifndef ESURFINGCLIENT_NETCLIENT_H
 #define ESURFINGCLIENT_NETCLIENT_H
 

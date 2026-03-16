@@ -1,15 +1,11 @@
-//
-// Created by bad_g on 2025/9/24.
-//
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "headFiles/cipher/CipherInterface.h"
 #include "headFiles/utils/PlatformUtils.h"
+#include "headFiles/utils/Logger.h"
 #include "headFiles/Session.h"
 #include "headFiles/States.h"
-#include "headFiles/cipher/CipherInterface.h"
-#include "headFiles/utils/Logger.h"
 
 void sessionFree()
 {
@@ -115,11 +111,7 @@ void initialize(const ByteArray* zsm)
 {
     LOG_DEBUG("开始初始化会话");
     if (load(zsm))
-    {
         isInitialized = 1;
-    }
     else
-    {
         isInitialized = 0;
-    }
 }

@@ -15,13 +15,11 @@ on:
         default: 'all'
         options:
           - all
-          - 21.02.7-ramips-mt7621
-          - 21.02.7-x86-64
-          - 22.03.7-x86-64
-          - 23.05.0-ramips-mt7621
-          - 24.10.4-mediatek-filogic
-          - 24.10.4-ramips-mt7621
-          - 24.10.4-x86-64
+          - 19.07.0~22.03.7-x86-64
+          - 23.05.0~24.10.5-x86-64
+          - 19.07.0~22.03.7-ramips-mt7621
+          - 23.05.0~24.10.5-ramips-mt7621
+          - 23.05.0~24.10.5-mediatek-filogic
           - x86_64-linux
           - x86_64-windows
 
@@ -56,13 +54,11 @@ jobs:
           script: |
             const fs = require('fs');
             const workflows = [
-              { file: 'build-openwrt-21.02.7-ramips-mt7621.yml', platform: '21.02.7-ramips-mt7621' },
-              { file: 'build-openwrt-21.02.7-x86-64.yml', platform: '21.02.7-x86-64' },
-              { file: 'build-openwrt-22.03.7-x86-64.yml', platform: '22.03.7-x86-64' },
-              { file: 'build-openwrt-23.05.0-ramips-mt7621.yml', platform: '23.05.0-ramips-mt7621' },
-              { file: 'build-openwrt-24.10.4-mediatek-filogic.yml', platform: '24.10.4-mediatek-filogic' },
-              { file: 'build-openwrt-24.10.4-ramips-mt7621.yml', platform: '24.10.4-ramips-mt7621' },
-              { file: 'build-openwrt-24.10.4-x86-64.yml', platform: '24.10.4-x86-64' },
+              { file: 'build-openwrt-19.07.0~22.03.7-x86-64.yml', platform: '19.07.0~22.03.7-x86-64' },
+              { file: 'build-openwrt-23.05.0~24.10.5-x86-64.yml', platform: '23.05.0~24.10.5-x86-64' },
+              { file: 'build-openwrt-19.07.0~22.03.7-ramips-mt7621.yml', platform: '19.07.0~22.03.7-ramips-mt7621' },
+              { file: 'build-openwrt-23.05.0~24.10.5-ramips-mt7621.yml', platform: '23.05.0~24.10.5-ramips-mt7621' },
+              { file: 'build-openwrt-23.05.0~24.10.5-mediatek-filogic.yml', platform: '23.05.0~24.10.5-mediatek-filogic' },
               { file: 'build-x86_64-linux.yml', platform: 'x86_64-linux' },
               { file: 'build-x86_64-windows.yml', platform: 'x86_64-windows' }
             ];
@@ -270,6 +266,8 @@ jobs:
                 fs.writeFileSync(tempZipPath, Buffer.from(download.data));
                 
                 console.log(`✅ Downloaded: ${artifact.name}.zip (${(download.data.byteLength / 1024).toFixed(1)} KB)`);
+            
+                if (artifact.name.includes('windows')) continue;
                 
                 // 解压 zip 文件
                 console.log(`📂 Extracting ${artifact.name}.zip...`);
@@ -314,15 +312,14 @@ jobs:
           RELEASE_PACKAGE="ESurfingClient-Build-${TIMESTAMP}"
 
           echo "📦 Creating release package: ${RELEASE_PACKAGE}.zip"
-
-          # 创建 zip 包（从当前目录打包 release-files 目录的内容）
-          zip -r "${RELEASE_PACKAGE}.zip" release-files/*
-
-          # 清理并重新设置 release-files 目录
+          mv release-files/* ./
+          
           rm -rf release-files
+
+          zip -r "${RELEASE_PACKAGE}.zip" ./*.zip ./*.ipk ./*.tar.gz
+
           mkdir release-files
 
-          # 将 zip 文件移到 release-files 目录
           mv "${RELEASE_PACKAGE}.zip" release-files/
 
           echo "✅ Release package ready: release-files/${RELEASE_PACKAGE}.zip"

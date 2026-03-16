@@ -179,10 +179,6 @@ jobs:
         
         # Copy executable to root directory for packaging
         cp esurfing/ESurfingClient-x86_64-windows.exe ./
-        
-        # Create ZIP archive with executable in root
-        echo "🗜️ Creating ZIP archive"
-        7z a esurfingclient-windows-x64.zip ESurfingClient-x86_64-windows.exe
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

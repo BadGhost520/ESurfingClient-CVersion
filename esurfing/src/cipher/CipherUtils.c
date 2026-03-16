@@ -1,6 +1,6 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "../headFiles/cipher/CipherUtils.h"
 
@@ -9,10 +9,7 @@ char* bytesToHexUpper(const uint8_t* bytes, const size_t len)
     if (!bytes || len == 0) return NULL;
     char* hex = safeMalloc(len * 2 + 1);
     if (!hex) return NULL;
-    for (size_t i = 0; i < len; i++)
-    {
-        sprintf(hex + i * 2, "%02X", bytes[i]);
-    }
+    for (size_t i = 0; i < len; i++) sprintf(hex + i * 2, "%02X", bytes[i]);
     hex[len * 2] = '\0';
     return hex;
 }
@@ -60,10 +57,7 @@ void* safeCalloc(const size_t count, const size_t size)
 
 void safeFree(void* ptr)
 {
-    if (ptr)
-    {
-        free(ptr);
-    }
+    if (ptr) free(ptr);
 }
 
 size_t safeStrLen(const char* str)
@@ -89,10 +83,7 @@ uint8_t* removePkcs7Padding(const uint8_t* data, const size_t data_len, size_t* 
     if (!data || !out_len || data_len == 0) return NULL;
     const uint8_t padding = data[data_len - 1];
     if (padding == 0 || padding > data_len) return NULL;
-    for (size_t i = data_len - padding; i < data_len; i++)
-    {
-        if (data[i] != padding) return NULL;
-    }
+    for (size_t i = data_len - padding; i < data_len; i++) if (data[i] != padding) return NULL;
     const size_t unpadded_len = data_len - padding;
     uint8_t* unpadded = safeMalloc(unpadded_len);
     memcpy(unpadded, data, unpadded_len);
@@ -100,10 +91,11 @@ uint8_t* removePkcs7Padding(const uint8_t* data, const size_t data_len, size_t* 
     return unpadded;
 }
 
-uint8_t* padToMultiple(const uint8_t* data, const size_t data_len, const size_t multiple, size_t* out_len) {
+uint8_t* padToMultiple(const uint8_t* data, const size_t data_len, const size_t multiple, size_t* out_len)
+{
     if (!data || !out_len || multiple == 0) return NULL;
-    size_t padding = (multiple - data_len % multiple) % multiple;
-    size_t padded_len = data_len + padding;
+    const size_t padding = (multiple - data_len % multiple) % multiple;
+    const size_t padded_len = data_len + padding;
     uint8_t* padded = safeCalloc(padded_len, 1);
     memcpy(padded, data, data_len);
     *out_len = padded_len;
@@ -149,8 +141,5 @@ void uint32ToBytesLe(const uint32_t value, uint8_t* bytes)
 void xorBytes(const uint8_t* a, const uint8_t* b, uint8_t* result, const size_t len)
 {
     if (!a || !b || !result) return;
-    for (size_t i = 0; i < len; i++)
-    {
-        result[i] = a[i] ^ b[i];
-    }
+    for (size_t i = 0; i < len; i++) result[i] = a[i] ^ b[i];
 }

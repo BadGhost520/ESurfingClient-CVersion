@@ -1,6 +1,3 @@
-//
-// Created by bad_g on 2025/9/24.
-//
 #ifndef ESURFINGCLIENT_SESSION_H
 #define ESURFINGCLIENT_SESSION_H
 

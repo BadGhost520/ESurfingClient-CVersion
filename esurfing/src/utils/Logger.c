@@ -1,22 +1,23 @@
-//
-// Created by bad_g on 2025/9/28.
-//
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
-#include "../headFiles/utils/Logger.h"
-#include "../headFiles/utils/PlatformUtils.h"
-#include "../headFiles/Options.h"
-
 #ifdef _WIN32
+
 #include <windows.h>
 #include <io.h>
+
 #else
-#include <unistd.h>
+
 #include <sys/stat.h>
+#include <unistd.h>
 #include <errno.h>
+
 #endif
+
+#include "../headFiles/utils/PlatformUtils.h"
+#include "../headFiles/utils/Logger.h"
+#include "../headFiles/Options.h"
 
 #ifdef _WIN32
     const char sep = '\\';
@@ -52,10 +53,7 @@ const char* loggerLevelString(const LogLevel level)
 long loggerGetFileSize(const char* filename)
 {
     FILE* file = fopen(filename, "r");
-    if (file == NULL)
-    {
-        return 0;
-    }
+    if (file == NULL) return 0;
     fseek(file, 0, SEEK_END);
     const long size = ftell(file);
     fclose(file);
@@ -64,10 +62,7 @@ long loggerGetFileSize(const char* filename)
 
 void loggerRotateFile()
 {
-    if (gLoggerConfig.fileHandle == NULL || strlen(gLoggerConfig.logFile) == 0 || gLoggerConfig.currentLines < gLoggerConfig.maxLines)
-    {
-        return;
-    }
+    if (gLoggerConfig.fileHandle == NULL || strlen(gLoggerConfig.logFile) == 0 || gLoggerConfig.currentLines < gLoggerConfig.maxLines) return;
     fclose(gLoggerConfig.fileHandle);
     gLoggerConfig.fileHandle = NULL;
 
@@ -80,7 +75,7 @@ void loggerRotateFile()
     }
 
     char rotatedFilename[PATH_MAX];
-    int result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
+    const int result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
     free(timeStr);
 
     if (result >= (int)sizeof(rotatedFilename))
@@ -93,10 +88,7 @@ void loggerRotateFile()
     rename(gLoggerConfig.logFile, rotatedFilename);
     gLoggerConfig.currentLines = 0;
     gLoggerConfig.fileHandle = fopen(gLoggerConfig.logFile, "a");
-    if (gLoggerConfig.fileHandle == NULL)
-    {
-        fprintf(stderr, "错误: 无法在轮转后重新打开日志文件 %s\n", gLoggerConfig.logFile);
-    }
+    if (gLoggerConfig.fileHandle == NULL) fprintf(stderr, "错误: 无法在轮转后重新打开日志文件 %s\n", gLoggerConfig.logFile);
 }
 
 int getExecutableDir(char* out)
@@ -104,96 +96,51 @@ int getExecutableDir(char* out)
 #ifdef _WIN32
     char path[MAX_PATH];
     const DWORD len = GetModuleFileNameA(NULL, path, MAX_PATH);
-    if (len == 0 || len >= MAX_PATH)
-    {
-        return -1;
-    }
+    if (len == 0 || len >= MAX_PATH) return -1;
     char* last = strrchr(path, sep);
-    if (!last)
-    {
-        return -1;
-    }
+    if (!last) return -1;
     *last = '\0';
     const int n = snprintf(out, 260, "%s", path);
-    if (n < 0 || (size_t)n >= 260)
-    {
-        return -1;
-    }
+    if (n < 0 || (size_t)n >= 260) return -1;
     return 0;
 #else
     char path[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (len <= 0 || len >= (ssize_t)sizeof(path))
-    {
-        return -1;
-    }
+    if (len <= 0 || len >= (ssize_t)sizeof(path)) return -1;
     path[len] = '\0';
     char* last = strrchr(path, sep);
-    if (!last)
-    {
-        return -1;
-    }
+    if (!last) return -1;
     *last = '\0';
     int n = snprintf(out, 260, "%s", path);
-    if (n < 0 || (size_t)n >= 260)
-    {
-        return -1;
-    }
+    if (n < 0 || (size_t)n >= 260) return -1;
     return 0;
 #endif
 }
 
 int ensureLogDir(char* out)
 {
-#ifdef WIN32
-    char dir[PATH_MAX];
-    if (getExecutableDir(dir) != 0)
-    {
-        return -1;
-    }
-#else
-    const char* dir = "/var/log/esurfing";
-    if (isDebug && !isSmallDevice && access("/etc/openwrt_release", F_OK) == 0)
-    {
-        dir = "/usr/esurfing";
-    }
-#endif
 #ifdef _WIN32
+    char dir[PATH_MAX];
+    if (getExecutableDir(dir) != 0) return -1;
     const int n = snprintf(out, 260, "%s%clogs", dir, sep);
-    if (n < 0 || (size_t)n >= 260)
-    {
-        return -1;
-    }
+    if (n < 0 || (size_t)n >= 260) return -1;
     if (!CreateDirectoryA(out, NULL))
     {
         const DWORD err = GetLastError();
-        if (err != ERROR_ALREADY_EXISTS)
-        {
-            return -1;
-        }
+        if (err != ERROR_ALREADY_EXISTS) return -1;
     }
 #else
+    const char* dir = "/var/log/esurfing";
+    if (isDebug && !isSmallDevice && access("/etc/openwrt_release", F_OK) == 0) dir = "/usr/esurfing";
     int n = snprintf(out, 260, "%s%clogs", dir, sep);
-    if (n < 0 || (size_t)n >= 260)
-    {
-        return -1;
-    }
+    if (n < 0 || (size_t)n >= 260) return -1;
     struct stat st;
     if (stat(out, &st) != 0)
     {
-        if (mkdir(dir, 0755) != 0 && errno != EEXIST)
-        {
-            return -1;
-        }
-        if (mkdir(out, 0755) != 0 && errno != EEXIST)
-        {
-            return -1;
-        }
+        if (mkdir(dir, 0755) != 0 && errno != EEXIST) return -1;
+        if (mkdir(out, 0755) != 0 && errno != EEXIST) return -1;
     }
-    else if (!S_ISDIR(st.st_mode))
-    {
-        return -1;
-    }
+    else if (!S_ISDIR(st.st_mode)) return -1;
 #endif
     return 0;
 }
@@ -201,13 +148,9 @@ int ensureLogDir(char* out)
 int loggerInit()
 {
     if (isDebug)
-    {
         gLoggerConfig.level = LOG_LEVEL_DEBUG;
-    }
     else
-    {
         gLoggerConfig.level = LOG_LEVEL_INFO;
-    }
     if (ensureLogDir(gLoggerConfig.logDir) != 0)
     {
         fprintf(stderr, "错误: 无法准备日志目录\n");
@@ -246,7 +189,7 @@ void loggerCleanup()
             }
 
             char newFilename[PATH_MAX];
-            int result = snprintf(newFilename, sizeof(newFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
+            const int result = snprintf(newFilename, sizeof(newFilename), "%s%c%s.log", gLoggerConfig.logDir, sep, timeStr);
             free(timeStr);
 
             if (result >= (int)sizeof(newFilename))
@@ -262,11 +205,7 @@ void loggerCleanup()
 
 void loggerWriteToConsole(const char* message)
 {
-#ifdef _WIN32
     printf("%s", message);
-#else
-    printf("%s", message);
-#endif
     fflush(stdout);
 }
 
@@ -281,10 +220,7 @@ void loggerWriteToFile(const char* message)
 
 void loggerLog(const LogLevel level, const char* file, const int line, const char* format, ...)
 {
-    if (level < gLoggerConfig.level)
-    {
-        return;
-    }
+    if (level < gLoggerConfig.level) return;
     va_list args;
     char message[2048];
     char finalMessage[2560];
@@ -301,10 +237,7 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
         message);
     loggerWriteToConsole(finalMessage);
     loggerWriteToFile(finalMessage);
-    if (gLoggerConfig.fileHandle != NULL)
-    {
-        gLoggerConfig.currentLines++;
-    }
+    if (gLoggerConfig.fileHandle != NULL) gLoggerConfig.currentLines++;
     loggerRotateFile();
     free(timestamp);
 }

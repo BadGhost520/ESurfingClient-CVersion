@@ -16,24 +16,9 @@ add_executable(ESurfingClient
         src/Client.c
         src/utils/PlatformUtils.c
         src/Constants.c
-        src/headFiles/Constants.h
         src/States.c
-        src/headFiles/States.h
         src/NetClient.c
-        src/headFiles/Session.h
         src/Session.c
-        src/headFiles/cipher/KeyData.h
-        src/headFiles/cipher/CipherUtils.h
-        src/headFiles/cipher/CipherInterface.h
-        src/headFiles/cipher/impl/zuc.h
-        src/headFiles/cipher/impl/sm4_ecb.h
-        src/headFiles/cipher/impl/sm4_cbc.h
-        src/headFiles/cipher/impl/mod_xtea_iv.h
-        src/headFiles/cipher/impl/mod_xtea.h
-        src/headFiles/cipher/impl/desede_ecb.h
-        src/headFiles/cipher/impl/desede_cbc.h
-        src/headFiles/cipher/impl/aes_ecb.h
-        src/headFiles/cipher/impl/aes_cbc.h
         src/cipher/KeyData.c
         src/cipher/CipherUtils.c
         src/cipher/CipherFactory.c
@@ -47,23 +32,14 @@ add_executable(ESurfingClient
         src/cipher/impl/aes_ecb.c
         src/cipher/impl/aes_cbc.c
         src/utils/Shutdown.c
-        src/headFiles/utils/Shutdown.h
-        src/headFiles/Options.h
         src/Options.c
         src/utils/Logger.c
-        src/headFiles/utils/Logger.h
         src/cipher/impl/desede_cbc_pc.c
-        src/headFiles/cipher/impl/desede_cbc_pc.h
         src/cipher/impl/aes_ecb_pc.c
         src/cipher/impl/aes_cbc_pc.c
         src/cipher/impl/mod_xtea_pc.c
-        src/headFiles/cipher/impl/mod_xtea_pc.h
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
-        src/headFiles/cipher/impl/mod_xtea_cbc_triple_pc.h
         src/cipher/impl/des_ecb_six_pc.c
-        src/headFiles/cipher/impl/aes_cbc_pc.h
-        src/headFiles/cipher/impl/aes_ecb_pc.h
-        src/headFiles/cipher/impl/des_ecb_six_pc.h
 )
 
 if(WIN32)

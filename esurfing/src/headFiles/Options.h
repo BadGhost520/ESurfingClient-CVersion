@@ -1,14 +1,10 @@
-//
-// Created by bad_g on 2025/9/27.
-//
-
 #ifndef ESURFINGCLIENT_OPTIONS_H
 #define ESURFINGCLIENT_OPTIONS_H
 
+extern int isSmallDevice;
+extern int isDebug;
 extern char* usr;
 extern char* pwd;
 extern char* chn;
-extern int isDebug;
-extern int isSmallDevice;
 
 #endif //ESURFINGCLIENT_OPTIONS_H

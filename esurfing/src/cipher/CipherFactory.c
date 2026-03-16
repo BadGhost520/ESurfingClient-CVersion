@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../headFiles/utils/Logger.h"
 #include "../headFiles/cipher/CipherInterface.h"
 #include "../headFiles/cipher/KeyData.h"
+#include "../headFiles/utils/Logger.h"
 
 extern cipherInterfaceT* create_aes_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
                                                      const uint8_t* iv1, const uint8_t* iv2);
@@ -34,10 +34,7 @@ cipherInterfaceT* cipher = NULL;
 
 cipherInterfaceT* cipherFactoryCreate(const char* algorithmId)
 {
-    if (!algorithmId)
-    {
-        return NULL;
-    }
+    if (!algorithmId) return NULL;
     // AES-CBC
     if (strcmp(algorithmId, "CAFBCBAD-B6E7-4CAB-8A67-14D39F00CE1E") == 0)
     {
@@ -193,10 +190,7 @@ cipherInterfaceT* cipherFactoryCreate(const char* algorithmId)
 
 void cipherFactoryDestroy()
 {
-    if (cipher && cipher->destroy)
-    {
-        cipher->destroy(cipher);
-    }
+    if (cipher && cipher->destroy) cipher->destroy(cipher);
     cipher = NULL;
     LOG_DEBUG("销毁加解密工厂");
 }
@@ -204,10 +198,7 @@ void cipherFactoryDestroy()
 int initCipher(const char* algoId)
 {
     LOG_DEBUG("开始初始化加解密工厂");
-    if (cipher != NULL)
-    {
-        cipherFactoryDestroy();
-    }
+    if (cipher != NULL) cipherFactoryDestroy();
     cipher = cipherFactoryCreate(algoId);
     if (cipher == NULL)
     {

@@ -1,8 +1,3 @@
-//
-// PlatformUtils.h - 跨平台工具函数
-// Created by bad_g on 2025/9/14.
-//
-
 #ifndef PLATFORMUTILS_H
 #define PLATFORMUTILS_H
 
