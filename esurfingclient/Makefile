@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
 PKG_VERSION:=1.1.1
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE:=esurfingclient.tar.gz
 PKG_SOURCE_URL:=file://$(TOPDIR)/dl
@@ -11,7 +11,6 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/esurfing
 PKG_HASH:=skip
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=curl openssl
-DEPENDS:=+libcurl +libopenssl +ca-bundle
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
