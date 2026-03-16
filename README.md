@@ -1,11 +1,11 @@
 # ESurfingClient-C
 
-**根据 Rsplwe 大蛇的 Kotlin 源码编写的 C 语言版本的 `广东` 天翼校园认证客户端** :+1:
+**根据 Rsplwe 大佬的 Kotlin 源码编写的 C 语言版本的 `广东` 天翼校园认证客户端** :+1:
 
 **优点是程序文件超级小(所有版本均是总共占用不超过 3MB 的储存空间😋)，跨平台跨架构能力超强**
 
 > [!TIP]
-> 正在紧锣密鼓地期末复习，所以更新会比较慢，看看放假前能不能写完吧
+> 正在努力恢复更新，刚开学有点懒懒的
 
 > [!NOTE]
 > 现在正在做 Web 前端，完成后可以更方便地管理程序
@@ -16,30 +16,20 @@
 
 # 目前支持的环境
 
-|系统|架构|版本(Linux 内核版本)|
-|----|----|----|
-|Windows|x86_64|All|
-|Linux|x86_64|All|
-|OpenWrt|x86_64|21.02.7(5.4.238)|
-|OpenWrt|x86_64|22.03.7(5.10.221)|
-|OpenWrt|x86_64|24.10.4(6.6.110)|
-|OpenWrt|Arm64-MTFilogic|24.10.4(6.6.110)|
-|OpenWrt|Mipsel_24kc-MT7621|21.02.7(5.4.238)|
-|OpenWrt|Mipsel_24kc-MT7621|23.05.0(5.15.134)|
-|OpenWrt|Mipsel_24kc-MT7621|24.10.4(6.6.110)|
+| 系统      | 架构                 | (OpenWrt) 版本    |
+|---------|--------------------|-----------------|
+| Windows | x86_64             | All             |
+| Linux   | x86_64             | All             |
+| OpenWrt | x86_64             | 19.07.0~24.10.5 |
+| OpenWrt | Mipsel_24kc-MT7621 | 19.07.0~24.10.5 |
+| OpenWrt | Arm64-MTFilogic    | 23.05.0~24.10.5 |
 
 > [!TIP]
 > 如果有其它兼容需求，可以提交一个 issue ，会尝试进行兼容
 > 
-> 务必要在 issue 中说明系统和架构
+> 务必要在 issue 中提供系统和 cpu 型号，架构等信息
 > 
-> 如果是 OpenWrt 系统，可以先查看自己系统的内核版本，尝试内核版本相近的 .ipk 包，或将 OpenWrt 系统版本更新到官方稳定版再请求适配
-> 
-> **不做快照版适配！**
-> 
-> **不做快照版适配！**
-> 
-> **不做快照版适配！**
+> 如果是 OpenWrt 系统，需要多提供一个系统支持的 libopenssl 版本，在软件包中可以查到，或者镜像网站也可以
 
 # 使用教程
 
@@ -72,7 +62,7 @@
 > [!WARNING]
 > 不要让我发现有人拿去做路由器贩卖
 
-# 赞助👍
+# 赞助 👍
 
 觉得好的话可以点击这个[神秘小链接](https://afdian.com/a/badghost)或者下边的微信赞赏码给偶打点钱哦，谢谢泥喵
 
@@ -85,3 +75,9 @@
 ![Please refresh](image/fund/1.png)
 
 ![Please refresh](image/fund/2.png)
+
+![Please refresh](image/fund/3.jpg)
+
+![Please refresh](image/fund/4.jpg)
+
+![Please refresh](image/fund/5.jpg)
