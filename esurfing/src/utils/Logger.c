@@ -5,6 +5,8 @@
 #include <time.h>
 #include <sys/stat.h>
 
+#include "../../inc/States.h"
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -18,8 +20,8 @@
 
 #endif
 
-#include "../headFiles/utils/PlatformUtils.h"
-#include "../headFiles/utils/Logger.h"
+#include "../../inc/utils/PlatformUtils.h"
+#include "../../inc/utils/Logger.h"
 
 #ifdef _WIN32
     static const char sep = '\\';
@@ -149,9 +151,9 @@ void loggerLog(const LogLevel level, const char* file, const int line, const cha
     va_end(local_args);
     char* timestamp = getTime(CONSOLE_FORMAT);
     snprintf(finalMessage, sizeof(finalMessage),
-        "[%s] [%s] [%s] [%s:%d] %s\n",
+        "[%s] [配置 %d] [%s] [%s:%d] %s\n",
         timestamp,
-        getThreadName(),
+        prog_index,
         loggerLevelString(level),
         strrchr(file, '/') ? strrchr(file, '/') + 1 : file,
         line,

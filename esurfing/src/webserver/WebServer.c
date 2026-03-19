@@ -1,14 +1,13 @@
 #include <stdio.h>
 
-#include "../headFiles/utils/PlatformUtils.h"
-#include "../headFiles/webserver/WebServer.h"
-#include "../headFiles/webserver/mongoose.h"
-#include "../headFiles/DialerClient.h"
-#include "../headFiles/utils/incbin.h"
-#include "../headFiles/utils/Logger.h"
-#include "../headFiles/utils/cJSON.h"
-#include "../headFiles/NetClient.h"
-#include "../headFiles/States.h"
+#include "../../inc/utils/PlatformUtils.h"
+#include "../../inc/webserver/WebServer.h"
+#include "../../inc/webserver/mongoose.h"
+#include "../../inc/utils/incbin.h"
+#include "../../inc/utils/Logger.h"
+#include "../../inc/utils/cJSON.h"
+#include "../../inc/NetClient.h"
+#include "../../inc/States.h"
 
 // HTML
 INCTXT(web_index, WEB_ROOT_PATH "/index.html");
@@ -347,9 +346,9 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                 for (int i = 0; i < MAX_DIALER_COUNT; i++)
                 {
                     cJSON* thread = cJSON_CreateObject();
-                    cJSON_AddStringToObject(thread, "username", thread_status[i].dialer_context.options.usr);
-                    cJSON_AddStringToObject(thread, "password", thread_status[i].dialer_context.options.pwd);
-                    cJSON_AddStringToObject(thread, "channel", thread_status[i].dialer_context.options.chn);
+                    cJSON_AddStringToObject(thread, "username", thread_status[i].dialer_context.adapter_config.usr);
+                    cJSON_AddStringToObject(thread, "password", thread_status[i].dialer_context.adapter_config.pwd);
+                    cJSON_AddStringToObject(thread, "channel", thread_status[i].dialer_context.adapter_config.chn);
                     cJSON_AddItemToArray(threads, thread);
                 }
                 cJSON_AddItemToObject(threads_settings, "threads", threads);
@@ -432,9 +431,9 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     const cJSON* index = cJSON_GetObjectItem(updateThread, "index");
                     if (index && cJSON_IsNumber(index))
                     {
-                        if (username && cJSON_IsString(username)) snprintf(thread_status[index->valueint].dialer_context.options.usr, USR_LENGTH, "%s", username->valuestring);
-                        if (password && cJSON_IsString(password)) snprintf(thread_status[index->valueint].dialer_context.options.pwd, PWD_LENGTH, "%s", password->valuestring);
-                        if (channel && cJSON_IsString(channel)) snprintf(thread_status[index->valueint].dialer_context.options.chn, CHN_LENGTH, "%s", channel->valuestring);
+                        if (username && cJSON_IsString(username)) snprintf(thread_status[index->valueint].dialer_context.adapter_config.usr, USR_LENGTH, "%s", username->valuestring);
+                        if (password && cJSON_IsString(password)) snprintf(thread_status[index->valueint].dialer_context.adapter_config.pwd, PWD_LENGTH, "%s", password->valuestring);
+                        if (channel && cJSON_IsString(channel)) snprintf(thread_status[index->valueint].dialer_context.adapter_config.chn, CHN_LENGTH, "%s", channel->valuestring);
                         thread_status[index->valueint].dialer_context.runtime_status.is_settings_changed = true;
                     }
                     cJSON_Delete(updateThread);

@@ -3,11 +3,11 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "headFiles/utils/PlatformUtils.h"
-#include "headFiles/utils/Logger.h"
-#include "headFiles/DialerClient.h"
-#include "headFiles/NetClient.h"
-#include "headFiles/States.h"
+#include "../inc/utils/PlatformUtils.h"
+#include "../inc/utils/Logger.h"
+#include "../inc/DialerClient.h"
+#include "../inc/NetClient.h"
+#include "../inc/States.h"
 
 static const char request_content_type[] = "application/x-www-form-urlencoded";
 static const char request_accept[] = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";

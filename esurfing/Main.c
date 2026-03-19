@@ -1,19 +1,19 @@
 #include <stdio.h>
 
-#include "headFiles/webserver/WebServer.h"
-#include "headFiles/utils/PlatformUtils.h"
-#include "headFiles/utils/Shutdown.h"
-#include "headFiles/utils/Logger.h"
-#include "headFiles/DialerClient.h"
-#include "headFiles/NetClient.h"
-#include "headFiles/States.h"
+#include "inc/webserver/WebServer.h"
+#include "inc/utils/PlatformUtils.h"
+#include "inc/utils/Shutdown.h"
+#include "inc/utils/Logger.h"
+#include "inc/DialerClient.h"
+#include "inc/NetClient.h"
+#include "inc/States.h"
 
 int main()
 {
 #ifdef _WIN32
     system("chcp 65001 >nul");
 #endif
-    loadIni();
+    loadJSON();
     g_running_time = currentTimeMillis();
     initShutdown();
     checkNetworkStatus();

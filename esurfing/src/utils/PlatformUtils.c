@@ -1,5 +1,4 @@
 #include <curl/curl.h>
-#include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -34,17 +33,14 @@
 
 #endif
 
-#include "../headFiles/utils/PlatformUtils.h"
-#include "../headFiles/DialerClient.h"
-#include "../headFiles/utils/minIni.h"
-#include "../headFiles/utils/Logger.h"
-#include "../headFiles/utils/cJSON.h"
-#include "../headFiles/NetClient.h"
-#include "../headFiles/States.h"
+#include "../../inc/utils/PlatformUtils.h"
+#include "../../inc/utils/Logger.h"
+#include "../../inc/utils/cJSON.h"
+#include "../../inc/NetClient.h"
+#include "../../inc/States.h"
 
-static const char xml_header[] =
-    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-    "<request>\n";
+static const char xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+                                 "<request>\n";
 
 static const char xml_footer[] = "</request>\n";
 
@@ -228,12 +224,10 @@ void sleepMilliseconds(const long long milliseconds)
 
 char* getTime(const TimeFormat format)
 {
-    char* timeStr = malloc(32);
-    if (!timeStr) return NULL;
+    static char timeStr[32] = "";
     time_t raw_time;
     if (time(&raw_time) == (time_t)-1)
     {
-        free(timeStr);
         fprintf(stderr, "错误: 获取系统时间失败\n");
         return NULL;
     }
@@ -241,14 +235,12 @@ char* getTime(const TimeFormat format)
 #ifdef _WIN32
     if (localtime_s(&local_time, &raw_time) != 0)
     {
-        free(timeStr);
         fprintf(stderr, "错误: 时间转换失败\n");
         return NULL;
     }
 #else
     if (localtime_r(&raw_time, &local_time) == NULL)
     {
-        free(timeStr);
         fprintf(stderr, "错误: 时间转换失败\n");
         return NULL;
     }
@@ -258,7 +250,6 @@ char* getTime(const TimeFormat format)
     case CONSOLE_FORMAT:
         if (strftime(timeStr, 32, "%Y-%m-%d %H:%M:%S", &local_time) == 0)
         {
-            free(timeStr);
             fprintf(stderr, "错误: 格式化时间失败\n");
             return NULL;
         }
@@ -266,13 +257,11 @@ char* getTime(const TimeFormat format)
     case FILE_FORMAT:
         if (strftime(timeStr, 32, "%Y%m%d-%H%M%S", &local_time) == 0)
         {
-            free(timeStr);
             fprintf(stderr, "错误: 格式化时间失败\n");
             return NULL;
         }
         return timeStr;
     default:
-        free(timeStr);
         return NULL;
     }
 }
@@ -285,13 +274,11 @@ static const char* safeStr(const char* str)
 char* createXMLPayload(const XmlChoose choose)
 {
     char* currentTime = getTime(CONSOLE_FORMAT);
-    if (!currentTime) return NULL;
-    char* xml = malloc(XML_BUFFER_SIZE);
-    if (!xml)
+    if (!currentTime)
     {
-        free(currentTime);
         return NULL;
     }
+    static char xml[XML_BUFFER_SIZE] = "";
     LOG_DEBUG("XML 选择代码: %d", choose);
     int xml_len = 0;
     switch (choose)
@@ -310,14 +297,14 @@ char* createXMLPayload(const XmlChoose choose)
             "    <gwip>%s</gwip>\n"
             "%s",
             xml_header,
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id),
+            safeStr(prog_status[prog_index].auth_config.user_agent),
+            safeStr(prog_status[prog_index].auth_config.client_id),
             currentTime,
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_ip),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.mac_address),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ac_ip),
+            safeStr(prog_status[prog_index].auth_config.host_name),
+            safeStr(prog_status[prog_index].auth_config.client_ip),
+            safeStr(prog_status[prog_index].auth_config.mac_address),
+            safeStr(prog_status[prog_index].auth_config.host_name),
+            safeStr(prog_status[prog_index].auth_config.ac_ip),
             xml_footer
         );
         break;
@@ -332,12 +319,12 @@ char* createXMLPayload(const XmlChoose choose)
             "    <passwd>%s</passwd>\n"
             "%s",
             xml_header,
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket),
+            safeStr(prog_status[prog_index].auth_config.user_agent),
+            safeStr(prog_status[prog_index].auth_config.client_id),
+            safeStr(prog_status[prog_index].auth_config.ticket),
             currentTime,
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.options.usr),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.options.pwd),
+            safeStr(prog_status[prog_index].login_config.usr),
+            safeStr(prog_status[prog_index].login_config.pwd),
             xml_footer
         );
         break;
@@ -356,19 +343,18 @@ char* createXMLPayload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "%s",
             xml_header,
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id),
+            safeStr(prog_status[prog_index].auth_config.user_agent),
+            safeStr(prog_status[prog_index].auth_config.client_id),
             currentTime,
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_ip),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.mac_address),
-            safeStr(thread_status[thread_local_args.thread_index].dialer_context.auth_config.host_name),
+            safeStr(prog_status[prog_index].auth_config.host_name),
+            safeStr(prog_status[prog_index].auth_config.client_ip),
+            safeStr(prog_status[prog_index].auth_config.ticket),
+            safeStr(prog_status[prog_index].auth_config.mac_address),
+            safeStr(prog_status[prog_index].auth_config.host_name),
             xml_footer
         );
         break;
     default:
-        free(xml);
         free(currentTime);
         LOG_ERROR("XML 选择代码错误");
         return NULL;
@@ -377,13 +363,11 @@ char* createXMLPayload(const XmlChoose choose)
     if (xml_len <= 0)
     {
         LOG_ERROR("XML 创建失败");
-        free(xml);
         return NULL;
     }
     if (xml_len >= XML_BUFFER_SIZE)
     {
-        LOG_ERROR("XML内容过长（需要%d字节，但缓冲区只有%d字节）", xml_len + 1, XML_BUFFER_SIZE);
-        free(xml);
+        LOG_ERROR("XML内容过长 (需要%d字节，但缓冲区只有%d字节)", xml_len + 1, XML_BUFFER_SIZE);
         return NULL;
     }
     LOG_DEBUG("创建 XML 完成");
@@ -428,124 +412,126 @@ char* cleanCDATA(const char* text)
     return extractBetweenTags(text, "<![CDATA[", "]]>");
 }
 
-void createThread(void*(* func)(void*), void* arg)
-{
-    const int index = (int)(intptr_t)arg;
-    thread_status[index].thread_status = pthread_create(&thread_status[index].thread, NULL, func, arg);
-    thread_status[index].thread_is_running = true;
-    LOG_INFO("线程: %d 已启动", index + 1);
-}
-
-void waitThreadStop(const int index)
-{
-    pthread_join(thread_status[index].thread, NULL);
-    LOG_INFO("线程: %d 已退出", index + 1);
-}
-
-void restartThread(const int index)
-{
-    LOG_INFO("重启认证线程 %d", index + 1);
-    thread_status[index].need_stop = true;
-    while (thread_status[index].need_stop)
-    {
-        sleepMilliseconds(1000);
-    }
-    thread_status[index].thread_is_running = false;
-    waitThreadStop(index);
-    createThread(dialerApp, (void*)(intptr_t)index);
-}
-
 void threadAutoStart()
 {
-    for (int i = 0; i < MAX_DIALER_COUNT; i++)
+    for (int i = 0; i < prog_count; i++)
     {
-        if (thread_status[i].dialer_context.options.auto_start)
+        if (prog_status[i].login_config.auto_start)
         {
-            LOG_INFO("线程 %d 自启中", i + 1);
-            sleepMilliseconds(3000);
-            thread_status[i].dialer_context.runtime_status.is_running = true;
+            prog_status[i].runtime_status.is_running = true;
+            LOG_INFO("配置 %d 已开启自启", i + 1);
+        }
+        else
+        {
+            LOG_INFO("配置 %d 未开启自启", i + 1);
         }
     }
 }
 
-const char* getThreadName()
+int saveJSON()
 {
-    switch (thread_local_args.thread_index)
+    cJSON* root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "logger_level", getLoggerLevel());
+
+    cJSON* adapters = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "adapters", adapters);
+
+    for (int i = 0; i < prog_count; i++)
     {
-    case -1:
-        return "主线程";
-    case 0:
-        return "线程 1";
-    case 1:
-        return "线程 2";
-    default:
-        return "unknown";
+        cJSON* adapter = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(adapter, "username", prog_status[i].login_config.usr);
+        cJSON_AddStringToObject(adapter, "password", prog_status[i].login_config.pwd);
+        cJSON_AddStringToObject(adapter, "channel", prog_status[i].login_config.chn);
+        cJSON_AddStringToObject(adapter, "bind_ip", prog_status[i].login_config.ip);
+        cJSON_AddBoolToObject(adapter, "auto_start", prog_status[i].login_config.auto_start);
+
+        cJSON_AddItemToArray(adapters, adapter);
     }
+
+    char* json = cJSON_Print(root);
+
+    FILE* config = fopen(DIALER_CONFIG_FILE, "w");
+    if (!config)
+    {
+        LOG_ERROR("无法生成文件: %s", DIALER_CONFIG_FILE);
+        return 0;
+    }
+    fprintf(config, "%s", json);
+    fclose(config);
+
+    free(json);
+    cJSON_Delete(root);
+    return 1;
 }
 
-void saveIni()
+int loadJSON()
 {
-    LOG_INFO("正在更新配置文件");
-    ini_puts("Adapter1", "usr", thread_status[0].dialer_context.options.usr, DIALER_CONFIG_FILE);
-    ini_puts("Adapter1", "pwd", thread_status[0].dialer_context.options.pwd, DIALER_CONFIG_FILE);
-    ini_puts("Adapter1", "chn", thread_status[0].dialer_context.options.chn, DIALER_CONFIG_FILE);
-    ini_putbool("Adapter1", "auto_start", thread_status[0].dialer_context.options.auto_start, DIALER_CONFIG_FILE);
-    ini_puts("Adapter2", "usr", thread_status[1].dialer_context.options.usr, DIALER_CONFIG_FILE);
-    ini_puts("Adapter2", "pwd", thread_status[1].dialer_context.options.pwd, DIALER_CONFIG_FILE);
-    ini_puts("Adapter2", "chn", thread_status[1].dialer_context.options.chn, DIALER_CONFIG_FILE);
-    ini_putbool("Adapter2", "auto_start", thread_status[1].dialer_context.options.auto_start, DIALER_CONFIG_FILE);
-    ini_putl("Logger", "logger_level", getLoggerLevel(), DIALER_CONFIG_FILE);
-    LOG_INFO("更新完成");
-}
-
-void loadIni()
-{
-    char* time_stamp = getTime(CONSOLE_FORMAT);
-    printf("[%s] [PRELOAD] [INFO] 正在加载配置文件\n", time_stamp);
-    if (access(DIALER_CONFIG_FILE, F_OK) != 0)
+    FILE* config = fopen(DIALER_CONFIG_FILE, "rb");
+    if (!config)
     {
-        time_stamp = getTime(CONSOLE_FORMAT);
-        printf("[%s] [PRELOAD] [WARN] 配置文件不存在，正在创建默认配置文件\n", time_stamp);
-        free(time_stamp);
-        ini_puts("Adapter1", "usr", "未配置", DIALER_CONFIG_FILE);
-        ini_puts("Adapter1", "pwd", "未配置", DIALER_CONFIG_FILE);
-        ini_puts("Adapter1", "chn", "phone", DIALER_CONFIG_FILE);
-        ini_putbool("Adapter1", "auto_start", false, DIALER_CONFIG_FILE);
-        ini_puts("Adapter2", "usr", "未配置", DIALER_CONFIG_FILE);
-        ini_puts("Adapter2", "pwd", "未配置", DIALER_CONFIG_FILE);
-        ini_puts("Adapter2", "chn", "phone", DIALER_CONFIG_FILE);
-        ini_putbool("Adapter2", "auto_start", false, DIALER_CONFIG_FILE);
-        ini_putl("Logger", "logger_level", 4, DIALER_CONFIG_FILE);
-        const Options opt = {
-            .usr = "未配置",
-            .pwd = "未配置",
-            .chn = "phone",
-        };
-        for (int i = 0; i < MAX_DIALER_COUNT; i++) setOpt(opt, i);
-        loggerInit(4);
-        LOG_INFO("创建完成并加载默认配置文件");
-        return;
+        LOG_ERROR("无法打开文件: %s", DIALER_CONFIG_FILE);
+        return 0;
     }
-    free(time_stamp);
-    const int logger_level = ini_getl("Logger", "logger_level", 4, DIALER_CONFIG_FILE);
-    loggerInit(logger_level);
-    Options opt[MAX_DIALER_COUNT];
-    int len = 0;
-    len = ini_gets("Adapter1", "usr", "未配置", opt[0].usr, USR_LENGTH, DIALER_CONFIG_FILE);
-    if (len == 0) LOG_WARN("用户名 1 读取失败, 请检查配置");
-    len = ini_gets("Adapter1", "pwd", "未配置", opt[0].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
-    if (len == 0) LOG_WARN("密码 1 读取失败, 请检查配置");
-    len = ini_gets("Adapter1", "chn", "phone", opt[0].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
-    if (len == 0) LOG_WARN("通道 1 读取失败, 使用默认通道");
-    opt[0].auto_start = ini_getbool("Adapter1", "auto_start", false, DIALER_CONFIG_FILE);
-    len = ini_gets("Adapter2", "usr", "未配置", opt[1].usr, USR_LENGTH, DIALER_CONFIG_FILE);
-    if (len == 0) LOG_WARN("用户名 2 读取失败, 请检查配置");
-    len = ini_gets("Adapter2", "pwd", "未配置", opt[1].pwd, PWD_LENGTH, DIALER_CONFIG_FILE);
-    if (len == 0) LOG_WARN("密码 2 读取失败, 请检查配置");
-    len = ini_gets("Adapter2", "chn", "phone", opt[1].chn, CHN_LENGTH, DIALER_CONFIG_FILE);
-    if (len == 0) LOG_WARN("通道 2 读取失败, 使用默认通道");
-    opt[1].auto_start = ini_getbool("Adapter2", "auto_start", false, DIALER_CONFIG_FILE);
-    for (int i = 0; i < MAX_DIALER_COUNT; i++) setOpt(opt[i], i);
-    LOG_INFO("配置文件加载完成");
-    saveIni();
+
+    fseek(config, 0, SEEK_END);
+    const long len = ftell(config);
+    fseek(config, 0, SEEK_SET);
+
+    char* config_data = malloc(len + 1);
+    fread(config_data, 1, len, config);
+    config_data[len] = '\0';
+    fclose(config);
+
+    cJSON* root = cJSON_Parse(config_data);
+    free(config_data);
+    if (!root)
+    {
+        LOG_ERROR("JSON 解析失败");
+        return 0;
+    }
+
+    const cJSON* logger_level = cJSON_GetObjectItem(root, "logger_level");
+    if (logger_level) LOG_INFO("logger_level = %d", logger_level->valueint);
+
+    cJSON* adapters = cJSON_GetObjectItem(root, "Adapter");
+    if (!adapters || !cJSON_IsArray(adapters))
+    {
+        printf("没有找到 Adapter 数组\n");
+        cJSON_Delete(root);
+        return 0;
+    }
+
+    const int count = cJSON_GetArraySize(adapters);
+    prog_status = malloc(sizeof(ProgStatus) * count);
+    prog_count = count;
+
+    for (int i = 0; i < count; i++)
+    {
+        const cJSON* adapter = cJSON_GetArrayItem(adapters, i);
+
+        const cJSON* usr = cJSON_GetObjectItem(adapter, "username");
+        const cJSON* pwd = cJSON_GetObjectItem(adapter, "password");
+        const cJSON* chn = cJSON_GetObjectItem(adapter, "channel");
+        const cJSON* ip = cJSON_GetObjectItem(adapter, "bind_ip");
+        const cJSON* auto_start = cJSON_GetObjectItem(adapter, "auto_start");
+
+        snprintf(prog_status[i].login_config.usr, USR_LENGTH, "%s", usr->valuestring);
+        snprintf(prog_status[i].login_config.pwd, PWD_LENGTH, "%s", pwd->valuestring);
+        snprintf(prog_status[i].login_config.chn, CHN_LENGTH, "%s", chn->valuestring);
+        snprintf(prog_status[i].login_config.ip, IP_LENGTH, "%s", ip->valuestring);
+        prog_status[i].login_config.auto_start = auto_start->valueint;
+        if (strcmp(chn->valuestring, "pc") == 0)
+        {
+            snprintf(prog_status[i].auth_config.user_agent, USER_AGENT_LENGTH,  "CCTP/Linux64/1003");
+        }
+        else
+        {
+            snprintf(prog_status[i].auth_config.user_agent, USER_AGENT_LENGTH, "CCTP/android64_vpn/2093");
+        }
+    }
+
+    cJSON_Delete(root);
+    return 1;
 }

@@ -4,13 +4,7 @@
 #include <stdint.h>
 
 #define XML_BUFFER_SIZE 1024
-#define DIALER_CONFIG_FILE "dialer.ini"
-
-typedef enum
-{
-    INI_SUCCESS = 0,
-    INI_FAILURE = 1,
-} IniStatus;
+#define DIALER_CONFIG_FILE "dialer.json"
 
 typedef enum
 {
@@ -28,37 +22,30 @@ typedef enum
 
 typedef struct
 {
-    char usr[16];
-    char pwd[128];
-    char chn[8];
-} IniConfig;
-
-typedef struct
-{
     unsigned char* data;
     size_t length;
 } ByteArray;
 
 /**
- * 获取适配器数据
+ * @brief 获取适配器数据
  */
 void getAdapters();
 
 /**
- * 打包适配器数据
+ * @brief 打包适配器数据
  * @return JSON 文本
  */
 char* getAdaptersJSON();
 
 /**
- * 文本转字节
+ * @brief 文本转字节
  * @param str 文本数据
  * @return 字节数据
  */
 ByteArray stringToBytes(const char* str);
 
 /**
- * XML 解析
+ * @brief XML 解析
  * @param xmlData XML 数据
  * @param tag 提取标志
  * @return 解析后的数据
@@ -66,27 +53,27 @@ ByteArray stringToBytes(const char* str);
 char* XmlParser(const char* xmlData, const char* tag);
 
 /**
- * 字符串转换为 64 位长整型
+ * @brief 字符串转换为 64 位长整型
  * @param str 要转换的字符串
  * @return 转换后的 64 位长整型
  */
 long long stringToLongLong(const char* str);
 
 /**
- * 64位长整型转换为字符串
+ * @brief 64 位长整型转换为字符串
  * @param num 要转换的 64 位长整型
  * @return 转换后的字符串
  */
 char* longLongToString(long long num);
 
 /**
- * 获取当前时间的毫秒时间戳
+ * @brief 获取当前时间的毫秒时间戳
  * @return 64位时间戳
  */
 int64_t currentTimeMillis();
 
 /**
- * 获取随机字节
+ * @brief 获取随机字节
  * @param buffer 缓冲
  * @param length 长度
  * @return 随机字节
@@ -94,27 +81,27 @@ int64_t currentTimeMillis();
 int randomBytes(unsigned char* buffer, size_t length);
 
 /**
- * 睡眠
+ * @brief 睡眠
  * @param milliseconds 毫秒
  */
 void sleepMilliseconds(long long milliseconds);
 
 /**
- * 获取当前时间
+ * @brief 获取当前时间
  * @param format 格式
  * @return 格式化后的当前时间
  */
 char* getTime(TimeFormat format);
 
 /**
- * 创建 XML 字符串
+ * @brief 创建 XML 字符串
  * @param choose 格式化选择
  * @return XML 字符串
  */
 char* createXMLPayload(XmlChoose choose);
 
 /**
- * 清除指定标签字段
+ * @brief 清除指定标签字段
  * @param text 需要清除的文本
  * @param start_tag 开始标签
  * @param end_tag 结束标签
@@ -123,50 +110,27 @@ char* createXMLPayload(XmlChoose choose);
 char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag);
 
 /**
- * 清除 CDATA 字段
+ * @brief 清除 CDATA 字段
  * @param text 需要清除的文本
  * @return 清除后的文本
  */
 char* cleanCDATA(const char* text);
 
 /**
- * 创建线程函数
- * @param func 线程要执行的函数
- * @param arg 参数
- */
-void createThread(void*(* func)(void*), void* arg);
-
-/**
- * 等待线程结束函数
- * @param index 线程下标
- */
-void waitThreadStop(int index);
-
-/**
- * 重启线程
- * @param index 线程下标
- */
-void restartThread(int index);
-
-/**
- * 线程自启
+ * @brief 线程自启
  */
 void threadAutoStart();
 
 /**
- * 获取当前线程名
- * @return 线程名
+ * @brief 保存配置文件
+ * @return 返回代码
  */
-const char* getThreadName();
+int saveJSON();
 
 /**
- * 保存配置文件
+ * @brief 加载配置文件
+ * @return 返回代码
  */
-void saveIni();
-
-/**
- * 加载配置文件
- */
-void loadIni();
+int loadJSON();
 
 #endif // PLATFORMUTILS_H

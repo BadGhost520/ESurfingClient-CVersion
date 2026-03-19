@@ -1,18 +1,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "headFiles/cipher/CipherInterface.h"
-#include "headFiles/utils/PlatformUtils.h"
-#include "headFiles/utils/Shutdown.h"
-#include "headFiles/utils/Logger.h"
-#include "headFiles/DialerClient.h"
-#include "headFiles/NetClient.h"
-#include "headFiles/Session.h"
-#include "headFiles/States.h"
-
-__thread ClientData client_data = {0};
-__thread ThreadArgs thread_local_args = {-1, 0};
-ThreadArgs args[MAX_DIALER_COUNT] = {0};
+#include "../inc/cipher/CipherInterface.h"
+#include "../inc/utils/PlatformUtils.h"
+#include "../inc/utils/Shutdown.h"
+#include "../inc/utils/Logger.h"
+#include "../inc/DialerClient.h"
+#include "../inc/NetClient.h"
+#include "../inc/Session.h"
+#include "../inc/States.h"
 
 RunningStatus term()
 {
@@ -325,7 +321,7 @@ static void restart()
         if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_authed) term();
         freeSession();
     }
-    memset(&thread_status[thread_local_args.thread_index].dialer_context, 0, sizeof(DialerContext));
+    memset(&thread_status[thread_local_args.thread_index].dialer_context, 0, sizeof(ProgConfig));
     sleepMilliseconds(5000);
     refreshStates();
 }
@@ -341,6 +337,7 @@ void* dialerApp(void* arg)
         {
             LOG_WARN("程序被标记为不能启动, 结束启动, 序号: %d", thread_local_args.thread_index + 1);
             thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_running = false;
+            break;
         }
         if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_running && thread_local_args.can_run)
         {

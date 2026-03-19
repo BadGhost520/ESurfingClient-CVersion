@@ -1,12 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "headFiles/cipher/CipherInterface.h"
-#include "headFiles/utils/PlatformUtils.h"
-#include "headFiles/utils/Logger.h"
-#include "headFiles/DialerClient.h"
-#include "headFiles/Session.h"
-#include "headFiles/States.h"
+#include "../inc/cipher/CipherInterface.h"
+#include "../inc/utils/PlatformUtils.h"
+#include "../inc/utils/Logger.h"
+#include "../inc/DialerClient.h"
+#include "../inc/Session.h"
+#include "../inc/States.h"
 
 static InitStatus load(const ByteArray zsm)
 {

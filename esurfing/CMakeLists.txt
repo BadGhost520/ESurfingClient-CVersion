@@ -4,6 +4,7 @@ project(ESurfingClient C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
+set(CMAKE_TOOLCHAIN_FILE "G:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "vcpkg toolchain file")
 
 add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
 
@@ -13,6 +14,11 @@ endif()
 
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(yaml CONFIG REQUIRED)
+
+if(yaml_FOUND)
+    message(STATUS "Found libyaml: ${yaml_DIR}")
+endif()
 
 add_executable(ESurfingClient
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
@@ -38,14 +44,15 @@ add_executable(ESurfingClient
         src/utils/PlatformUtils.c
         src/utils/Shutdown.c
         src/utils/Logger.c
-        src/utils/minIni.c
         src/utils/cJSON.c
         src/DialerClient.c
         src/NetClient.c
         src/Session.c
         src/States.c
-        src/Main.c
+        Main.c
 )
+
+target_link_libraries(ESurfingClient PRIVATE yaml)
 
 if(WIN32)
     find_package(LibXml2 REQUIRED)

@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../headFiles/webserver/WebServer.h"
-#include "../headFiles/utils/Shutdown.h"
-#include "../headFiles/utils/Logger.h"
-#include "../headFiles/DialerClient.h"
-#include "../headFiles/NetClient.h"
-#include "../headFiles/Session.h"
-#include "../headFiles/States.h"
+#include "../../inc/webserver/WebServer.h"
+#include "../../inc/utils/Shutdown.h"
+#include "../../inc/utils/Logger.h"
+#include "../../inc/DialerClient.h"
+#include "../../inc/Session.h"
+#include "../../inc/States.h"
 
 static void signalHandler(const int sig)
 {
@@ -42,7 +41,7 @@ static void adapterStop()
         freeSession();
     }
     LOG_DEBUG("清理资源中");
-    memset(&thread_status[thread_local_args.thread_index].dialer_context, 0, sizeof(DialerContext));
+    memset(&thread_status[thread_local_args.thread_index].dialer_context, 0, sizeof(ProgConfig));
     LOG_DEBUG("清理完成");
 }
 
