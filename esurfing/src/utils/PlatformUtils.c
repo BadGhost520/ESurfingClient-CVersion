@@ -44,6 +44,8 @@ static const char xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 
 static const char xml_footer[] = "</request>\n";
 
+static Adapter* adaptor = NULL;
+
 void getAdapters()
 {
 #ifdef _WIN32
@@ -55,26 +57,19 @@ void getAdapters()
         if (pAdapterInfo && GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == NO_ERROR)
         {
             PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
-            int i = 0, j = 0;
+            int i = 0;
             while (pAdapter)
             {
-                snprintf(adaptor[i].name, ADAPTER_NAME_LENGTH, "%s", pAdapter->Description);
+                Adapter* new_adaptor = realloc(adaptor, sizeof(Adapter) * (i + 1));
+                if (!new_adaptor)
+                {
+                    LOG_ERROR("分配内存失败");
+                    break;
+                }
+                adaptor = new_adaptor;
+                snprintf(adaptor[i].name, NAME_LENGTH, "%s", pAdapter->Description);
                 snprintf(adaptor[i].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
                 LOG_VERBOSE("IP: %s", pAdapter->IpAddressList.IpAddress.String);
-                if (school_network_symbol[0] != '\0')
-                {
-                    LOG_VERBOSE("尝试匹配校园网 IP, 正在匹配的 IP: %s, 匹配特征: %s", pAdapter->IpAddressList.IpAddress.String, school_network_symbol);
-                    if (strstr(pAdapter->IpAddressList.IpAddress.String, school_network_symbol) != NULL && j < MAX_DIALER_COUNT)
-                    {
-                        snprintf(school_connection_status[j].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
-                        LOG_VERBOSE("获取到校园网 IP: %s", school_connection_status[j].ip);
-                        j++;
-                    }
-                    else
-                    {
-                        LOG_VERBOSE("未能匹配校园网 IP");
-                    }
-                }
                 pAdapter = pAdapter->Next;
                 i++;
             }
@@ -94,6 +89,13 @@ void getAdapters()
             struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
             if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)))
             {
+                Adapter* new_adaptor = realloc(adaptor, sizeof(Adapter) * (count + 1));
+                if (!new_adaptor)
+                {
+                    LOG_ERROR("分配内存失败");
+                    break;
+                }
+                adaptor = new_adaptor;
                 snprintf(adaptor[count].name, ADAPTER_NAME_LENGTH, "%s", ifa->ifa_name);
                 snprintf(adaptor[count].ip, IP_LENGTH, "%s", ip);
                 count++;

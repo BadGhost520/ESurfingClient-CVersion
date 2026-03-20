@@ -21,7 +21,6 @@
 #define CHN_LENGTH 8
 
 #define IP_LENGTH 16
-#define ADAPTER_NAME_LENGTH 128
 
 /** @brief 认证配置 */
 typedef struct

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "inc/webserver/WebServer.h"
 #include "inc/utils/PlatformUtils.h"

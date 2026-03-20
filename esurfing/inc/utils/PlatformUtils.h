@@ -3,8 +3,11 @@
 
 #include <stdint.h>
 
+#include "../States.h"
+
 #define XML_BUFFER_SIZE 1024
 #define DIALER_CONFIG_FILE "dialer.json"
+#define NAME_LENGTH 128
 
 typedef enum
 {
@@ -25,6 +28,12 @@ typedef struct
     unsigned char* data;
     size_t length;
 } ByteArray;
+
+typedef struct
+{
+    char ip[IP_LENGTH];
+    char name[NAME_LENGTH];
+} Adapter;
 
 /**
  * @brief 获取适配器数据
