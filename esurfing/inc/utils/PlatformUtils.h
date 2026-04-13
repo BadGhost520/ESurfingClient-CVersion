@@ -3,11 +3,10 @@
 
 #include "States.h"
 
+#include <inttypes.h>
 #include <stdint.h>
 
 #ifdef _WIN32
-
-#include <io.h>
 
 #pragma comment(lib, "IPHLPAPI.lib")
 

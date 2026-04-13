@@ -70,6 +70,7 @@ static void loggerRotateFile()
     if (gLoggerConfig.file_handle == NULL) fprintf(stderr, "错误: 无法在轮转后重新打开日志文件 %s\n", gLoggerConfig.log_file);
 }
 
+#ifdef _WIN32
 static int getExecutableDir(char* out)
 {
     char path[MAX_PATH];
@@ -82,6 +83,7 @@ static int getExecutableDir(char* out)
     if (n < 0 || (size_t)n >= 260) return -1;
     return 0;
 }
+#endif
 
 static int ensureLogDir(char* out)
 {
