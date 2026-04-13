@@ -114,8 +114,7 @@ jobs:
           echo "📦 Creating package"
           
           # Create compressed package with executable in root
-          cp -r esurfingclient/files/usr/bin/webEsurfingclient ./
-          tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux webEsurfingclient/
+          tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux
           
           echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
           ls -la esurfingclient-x64-linux.tar.gz
