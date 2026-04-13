@@ -27,7 +27,6 @@ jobs:
           mingw-w64-x86_64-make
           mingw-w64-x86_64-curl-winssl
           mingw-w64-x86_64-openssl
-          mingw-w64-x86_64-libxml2
           mingw-w64-x86_64-zlib
           mingw-w64-x86_64-nghttp2
           mingw-w64-x86_64-libssh2
@@ -75,7 +74,6 @@ jobs:
           ls /mingw64/lib/libcurl* 2>/dev/null || echo "❌ No libcurl found"
           ls /mingw64/lib/libssl* 2>/dev/null || echo "❌ No libssl found"
           ls /mingw64/lib/libcrypto* 2>/dev/null || echo "❌ No libcrypto found"
-          ls /mingw64/lib/libxml2* 2>/dev/null || echo "❌ No libxml2 found"
           ls /mingw64/lib/libz* 2>/dev/null || echo "❌ No libz found"
           ls /mingw64/lib/libnghttp2* 2>/dev/null || echo "❌ No libnghttp2 found"
           ls /mingw64/lib/libssh2* 2>/dev/null || echo "❌ No libssh2 found"
@@ -131,7 +129,6 @@ jobs:
           /mingw64/lib/libnghttp2.a \
           /mingw64/lib/libssl.a \
           /mingw64/lib/libcrypto.a \
-          /mingw64/lib/libxml2.a \
           /mingw64/lib/libz.a \
           /mingw64/lib/libzstd.a \
           /mingw64/lib/libidn2.a \

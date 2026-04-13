@@ -64,6 +64,7 @@ if(WIN32)
     )
 
     target_link_libraries(ESurfingClient PRIVATE
+            iphlpapi
             ws2_32
             crypt32
     )

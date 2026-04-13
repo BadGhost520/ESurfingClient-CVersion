@@ -77,7 +77,7 @@ void getAdapters()
                     break;
                 }
                 adaptor = new_adaptor;
-                snprintf(adaptor[count].name, ADAPTER_NAME_LENGTH, "%s", ifa->ifa_name);
+                snprintf(adaptor[count].name, NAME_LENGTH, "%s", ifa->ifa_name);
                 snprintf(adaptor[count].ip, IP_LENGTH, "%s", ip);
                 count++;
             }
@@ -158,7 +158,7 @@ char* uint64ToString(const uint64_t num)
     const int buf_size = max_digits + 2;
     char* result = malloc(buf_size);
     if (!result) return NULL;
-    snprintf(result, buf_size, "%lld", num);
+    snprintf(result, buf_size, "%" PRIu64, num);
     return result;
 }
 
