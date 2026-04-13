@@ -6,6 +6,7 @@
 
 #ifndef _WIN32
 
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>

@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <fcntl.h>
 #include <time.h>
 
@@ -12,6 +13,7 @@
 
 static const char sep = '\\';
 #else
+
 static const char sep = '/';
 #endif
 
