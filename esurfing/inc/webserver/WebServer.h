@@ -1,6 +1,8 @@
 #ifndef ESURFINGCLIENT_WEBSERVER_H
 #define ESURFINGCLIENT_WEBSERVER_H
 
+#include <stdint.h>
+
 // TODO 记得修改版本号
 #define VERSION "v2.0.0-r1"
 
