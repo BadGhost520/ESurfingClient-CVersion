@@ -87,7 +87,7 @@ jobs:
           
           EXECUTABLE=$(find . -name "ESurfingClient" -type f -executable | head -1)
           if [ -n "$EXECUTABLE" ]; then
-            mv "$EXECUTABLE" ../
+            mv "$EXECUTABLE" ../ESurfingClient-x86_64-linux
             echo "✅ 从 $EXECUTABLE 移动成功"
           else
             echo "❌ 找不到可执行文件"
