@@ -85,8 +85,14 @@ jobs:
           echo "🔨 Making Programme"
           make -j$(nproc)
           
-          echo "📦 Moved ESurfingClient to root dir"
-          mv esurfing/ESurfingClient ../ESurfingClient-x86_64-linux
+          EXECUTABLE=$(find . -name "ESurfingClient" -type f -executable | head -1)
+          if [ -n "$EXECUTABLE" ]; then
+            mv "$EXECUTABLE" ../
+            echo "✅ 从 $EXECUTABLE 移动成功"
+          else
+            echo "❌ 找不到可执行文件"
+            exit 1
+          fi
           
           echo "🛡️ Protect1 - Strip binary"
           strip --strip-all ../ESurfingClient-x86_64-linux
