@@ -86,7 +86,7 @@ jobs:
           make -j$(nproc)
           
           echo "📦 Moved ESurfingClient to root dir"
-          mv bin/ESurfingClient ../ESurfingClient-x86_64-linux
+          mv esurfing/ESurfingClient ../ESurfingClient-x86_64-linux
           
           echo "🛡️ Protect1 - Strip binary"
           strip --strip-all ../ESurfingClient-x86_64-linux
