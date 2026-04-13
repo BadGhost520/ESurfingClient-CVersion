@@ -7,8 +7,6 @@
 #include "NetClient.h"
 #include "States.h"
 
-#include <stdio.h>
-
 // HTML
 INCTXT(web_index, WEB_ROOT_PATH "/index.html");
 INCTXT(web_dashboard, WEB_ROOT_PATH "/assets/web/dashboard.html");
@@ -456,7 +454,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
 static void logFn(const char ch, void *param)
 {
     static char buffer[512];
-    static int pos = 0;
+    static size_t pos = 0;
     if (ch == '\n' || pos >= sizeof(buffer) - 1)
     {
         if (pos > 0)

@@ -263,7 +263,7 @@ static int createAtomicCopy(const char* src, const char* dst)
 LogContent getLog(const bool check)
 {
     LogContent result = {NULL, 0, true};
-    static char temp_path[256];
+    static char temp_path[512];
     static long temp_counter = 0;
     snprintf(temp_path, sizeof(temp_path),
              "%s.web_%ld_%ld.tmp",
