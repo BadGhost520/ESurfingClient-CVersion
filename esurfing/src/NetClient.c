@@ -50,7 +50,7 @@ static size_t headerCallback(const void *contents, const size_t size, const size
             const char* value = header + 9;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(school_id, SCHOOL_ID_LENGTH, "%.*s", (int)valid_len, value);
+            snprintf(school_id, SCHOOL_ID_LENGTH, "%.*s", (uint8_t)valid_len, value);
         }
     }
     if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !domain[0])
@@ -60,7 +60,7 @@ static size_t headerCallback(const void *contents, const size_t size, const size
             const char* value = header + 7;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(domain, DOMAIN_LENGTH, "%.*s", (int)valid_len, value);
+            snprintf(domain, DOMAIN_LENGTH, "%.*s", (uint8_t)valid_len, value);
         }
     }
     if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !area[0])
@@ -70,7 +70,7 @@ static size_t headerCallback(const void *contents, const size_t size, const size
             const char* value = header + 5;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(area, AREA_LENGTH, "%.*s", (int)valid_len, value);
+            snprintf(area, AREA_LENGTH, "%.*s", (uint8_t)valid_len, value);
         }
     }
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
@@ -78,10 +78,10 @@ static size_t headerCallback(const void *contents, const size_t size, const size
         const char* value = header + 9;
         while (*value == ' ') value++;
         const size_t valid_len = strcspn(value, "\r\n");
-        snprintf(latest_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
+        snprintf(latest_location, LOCATION_LENGTH, "%.*s", (uint8_t)valid_len, value);
         if (check_location[0] == '\0')
         {
-            snprintf(check_location, LOCATION_LENGTH, "%.*s", (int)valid_len, value);
+            snprintf(check_location, LOCATION_LENGTH, "%.*s", (uint8_t)valid_len, value);
             LOG_DEBUG("获取到 Check Location: %s", check_location);
         }
     }

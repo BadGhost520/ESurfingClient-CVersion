@@ -83,7 +83,7 @@ loggerLog(LOG_LEVEL_ERROR, file, line, format, ##__VA_ARGS__)
  * @param format 格式
  * @param ... 其它参数
  */
-void loggerLog(LogLevel level, const char* file, int line, const char* format, ...);
+void loggerLog(LogLevel level, const char* file, uint32_t line, const char* format, ...);
 
 /**
  * 获取当前日志等级

@@ -58,9 +58,9 @@ static void loggerRotateFile()
         return;
     }
     char rotatedFilename[PATH_MAX];
-    const int result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s%s", gLoggerConfig.log_dir, sep, timeStr, rotateFileName);
+    const uint16_t result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s%s", gLoggerConfig.log_dir, sep, timeStr, rotateFileName);
     free(timeStr);
-    if (result >= (int)sizeof(rotatedFilename))
+    if (result >= (uint16_t)sizeof(rotatedFilename))
     {
         fprintf(stderr, "错误: 轮转的文件名过长 (最大 %zu)\n", sizeof(rotatedFilename) - 1);
         gLoggerConfig.file_handle = fopen(gLoggerConfig.log_file, "a");
@@ -73,7 +73,7 @@ static void loggerRotateFile()
 }
 
 #ifdef _WIN32
-static int getExecutableDir(char* out)
+static uint8_t getExecutableDir(char* out)
 {
     char path[MAX_PATH];
     const DWORD len = GetModuleFileNameA(NULL, path, MAX_PATH);
@@ -81,19 +81,19 @@ static int getExecutableDir(char* out)
     char* last = strrchr(path, sep);
     if (!last) return -1;
     *last = '\0';
-    const int n = snprintf(out, 260, "%s", path);
-    if (n < 0 || (size_t)n >= 260) return -1;
+    const uint16_t n = snprintf(out, PATH_MAX, "%s", path);
+    if (n < 0 || (size_t)n >= PATH_MAX) return -1;
     return 0;
 }
 #endif
 
-static int ensureLogDir(char* out)
+static uint8_t ensureLogDir(char* out)
 {
 #ifdef _WIN32
     char dir[PATH_MAX];
     if (getExecutableDir(dir) != 0) return -1;
-    const int n = snprintf(out, 260, "%s%clogs", dir, sep);
-    if (n < 0 || (size_t)n >= 260) return -1;
+    const uint16_t n = snprintf(out, PATH_MAX, "%s%clogs", dir, sep);
+    if (n < 0 || (size_t)n >= PATH_MAX) return -1;
     if (!CreateDirectoryA(out, NULL))
     {
         const DWORD err = GetLastError();
@@ -101,8 +101,8 @@ static int ensureLogDir(char* out)
     }
 #else
     char dir[PATH_MAX] = "/var/log/esurfing";
-    int n = snprintf(out, 260, "%s%clogs", dir, sep);
-    if (n < 0 || (size_t)n >= 260) return -1;
+    const uint16_t n = snprintf(out, PATH_MAX, "%s%clogs", dir, sep);
+    if (n < 0 || (size_t)n >= PATH_MAX) return -1;
     struct stat st;
     if (stat(out, &st) != 0)
     {
@@ -129,7 +129,7 @@ static void loggerWriteToFile(const char* message)
     }
 }
 
-void loggerLog(const LogLevel level, const char* file, const int line, const char* format, ...)
+void loggerLog(const LogLevel level, const char* file, const uint32_t line, const char* format, ...)
 {
     if (level > gLoggerConfig.level) return;
     va_list local_args;
@@ -168,7 +168,7 @@ LoggerInitStatus loggerInit(const LogLevel logger_level)
         fprintf(stderr, "错误: 无法准备日志目录\n");
         return INIT_LOGGER_FAILURE;
     }
-    const int ln = snprintf(gLoggerConfig.log_file, sizeof(gLoggerConfig.log_file), "%s%c%s", gLoggerConfig.log_dir, sep, fileName);
+    const uint16_t ln = snprintf(gLoggerConfig.log_file, sizeof(gLoggerConfig.log_file), "%s%c%s", gLoggerConfig.log_dir, sep, fileName);
     if (ln < 0 || (size_t)ln >= sizeof(gLoggerConfig.log_file))
     {
         fprintf(stderr, "错误: 日志文件路径太长 (最大 %zu)\n", sizeof(gLoggerConfig.log_file));
@@ -206,9 +206,9 @@ void loggerCleanup()
         return;
     }
     char newFilename[PATH_MAX];
-    const int result = snprintf(newFilename, sizeof(newFilename), "%s%c%s.log", gLoggerConfig.log_dir, sep, timeStr);
+    const uint16_t result = snprintf(newFilename, sizeof(newFilename), "%s%c%s.log", gLoggerConfig.log_dir, sep, timeStr);
     free(timeStr);
-    if (result >= (int)sizeof(newFilename))
+    if (result >= (uint16_t)sizeof(newFilename))
     {
         fprintf(stderr, "错误: 新文件名过长 (最大 %zu)\n", sizeof(newFilename) - 1);
         return;
@@ -216,15 +216,15 @@ void loggerCleanup()
     rename(gLoggerConfig.log_file, newFilename);
 }
 
-static int createAtomicCopy(const char* src, const char* dst)
+static void createAtomicCopy(const char* src, const char* dst)
 {
     int src_fd = open(src, O_RDONLY);
-    if (src_fd < 0) return -1;
+    if (src_fd < 0) return;
     int dst_fd = open(dst, O_WRONLY | O_CREAT | O_EXCL, 0644);
     if (dst_fd < 0)
     {
         close(src_fd);
-        return -1;
+        return;
     }
     struct stat st;
     if (fstat(src_fd, &st) != 0 || st.st_size == 0)
@@ -232,7 +232,7 @@ static int createAtomicCopy(const char* src, const char* dst)
         close(src_fd);
         close(dst_fd);
         remove(dst);
-        return -1;
+        return;
     }
 #ifdef __linux__
     off_t offset = 0;
@@ -240,7 +240,7 @@ static int createAtomicCopy(const char* src, const char* dst)
     {
         close(src_fd);
         close(dst_fd);
-        return 0;
+        return;
     }
 #endif
     char buffer[8192];
@@ -255,9 +255,7 @@ static int createAtomicCopy(const char* src, const char* dst)
     if (bytes < 0)
     {
         remove(dst);
-        return -1;
     }
-    return 0;
 }
 
 LogContent getLog(const bool check)

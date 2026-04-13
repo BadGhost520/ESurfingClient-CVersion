@@ -30,7 +30,7 @@ static void mainStop()
     loggerCleanup();
 }
 
-void shut(const int exitCode)
+void shut(const uint8_t exitCode)
 {
     LOG_INFO("主线程正在关闭");
     mainStop();

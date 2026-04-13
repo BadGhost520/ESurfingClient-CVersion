@@ -37,7 +37,7 @@ INCTXT(css_about, WEB_ROOT_PATH "/assets/css/about.css");
 // LICENSE
 INCTXT(license, WEB_ROOT_PATH "/assets/license/LICENSE");
 
-int is_webserver_running = 0;
+uint8_t is_webserver_running = 0;
 static const char* listenAddr = "http://0.0.0.0:8888";
 static NetworkStatus network_status = {0};
 
@@ -497,7 +497,7 @@ static void logFn(const char ch, void *param)
             }
             memcpy(file_line_str, file_line_start, file_line_length);
             file_line_str[file_line_length] = '\0';
-            const long long file_line = stringToUint64(file_line_str);
+            const uint64_t file_line = stringToUint64(file_line_str);
             const char* msg = file_line_end + 1;
             switch(web_log_level[1])
             {

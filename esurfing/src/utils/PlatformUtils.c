@@ -38,21 +38,21 @@ void getAdapters()
         if (pAdapterInfo && GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == NO_ERROR)
         {
             PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
-            int i = 0;
+            uint8_t count = 0;
             while (pAdapter)
             {
-                Adapter* new_adaptor = realloc(adaptor, sizeof(Adapter) * (i + 1));
+                Adapter* new_adaptor = realloc(adaptor, sizeof(Adapter) * (count + 1));
                 if (!new_adaptor)
                 {
                     LOG_ERROR("分配内存失败");
                     break;
                 }
                 adaptor = new_adaptor;
-                snprintf(adaptor[i].name, NAME_LENGTH, "%s", pAdapter->Description);
-                snprintf(adaptor[i].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
+                snprintf(adaptor[count].name, NAME_LENGTH, "%s", pAdapter->Description);
+                snprintf(adaptor[count].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
                 LOG_VERBOSE("IP: %s", pAdapter->IpAddressList.IpAddress.String);
                 pAdapter = pAdapter->Next;
-                i++;
+                count++;
             }
         }
     }
@@ -61,7 +61,7 @@ void getAdapters()
     struct ifaddrs *ifaddrs_ptr, *ifa;
     if (getifaddrs(&ifaddrs_ptr) == 0)
     {
-        int count = 0;
+        uint8_t count = 0;
         for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next)
         {
             if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
@@ -91,7 +91,7 @@ char* getAdaptersJSON()
 {
     cJSON* root = cJSON_CreateObject();
     cJSON* adapters = cJSON_CreateArray();
-    for (int i = 0; i < 16; i++)
+    for (uint8_t i = 0; i < 16; i++)
     {
         if (strlen(adaptor[i].name) == 0) break;
         cJSON* adapter = cJSON_CreateObject();
@@ -154,8 +154,7 @@ uint64_t stringToUint64(const char* str)
 
 char* uint64ToString(const uint64_t num)
 {
-    const int max_digits = 20;
-    const int buf_size = max_digits + 2;
+    const uint8_t buf_size = 22;
     char* result = malloc(buf_size);
     if (!result) return NULL;
     snprintf(result, buf_size, "%" PRIu64, num);
@@ -178,24 +177,22 @@ uint64_t currentTimeMillis()
 #endif
 }
 
-int randomBytes(unsigned char* buffer, const size_t length)
+void randomBytes(unsigned char* buffer, const size_t length)
 {
 #ifdef _WIN32
     HCRYPTPROV hCryptProv;
-    if (!CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) return 0;
-    const BOOL result = CryptGenRandom(hCryptProv, length, buffer);
+    if (!CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) return;
+    CryptGenRandom(hCryptProv, length, buffer);
     CryptReleaseContext(hCryptProv, 0);
-    return result ? 1 : 0;
 #else
-    int fd = open("/dev/urandom", O_RDONLY);
+    uint32_t fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1) return 0;
     ssize_t bytesRead = read(fd, buffer, length);
     close(fd);
-    return (bytesRead == (ssize_t)length) ? 1 : 0;
 #endif
 }
 
-void sleepMilliseconds(const long long milliseconds)
+void sleepMilliseconds(const uint64_t milliseconds)
 {
     if (milliseconds <= 0) return;
 #ifdef _WIN32
@@ -263,7 +260,7 @@ char* createXMLPayload(const XmlChoose choose)
     }
     static char xml[XML_BUFFER_SIZE] = "";
     LOG_DEBUG("XML 选择代码: %d", choose);
-    int xml_len = 0;
+    uint16_t xml_len = 0;
     switch (choose)
     {
     case GET_TICKET:
@@ -395,7 +392,7 @@ char* cleanCDATA(const char* text)
     return extractBetweenTags(text, "<![CDATA[", "]]>");
 }
 
-int saveJSON()
+void saveJSON()
 {
     cJSON* root = cJSON_CreateObject();
 
@@ -404,7 +401,7 @@ int saveJSON()
     cJSON* adapters = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "adapters", adapters);
 
-    for (int i = 0; i < prog_count; i++)
+    for (uint8_t i = 0; i < prog_count; i++)
     {
         cJSON* adapter = cJSON_CreateObject();
 
@@ -423,23 +420,22 @@ int saveJSON()
     if (!config)
     {
         LOG_ERROR("无法生成文件: %s", DIALER_CONFIG_FILE);
-        return 0;
+        return;
     }
     fprintf(config, "%s", json);
     fclose(config);
 
     free(json);
     cJSON_Delete(root);
-    return 1;
 }
 
-int loadJSON()
+void loadJSON()
 {
     FILE* config = fopen(DIALER_CONFIG_FILE, "rb");
     if (!config)
     {
         LOG_ERROR("无法打开文件: %s", DIALER_CONFIG_FILE);
-        return 0;
+        return;
     }
 
     fseek(config, 0, SEEK_END);
@@ -456,7 +452,7 @@ int loadJSON()
     if (!root)
     {
         LOG_ERROR("JSON 解析失败");
-        return 0;
+        return;
     }
 
     const cJSON* logger_level = cJSON_GetObjectItem(root, "logger_level");
@@ -467,14 +463,14 @@ int loadJSON()
     {
         printf("没有找到 Adapter 数组\n");
         cJSON_Delete(root);
-        return 0;
+        return;
     }
 
-    const int count = cJSON_GetArraySize(adapters);
+    const uint8_t count = cJSON_GetArraySize(adapters);
     prog_status = malloc(sizeof(ProgStatus) * count);
     prog_count = count;
 
-    for (int i = 0; i < count; i++)
+    for (uint8_t i = 0; i < count; i++)
     {
         const cJSON* adapter = cJSON_GetArrayItem(adapters, i);
 
@@ -500,5 +496,4 @@ int loadJSON()
     }
 
     cJSON_Delete(root);
-    return 1;
 }

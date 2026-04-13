@@ -105,15 +105,14 @@ uint64_t currentTimeMillis();
  * @brief 获取随机字节
  * @param buffer 缓冲
  * @param length 长度
- * @return 随机字节
  */
-int randomBytes(unsigned char* buffer, size_t length);
+void randomBytes(unsigned char* buffer, size_t length);
 
 /**
  * @brief 睡眠
  * @param milliseconds 毫秒
  */
-void sleepMilliseconds(long long milliseconds);
+void sleepMilliseconds(uint64_t milliseconds);
 
 /**
  * @brief 获取当前时间
@@ -147,14 +146,12 @@ char* cleanCDATA(const char* text);
 
 /**
  * @brief 保存配置文件
- * @return 返回代码
  */
-int saveJSON();
+void saveJSON();
 
 /**
  * @brief 加载配置文件
- * @return 返回代码
  */
-int loadJSON();
+void loadJSON();
 
 #endif // PLATFORMUTILS_H

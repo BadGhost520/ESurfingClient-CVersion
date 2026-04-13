@@ -4,7 +4,7 @@
 // TODO 记得修改版本号
 #define VERSION "v2.0.0-r1"
 
-extern int is_webserver_running;
+extern uint8_t is_webserver_running;
 
 /**
  * 启动Web服务器
