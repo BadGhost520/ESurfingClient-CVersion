@@ -1,7 +1,8 @@
 #ifndef MOD_XTEA_CBC_TRIPLE_PC_H
 #define MOD_XTEA_CBC_TRIPLE_PC_H
 
-#include "../CipherInterface.h"
+#include "cipher/CipherInterface.h"
+
 #include <stdint.h>
 
 #ifdef __cplusplus

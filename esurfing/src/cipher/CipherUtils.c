@@ -1,8 +1,8 @@
+#include "cipher/CipherUtils.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-#include "../headFiles/cipher/CipherUtils.h"
 
 char* bytesToHexUpper(const uint8_t* bytes, const size_t len)
 {

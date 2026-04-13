@@ -1,8 +1,9 @@
-#include "../../headFiles/cipher/CipherInterface.h"
-#include "../../headFiles/cipher/CipherUtils.h"
+#include "cipher/CipherInterface.h"
+#include "cipher/CipherUtils.h"
+
 #include <openssl/evp.h>
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 
 typedef struct {
     uint8_t key1[16];

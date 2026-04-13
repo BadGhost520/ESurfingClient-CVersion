@@ -1,7 +1,8 @@
 #ifndef SM4_ECB_H
 #define SM4_ECB_H
 
-#include "../CipherInterface.h"
+#include "cipher/CipherInterface.h"
+
 #include <stdint.h>
 
 /**

@@ -1,14 +1,14 @@
+#include "cipher/CipherInterface.h"
+#include "utils/PlatformUtils.h"
+#include "utils/Shutdown.h"
+#include "utils/Logger.h"
+#include "DialerClient.h"
+#include "NetClient.h"
+#include "Session.h"
+#include "States.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-#include "../inc/cipher/CipherInterface.h"
-#include "../inc/utils/PlatformUtils.h"
-#include "../inc/utils/Shutdown.h"
-#include "../inc/utils/Logger.h"
-#include "../inc/DialerClient.h"
-#include "../inc/NetClient.h"
-#include "../inc/Session.h"
-#include "../inc/States.h"
 
 RunningStatus term()
 {
@@ -26,7 +26,7 @@ RunningStatus term()
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("发送加密登出内容: %s", encrypt);
-    const HTTPResponse result = sessionPost(client_data.term_url, encrypt);
+    const HTTPResponse result = sessionPost(prog_status[prog_index].auth_config.term_url, encrypt);
     free(encrypt);
     if (result.status != REQUEST_SUCCESS)
     {
@@ -35,7 +35,7 @@ RunningStatus term()
         return RUNNING_FAILURE;
     }
     free(result.body_data);
-    thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_authed = false;
+    prog_status[prog_index].runtime_status.is_authed = false;
     return RUNNING_SUCCESS;
 }
 
@@ -55,7 +55,7 @@ static RunningStatus heartbeat()
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("发送加密心跳内容: %s", encrypt);
-    const HTTPResponse result = sessionPost(client_data.keep_url, encrypt);
+    const HTTPResponse result = sessionPost(prog_status[prog_index].auth_config.keep_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -78,7 +78,7 @@ static RunningStatus heartbeat()
         LOG_ERROR("心跳内容解析失败");
         return RUNNING_FAILURE;
     }
-    snprintf(client_data.keep_retry, KEEP_RETRY_LENGTH, "%s", parsed_interval);
+    snprintf(prog_status[prog_index].auth_config.keep_retry, KEEP_RETRY_LENGTH, "%s", parsed_interval);
     free(parsed_interval);
     return RUNNING_SUCCESS;
 }
@@ -99,7 +99,7 @@ static AuthStatus login()
         return AUTH_FAILURE;
     }
     LOG_DEBUG("发送加密登录内容: %s", encrypt);
-    const HTTPResponse result = sessionPost(thread_status[thread_local_args.thread_index].dialer_context.auth_config.auth_url, encrypt);
+    const HTTPResponse result = sessionPost(prog_status[prog_index].auth_config.auth_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -128,9 +128,9 @@ static AuthStatus login()
         LOG_ERROR("清除 KeepURL CDATA 失败");
         return AUTH_FAILURE;
     }
-    snprintf(client_data.keep_url, KEEP_URL_LENGTH, "%s", cleaned_keep_url);
+    snprintf(prog_status[prog_index].auth_config.keep_url, KEEP_URL_LENGTH, "%s", cleaned_keep_url);
     free(cleaned_keep_url);
-    LOG_INFO("Keep-Url: %s", client_data.keep_url);
+    LOG_INFO("Keep-Url: %s", prog_status[prog_index].auth_config.keep_url);
     char* parsed_term_url = XmlParser(decrypted_data, "term-url");
     if (!parsed_term_url)
     {
@@ -144,9 +144,9 @@ static AuthStatus login()
         LOG_ERROR("清除 TermURL CDATA 失败");
         return AUTH_FAILURE;
     }
-    snprintf(client_data.term_url, TERM_URL_LENGTH, "%s", cleaned_term_url);
+    snprintf(prog_status[prog_index].auth_config.term_url, TERM_URL_LENGTH, "%s", cleaned_term_url);
     free(cleaned_term_url);
-    LOG_INFO("Term-Url: %s", client_data.term_url);
+    LOG_INFO("Term-Url: %s", prog_status[prog_index].auth_config.term_url);
     char* parsed_interval = XmlParser(decrypted_data, "keep-retry");
     free(decrypted_data);
     if (!parsed_interval)
@@ -154,9 +154,9 @@ static AuthStatus login()
         LOG_ERROR("解析 KeepRetry 失败");
         return AUTH_FAILURE;
     }
-    snprintf(client_data.keep_retry, KEEP_RETRY_LENGTH, "%s", parsed_interval);
+    snprintf(prog_status[prog_index].auth_config.keep_retry, KEEP_RETRY_LENGTH, "%s", parsed_interval);
     free(parsed_interval);
-    LOG_INFO("下一次重试: %s 秒后", client_data.keep_retry);
+    LOG_INFO("下一次重试: %s 秒后", prog_status[prog_index].auth_config.keep_retry);
     return AUTH_SUCCESS;
 }
 
@@ -176,7 +176,7 @@ static AuthStatus getTicket()
         return AUTH_FAILURE;
     }
     LOG_DEBUG("发送加密获取 ticket 内容: %s", encrypt);
-    const HTTPResponse result = sessionPost(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket_url, encrypt);
+    const HTTPResponse result = sessionPost(prog_status[prog_index].auth_config.ticket_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -199,13 +199,13 @@ static AuthStatus getTicket()
         LOG_ERROR("解析 Ticket 失败");
         return AUTH_FAILURE;
     }
-    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket, TICKET_LENGTH, "%s", parsed_ticket);
+    snprintf(prog_status[prog_index].auth_config.ticket, TICKET_LENGTH, "%s", parsed_ticket);
     return AUTH_SUCCESS;
 }
 
 static AuthStatus initSession()
 {
-    const HTTPResponse result = sessionPost(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket_url, thread_status[thread_local_args.thread_index].dialer_context.auth_config.algo_id);
+    const HTTPResponse result = sessionPost(prog_status[prog_index].auth_config.ticket_url, prog_status[prog_index].auth_config.algo_id);
     if (result.status == REQUEST_ERROR)
     {
         LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
@@ -226,7 +226,7 @@ static RunningStatus authorization()
     {
         LOG_FATAL("初始化会话失败");
         freeSession();
-        thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_running = false;
+        prog_status[prog_index].runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("初始化会话完成");
@@ -234,23 +234,23 @@ static RunningStatus authorization()
     {
         LOG_FATAL("获取 Ticket 失败");
         freeSession();
-        thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_running = false;
+        prog_status[prog_index].runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("完成获取 Ticket");
-    LOG_INFO("Ticket: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket);
+    LOG_INFO("Ticket: %s", prog_status[prog_index].auth_config.ticket);
     if (login() == AUTH_FAILURE)
     {
         LOG_FATAL("登录失败");
         freeSession();
-        thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_running = false;
+        prog_status[prog_index].runtime_status.is_running = false;
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("完成登录");
-    client_data.tick = currentTimeMillis();
-    thread_status[thread_local_args.thread_index].dialer_context.auth_time = currentTimeMillis();
-    LOG_DEBUG("登录时间戳 (毫秒): %lld", thread_status[thread_local_args.thread_index].dialer_context.auth_time);
-    thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_authed = true;
+    prog_status[prog_index].auth_config.tick = currentTimeMillis();
+    prog_status[prog_index].runtime_status.auth_time = currentTimeMillis();
+    LOG_DEBUG("登录时间戳 (毫秒): %lld", prog_status[prog_index].runtime_status.auth_time);
+    prog_status[prog_index].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
     return RUNNING_SUCCESS;
 }
@@ -260,12 +260,12 @@ static RunningStatus run()
     switch (checkAuthStatus())
     {
     case REQUEST_SUCCESS:
-        if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_initialized && thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_authed)
+        if (prog_status[prog_index].runtime_status.is_initialized && prog_status[prog_index].runtime_status.is_authed)
         {
-            const long long keep_retry = stringToLongLong(client_data.keep_retry);
+            const uint64_t keep_retry = stringToUint64(prog_status[prog_index].auth_config.keep_retry);
             if (keep_retry != 0)
             {
-                if (currentTimeMillis() - client_data.tick >= keep_retry * 1000)
+                if (currentTimeMillis() - prog_status[prog_index].auth_config.tick >= keep_retry * 1000)
                 {
                     LOG_INFO("发送心跳包");
                     if (heartbeat() == RUNNING_FAILURE)
@@ -273,8 +273,8 @@ static RunningStatus run()
                         LOG_ERROR("心跳包发送失败");
                         return RUNNING_FAILURE;
                     }
-                    LOG_INFO("下一次重试: %s 秒后", client_data.keep_retry);
-                    client_data.tick = currentTimeMillis();
+                    LOG_INFO("下一次重试: %s 秒后", prog_status[prog_index].auth_config.keep_retry);
+                    prog_status[prog_index].auth_config.tick = currentTimeMillis();
                 }
             }
         }
@@ -316,53 +316,40 @@ static RunningStatus run()
 
 static void restart()
 {
-    if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_initialized)
+    if (prog_status[prog_index].runtime_status.is_initialized)
     {
-        if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_authed) term();
+        if (prog_status[prog_index].runtime_status.is_authed) term();
         freeSession();
     }
-    memset(&thread_status[thread_local_args.thread_index].dialer_context, 0, sizeof(ProgConfig));
+    memset(&prog_status[prog_index].auth_config, 0, sizeof(AuthConfig));
+    memset(&prog_status[prog_index].runtime_status, 0, sizeof(RuntimeStatus));
     sleepMilliseconds(5000);
     refreshStates();
 }
 
-void* dialerApp(void* arg)
+void dialerApp()
 {
-    thread_local_args = args[(int)(intptr_t)arg];
-    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_ip, IP_LENGTH, "%s", thread_local_args.ip);
     refreshStates();
-    while (thread_status[thread_local_args.thread_index].thread_is_running)
+    while (prog_status[prog_index].runtime_status.is_running)
     {
-        if (thread_local_args.can_run == false)
+        if (currentTimeMillis() - prog_status[prog_index].runtime_status.auth_time >= 172200000 && prog_status[prog_index].runtime_status.auth_time != 0)
         {
-            LOG_WARN("程序被标记为不能启动, 结束启动, 序号: %d", thread_local_args.thread_index + 1);
-            thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_running = false;
-            break;
-        }
-        if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_running && thread_local_args.can_run)
-        {
-
-            if (currentTimeMillis() - thread_status[thread_local_args.thread_index].dialer_context.auth_time >= 172200000 && thread_status[thread_local_args.thread_index].dialer_context.auth_time != 0)
-            {
-                if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_settings_changed)
-                {
-                    LOG_INFO("设置已更改，正在重启认证");
-                    thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_settings_changed = false;
-                }
-                LOG_DEBUG("当前时间戳(毫秒): %lld", currentTimeMillis());
-                LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟)，为避免被远程服务器踢下线，正在重新进行认证");
-                restart();
-            }
-            else if (thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_settings_changed)
+            if (prog_status[prog_index].runtime_status.is_settings_changed)
             {
                 LOG_INFO("设置已更改，正在重启认证");
-                restart();
-                thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_settings_changed = false;
+                prog_status[prog_index].runtime_status.is_settings_changed = false;
             }
-            if (run() == RUNNING_FAILURE) thread_status[thread_local_args.thread_index].need_stop = true;
-            checkAdapterStop();
+            LOG_DEBUG("当前时间戳(毫秒): %lld", currentTimeMillis());
+            LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟)，为避免被远程服务器踢下线，正在重新进行认证");
+            restart();
         }
+        else if (prog_status[prog_index].runtime_status.is_settings_changed)
+        {
+            LOG_INFO("设置已更改，正在重启认证");
+            restart();
+            prog_status[prog_index].runtime_status.is_settings_changed = false;
+        }
+        run();
         sleepMilliseconds(1000);
     }
-    return NULL;
 }

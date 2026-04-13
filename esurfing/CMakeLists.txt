@@ -3,22 +3,21 @@ project(ESurfingClient C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
-set(CMAKE_TOOLCHAIN_FILE "G:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "vcpkg toolchain file")
 
+set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
 add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+if(WIN32)
+    set(CURL_USE_STATIC_LIBS ON)
+    set(OPENSSL_USE_STATIC_LIBS ON)
+endif()
+
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(yaml CONFIG REQUIRED)
-
-if(yaml_FOUND)
-    message(STATUS "Found libyaml: ${yaml_DIR}")
-endif()
 
 add_executable(ESurfingClient
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
@@ -52,306 +51,34 @@ add_executable(ESurfingClient
         Main.c
 )
 
-target_link_libraries(ESurfingClient PRIVATE yaml)
+target_link_libraries(ESurfingClient PRIVATE
+        CURL::libcurl
+        OpenSSL::SSL
+        OpenSSL::Crypto
+)
 
 if(WIN32)
-    find_package(LibXml2 REQUIRED)
-
-    target_compile_definitions(ESurfingClient PRIVATE _CRT_SECURE_NO_WARNINGS)
-    target_compile_definitions(ESurfingClient PRIVATE CURL_STATICLIB)
-
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-
-    find_library(CURL_STATIC_LIB
-            NAMES libcurl.a curl
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
+    target_compile_definitions(ESurfingClient PRIVATE
+            _CRT_SECURE_NO_WARNINGS
+            CURL_STATICLIB
     )
 
-    find_library(SSL_STATIC_LIB
-            NAMES libssl.a ssl
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
+    target_link_libraries(ESurfingClient PRIVATE
+            ws2_32
+            crypt32
     )
 
-    find_library(CRYPTO_STATIC_LIB
-            NAMES libcrypto.a crypto
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(XML2_STATIC_LIB
-            NAMES libxml2.a xml2
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(Z_STATIC_LIB
-            NAMES libz.a z
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(NGHTTP2_STATIC_LIB
-            NAMES libnghttp2.a nghttp2
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(SSH2_STATIC_LIB
-            NAMES libssh2.a ssh2
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(ZSTD_STATIC_LIB
-            NAMES libzstd.a zstd
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(IDN2_STATIC_LIB
-            NAMES libidn2.a idn2
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(PSL_STATIC_LIB
-            NAMES libpsl.a psl
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(BROTLI_DEC_STATIC_LIB
-            NAMES libbrotlidec.a brotlidec
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(BROTLI_COMMON_STATIC_LIB
-            NAMES libbrotlicommon.a brotlicommon
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(UNISTRING_STATIC_LIB
-            NAMES libunistring.a unistring
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    find_library(ICONV_STATIC_LIB
-            NAMES libiconv.a iconv
-            PATHS
-            /mingw64/lib
-            /usr/lib
-            /usr/local/lib
-            ${CMAKE_PREFIX_PATH}/lib
-            NO_DEFAULT_PATH
-    )
-
-    if(NOT CURL_STATIC_LIB OR NOT SSL_STATIC_LIB OR NOT CRYPTO_STATIC_LIB OR NOT XML2_STATIC_LIB OR NOT Z_STATIC_LIB OR NOT NGHTTP2_STATIC_LIB OR NOT SSH2_STATIC_LIB)
-        find_package(CURL REQUIRED)
-        find_package(OpenSSL REQUIRED)
-        find_package(LibXml2 REQUIRED)
-
-        target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                LibXml2::LibXml2
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                ws2_32
-                wldap32
-                winmm
-                crypt32
-                normaliz
-                secur32
-                bcrypt
-                iphlpapi
-        )
-    else()
-        target_link_libraries(ESurfingClient PRIVATE
-                ${CURL_STATIC_LIB}
-                ${SSH2_STATIC_LIB}
-                ${XML2_STATIC_LIB}
-                ${SSL_STATIC_LIB}
-                ${CRYPTO_STATIC_LIB}
-                ${Z_STATIC_LIB}
-                ${NGHTTP2_STATIC_LIB}
-        )
-        if(ZSTD_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${ZSTD_STATIC_LIB})
-        endif()
-        if(IDN2_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${IDN2_STATIC_LIB})
-        endif()
-        if(PSL_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${PSL_STATIC_LIB})
-        endif()
-        if(BROTLI_DEC_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${BROTLI_DEC_STATIC_LIB})
-        endif()
-        if(BROTLI_COMMON_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${BROTLI_COMMON_STATIC_LIB})
-        endif()
-        if(UNISTRING_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${UNISTRING_STATIC_LIB})
-        endif()
-        if(ICONV_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE ${ICONV_STATIC_LIB})
-        endif()
-
-        target_link_libraries(ESurfingClient PRIVATE
-                ws2_32
-                wldap32
-                winmm
-                crypt32
-                normaliz
-                secur32
-                bcrypt
-                iphlpapi
-        )
-    endif()
-    set_target_properties(ESurfingClient PROPERTIES
-            LINK_FLAGS "-static -static-libgcc -static-libstdc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-    )
-
-    set_target_properties(ESurfingClient PROPERTIES
-            LINK_SEARCH_START_STATIC ON
-            LINK_SEARCH_END_STATIC ON
-    )
-elseif(UNIX AND NOT WIN32)
-    option(BUILD_STATIC "Build with static linking" OFF)
-
-    if(BUILD_STATIC)
-        message(STATUS "Building with static linking")
-        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-
-        find_library(CURL_STATIC_LIB
-                NAMES libcurl.a curl
-                PATHS
-                /usr/lib/x86_64-linux-gnu
-                /usr/lib64
-                /usr/lib
-                /usr/local/lib
-                ${CMAKE_PREFIX_PATH}/lib
-        )
-
-        find_library(SSL_STATIC_LIB
-                NAMES libssl.a ssl
-                PATHS
-                /usr/lib/x86_64-linux-gnu
-                /usr/lib64
-                /usr/lib
-                /usr/local/lib
-                ${CMAKE_PREFIX_PATH}/lib
-        )
-
-        find_library(CRYPTO_STATIC_LIB
-                NAMES libcrypto.a crypto
-                PATHS
-                /usr/lib/x86_64-linux-gnu
-                /usr/lib64
-                /usr/lib
-                /usr/local/lib
-                ${CMAKE_PREFIX_PATH}/lib
-        )
-
-        find_library(Z_STATIC_LIB
-                NAMES libz.a z
-                PATHS
-                /usr/lib/x86_64-linux-gnu
-                /usr/lib64
-                /usr/lib
-                /usr/local/lib
-                ${CMAKE_PREFIX_PATH}/lib
-        )
-
-        if(BUILD_STATIC AND CURL_STATIC_LIB AND SSL_STATIC_LIB AND CRYPTO_STATIC_LIB)
-            target_link_libraries(ESurfingClient PRIVATE
-                    ${CURL_STATIC_LIB}
-                    ${SSL_STATIC_LIB}
-                    ${CRYPTO_STATIC_LIB}
-                    dl
-                    pthread
-            )
-            if(Z_STATIC_LIB)
-                target_link_libraries(ESurfingClient PRIVATE ${Z_STATIC_LIB})
-            endif()
-            set_target_properties(ESurfingClient PROPERTIES
-                    LINK_FLAGS "-static -static-libgcc -static-libstdc++"
-            )
-            target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
-        endif()
-    else()
-        message(STATUS "Building with dynamic linking")
-        target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                OpenSSL::SSL
-                OpenSSL::Crypto
-        )
-    endif()
-    target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
-    set_target_properties(ESurfingClient PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin"
-    )
+    target_link_options(ESurfingClient PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
 
-include(GNUInstallDirs)
-install(TARGETS ESurfingClient RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(UNIX AND NOT WIN32)
+    target_link_libraries(ESurfingClient PRIVATE pthread dl)
+    target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
 
-target_compile_options(ESurfingClient PRIVATE -s)
+target_include_directories(ESurfingClient PRIVATE
+        ${CMAKE_SOURCE_DIR}/inc
+)
+
 target_compile_options(ESurfingClient PRIVATE -O3)
 set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")

@@ -1,18 +1,16 @@
-#include <string.h>
-#include <stdlib.h>
+#include "utils/PlatformUtils.h"
+#include "utils/Logger.h"
+#include "States.h"
+
 #include <ctype.h>
 
-#include "../inc/utils/PlatformUtils.h"
-#include "../inc/utils/Logger.h"
-#include "../inc/States.h"
+uint64_t g_running_time = 0;
 
-int64_t g_running_time = 0;
+uint8_t prog_count = 0;
+
+uint8_t prog_index = 0;
 
 ProgStatus* prog_status;
-
-int prog_count = 0;
-
-int prog_index = 0;
 
 static void setHostname()
 {

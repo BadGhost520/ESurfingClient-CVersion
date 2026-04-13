@@ -1,7 +1,8 @@
 #ifndef ZUC_H
 #define ZUC_H
 
-#include "../CipherInterface.h"
+#include "cipher/CipherInterface.h"
+
 #include <stdint.h>
 
 /**

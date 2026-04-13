@@ -1,8 +1,9 @@
 #ifndef DES_ECB_SIX_PC_H
 #define DES_ECB_SIX_PC_H
 
+#include "cipher/CipherInterface.h"
+
 #include <stdint.h>
-#include "../CipherInterface.h"
 
 #ifdef __cplusplus
 extern "C" {

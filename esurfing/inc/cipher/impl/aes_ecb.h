@@ -1,7 +1,8 @@
 #ifndef AES_ECB_H
 #define AES_ECB_H
 
-#include "../CipherInterface.h"
+#include "cipher/CipherInterface.h"
+
 #include <stdint.h>
 
 /**

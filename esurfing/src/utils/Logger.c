@@ -1,38 +1,24 @@
-#include <fcntl.h>
+#include "utils/PlatformUtils.h"
+#include "utils/Logger.h"
+
+#include <sys/stat.h>
 #include <string.h>
-#include <stdarg.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <time.h>
-#include <sys/stat.h>
-
-#include "../../inc/States.h"
 
 #ifdef _WIN32
-
 #include <windows.h>
-#include <io.h>
 
+static const char sep = '\\';
 #else
-
-#include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
-
-#endif
-
-#include "../../inc/utils/PlatformUtils.h"
-#include "../../inc/utils/Logger.h"
-
-#ifdef _WIN32
-    static const char sep = '\\';
-#else
-    static const char sep = '/';
+static const char sep = '/';
 #endif
 
 static const char fileName[] = "run.log";
 static const char rotateFileName[] = ".rotate.log";
-static int64_t update_time = 0;
-static int64_t last_get_time = 0;
+static uint64_t update_time = 0;
+static uint64_t last_get_time = 0;
 
 static LoggerConfig gLoggerConfig = {
     .level = LOG_LEVEL_INFO,

@@ -1,13 +1,12 @@
+#include "utils/PlatformUtils.h"
+#include "utils/Logger.h"
+#include "NetClient.h"
+#include "States.h"
+
 #include <openssl/evp.h>
 #include <curl/curl.h>
 #include <string.h>
 #include <stdio.h>
-
-#include "../inc/utils/PlatformUtils.h"
-#include "../inc/utils/Logger.h"
-#include "../inc/DialerClient.h"
-#include "../inc/NetClient.h"
-#include "../inc/States.h"
 
 static const char request_content_type[] = "application/x-www-form-urlencoded";
 static const char request_accept[] = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
@@ -153,7 +152,7 @@ static CurlStatus createPostCurlClient(CURL** curl, struct curl_slist** headers,
     curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_CONNECTTIMEOUT, 5L);
-    if (thread_local_args.thread_index != -1) curl_easy_setopt(*curl, CURLOPT_INTERFACE, thread_local_args.ip);
+    curl_easy_setopt(*curl, CURLOPT_INTERFACE, prog_status[prog_index].login_config.ip);
     return CURL_INIT_SUCCESS;
 }
 
@@ -169,7 +168,7 @@ static CurlStatus createGetCurlClient(CURL** curl, struct curl_slist** headers, 
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
-    if (thread_local_args.thread_index != -1) curl_easy_setopt(*curl, CURLOPT_INTERFACE, thread_local_args.ip);
+    curl_easy_setopt(*curl, CURLOPT_INTERFACE, prog_status[prog_index].login_config.ip);
     return CURL_INIT_SUCCESS;
 }
 
@@ -266,10 +265,10 @@ HTTPResponse sessionPost(const char* url, const char* data)
     addCurlHeader(&headers, "CDC-Checksum: %s", MD5Hash);
     free(MD5Hash);
     addCurlHeader(&headers, "Content-Type: %s", request_content_type);
-    addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent);
+    addCurlHeader(&headers, "User-Agent: %s", prog_status[prog_index].auth_config.user_agent);
     addCurlHeader(&headers, "Accept: %s", request_accept);
-    addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id);
-    addCurlHeader(&headers, "Algo-ID: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.algo_id);
+    addCurlHeader(&headers, "Client-ID: %s", prog_status[prog_index].auth_config.client_id);
+    addCurlHeader(&headers, "Algo-ID: %s", prog_status[prog_index].auth_config.algo_id);
     addCurlHeader(&headers, "CDC-SchoolId: %s", school_id);
     addCurlHeader(&headers, "CDC-Domain: %s", domain);
     addCurlHeader(&headers, "CDC-Area: %s", area);
@@ -322,9 +321,9 @@ NetworkStatus checkAuthStatus()
     const char PORTAL_END_TAG[] = "//config.campus.js.chinatelecom.com-->";
     HTTPResponse response = {0};
     struct curl_slist *headers = NULL;
-    addCurlHeader(&headers, "User-Agent: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.user_agent);
+    addCurlHeader(&headers, "User-Agent: %s", prog_status[prog_index].auth_config.user_agent);
     addCurlHeader(&headers, "Accept: %s", request_accept);
-    addCurlHeader(&headers, "Client-ID: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_id);
+    addCurlHeader(&headers, "Client-ID: %s", prog_status[prog_index].auth_config.client_id);
     response.status = checkNetworkStatus();
     while (response.status == REQUEST_REDIRECT) response = get(latest_location, headers);
     if (response.status == REQUEST_SUCCESS || response.status == REQUEST_WARNING) return response.status;
@@ -357,7 +356,7 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("Auth URL: %s", cleaned_auth_url);
-    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.auth_url, AUTH_URL_LENGTH, "%s", cleaned_auth_url);
+    snprintf(prog_status[prog_index].auth_config.auth_url, AUTH_URL_LENGTH, "%s", cleaned_auth_url);
     free(cleaned_auth_url);
     char* ticket_url = XmlParser(portal_config, "ticket-url");
     free(portal_config);
@@ -374,8 +373,8 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("Ticket URL: %s", cleaned_ticket_url);
-    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ticket_url, TICKET_URL_LENGTH, "%s", cleaned_ticket_url);
-    LOG_INFO("Client IP: %s", thread_status[thread_local_args.thread_index].dialer_context.auth_config.client_ip);
+    snprintf(prog_status[prog_index].auth_config.ticket_url, TICKET_URL_LENGTH, "%s", cleaned_ticket_url);
+    LOG_INFO("Client IP: %s", prog_status[prog_index].auth_config.client_ip);
     char* ac_ip = extractUrlParam(cleaned_ticket_url, "wlanacip");
     free(cleaned_ticket_url);
     if (!ac_ip)
@@ -384,7 +383,7 @@ NetworkStatus checkAuthStatus()
         return REQUEST_ERROR;
     }
     LOG_INFO("AC IP: %s", ac_ip);
-    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.ac_ip, IP_LENGTH, "%s", ac_ip);
+    snprintf(prog_status[prog_index].auth_config.ac_ip, IP_LENGTH, "%s", ac_ip);
     free(ac_ip);
     return REQUEST_AUTHORIZATION;
 }

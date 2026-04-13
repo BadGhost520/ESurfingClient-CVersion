@@ -1,5 +1,6 @@
-#include "../../headFiles/cipher/CipherInterface.h"
-#include "../../headFiles/cipher/CipherUtils.h"
+#include "cipher/CipherInterface.h"
+#include "cipher/CipherUtils.h"
+
 #include <string.h>
 #include <stdint.h>
 

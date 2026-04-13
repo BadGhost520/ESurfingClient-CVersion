@@ -1,9 +1,30 @@
 #ifndef PLATFORMUTILS_H
 #define PLATFORMUTILS_H
 
+#include "States.h"
+
 #include <stdint.h>
 
-#include "../States.h"
+#ifdef _WIN32
+
+#include <io.h>
+
+#pragma comment(lib, "IPHLPAPI.lib")
+
+#else
+
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <ifaddrs.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
+
+#endif
 
 #define XML_BUFFER_SIZE 1024
 #define DIALER_CONFIG_FILE "dialer.json"
@@ -66,20 +87,20 @@ char* XmlParser(const char* xmlData, const char* tag);
  * @param str 要转换的字符串
  * @return 转换后的 64 位长整型
  */
-long long stringToLongLong(const char* str);
+uint64_t stringToUint64(const char* str);
 
 /**
  * @brief 64 位长整型转换为字符串
  * @param num 要转换的 64 位长整型
  * @return 转换后的字符串
  */
-char* longLongToString(long long num);
+char* uint64ToString(uint64_t num);
 
 /**
  * @brief 获取当前时间的毫秒时间戳
  * @return 64位时间戳
  */
-int64_t currentTimeMillis();
+uint64_t currentTimeMillis();
 
 /**
  * @brief 获取随机字节
@@ -124,11 +145,6 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
  * @return 清除后的文本
  */
 char* cleanCDATA(const char* text);
-
-/**
- * @brief 线程自启
- */
-void threadAutoStart();
 
 /**
  * @brief 保存配置文件

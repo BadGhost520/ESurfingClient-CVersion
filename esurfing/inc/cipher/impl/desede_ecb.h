@@ -1,7 +1,8 @@
 #ifndef DESEDE_ECB_H
 #define DESEDE_ECB_H
 
-#include "../CipherInterface.h"
+#include "cipher/CipherInterface.h"
+
 #include <stdint.h>
 
 /**

@@ -15,16 +15,14 @@ typedef enum
 } AuthStatus;
 
 /**
- * 登出函数
+ * 登出
  * @return 认证状态码
  */
 RunningStatus term();
 
 /**
- * 认证线程主函数
- * @param arg 参数
- * @return NULL
+ * 认证主程序
  */
-void* dialerApp(void* arg);
+void dialerApp();
 
 #endif // CLIENT_H

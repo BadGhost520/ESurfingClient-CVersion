@@ -1,12 +1,11 @@
+#include "cipher/CipherInterface.h"
+#include "utils/PlatformUtils.h"
+#include "utils/Logger.h"
+#include "Session.h"
+#include "States.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-#include "../inc/cipher/CipherInterface.h"
-#include "../inc/utils/PlatformUtils.h"
-#include "../inc/utils/Logger.h"
-#include "../inc/DialerClient.h"
-#include "../inc/Session.h"
-#include "../inc/States.h"
 
 static InitStatus load(const ByteArray zsm)
 {
@@ -36,7 +35,7 @@ static InitStatus load(const ByteArray zsm)
         return INIT_FAILURE;
     }
     LOG_DEBUG("全局 AlgoID 已更新: '%s'", algo_id);
-    snprintf(thread_status[thread_local_args.thread_index].dialer_context.auth_config.algo_id, ALGO_ID_LENGTH, "%s", algo_id);
+    snprintf(prog_status[prog_index].auth_config.algo_id, ALGO_ID_LENGTH, "%s", algo_id);
     return INIT_SUCCESS;
 }
 
@@ -46,12 +45,12 @@ void initialize(const ByteArray zsm)
     if (load(zsm) == INIT_SUCCESS)
     {
         LOG_DEBUG("初始化会话成功");
-        thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_initialized = 1;
+        prog_status[prog_index].runtime_status.is_initialized = 1;
     }
     else
     {
         LOG_DEBUG("初始化会话失败");
-        thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_initialized = 0;
+        prog_status[prog_index].runtime_status.is_initialized = 0;
     }
 }
 
@@ -59,5 +58,5 @@ void freeSession()
 {
     LOG_DEBUG("清除会话初始化状态");
     cipherFactoryDestroy();
-    thread_status[thread_local_args.thread_index].dialer_context.runtime_status.is_initialized = 0;
+    prog_status[prog_index].runtime_status.is_initialized = 0;
 }

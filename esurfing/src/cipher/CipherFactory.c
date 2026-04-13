@@ -1,9 +1,9 @@
+#include "cipher/CipherInterface.h"
+#include "cipher/KeyData.h"
+#include "utils/Logger.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-#include "../headFiles/cipher/CipherInterface.h"
-#include "../headFiles/cipher/KeyData.h"
-#include "../headFiles/utils/Logger.h"
 
 extern cipherInterfaceT* create_aes_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
                                                      const uint8_t* iv1, const uint8_t* iv2);

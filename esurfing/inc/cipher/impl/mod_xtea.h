@@ -1,7 +1,8 @@
 #ifndef MOD_XTEA_H
 #define MOD_XTEA_H
 
-#include "../CipherInterface.h"
+#include "cipher/CipherInterface.h"
+
 #include <stdint.h>
 
 /**

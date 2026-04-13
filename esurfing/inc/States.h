@@ -51,8 +51,8 @@ typedef struct
     char client_ip[IP_LENGTH];
     /** @brief 服务端 IP */
     char ac_ip[IP_LENGTH];
-    /** @brief 当前时间 */
-    long long tick;
+    /** @brief 当前时间 (用于检测认证时间) */
+    uint64_t tick;
 } AuthConfig;
 
 /** @brief 登录配置 */
@@ -82,7 +82,7 @@ typedef struct
     /** @brief 认证状态 */
     bool is_authed;
     /** @brief 认证时间 */
-    int64_t auth_time;
+    uint64_t auth_time;
 } RuntimeStatus;
 
 /** @brief 主认证程序状态 */
@@ -97,16 +97,16 @@ typedef struct
 } ProgStatus;
 
 /** @brief 全局运行时间 */
-extern int64_t g_running_time;
+extern uint64_t g_running_time;
+
+/** @brief 适配器数 */
+extern uint8_t prog_count;
+
+/** @brief 正在操作的适配器下标 */
+extern uint8_t prog_index;
 
 /** @brief 主程序状态 */
 extern ProgStatus* prog_status;
-
-/** @brief 适配器数 */
-extern int prog_count;
-
-/** @brief 正在操作的适配器下标 */
-extern int prog_index;
 
 /** @brief 刷新状态函数 */
 void refreshStates();

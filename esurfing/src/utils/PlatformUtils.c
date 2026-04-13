@@ -1,3 +1,9 @@
+#include "utils/PlatformUtils.h"
+#include "utils/Logger.h"
+#include "utils/cJSON.h"
+#include "NetClient.h"
+#include "States.h"
+
 #include <curl/curl.h>
 #include <string.h>
 #include <stdlib.h>
@@ -10,34 +16,9 @@
 #ifdef _WIN32
 
 #include <sysinfoapi.h>
-#include <wincrypt.h>
-#include <winsock2.h>
 #include <iphlpapi.h>
-#include <windows.h>
-#include <io.h>
-
-#pragma comment(lib, "IPHLPAPI.lib")
-
-#else
-
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <ifaddrs.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <time.h>
 
 #endif
-
-#include "../../inc/utils/PlatformUtils.h"
-#include "../../inc/utils/Logger.h"
-#include "../../inc/utils/cJSON.h"
-#include "../../inc/NetClient.h"
-#include "../../inc/States.h"
 
 static const char xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
                                  "<request>\n";
@@ -156,7 +137,7 @@ char* XmlParser(const char* xmlData, const char* tag)
     return content;
 }
 
-long long stringToLongLong(const char* str)
+uint64_t stringToUint64(const char* str)
 {
     if (!str) return 0;
     while (isspace(*str)) str++;
@@ -171,7 +152,7 @@ long long stringToLongLong(const char* str)
     return value;
 }
 
-char* longLongToString(const long long num)
+char* uint64ToString(const uint64_t num)
 {
     const int max_digits = 20;
     const int buf_size = max_digits + 2;
@@ -181,7 +162,7 @@ char* longLongToString(const long long num)
     return result;
 }
 
-int64_t currentTimeMillis()
+uint64_t currentTimeMillis()
 {
 #ifdef _WIN32
     FILETIME ft;
@@ -189,11 +170,11 @@ int64_t currentTimeMillis()
     GetSystemTimeAsFileTime(&ft);
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
-    return (int64_t)(uli.QuadPart / 10000LL - 11644473600000LL);
+    return uli.QuadPart / 10000LL - 11644473600000LL;
 #else
     struct timeval tv;
     if (gettimeofday(&tv, NULL) != 0) return -1;
-    return (int64_t)(tv.tv_sec * 1000LL + tv.tv_usec / 1000LL);
+    return tv.tv_sec * 1000LL + tv.tv_usec / 1000LL;
 #endif
 }
 
@@ -412,22 +393,6 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
 char* cleanCDATA(const char* text)
 {
     return extractBetweenTags(text, "<![CDATA[", "]]>");
-}
-
-void threadAutoStart()
-{
-    for (int i = 0; i < prog_count; i++)
-    {
-        if (prog_status[i].login_config.auto_start)
-        {
-            prog_status[i].runtime_status.is_running = true;
-            LOG_INFO("配置 %d 已开启自启", i + 1);
-        }
-        else
-        {
-            LOG_INFO("配置 %d 未开启自启", i + 1);
-        }
-    }
 }
 
 int saveJSON()
