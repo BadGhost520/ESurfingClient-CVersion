@@ -12,6 +12,6 @@ void shut(uint8_t exitCode);
 /**
  * 初始化关闭函数
  */
-void initShutdown();
+void init_shutdown_hook();
 
 #endif //ESURFINGCLIENT_SHUTDOWN_H

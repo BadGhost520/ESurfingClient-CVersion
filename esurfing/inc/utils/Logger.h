@@ -39,7 +39,7 @@ typedef struct {
     char        log_file[PATH_MAX];
     FILE*       file_handle;
     size_t      max_lines;
-    size_t      current_lines;
+    size_t      cur_lines;
 } LoggerConfig;
 
 typedef struct {
@@ -48,65 +48,59 @@ typedef struct {
     bool is_new;
 } LogContent;
 
-#define LOG_VERBOSE(format, ...) \
-loggerLog(LOG_LEVEL_VERBOSE, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_VERBOSE(fmt, ...) \
+log_out(LOG_LEVEL_VERBOSE, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_DEBUG(format, ...) \
-loggerLog(LOG_LEVEL_DEBUG, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) \
+log_out(LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_INFO(format, ...) \
-loggerLog(LOG_LEVEL_INFO, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...) \
+log_out(LOG_LEVEL_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_WARN(format, ...) \
-loggerLog(LOG_LEVEL_WARN, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...) \
+log_out(LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_ERROR(format, ...) \
-loggerLog(LOG_LEVEL_ERROR, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_ERROR(fmt, ...) \
+log_out(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_FATAL(format, ...) \
-loggerLog(LOG_LEVEL_FATAL, __FILE__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_FATAL(fmt, ...) \
+log_out(LOG_LEVEL_FATAL, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_WEB_VERBOSE(file, line, format, ...) \
-loggerLog(LOG_LEVEL_VERBOSE, file, line, format, ##__VA_ARGS__)
+#define LOG_WEB_VERBOSE(file, line, fmt, ...) \
+log_out(LOG_LEVEL_VERBOSE, file, line, fmt, ##__VA_ARGS__)
 
-#define LOG_WEB_INFO(file, line, format, ...) \
-loggerLog(LOG_LEVEL_INFO, file, line, format, ##__VA_ARGS__)
+#define LOG_WEB_INFO(file, line, fmt, ...) \
+log_out(LOG_LEVEL_INFO, file, line, fmt, ##__VA_ARGS__)
 
-#define LOG_WEB_ERROR(file, line, format, ...) \
-loggerLog(LOG_LEVEL_ERROR, file, line, format, ##__VA_ARGS__)
+#define LOG_WEB_ERROR(file, line, fmt, ...) \
+log_out(LOG_LEVEL_ERROR, file, line, fmt, ##__VA_ARGS__)
 
 /**
  * 打印日志
  * @param level 日志等级
  * @param file 调用的源代码文件名
  * @param line 执行该函数的行数
- * @param format 格式
+ * @param fmt 格式
  * @param ... 其它参数
  */
-void loggerLog(LogLevel level, const char* file, uint32_t line, const char* format, ...);
+void log_out(LogLevel level, const char* file, uint32_t line, const char* fmt, ...);
 
 /**
  * 获取当前日志等级
  * @return 日志等级
  */
-LogLevel getLoggerLevel();
+LogLevel get_logger_level();
 
 /**
  * 初始化日志系统
  * @param logger_level 日志等级
  * @return 初始化状态
  */
-LoggerInitStatus loggerInit(LogLevel logger_level);
+LoggerInitStatus init_logger(LogLevel logger_level);
 
 /**
  * 清理日志系统
  */
-void loggerCleanup();
-
-/**
- * 获取日志
- * @return 日志内容
- */
-LogContent getLog(bool check);
+void clean_logger();
 
 #endif //ESURFINGCLIENT_LOGGER_H

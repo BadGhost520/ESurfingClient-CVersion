@@ -295,7 +295,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             // 获取适配器状态
             if (mg_match(hm->uri, mg_str("/api/getAdapterInfo"), NULL))
             {
-                char* response = getAdaptersJSON();
+                char* response = get_adapters_JSON();
                 mg_http_reply(c,
                     200,
                     "Content-Type: application/json;charset=utf-8\r\n",

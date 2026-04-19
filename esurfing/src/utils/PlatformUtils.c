@@ -1,7 +1,6 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
-#include "NetClient.h"
 #include "States.h"
 
 #include <curl/curl.h>
@@ -20,45 +19,58 @@
 
 #endif
 
-static const char xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+static const char s_xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
                                  "<request>\n";
 
-static const char xml_footer[] = "</request>\n";
+static const char s_xml_footer[] = "</request>\n";
 
-static Adapter* adaptor = NULL;
+static const char s_default_cfg[] = "{\n"
+                                    "   \"logger_level\":4,\n"
+                                    "   \"accounts\": [\n"
+                                    "       {\n"
+                                    "           \"username\": \"\",\n"
+                                    "           \"password\": \"\",\n"
+                                    "           \"channel\": \"phone\",\n"
+                                    "           \"bind_ip\": \"\",\n"
+                                    "           \"auto_start\": false\n"
+                                    "       }\n"
+                                    "   ]\n"
+                                    "}\n";
 
-void getAdapters()
+static Adapter* s_adaptor = NULL;
+
+void get_adapters()
 {
 #ifdef _WIN32
-    PIP_ADAPTER_INFO pAdapterInfo = NULL;
-    ULONG ulOutBufLen = 0;
-    if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW)
+    PIP_ADAPTER_INFO p_adapter_info = NULL;
+    ULONG ul_out_buf_len = 0;
+    if (GetAdaptersInfo(p_adapter_info, &ul_out_buf_len) == ERROR_BUFFER_OVERFLOW)
     {
-        pAdapterInfo = (PIP_ADAPTER_INFO)malloc(ulOutBufLen);
-        if (pAdapterInfo && GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == NO_ERROR)
+        p_adapter_info = (PIP_ADAPTER_INFO)malloc(ul_out_buf_len);
+        if (p_adapter_info && GetAdaptersInfo(p_adapter_info, &ul_out_buf_len) == NO_ERROR)
         {
-            PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
-            uint8_t count = 0;
-            while (pAdapter)
+            PIP_ADAPTER_INFO p_adapter = p_adapter_info;
+            uint8_t cnt = 0;
+            while (p_adapter)
             {
-                Adapter* new_adaptor = realloc(adaptor, sizeof(Adapter) * (count + 1));
+                Adapter* new_adaptor = realloc(s_adaptor, sizeof(Adapter) * (cnt + 1));
                 if (!new_adaptor)
                 {
                     LOG_ERROR("分配内存失败");
                     break;
                 }
-                adaptor = new_adaptor;
-                snprintf(adaptor[count].name, NAME_LENGTH, "%s", pAdapter->Description);
-                snprintf(adaptor[count].ip, IP_LENGTH, "%s", pAdapter->IpAddressList.IpAddress.String);
-                LOG_VERBOSE("IP: %s", pAdapter->IpAddressList.IpAddress.String);
-                pAdapter = pAdapter->Next;
-                count++;
+                s_adaptor = new_adaptor;
+                snprintf(s_adaptor[cnt].name, NAME_LENGTH, "%s", p_adapter->Description);
+                snprintf(s_adaptor[cnt].ip, IP_LEN, "%s", p_adapter->IpAddressList.IpAddress.String);
+                LOG_VERBOSE("IP: %s", p_adapter->IpAddressList.IpAddress.String);
+                p_adapter = p_adapter->Next;
+                cnt++;
             }
         }
     }
-    if (pAdapterInfo) free(pAdapterInfo);
+    if (p_adapter_info) free(p_adapter_info);
 #else
-    struct ifaddrs *ifaddrs_ptr, *ifa;
+    struct ifaddrs* ifaddrs_ptr, *ifa;
     if (getifaddrs(&ifaddrs_ptr) == 0)
     {
         uint8_t count = 0;
@@ -70,15 +82,15 @@ void getAdapters()
             struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
             if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)))
             {
-                Adapter* new_adaptor = realloc(adaptor, sizeof(Adapter) * (count + 1));
+                Adapter* new_adaptor = realloc(s_adaptor, sizeof(Adapter) * (count + 1));
                 if (!new_adaptor)
                 {
                     LOG_ERROR("分配内存失败");
                     break;
                 }
-                adaptor = new_adaptor;
-                snprintf(adaptor[count].name, NAME_LENGTH, "%s", ifa->ifa_name);
-                snprintf(adaptor[count].ip, IP_LENGTH, "%s", ip);
+                s_adaptor = new_adaptor;
+                snprintf(s_adaptor[count].name, NAME_LENGTH, "%s", ifa->ifa_name);
+                snprintf(s_adaptor[count].ip, IP_LEN, "%s", ip);
                 count++;
             }
         }
@@ -87,16 +99,16 @@ void getAdapters()
 #endif
 }
 
-char* getAdaptersJSON()
+char* get_adapters_json()
 {
     cJSON* root = cJSON_CreateObject();
     cJSON* adapters = cJSON_CreateArray();
     for (uint8_t i = 0; i < 16; i++)
     {
-        if (strlen(adaptor[i].name) == 0) break;
+        if (strlen(s_adaptor[i].name) == 0) break;
         cJSON* adapter = cJSON_CreateObject();
-        cJSON_AddStringToObject(adapter, "name", adaptor[i].name);
-        cJSON_AddStringToObject(adapter, "ip", adaptor[i].ip);
+        cJSON_AddStringToObject(adapter, "name", s_adaptor[i].name);
+        cJSON_AddStringToObject(adapter, "ip", s_adaptor[i].ip);
         cJSON_AddItemToArray(adapters, adapter);
     }
     cJSON_AddItemToObject(root, "adapters", adapters);
@@ -106,7 +118,7 @@ char* getAdaptersJSON()
     return json;
 }
 
-ByteArray stringToBytes(const char* str)
+ByteArray str_2_bytes(const char* str)
 {
     ByteArray ba = {0};
     if (!str) return ba;
@@ -116,14 +128,14 @@ ByteArray stringToBytes(const char* str)
     return ba;
 }
 
-char* XmlParser(const char* xmlData, const char* tag)
+char* xml_parser(const char* xml_data, const char* tag)
 {
-    if (!xmlData || !tag) return NULL;
+    if (!xml_data || !tag) return NULL;
     char start_tag[256];
     snprintf(start_tag, sizeof(start_tag), "<%s>", tag);
     char end_tag[256];
     snprintf(end_tag, sizeof(end_tag), "</%s>", tag);
-    const char* start_pos = strstr(xmlData, start_tag);
+    const char* start_pos = strstr(xml_data, start_tag);
     if (!start_pos) return NULL;
     start_pos += strlen(start_tag);
     const char* end_pos = strstr(start_pos, end_tag);
@@ -137,22 +149,22 @@ char* XmlParser(const char* xmlData, const char* tag)
     return content;
 }
 
-uint64_t stringToUint64(const char* str)
+uint64_t str_2_uint64(const char* str)
 {
     if (!str) return 0;
     while (isspace(*str)) str++;
     if (*str == '\0') return 0;
-    char* endptr;
+    char* end_ptr;
     errno = 0;
-    const long long value = strtoll(str, &endptr, 10);
+    const long long value = strtoll(str, &end_ptr, 10);
     if (errno == ERANGE) return 0;
-    if (endptr == str) return 0;
-    while (isspace(*endptr)) endptr++;
-    if (*endptr != '\0') return 0;
+    if (end_ptr == str) return 0;
+    while (isspace(*end_ptr)) end_ptr++;
+    if (*end_ptr != '\0') return 0;
     return value;
 }
 
-char* uint64ToString(const uint64_t num)
+char* uint64_2_str(const uint64_t num)
 {
     const uint8_t buf_size = 22;
     char* result = malloc(buf_size);
@@ -161,7 +173,7 @@ char* uint64ToString(const uint64_t num)
     return result;
 }
 
-uint64_t currentTimeMillis()
+uint64_t cur_tm_ms()
 {
 #ifdef _WIN32
     FILETIME ft;
@@ -177,87 +189,79 @@ uint64_t currentTimeMillis()
 #endif
 }
 
-void randomBytes(unsigned char* buffer, const size_t length)
+void rand_bytes(unsigned char* buf, const size_t len)
 {
 #ifdef _WIN32
-    HCRYPTPROV hCryptProv;
-    if (!CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) return;
-    CryptGenRandom(hCryptProv, length, buffer);
-    CryptReleaseContext(hCryptProv, 0);
+    HCRYPTPROV h_crypt_prov;
+    if (!CryptAcquireContext(&h_crypt_prov, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) return;
+    CryptGenRandom(h_crypt_prov, len, buf);
+    CryptReleaseContext(h_crypt_prov, 0);
 #else
     uint32_t fd = open("/dev/urandom", O_RDONLY);
     if (fd == -1) return 0;
-    ssize_t bytesRead = read(fd, buffer, length);
+    ssize_t bytes_read = read(fd, buf, len);
     close(fd);
 #endif
 }
 
-void sleepMilliseconds(const uint64_t milliseconds)
+void sleep_ms(const uint64_t ms)
 {
-    if (milliseconds <= 0) return;
+    if (ms <= 0) return;
 #ifdef _WIN32
-    Sleep(milliseconds);
+    Sleep(ms);
 #else
-    usleep(milliseconds * 1000);
+    usleep(ms * 1000);
 #endif
 }
 
-char* getTime(const TimeFormat format)
+void get_fmt_time(char* buf, const TimeFormat fmt)
 {
-    static char timeStr[32] = "";
-    time_t raw_time;
-    if (time(&raw_time) == (time_t)-1)
+    time_t raw_tm;
+    if (time(&raw_tm) == (time_t)-1)
     {
         fprintf(stderr, "错误: 获取系统时间失败\n");
-        return NULL;
+        return;
     }
-    struct tm local_time;
+    struct tm local_tm;
 #ifdef _WIN32
-    if (localtime_s(&local_time, &raw_time) != 0)
+    if (localtime_s(&local_tm, &raw_tm) != 0)
     {
         fprintf(stderr, "错误: 时间转换失败\n");
-        return NULL;
+        return;
     }
 #else
-    if (localtime_r(&raw_time, &local_time) == NULL)
+    if (localtime_r(&raw_tm, &local_tm) == NULL)
     {
         fprintf(stderr, "错误: 时间转换失败\n");
-        return NULL;
+        return;
     }
 #endif
-    switch (format)
+    switch (fmt)
     {
     case CONSOLE_FORMAT:
-        if (strftime(timeStr, 32, "%Y-%m-%d %H:%M:%S", &local_time) == 0)
+        if (strftime(buf, 32, "%Y-%m-%d %H:%M:%S", &local_tm) == 0)
         {
             fprintf(stderr, "错误: 格式化时间失败\n");
-            return NULL;
+            return;
         }
-        return timeStr;
+        return;
     case FILE_FORMAT:
-        if (strftime(timeStr, 32, "%Y%m%d-%H%M%S", &local_time) == 0)
+        if (strftime(buf, 32, "%Y%m%d-%H%M%S", &local_tm) == 0)
         {
             fprintf(stderr, "错误: 格式化时间失败\n");
-            return NULL;
         }
-        return timeStr;
-    default:
-        return NULL;
     }
 }
 
-static const char* safeStr(const char* str)
+static const char* safe_str(const char* str)
 {
     return str ? str : "";
 }
 
-char* createXMLPayload(const XmlChoose choose)
+char* create_xml_payload(const XmlChoose choose)
 {
-    char* currentTime = getTime(CONSOLE_FORMAT);
-    if (!currentTime)
-    {
-        return NULL;
-    }
+    char cur_tm[32];
+    get_fmt_time(cur_tm, CONSOLE_FORMAT);
     static char xml[XML_BUFFER_SIZE] = "";
     LOG_DEBUG("XML 选择代码: %d", choose);
     uint16_t xml_len = 0;
@@ -276,16 +280,16 @@ char* createXMLPayload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "    <gwip>%s</gwip>\n"
             "%s",
-            xml_header,
-            safeStr(prog_status[prog_index].auth_config.user_agent),
-            safeStr(prog_status[prog_index].auth_config.client_id),
-            currentTime,
-            safeStr(prog_status[prog_index].auth_config.host_name),
-            safeStr(prog_status[prog_index].auth_config.client_ip),
-            safeStr(prog_status[prog_index].auth_config.mac_address),
-            safeStr(prog_status[prog_index].auth_config.host_name),
-            safeStr(prog_status[prog_index].auth_config.ac_ip),
-            xml_footer
+            s_xml_header,
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.user_agent),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_id),
+            cur_tm,
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_ip),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.mac_address),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.ac_ip),
+            s_xml_footer
         );
         break;
     case LOGIN:
@@ -298,14 +302,14 @@ char* createXMLPayload(const XmlChoose choose)
             "    <userid>%s</userid>\n"
             "    <passwd>%s</passwd>\n"
             "%s",
-            xml_header,
-            safeStr(prog_status[prog_index].auth_config.user_agent),
-            safeStr(prog_status[prog_index].auth_config.client_id),
-            safeStr(prog_status[prog_index].auth_config.ticket),
-            currentTime,
-            safeStr(prog_status[prog_index].login_config.usr),
-            safeStr(prog_status[prog_index].login_config.pwd),
-            xml_footer
+            s_xml_header,
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.user_agent),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_id),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.ticket),
+            cur_tm,
+            safe_str(g_prog_status[g_prog_idx].login_cfg.usr),
+            safe_str(g_prog_status[g_prog_idx].login_cfg.pwd),
+            s_xml_footer
         );
         break;
     case HEART_BEAT:
@@ -322,24 +326,22 @@ char* createXMLPayload(const XmlChoose choose)
             "    <mac>%s</mac>\n"
             "    <ostag>%s</ostag>\n"
             "%s",
-            xml_header,
-            safeStr(prog_status[prog_index].auth_config.user_agent),
-            safeStr(prog_status[prog_index].auth_config.client_id),
-            currentTime,
-            safeStr(prog_status[prog_index].auth_config.host_name),
-            safeStr(prog_status[prog_index].auth_config.client_ip),
-            safeStr(prog_status[prog_index].auth_config.ticket),
-            safeStr(prog_status[prog_index].auth_config.mac_address),
-            safeStr(prog_status[prog_index].auth_config.host_name),
-            xml_footer
+            s_xml_header,
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.user_agent),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_id),
+            cur_tm,
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_ip),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.ticket),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.mac_address),
+            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
+            s_xml_footer
         );
         break;
     default:
-        free(currentTime);
         LOG_ERROR("XML 选择代码错误");
         return NULL;
     }
-    free(currentTime);
     if (xml_len <= 0)
     {
         LOG_ERROR("XML 创建失败");
@@ -354,7 +356,7 @@ char* createXMLPayload(const XmlChoose choose)
     return xml;
 }
 
-char* extractBetweenTags(const char* text, const char* start_tag, const char* end_tag)
+char* extract_between_tags(const char* text, const char* start_tag, const char* end_tag)
 {
     if (!text)
     {
@@ -387,113 +389,132 @@ char* extractBetweenTags(const char* text, const char* start_tag, const char* en
     return result;
 }
 
-char* cleanCDATA(const char* text)
+char* clean_CDATA(const char* text)
 {
-    return extractBetweenTags(text, "<![CDATA[", "]]>");
+    return extract_between_tags(text, "<![CDATA[", "]]>");
 }
 
-void saveJSON()
+bool save_cfg()
 {
-    cJSON* root = cJSON_CreateObject();
+    cJSON* cfg_json = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(root, "logger_level", getLoggerLevel());
+    cJSON_AddNumberToObject(cfg_json, "logger_level", get_logger_level());
 
-    cJSON* adapters = cJSON_CreateArray();
-    cJSON_AddItemToObject(root, "adapters", adapters);
+    cJSON* accounts = cJSON_CreateArray();
+    cJSON_AddItemToObject(cfg_json, "accounts", accounts);
 
-    for (uint8_t i = 0; i < prog_count; i++)
+    for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        cJSON* adapter = cJSON_CreateObject();
+        cJSON* account = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(adapter, "username", prog_status[i].login_config.usr);
-        cJSON_AddStringToObject(adapter, "password", prog_status[i].login_config.pwd);
-        cJSON_AddStringToObject(adapter, "channel", prog_status[i].login_config.chn);
-        cJSON_AddStringToObject(adapter, "bind_ip", prog_status[i].login_config.ip);
-        cJSON_AddBoolToObject(adapter, "auto_start", prog_status[i].login_config.auto_start);
+        cJSON_AddStringToObject(account, "username", g_prog_status[i].login_cfg.usr);
+        cJSON_AddStringToObject(account, "password", g_prog_status[i].login_cfg.pwd);
+        cJSON_AddStringToObject(account, "channel", g_prog_status[i].login_cfg.chn);
+        cJSON_AddStringToObject(account, "bind_ip", g_prog_status[i].login_cfg.ip);
+        cJSON_AddBoolToObject(account, "auto_start", g_prog_status[i].login_cfg.auto_start);
 
-        cJSON_AddItemToArray(adapters, adapter);
+        cJSON_AddItemToArray(accounts, account);
     }
 
-    char* json = cJSON_Print(root);
+    char* json = cJSON_Print(cfg_json);
 
-    FILE* config = fopen(DIALER_CONFIG_FILE, "w");
-    if (!config)
+    FILE* cfg_file = fopen(DIALER_CONFIG_FILE, "w");
+    if (!cfg_file)
     {
         LOG_ERROR("无法生成文件: %s", DIALER_CONFIG_FILE);
-        return;
+        return false;
     }
-    fprintf(config, "%s", json);
-    fclose(config);
+    fprintf(cfg_file, "%s", json);
+    fclose(cfg_file);
 
     free(json);
-    cJSON_Delete(root);
+    cJSON_Delete(cfg_json);
+    return true;
 }
 
-void loadJSON()
+bool load_cfg()
 {
-    FILE* config = fopen(DIALER_CONFIG_FILE, "rb");
-    if (!config)
+    FILE* cfg_file = fopen(DIALER_CONFIG_FILE, "r");
+    if (!cfg_file || fgetc(cfg_file) == EOF)
     {
-        LOG_ERROR("无法打开文件: %s", DIALER_CONFIG_FILE);
-        return;
+        LOG_ERROR("无法打开配置文件或配置文件为空: %s", DIALER_CONFIG_FILE);
+        LOG_INFO("创建新的默认配置文件");
+        FILE* new_cfg = fopen(DIALER_CONFIG_FILE, "w");
+        if (!new_cfg)
+        {
+            LOG_ERROR("无法生成文件: %s", DIALER_CONFIG_FILE);
+            return false;
+        }
+        fprintf(new_cfg, "%s", s_default_cfg);
+        fclose(new_cfg);
+        LOG_INFO("创建完成, 请在 %s 填写账号数据", DIALER_CONFIG_FILE);
+        return false;
     }
 
-    fseek(config, 0, SEEK_END);
-    const long len = ftell(config);
-    fseek(config, 0, SEEK_SET);
+    fseek(cfg_file, 0, SEEK_END);
+    const long len = ftell(cfg_file);
+    fseek(cfg_file, 0, SEEK_SET);
 
-    char* config_data = malloc(len + 1);
-    fread(config_data, 1, len, config);
-    config_data[len] = '\0';
-    fclose(config);
+    char* cfg_data = malloc(len + 1);
+    fread(cfg_data, 1, len, cfg_file);
+    cfg_data[len] = '\0';
+    fclose(cfg_file);
 
-    cJSON* root = cJSON_Parse(config_data);
-    free(config_data);
-    if (!root)
+    cJSON* cfg_json = cJSON_Parse(cfg_data);
+    free(cfg_data);
+    if (!cfg_json)
     {
         LOG_ERROR("JSON 解析失败");
-        return;
+        return false;
     }
 
-    const cJSON* logger_level = cJSON_GetObjectItem(root, "logger_level");
-    if (logger_level) LOG_INFO("logger_level = %d", logger_level->valueint);
+    const cJSON* logger_level = cJSON_GetObjectItem(cfg_json, "logger_level");
+    if (!logger_level) LOG_INFO("日志等级加载失败, 使用默认等级 (INFO)");
 
-    cJSON* adapters = cJSON_GetObjectItem(root, "Adapter");
-    if (!adapters || !cJSON_IsArray(adapters))
+    cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
+    if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
     {
-        printf("没有找到 Adapter 数组\n");
-        cJSON_Delete(root);
-        return;
+        LOG_WARN("没有找到账号数据, 请添加");
+        cJSON_Delete(cfg_json);
+        return false;
     }
 
-    const uint8_t count = cJSON_GetArraySize(adapters);
-    prog_status = malloc(sizeof(ProgStatus) * count);
-    prog_count = count;
+    const uint8_t cnt = cJSON_GetArraySize(accounts);
 
-    for (uint8_t i = 0; i < count; i++)
+    ProgStatus* new_prog_status = realloc(g_prog_status, sizeof(ProgStatus) * cnt);
+    if (new_prog_status)
     {
-        const cJSON* adapter = cJSON_GetArrayItem(adapters, i);
+        g_prog_status = new_prog_status;
+        memset(g_prog_status, 0, sizeof(ProgStatus) * cnt);
+    }
 
-        const cJSON* usr = cJSON_GetObjectItem(adapter, "username");
-        const cJSON* pwd = cJSON_GetObjectItem(adapter, "password");
-        const cJSON* chn = cJSON_GetObjectItem(adapter, "channel");
-        const cJSON* ip = cJSON_GetObjectItem(adapter, "bind_ip");
-        const cJSON* auto_start = cJSON_GetObjectItem(adapter, "auto_start");
+    g_prog_cnt = cnt;
 
-        snprintf(prog_status[i].login_config.usr, USR_LENGTH, "%s", usr->valuestring);
-        snprintf(prog_status[i].login_config.pwd, PWD_LENGTH, "%s", pwd->valuestring);
-        snprintf(prog_status[i].login_config.chn, CHN_LENGTH, "%s", chn->valuestring);
-        snprintf(prog_status[i].login_config.ip, IP_LENGTH, "%s", ip->valuestring);
-        prog_status[i].login_config.auto_start = auto_start->valueint;
+    for (uint8_t i = 0; i < cnt; i++)
+    {
+        const cJSON* account = cJSON_GetArrayItem(accounts, i);
+
+        const cJSON* usr = cJSON_GetObjectItem(account, "username");
+        const cJSON* pwd = cJSON_GetObjectItem(account, "password");
+        const cJSON* chn = cJSON_GetObjectItem(account, "channel");
+        const cJSON* ip = cJSON_GetObjectItem(account, "bind_ip");
+        const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
+
+        snprintf(g_prog_status[i].login_cfg.usr, USR_LEN, "%s", usr->valuestring);
+        snprintf(g_prog_status[i].login_cfg.pwd, PWD_LEN, "%s", pwd->valuestring);
+        snprintf(g_prog_status[i].login_cfg.chn, CHN_LEN, "%s", chn->valuestring);
+        snprintf(g_prog_status[i].login_cfg.ip, IP_LEN, "%s", ip->valuestring);
+        g_prog_status[i].login_cfg.auto_start = auto_start->valueint;
         if (strcmp(chn->valuestring, "pc") == 0)
         {
-            snprintf(prog_status[i].auth_config.user_agent, USER_AGENT_LENGTH,  "CCTP/Linux64/1003");
+            snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
         }
         else
         {
-            snprintf(prog_status[i].auth_config.user_agent, USER_AGENT_LENGTH, "CCTP/android64_vpn/2093");
+            snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
         }
     }
 
-    cJSON_Delete(root);
+    cJSON_Delete(cfg_json);
+    return true;
 }

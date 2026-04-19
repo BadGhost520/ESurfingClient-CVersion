@@ -4,53 +4,57 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MAC_ADDRESS_LENGTH 20
-#define TICKET_URL_LENGTH 256
-#define USER_AGENT_LENGTH 32
-#define KEEP_RETRY_LENGTH 8
-#define CLIENT_ID_LENGTH 40
-#define HOST_NAME_LENGTH 16
-#define KEEP_URL_LENGTH 80
-#define TERM_URL_LENGTH 80
-#define AUTH_URL_LENGTH 80
-#define ALGO_ID_LENGTH 37
-#define TICKET_LENGTH 40
+#define SCHOOL_NETWORK_SYMBOL 8
 
-#define USR_LENGTH 16
-#define PWD_LENGTH 128
-#define CHN_LENGTH 8
+#define LAST_LOCATION_LEN 256
+#define MAC_ADDRESS_LEN 20
+#define TICKET_URL_LEN 256
+#define USER_AGENT_LEN 32
+#define KEEP_RETRY_LEN 8
+#define CLIENT_ID_LEN 40
+#define HOST_NAME_LEN 16
+#define KEEP_URL_LEN 80
+#define TERM_URL_LEN 80
+#define AUTH_URL_LEN 80
+#define ALGO_ID_LEN 37
+#define TICKET_LEN 40
 
-#define IP_LENGTH 16
+#define USR_LEN 16
+#define PWD_LEN 128
+#define CHN_LEN 8
+
+#define IP_LEN 16
 
 /** @brief 认证配置 */
 typedef struct
 {
+    char last_location[LAST_LOCATION_LEN];
     /** @brief MAC 地址 */
-    char mac_address[MAC_ADDRESS_LENGTH];
+    char mac_address[MAC_ADDRESS_LEN];
     /** @brief 票据 URL */
-    char ticket_url[TICKET_URL_LENGTH];
+    char ticket_url[TICKET_URL_LEN];
     /** @brief 设备 UA */
-    char user_agent[USER_AGENT_LENGTH];
+    char user_agent[USER_AGENT_LEN];
     /** @brief 重试时间 */
-    char keep_retry[KEEP_RETRY_LENGTH];
+    char keep_retry[KEEP_RETRY_LEN];
     /** @brief 客户端 ID */
-    char client_id[CLIENT_ID_LENGTH];
+    char client_id[CLIENT_ID_LEN];
     /** @brief 主机名 */
-    char host_name[HOST_NAME_LENGTH];
+    char host_name[HOST_NAME_LEN];
     /** @brief 认证 URL */
-    char auth_url[AUTH_URL_LENGTH];
+    char auth_url[AUTH_URL_LEN];
     /** @brief 心跳 URL */
-    char keep_url[KEEP_URL_LENGTH];
+    char keep_url[KEEP_URL_LEN];
     /** @brief 登出 URL */
-    char term_url[TERM_URL_LENGTH];
+    char term_url[TERM_URL_LEN];
     /** @brief 加解密 ID */
-    char algo_id[ALGO_ID_LENGTH];
+    char algo_id[ALGO_ID_LEN];
     /** @brief 票据 */
-    char ticket[TICKET_LENGTH];
+    char ticket[TICKET_LEN];
     /** @brief 客户端 IP */
-    char client_ip[IP_LENGTH];
+    char client_ip[IP_LEN];
     /** @brief 服务端 IP */
-    char ac_ip[IP_LENGTH];
+    char ac_ip[IP_LEN];
     /** @brief 当前时间 (用于检测认证时间) */
     uint64_t tick;
 } AuthConfig;
@@ -59,13 +63,13 @@ typedef struct
 typedef struct
 {
     /** @brief 用户名 */
-    char usr[USR_LENGTH];
+    char usr[USR_LEN];
     /** @brief 密码 */
-    char pwd[PWD_LENGTH];
+    char pwd[PWD_LEN];
     /** @brief 认证通道 */
-    char chn[CHN_LENGTH];
+    char chn[CHN_LEN];
     /** @brief 认证使用的 IP */
-    char ip[IP_LENGTH];
+    char ip[IP_LEN];
     /** @brief 自启状态 */
     bool auto_start;
 } LoginConfig;
@@ -89,26 +93,29 @@ typedef struct
 typedef struct
 {
     /** @brief 认证配置 */
-    AuthConfig auth_config;
+    AuthConfig auth_cfg;
     /** @brief 登录配置 */
-    LoginConfig login_config;
+    LoginConfig login_cfg;
     /** @brief 运行状态 */
     RuntimeStatus runtime_status;
 } ProgStatus;
 
 /** @brief 全局运行时间 */
-extern uint64_t g_running_time;
+extern uint64_t g_running_tm;
 
 /** @brief 适配器数 */
-extern uint8_t prog_count;
+extern uint8_t g_prog_cnt;
 
 /** @brief 正在操作的适配器下标 */
-extern uint8_t prog_index;
+extern uint8_t g_prog_idx;
 
 /** @brief 主程序状态 */
-extern ProgStatus* prog_status;
+extern ProgStatus* g_prog_status;
+
+/** @brief 校园网标志 */
+extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
 
 /** @brief 刷新状态函数 */
-void refreshStates();
+void refresh_states();
 
 #endif //ESURFINGCLIENT_STATES_H

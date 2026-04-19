@@ -1,6 +1,7 @@
-#include "webserver/WebServer.h"
+// #include "webserver/WebServer.h"
 #include "utils/PlatformUtils.h"
 #include "utils/Shutdown.h"
+#include "utils/Logger.h"
 #include "NetClient.h"
 #include "States.h"
 
@@ -8,19 +9,25 @@
 
 int main()
 {
-    g_running_time = currentTimeMillis();
-
 #ifdef _WIN32
     system("chcp 65001 >nul");
 #endif
 
-    loadJSON();
+    g_running_tm = cur_tm_ms();
 
-    initShutdown();
+    g_prog_status = calloc(1, sizeof(ProgStatus));
 
-    checkNetworkStatus();
+    init_logger(LOG_LEVEL_DEBUG);
 
-    getAdapters();
+    if (!load_cfg()) shut(0);
 
-    startWebServer();
+    init_shutdown_hook();
+
+    get_last_location();
+
+    // get_adapters();
+
+    // startWebServer();
+
+    shut(0);
 }

@@ -38,15 +38,14 @@ add_executable(ESurfingClient
         src/cipher/CipherFactory.c
         src/cipher/CipherUtils.c
         src/cipher/KeyData.c
-        src/webserver/WebServer.c
-        src/webserver/mongoose.c
+#        src/webserver/WebServer.c
+#        src/webserver/mongoose.c
         src/utils/PlatformUtils.c
         src/utils/Shutdown.c
         src/utils/Logger.c
         src/utils/cJSON.c
         src/DialerClient.c
         src/NetClient.c
-        src/Session.c
         src/States.c
         Main.c
 )

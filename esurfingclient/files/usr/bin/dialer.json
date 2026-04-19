@@ -1,0 +1,12 @@
+{
+  "logger_level": 4,
+  "accounts": [
+    {
+      "username": "",
+      "password": "",
+      "channel": "phone",
+      "bind_ip": "",
+      "auto_start": false
+    }
+  ]
+}

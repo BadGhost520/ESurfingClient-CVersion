@@ -1,12 +1,13 @@
-#include "webserver/WebServer.h"
+// #include "webserver/WebServer.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
+#include "DialerClient.h"
 #include "States.h"
 
 #include <signal.h>
 #include <stdlib.h>
 
-static void signalHandler(const int sig)
+static void signal_handler(const int sig)
 {
     switch(sig)
     {
@@ -24,29 +25,38 @@ static void signalHandler(const int sig)
     }
 }
 
-static void mainStop()
-{
-    if (is_webserver_running) stopWebServer();
-    loggerCleanup();
-}
-
 void shut(const uint8_t exitCode)
 {
-    LOG_INFO("主线程正在关闭");
-    mainStop();
+    LOG_INFO("主程序正在关闭");
+    LOG_INFO("清理资源中");
+    // if (is_webserver_running) stopWebServer();
+    LOG_DEBUG("开始配置清理");
+    for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
+    {
+        LOG_DEBUG("操作配置 %d", g_prog_idx + 1);
+        if (g_prog_status[g_prog_idx].runtime_status.is_authed)
+        {
+            LOG_DEBUG("配置 %d 登出", g_prog_idx + 1);
+            term();
+        }
+    }
+    LOG_DEBUG("操作完成");
+    clean_logger();
     exit(exitCode);
 }
 
-void initShutdown()
+void init_shutdown_hook()
 {
-    if (signal(SIGINT, signalHandler) == SIG_ERR)
+    LOG_DEBUG("初始化关闭钩子");
+    if (signal(SIGINT, signal_handler) == SIG_ERR)
     {
         LOG_ERROR("信号 SIGINT");
         exit(1);
     }
-    if (signal(SIGTERM, signalHandler) == SIG_ERR)
+    if (signal(SIGTERM, signal_handler) == SIG_ERR)
     {
         LOG_ERROR("信号 SIGTERM");
         exit(1);
     }
+    LOG_DEBUG("初始化关闭钩子完成");
 }

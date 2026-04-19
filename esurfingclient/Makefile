@@ -47,6 +47,9 @@ define Package/esurfingclient/install
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+
+	$(INSTALL_DIR) $(1)/usr/bin
+    $(CP) ./files/usr/bin/dialer.json $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,esurfingclient))

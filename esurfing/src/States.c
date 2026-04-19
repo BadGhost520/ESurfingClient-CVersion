@@ -4,67 +4,69 @@
 
 #include <ctype.h>
 
-uint64_t g_running_time = 0;
+uint64_t g_running_tm = 0;
 
-uint8_t prog_count = 0;
+uint8_t g_prog_cnt = 1;
 
-uint8_t prog_index = 0;
+uint8_t g_prog_idx = 0;
 
-ProgStatus* prog_status;
+ProgStatus* g_prog_status;
 
-static void setHostname()
+char school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
+
+static void set_hostname()
 {
     char host_name[16];
-    unsigned char strBytes[10];
-    randomBytes(strBytes, 10);
-    strBytes[0] = strBytes[0] & 0xFEU;
+    unsigned char host_bytes[10];
+    rand_bytes(host_bytes, 10);
+    host_bytes[0] = host_bytes[0] & 0xFEU;
     sprintf(host_name, "%02x%02x%02x%02x%02x",
-    strBytes[0], strBytes[1],
-    strBytes[2], strBytes[3],
-    strBytes[4]);
-    LOG_DEBUG("HOST_NAME: %s", host_name);
-    snprintf(prog_status[prog_index].auth_config.host_name, HOST_NAME_LENGTH, "%s", host_name);
+    host_bytes[0], host_bytes[1],
+    host_bytes[2], host_bytes[3],
+    host_bytes[4]);
+    LOG_DEBUG("新的主机名: %s", host_name);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.host_name, HOST_NAME_LEN, "%s", host_name);
 }
 
-static void setRandomClientId()
+static void set_client_id()
 {
     char client_id[40];
-    unsigned char random_bytes[16];
-    randomBytes(random_bytes, 16);
+    unsigned char client_bytes[16];
+    rand_bytes(client_bytes, 16);
     snprintf(client_id, 37,
         "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-        random_bytes[0], random_bytes[1],
-        random_bytes[2], random_bytes[3],
-        random_bytes[4], random_bytes[5],
-        random_bytes[6] & 0x0F | 0x40,
-        random_bytes[7] & 0x3F | 0x80,
-        random_bytes[8], random_bytes[9],
-        random_bytes[10], random_bytes[11],
-        random_bytes[12],random_bytes[13],
-        random_bytes[14], random_bytes[15]);
+        client_bytes[0], client_bytes[1],
+        client_bytes[2], client_bytes[3],
+        client_bytes[4], client_bytes[5],
+        client_bytes[6] & 0x0F | 0x40,
+        client_bytes[7] & 0x3F | 0x80,
+        client_bytes[8], client_bytes[9],
+        client_bytes[10], client_bytes[11],
+        client_bytes[12],client_bytes[13],
+        client_bytes[14], client_bytes[15]);
     for (int i = 0; client_id[i]; i++) client_id[i] = (char)tolower((unsigned char)client_id[i]);
-    LOG_DEBUG("New Client Id: %s", client_id);
-    snprintf(prog_status[prog_index].auth_config.client_id, CLIENT_ID_LENGTH, "%s", client_id);
+    LOG_DEBUG("新的 Client Id: %s", client_id);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.client_id, CLIENT_ID_LEN, "%s", client_id);
 }
 
-static void setRandomMacAddress()
+static void set_mac_address()
 {
     char mac_address[20];
-    unsigned char macBytes[6];
-    randomBytes(macBytes, 6);
-    macBytes[0] = macBytes[0] & 0xFEU;
+    unsigned char mac_bytes[6];
+    rand_bytes(mac_bytes, 6);
+    mac_bytes[0] = mac_bytes[0] & 0xFEU;
     sprintf(mac_address, "%02x:%02x:%02x:%02x:%02x:%02x",
-    macBytes[0], macBytes[1],
-    macBytes[2], macBytes[3],
-    macBytes[4], macBytes[5]);
-    LOG_DEBUG("New MAC: %s", mac_address);
-    snprintf(prog_status[prog_index].auth_config.mac_address, MAC_ADDRESS_LENGTH, "%s", mac_address);
+    mac_bytes[0], mac_bytes[1],
+    mac_bytes[2], mac_bytes[3],
+    mac_bytes[4], mac_bytes[5]);
+    LOG_DEBUG("新的 MAC 地址: %s", mac_address);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.mac_address, MAC_ADDRESS_LEN, "%s", mac_address);
 }
 
-void refreshStates()
+void refresh_states()
 {
-    snprintf(prog_status[prog_index].auth_config.algo_id, ALGO_ID_LENGTH, "00000000-0000-0000-0000-000000000000");
-    setHostname();
-    setRandomClientId();
-    setRandomMacAddress();
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000");
+    set_hostname();
+    set_client_id();
+    set_mac_address();
 }

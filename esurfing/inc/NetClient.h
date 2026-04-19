@@ -3,12 +3,6 @@
 
 #include <stddef.h>
 
-#define SCHOOL_NETWORK_SYMBOL 8
-#define LOCATION_LENGTH 256
-#define SCHOOL_ID_LENGTH 8
-#define DOMAIN_LENGTH 16
-#define AREA_LENGTH 8
-
 typedef enum {
     REQUEST_ERROR = 0,
     REQUEST_SUCCESS = 1,
@@ -31,29 +25,23 @@ typedef struct {
     size_t body_size;
 } HTTPResponse;
 
-extern __thread char latest_location[LOCATION_LENGTH];
-extern __thread char check_location[LOCATION_LENGTH];
-
-extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
-
 /**
  * 会话 POST
  * @param url 网址
  * @param data 数据
  * @return 响应数据
  */
-HTTPResponse sessionPost(const char* url, const char* data);
+HTTPResponse session_post(const char* url, const char* data);
 
 /**
- * 检查网络状态
- * @return 网络状态
+ * 获取所有 ip 的 last_location
  */
-NetworkStatus checkNetworkStatus();
+void get_last_location();
 
 /**
  * 检测认证状态
  * @return 网络状态
  */
-NetworkStatus checkAuthStatus();
+NetworkStatus check_auth_status();
 
 #endif //ESURFINGCLIENT_NETCLIENT_H
