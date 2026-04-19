@@ -1,11 +1,13 @@
 # ESurfingClient-C
 
-**根据 Rsplwe 大佬的 Kotlin 源码编写的 C 语言版本的 `广东` 天翼校园认证客户端** :+1:
+**根据 Rsplwe 大佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** :+1:
 
 **优点是程序文件超级小(所有版本均是总共占用不超过 3MB 的储存空间😋)，跨平台跨架构能力超强**
 
 > [!TIP]
-> 正在努力恢复更新，刚开学有点懒懒的
+> 重构好难啊啊啊
+> 
+> 被自己的石山石哭了
 
 > [!NOTE]
 > 现在正在做 Web 前端，完成后可以更方便地管理程序
@@ -66,18 +68,20 @@
 
 觉得好的话可以点击这个[神秘小链接](https://afdian.com/a/badghost)或者下边的微信赞赏码给偶打点钱哦，谢谢泥喵
 
-![Please refresh](image/4.png)
+<img alt="Please refresh" height="256" src="image/4.png" width="256"/>
 
 # 赞助者 ❤
 
 **感谢下面的赞助者支持👍**
 
-![Please refresh](image/fund/1.png)
+<img alt="Please refresh" src="image/fund/1.png"/>
 
-![Please refresh](image/fund/2.png)
+<img alt="Please refresh" src="image/fund/2.png"/>
 
-![Please refresh](image/fund/3.jpg)
+<img alt="Please refresh" height="256" src="image/fund/3.jpg" width="256"/>
 
-![Please refresh](image/fund/4.jpg)
+<img alt="Please refresh" height="256" src="image/fund/4.jpg" width="256"/>
 
-![Please refresh](image/fund/5.jpg)
+<img alt="Please refresh" height="256" src="image/fund/5.jpg" width="256"/>
+
+<img alt="Please refresh" height="256" src="image/fund/6.png" width="256"/>
