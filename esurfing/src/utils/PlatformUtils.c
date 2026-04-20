@@ -1,6 +1,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
+#include "NetClient.h"
 #include "States.h"
 
 #include <curl/curl.h>
@@ -25,7 +26,7 @@ static const char s_xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n
 static const char s_xml_footer[] = "</request>\n";
 
 static const char s_default_cfg[] = "{\n"
-                                    "   \"logger_level\":4,\n"
+                                    "   \"logger_level\": 4,\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
@@ -488,7 +489,7 @@ bool load_cfg()
         memset(g_prog_status, 0, sizeof(ProgStatus) * cnt);
     }
 
-    g_prog_cnt = cnt;
+    uint8_t valid_cnt = 0;
 
     for (uint8_t i = 0; i < cnt; i++)
     {
@@ -500,21 +501,49 @@ bool load_cfg()
         const cJSON* ip = cJSON_GetObjectItem(account, "bind_ip");
         const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
 
-        snprintf(g_prog_status[i].login_cfg.usr, USR_LEN, "%s", usr->valuestring);
-        snprintf(g_prog_status[i].login_cfg.pwd, PWD_LEN, "%s", pwd->valuestring);
-        snprintf(g_prog_status[i].login_cfg.chn, CHN_LEN, "%s", chn->valuestring);
-        snprintf(g_prog_status[i].login_cfg.ip, IP_LEN, "%s", ip->valuestring);
-        g_prog_status[i].login_cfg.auto_start = auto_start->valueint;
-        if (strcmp(chn->valuestring, "pc") == 0)
+        if (usr->valuestring[0] != '\0' && pwd->valuestring[0] != '\0' && chn->valuestring[0] != '\0' && ip->valuestring[0] != '\0')
         {
-            snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
+            if (check_ip_validity(ip->valuestring))
+            {
+                snprintf(g_prog_status[i].login_cfg.usr, USR_LEN, "%s", usr->valuestring);
+                snprintf(g_prog_status[i].login_cfg.pwd, PWD_LEN, "%s", pwd->valuestring);
+                snprintf(g_prog_status[i].login_cfg.chn, CHN_LEN, "%s", chn->valuestring);
+                snprintf(g_prog_status[i].login_cfg.ip, IP_LEN, "%s", ip->valuestring);
+                g_prog_status[i].login_cfg.auto_start = auto_start->valueint;
+                if (strcmp(chn->valuestring, "pc") == 0)
+                {
+                    snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
+                }
+                else
+                {
+                    snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+                }
+                g_prog_status[i].login_cfg.idx = i + 1;
+                LOG_INFO("配置 %d 不为空且 IP 地址可用, 将会尝试使用", i + 1);
+                valid_cnt++;
+            }
+            else
+            {
+                LOG_WARN("IP 地址不可用, 跳过当前配置");
+            }
         }
         else
         {
-            snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+            LOG_WARN("配置 %d 一个或多个值为空, 跳过当前配置", i + 1);
         }
     }
 
     cJSON_Delete(cfg_json);
+
+    if (valid_cnt == 0)
+    {
+        LOG_ERROR("无可用配置");
+        return false;
+    }
+
+    g_prog_cnt = valid_cnt;
+
+    LOG_INFO("可用配置数: %d", g_prog_cnt);
+
     return true;
 }

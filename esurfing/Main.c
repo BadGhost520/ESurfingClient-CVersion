@@ -19,7 +19,7 @@ int main()
 
     init_logger(LOG_LEVEL_DEBUG);
 
-    if (!load_cfg()) shut(0);
+    if (load_cfg() == false) shut(0);
 
     init_shutdown_hook();
 

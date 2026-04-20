@@ -42,7 +42,7 @@ static InitStatus load(const ByteArray zsm)
 
 static AuthStatus initSession()
 {
-    const HTTPResponse result = session_post(g_prog_status[g_prog_idx].auth_cfg.ticket_url, g_prog_status[g_prog_idx].auth_cfg.algo_id);
+    const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.ticket_url, g_prog_status[g_prog_idx].auth_cfg.algo_id);
     if (result.status == REQUEST_ERROR)
     {
         LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
@@ -92,7 +92,7 @@ RunningStatus term()
         return RUNNING_FAILURE;
     }
     LOG_VERBOSE("发送加密登出内容: %s", encrypt);
-    const HTTPResponse result = session_post(g_prog_status[g_prog_idx].auth_cfg.term_url, encrypt);
+    const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.term_url, encrypt);
     free(encrypt);
     if (result.status != REQUEST_SUCCESS)
     {
@@ -121,7 +121,7 @@ static RunningStatus heartbeat()
         return RUNNING_FAILURE;
     }
     LOG_VERBOSE("发送加密心跳内容: %s", encrypt);
-    const HTTPResponse result = session_post(g_prog_status[g_prog_idx].auth_cfg.keep_url, encrypt);
+    const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.keep_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -165,7 +165,7 @@ static AuthStatus login()
         return AUTH_FAILURE;
     }
     LOG_VERBOSE("发送加密登录内容: %s", encrypt);
-    const HTTPResponse result = session_post(g_prog_status[g_prog_idx].auth_cfg.auth_url, encrypt);
+    const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.auth_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -242,7 +242,7 @@ static AuthStatus get_ticket()
         return AUTH_FAILURE;
     }
     LOG_VERBOSE("发送加密获取 ticket 内容: %s", encrypt);
-    const HTTPResponse result = session_post(g_prog_status[g_prog_idx].auth_cfg.ticket_url, encrypt);
+    const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.ticket_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {

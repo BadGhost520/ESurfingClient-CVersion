@@ -6,7 +6,7 @@
 
 uint64_t g_running_tm = 0;
 
-uint8_t g_prog_cnt = 1;
+uint8_t g_prog_cnt = 0;
 
 uint8_t g_prog_idx = 0;
 

@@ -4,13 +4,13 @@
 #include <stdint.h>
 
 /**
- * 关闭函数
+ * @brief 关闭函数
  * @param exitCode 退出码
  */
 void shut(uint8_t exitCode);
 
 /**
- * 初始化关闭函数
+ * @brief 初始化关闭函数
  */
 void init_shutdown_hook();
 

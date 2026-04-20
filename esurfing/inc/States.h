@@ -72,6 +72,8 @@ typedef struct
     char ip[IP_LEN];
     /** @brief 自启状态 */
     bool auto_start;
+    /** @brief 配置序号 */
+    uint8_t idx;
 } LoginConfig;
 
 /** @brief 运行状态 */

@@ -21,13 +21,13 @@ typedef enum
 } InitStatus;
 
 /**
- * 登出
+ * @brief 登出
  * @return 认证状态码
  */
 RunningStatus term();
 
 /**
- * 认证主程序
+ * @brief 认证主程序
  */
 void dialer_app();
 

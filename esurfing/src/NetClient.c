@@ -247,7 +247,7 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
     return resp;
 }
 
-HTTPResponse session_post(const char* url, const char* data)
+HTTPResponse post_with_header(const char* url, const char* data)
 {
     struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
@@ -272,22 +272,35 @@ HTTPResponse session_post(const char* url, const char* data)
     return resp;
 }
 
-void get_school_ip_symbol()
+HTTPResponse get_with_header(const char* url)
 {
+    struct curl_slist* headers = NULL;
+    HTTPResponse resp = {0};
+    add_header(&headers, "User-Agent: %s", g_prog_status[g_prog_idx].auth_cfg.user_agent);
+    add_header(&headers, "Accept: %s", s_req_accept);
+    add_header(&headers, "Client-ID: %s", g_prog_status[g_prog_idx].auth_cfg.client_id);
+    resp = get(url, headers);
+    return resp;
+}
 
+static void get_school_ip_symbol()
+{
+    const char* school_ip = extract_url_param(g_prog_status[0].auth_cfg.last_location, "wlanuserip");
+    snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.')));
+    LOG_DEBUG("校园网标志: %s", school_network_symbol);
 }
 
 void get_last_location()
 {
-    g_prog_idx = 0;
-    while (g_prog_idx < g_prog_cnt)
+    for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
     {
         HTTPResponse resp = {0};
-        resp = get(s_generate_url, NULL);
-        while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[g_prog_idx].auth_cfg.last_location, NULL);
-        g_prog_idx++;
+        resp = get_with_header(s_generate_url);
+        while (resp.status == REQUEST_REDIRECT) resp = get_with_header(g_prog_status[g_prog_idx].auth_cfg.last_location);
+        LOG_DEBUG("配置 %d 获取认证配置 URL: %s", g_prog_status[g_prog_idx].login_cfg.idx, g_prog_status[g_prog_idx].auth_cfg.last_location);
     }
     g_prog_idx = 0;
+    get_school_ip_symbol();
 }
 
 NetworkStatus check_auth_status()
@@ -361,4 +374,17 @@ NetworkStatus check_auth_status()
     snprintf(g_prog_status[g_prog_idx].auth_cfg.ac_ip, IP_LEN, "%s", ac_ip);
     free(ac_ip);
     return REQUEST_AUTHORIZATION;
+}
+
+bool check_ip_validity(const char* ip)
+{
+    LOG_DEBUG("传入的 IP 地址: %s", ip);
+    char cmd[256];
+#ifdef _WIN32
+    snprintf(cmd, sizeof(cmd), "ping -n 1 -w 1000 %s > nul 2>&1", ip);
+#else
+    snprintf(cmd, sizeof(cmd), "ping -c 1 -W 1 %s > /dev/null 2>&1", ip);
+#endif
+    LOG_DEBUG("组成的指令: %s", cmd);
+    return system(cmd) == 0;
 }

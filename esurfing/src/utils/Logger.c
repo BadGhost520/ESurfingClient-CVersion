@@ -31,13 +31,13 @@ static const char* get_level_str(const LogLevel level)
 {
     switch (level)
     {
-    case LOG_LEVEL_VERBOSE: return "VERBOSE";
+    case LOG_LEVEL_VERBOSE: return "VERB";
     case LOG_LEVEL_DEBUG:   return "DEBUG";
     case LOG_LEVEL_INFO:    return "INFO";
     case LOG_LEVEL_WARN:    return "WARN";
     case LOG_LEVEL_ERROR:   return "ERROR";
     case LOG_LEVEL_FATAL:   return "FATAL";
-    default:                return "UNKNOWN";
+    default:                return "UNK";
     }
 }
 
@@ -131,9 +131,8 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
     vsnprintf(msg, sizeof(msg), fmt, local_args);
     va_end(local_args);
     snprintf(final_msg, sizeof(final_msg),
-        "[%s] [配置 %d] [%s] [%s:%d] %s\n",
+        "[%s] [%s] [%s:%d] %s\n",
         ts,
-        g_prog_idx + 1,
         get_level_str(level),
         strrchr(file, '/') ? strrchr(file, '/') + 1 : file,
         line,

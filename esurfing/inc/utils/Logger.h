@@ -18,7 +18,6 @@
 #endif
 
 typedef enum {
-    LOG_LEVEL_NONE = 0,
     LOG_LEVEL_FATAL = 1,
     LOG_LEVEL_ERROR = 2,
     LOG_LEVEL_WARN  = 3,
@@ -76,7 +75,7 @@ log_out(LOG_LEVEL_INFO, file, line, fmt, ##__VA_ARGS__)
 log_out(LOG_LEVEL_ERROR, file, line, fmt, ##__VA_ARGS__)
 
 /**
- * 打印日志
+ * @brief 打印日志
  * @param level 日志等级
  * @param file 调用的源代码文件名
  * @param line 执行该函数的行数
@@ -86,20 +85,20 @@ log_out(LOG_LEVEL_ERROR, file, line, fmt, ##__VA_ARGS__)
 void log_out(LogLevel level, const char* file, uint32_t line, const char* fmt, ...);
 
 /**
- * 获取当前日志等级
+ * @brief 获取当前日志等级
  * @return 日志等级
  */
 LogLevel get_logger_level();
 
 /**
- * 初始化日志系统
+ * @brief 初始化日志系统
  * @param logger_level 日志等级
  * @return 初始化状态
  */
 LoggerInitStatus init_logger(LogLevel logger_level);
 
 /**
- * 清理日志系统
+ * @brief 清理日志系统
  */
 void clean_logger();
 
