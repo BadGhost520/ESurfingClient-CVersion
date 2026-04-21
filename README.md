@@ -11,6 +11,8 @@
 
 > [!NOTE]
 > **(搁置中)** 现在正在做 Web 前端，完成后可以更方便地管理程序
+> 
+> 可以在 **[[快照版]](https://github.com/BadGhost520/ESurfingClient-CVersion-Snapshot)** 查看我的更新进度
 
 ## 附上作者自用 K2P 路由器安装本包之后的资源占用情况⬇
 
