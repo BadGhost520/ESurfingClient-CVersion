@@ -33,7 +33,7 @@ typedef enum
 } LoggerInitStatus;
 
 typedef struct {
-    LogLevel    level;
+    LogLevel    lv;
     char        log_dir[PATH_MAX];
     char        log_file[PATH_MAX];
     FILE*       file_handle;
@@ -92,9 +92,9 @@ LogLevel get_logger_level();
 
 /**
  * @brief 设置日志等级
- * @param level 日志等级
+ * @param lv 日志等级
  */
-void set_logger_level(LogLevel level);
+void set_logger_level(LogLevel lv);
 
 /**
  * @brief 初始化日志系统

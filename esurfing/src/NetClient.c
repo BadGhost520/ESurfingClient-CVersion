@@ -79,10 +79,13 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
     }
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
     {
-        const char* value = header + 9;
-        while (*value == ' ') value++;
-        const size_t valid_len = strcspn(value, "\r\n");
-        snprintf(g_prog_status[g_prog_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
+        if (!g_prog_status[g_prog_idx].runtime_status.last_location_lock)
+        {
+            const char* value = header + 9;
+            while (*value == ' ') value++;
+            const size_t valid_len = strcspn(value, "\r\n");
+            snprintf(g_prog_status[g_prog_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
+        }
     }
     return real_size;
 }
@@ -183,8 +186,8 @@ static void add_header(struct curl_slist** headers, const char* fmt, ...)
 
 static HTTPResponse post(const char* url, const char* data, struct curl_slist* headers)
 {
-    LOG_DEBUG("POST 地址: %s", url);
-    LOG_DEBUG("POST 数据: %s", data);
+    LOG_VERBOSE("POST 地址: %s", url);
+    LOG_VERBOSE("POST 数据: %s", data);
     CURL* curl;
     HTTPResponse resp = {0};
     if (create_post_client(&curl, &headers, &resp, url, data) == CURL_INIT_FAILURE)
@@ -207,7 +210,6 @@ static HTTPResponse post(const char* url, const char* data, struct curl_slist* h
 
 static HTTPResponse get(const char* url, struct curl_slist* headers)
 {
-    LOG_VERBOSE("GET 地址: %s", url);
     CURL* curl;
     HTTPResponse resp = {0};
     if (create_get_client(&curl, &headers, &resp, url) == CURL_INIT_FAILURE)
@@ -301,7 +303,8 @@ void get_last_location()
         HTTPResponse resp = {0};
         resp = get_with_header(s_generate_url);
         while (resp.status == REQUEST_REDIRECT) resp = get_with_header(g_prog_status[g_prog_idx].last_location);
-        LOG_DEBUG("配置 %d 获取认证配置 URL: %s", g_prog_status[g_prog_idx].login_cfg.idx, g_prog_status[g_prog_idx].last_location);
+        g_prog_status[g_prog_idx].runtime_status.last_location_lock = true;
+        LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[g_prog_idx].login_cfg.idx, g_prog_status[g_prog_idx].last_location);
     }
     g_prog_idx = 0;
     get_school_ip_symbol();
@@ -312,13 +315,23 @@ NetworkStatus check_auth_status()
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
     HTTPResponse resp = {0};
-    resp = get_with_header(g_prog_status[g_prog_idx].last_location);
+
+    resp = get_with_header(s_generate_url);
     if (resp.status == REQUEST_SUCCESS || resp.status == REQUEST_WARNING) return resp.status;
     if (resp.status == REQUEST_ERROR)
     {
         LOG_ERROR("GET 错误");
         return REQUEST_ERROR;
     }
+
+    resp = get_with_header(g_prog_status[g_prog_idx].last_location);
+    if (resp.status == REQUEST_WARNING) return resp.status;
+    if (resp.status == REQUEST_ERROR)
+    {
+        LOG_ERROR("GET 错误");
+        return REQUEST_ERROR;
+    }
+
     char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag);
     free(resp.body_data);
     if (!portal_config)
@@ -358,7 +371,15 @@ NetworkStatus check_auth_status()
     }
     LOG_INFO("Ticket URL: %s", cleaned_ticket_url);
     snprintf(g_prog_status[g_prog_idx].auth_cfg.ticket_url, TICKET_URL_LEN, "%s", cleaned_ticket_url);
-    LOG_INFO("Client IP: %s", g_prog_status[g_prog_idx].auth_cfg.client_ip);
+    char* client_ip = extract_url_param(cleaned_ticket_url, "wlanuserip");
+    if (!client_ip)
+    {
+        LOG_ERROR("提取 Client IP 失败");
+        return REQUEST_ERROR;
+    }
+    LOG_INFO("Client IP: %s", client_ip);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.client_ip, IP_LEN, "%s", client_ip);
+    free(client_ip);
     char* ac_ip = extract_url_param(cleaned_ticket_url, "wlanacip");
     free(cleaned_ticket_url);
     if (!ac_ip)

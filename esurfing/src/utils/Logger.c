@@ -19,7 +19,7 @@ static const char s_file_name[] = "run.log";
 static const char s_rotate_file_name[] = ".rotate.log";
 
 static LoggerConfig s_logger_cfg = {
-    .level = LOG_LEVEL_INFO,
+    .lv = LOG_LEVEL_INFO,
     .log_dir = "",
     .log_file = "",
     .file_handle = NULL,
@@ -27,17 +27,17 @@ static LoggerConfig s_logger_cfg = {
     .cur_lines = 0
 };
 
-static const char* get_level_str(const LogLevel level)
+static const char* get_level_str(const LogLevel lv)
 {
-    switch (level)
+    switch (lv)
     {
-    case LOG_LEVEL_VERBOSE: return "VERB";
+    case LOG_LEVEL_VERBOSE: return "VERBOSE";
     case LOG_LEVEL_DEBUG:   return "DEBUG";
     case LOG_LEVEL_INFO:    return "INFO";
     case LOG_LEVEL_WARN:    return "WARN";
     case LOG_LEVEL_ERROR:   return "ERROR";
     case LOG_LEVEL_FATAL:   return "FATAL";
-    default:                return "UNK";
+    default:                return "UNKNOWN";
     }
 }
 
@@ -104,24 +104,24 @@ static uint8_t ensure_log_dir(char* out)
     return 0;
 }
 
-static void write_2_console(const char* message)
+static void write_2_console(const char* msg)
 {
-    printf("%s", message);
+    printf("%s", msg);
     fflush(stdout);
 }
 
-static void write_2_file(const char* message)
+static void write_2_file(const char* msg)
 {
     if (s_logger_cfg.file_handle)
     {
-        fprintf(s_logger_cfg.file_handle, "%s", message);
+        fprintf(s_logger_cfg.file_handle, "%s", msg);
         fflush(s_logger_cfg.file_handle);
     }
 }
 
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
 {
-    if (level > s_logger_cfg.level) return;
+    if (level > s_logger_cfg.lv) return;
     va_list local_args;
     char ts[32];
     char msg[2048];
@@ -145,13 +145,13 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
 
 LogLevel get_logger_level()
 {
-    return s_logger_cfg.level;
+    return s_logger_cfg.lv;
 }
 
-void set_logger_level(const LogLevel level)
+void set_logger_level(const LogLevel lv)
 {
-    s_logger_cfg.level = level;
-    LOG_INFO("设置日志等级为 [%s]", get_level_str(level));
+    s_logger_cfg.lv = lv;
+    LOG_INFO("设置日志等级为 [%s]", get_level_str(lv));
 }
 
 LoggerInitStatus init_logger()
@@ -174,7 +174,7 @@ LoggerInitStatus init_logger()
         return INIT_LOGGER_FAILURE;
     }
     LOG_DEBUG("日志系统初始化完成");
-    LOG_DEBUG("日志等级: %s", get_level_str(s_logger_cfg.level));
+    LOG_DEBUG("日志等级: %s", get_level_str(s_logger_cfg.lv));
     return INIT_LOGGER_SUCCESS;
 }
 

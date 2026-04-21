@@ -1,4 +1,22 @@
 #include "cipher/CipherInterface.h"
+
+#include "cipher/impl/mod_xtea_cbc_triple_pc.h"
+#include "cipher/impl/des_ecb_six_pc.h"
+#include "cipher/impl/desede_cbc_pc.h"
+#include "cipher/impl/mod_xtea_pc.h"
+#include "cipher/impl/aes_cbc_pc.h"
+#include "cipher/impl/aes_ecb_pc.h"
+
+#include "cipher/impl/mod_xtea_iv.h"
+#include "cipher/impl/desede_cbc.h"
+#include "cipher/impl/desede_ecb.h"
+#include "cipher/impl/mod_xtea.h"
+#include "cipher/impl/aes_cbc.h"
+#include "cipher/impl/aes_ecb.h"
+#include "cipher/impl/sm4_cbc.h"
+#include "cipher/impl/sm4_ecb.h"
+#include "cipher/impl/zuc.h"
+
 #include "cipher/KeyData.h"
 #include "utils/Logger.h"
 #include "States.h"
@@ -6,32 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern cipherInterfaceT* create_aes_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
-                                                     const uint8_t* iv1, const uint8_t* iv2);
-extern cipherInterfaceT* create_aes_ecb_cipher(const uint8_t* key1, const uint8_t* key2);
-extern cipherInterfaceT* create_aes_ecb_pc_cipher(const uint8_t* key1, const uint8_t* key2);
-extern cipherInterfaceT* create_aes_cbc_pc_cipher(const uint8_t* key1, const uint8_t* key2);
-extern cipherInterfaceT* create_desede_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
-                                                    const uint8_t* iv1, const uint8_t* iv2);
-extern cipherInterfaceT* create_desede_ecb_cipher(const uint8_t* key1, const uint8_t* key2);
-extern cipherInterfaceT* create_zuc_cipher(const uint8_t* key, const uint8_t* iv);
-extern cipherInterfaceT* create_sm4_cbc_cipher(const uint8_t* key, const uint8_t* iv);
-extern cipherInterfaceT* create_sm4_ecb_cipher(const uint8_t* key);
-extern cipherInterfaceT* create_mod_xtea_cipher(const uint32_t* key1, const uint32_t* key2,
-                                                  const uint32_t* key3);
-extern cipherInterfaceT* create_mod_xtea_iv_cipher(const uint32_t* key1, const uint32_t* key2,
-                                                     const uint32_t* key3, const uint32_t* iv);
-extern cipherInterfaceT* create_mod_xtea_pc_cipher(const uint32_t* key1, const uint32_t* key2,
-                                                     const uint32_t* key3);
-extern cipherInterfaceT* create_desede_cbc_pc_cipher(const uint8_t* key1, const uint8_t* key2,
-                                                       const uint8_t* iv1, const uint8_t* iv2);
-extern cipherInterfaceT* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
-                                               const uint32_t* key2, const uint32_t* iv);
-extern cipherInterfaceT* create_des_ecb_six_pc_cipher(const uint8_t* key0, const uint8_t* key1,
-                                                        const uint8_t* key2, const uint8_t* key3,
-                                                        const uint8_t* key4, const uint8_t* key5);
-
-static cipherInterfaceT* cipher_factory_create(const char* algo_id)
+static cipherInterfaceT* create_cipher_factory(const char* algo_id)
 {
     if (!algo_id) return NULL;
     // AES-CBC
@@ -41,8 +34,7 @@ static cipherInterfaceT* cipher_factory_create(const char* algo_id)
         return create_aes_cbc_cipher(
             key1_CAFBCBAD_B6E7_4CAB_8A67_14D39F00CE1E,
             key2_CAFBCBAD_B6E7_4CAB_8A67_14D39F00CE1E,
-            iv1_CAFBCBAD_B6E7_4CAB_8A67_14D39F00CE1E,
-            iv2_CAFBCBAD_B6E7_4CAB_8A67_14D39F00CE1E
+            iv1_CAFBCBAD_B6E7_4CAB_8A67_14D39F00CE1E
         );
     }
     // AES-ECB
@@ -121,7 +113,7 @@ static cipherInterfaceT* cipher_factory_create(const char* algo_id)
             iv_C32C68F9_CA81_4260_A329_BBAFD1A9CCD1
         );
     }
-    // 自实现 3DES-CBC 两层（PC）
+    // 自实现 3DES-CBC 两层(PC)
     if (strcmp(algo_id, "1A7343EC-7F9B-4570-BF58-16279A81116B") == 0)
     {
         LOG_DEBUG("命中 1A7343EC-7F9B-4570-BF58-16279A81116B");
@@ -132,16 +124,16 @@ static cipherInterfaceT* cipher_factory_create(const char* algo_id)
             iv2_1A7343EC_7F9B_4570_BF58_16279A81116B
         );
     }
-    // AES-ECB 两层（PC）
+    // AES-ECB (PC)
     if (strcmp(algo_id, "4BA5496A-2123-46A7-85F2-35956EA7BE39") == 0)
     {
         LOG_DEBUG("命中 4BA5496A-2123-46A7-85F2-35956EA7BE39");
-        return create_aes_ecb_cipher(
+        return create_aes_ecb_pc_cipher(
             key1_4BA5496A_2123_46A7_85F2_35956EA7BE39,
             key2_4BA5496A_2123_46A7_85F2_35956EA7BE39
         );
     }
-    // AES-CBC 两层（PC，密文带双层IV）
+    // AES-CBC (PC)
     if (strcmp(algo_id, "45433DCF-9ECA-4BE5-83F2-F92BA0B4F291") == 0)
     {
         LOG_DEBUG("命中 45433DCF-9ECA-4BE5-83F2-F92BA0B4F291");
@@ -150,7 +142,7 @@ static cipherInterfaceT* cipher_factory_create(const char* algo_id)
             key2_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291
         );
     }
-    // XTEA 三层（PC变体）
+    // XTEA (PC)
     if (strcmp(algo_id, "60639D8B-272E-4A4D-976E-AA270987A169") == 0)
     {
         LOG_DEBUG("命中 60639D8B-272E-4A4D-976E-AA270987A169");
@@ -160,7 +152,7 @@ static cipherInterfaceT* cipher_factory_create(const char* algo_id)
             key3_60639D8B_272E_4A4D_976E_AA270987A169
         );
     }
-    // AB6C8 TEA CBC Triple
+    // AB6C8
     if (strcmp(algo_id, "AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91") == 0)
     {
         LOG_DEBUG("命中 AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91");
@@ -171,7 +163,7 @@ static cipherInterfaceT* cipher_factory_create(const char* algo_id)
             iv_AB6C8EBE_B8F8_4C08_8222_69A3B5E86A91
         );
     }
-    // DES-ECB 六阶段（PC）
+    // DES-ECB (PC)
     if (strcmp(algo_id, "B306E770-B7D5-49F2-A574-BCE2C5C650ED") == 0)
     {
         LOG_DEBUG("命中 B306E770-B7D5-49F2-A574-BCE2C5C650ED");
@@ -187,34 +179,42 @@ static cipherInterfaceT* cipher_factory_create(const char* algo_id)
     return NULL;
 }
 
-void cipher_factory_destroy()
+void destroy_cipher_factory()
 {
-    if (g_prog_status[g_prog_idx].auth_cfg.cipher && g_prog_status[g_prog_idx].auth_cfg.cipher->destroy)
-        g_prog_status[g_prog_idx].auth_cfg.cipher->destroy(g_prog_status[g_prog_idx].auth_cfg.cipher);
-    g_prog_status[g_prog_idx].auth_cfg.cipher = NULL;
+    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
+    if (cipher && cipher->destroy)
+    {
+        cipher->destroy(cipher);
+    }
+    cipher = NULL;
     LOG_DEBUG("销毁加解密工厂");
 }
 
-int init_cipher(const char* algo_id)
+bool init_cipher(const char* algo_id)
 {
     LOG_DEBUG("开始初始化加解密工厂");
-    if (g_prog_status[g_prog_idx].auth_cfg.cipher) cipher_factory_destroy();
-    g_prog_status[g_prog_idx].auth_cfg.cipher = cipher_factory_create(algo_id);
-    if (!g_prog_status[g_prog_idx].auth_cfg.cipher)
+    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
+    if (cipher) destroy_cipher_factory();
+    cipher = create_cipher_factory(algo_id);
+    if (!cipher)
     {
         LOG_ERROR("初始化加密工厂失败");
-        return 0;
+        return false;
     }
     LOG_DEBUG("初始化加解密工厂成功");
-    return 1;
+    return true;
 }
 
 char* session_encrypt(const char* text)
 {
-    return g_prog_status[g_prog_idx].auth_cfg.cipher->encrypt(g_prog_status[g_prog_idx].auth_cfg.cipher, text);
+    LOG_VERBOSE("要加密的文本:\n%s", text);
+    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
+    return cipher->encrypt(cipher, text);
 }
 
 char* session_decrypt(const char* text)
 {
-    return g_prog_status[g_prog_idx].auth_cfg.cipher->decrypt(g_prog_status[g_prog_idx].auth_cfg.cipher, text);
+    LOG_VERBOSE("要解密的文本:\n%s", text);
+    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
+    return cipher->decrypt(cipher, text);
 }

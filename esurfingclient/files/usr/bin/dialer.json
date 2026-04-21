@@ -1,5 +1,5 @@
 {
-  "debug": true,
+  "log_lv": 6,
   "use_cus_ip": false,
   "accounts": [
     {

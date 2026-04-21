@@ -219,7 +219,7 @@ void sleep_ms(const uint64_t ms)
 void get_fmt_time(char* buf, const TimeFormat fmt)
 {
     time_t raw_tm;
-    if (time(&raw_tm) == (time_t)-1)
+    if (time(&raw_tm) == (time_t) - 1)
     {
         fprintf(stderr, "错误: 获取系统时间失败\n");
         return;
@@ -355,6 +355,7 @@ char* create_xml_payload(const XmlChoose choose)
         return NULL;
     }
     LOG_DEBUG("创建 XML 完成");
+    LOG_VERBOSE("XML 内容为:\n%s", xml);
     return xml;
 }
 
@@ -400,7 +401,7 @@ bool save_cfg()
 {
     cJSON* cfg_json = cJSON_CreateObject();
 
-    cJSON_AddBoolToObject(cfg_json, "debug", get_logger_level() == LOG_LEVEL_DEBUG);
+    cJSON_AddNumberToObject(cfg_json, "log_lv", get_logger_level());
 
     cJSON_AddBoolToObject(cfg_json, "use_cus_ip", g_use_cus_ip);
 
@@ -472,17 +473,10 @@ bool load_cfg()
         return false;
     }
 
-    const cJSON* debug = cJSON_GetObjectItem(cfg_json, "debug");
-    if (debug && cJSON_IsBool(debug))
+    const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
+    if (log_lv && cJSON_IsNumber(log_lv))
     {
-        if (cJSON_IsTrue(debug))
-        {
-            set_logger_level(LOG_LEVEL_DEBUG);
-        }
-        else
-        {
-            set_logger_level(LOG_LEVEL_INFO);
-        }
+        set_logger_level(log_lv->valueint);
     }
     else
     {
@@ -542,7 +536,7 @@ bool load_cfg()
                     snprintf(g_prog_status[valid_i].auth_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
                 }
                 g_prog_status[valid_i].login_cfg.idx = i + 1;
-                LOG_INFO("配置 %d 可用, 将会尝试使用", i + 1);
+                LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
                 valid_cnt++;
                 valid_i++;
                 if (!g_use_cus_ip)
@@ -558,7 +552,7 @@ bool load_cfg()
         }
         else
         {
-            LOG_WARN("配置 %d 一个或多个值为空, 跳过当前配置", i + 1);
+            LOG_WARN("配置 %" PRIu8 " 一个或多个值为空, 跳过当前配置", i + 1);
         }
     }
 
@@ -572,7 +566,7 @@ bool load_cfg()
 
     g_prog_cnt = valid_cnt;
 
-    LOG_INFO("可用配置数: %d", g_prog_cnt);
+    LOG_INFO("可用配置数: %" PRIu8, g_prog_cnt);
 
     return true;
 }

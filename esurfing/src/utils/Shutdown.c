@@ -4,6 +4,7 @@
 #include "DialerClient.h"
 #include "States.h"
 
+#include <inttypes.h>
 #include <signal.h>
 #include <stdlib.h>
 
@@ -34,10 +35,10 @@ void shut(const uint8_t exitCode)
     LOG_DEBUG("开始配置清理");
     for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
     {
-        LOG_DEBUG("操作配置 %d", g_prog_status[g_prog_idx].login_cfg.idx);
+        LOG_DEBUG("操作配置 %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx);
         if (g_prog_status[g_prog_idx].runtime_status.is_authed)
         {
-            LOG_DEBUG("配置 %d 登出", g_prog_status[g_prog_idx].login_cfg.idx);
+            LOG_DEBUG("配置 %" PRIu8 " 登出", g_prog_status[g_prog_idx].login_cfg.idx);
             term();
         }
     }

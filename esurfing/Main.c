@@ -2,12 +2,11 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
+#include "DialerClient.h"
 #include "NetClient.h"
 #include "States.h"
 
 #include <stdlib.h>
-
-#include "DialerClient.h"
 
 int main()
 {
@@ -32,10 +31,10 @@ int main()
         g_prog_status[g_prog_idx].runtime_status.is_running = true;
     }
 
-    for (g_prog_idx = 0; g_prog_idx < g_prog_cnt && g_prog_status[g_prog_idx].runtime_status.is_running; g_prog_idx++)
+    for (g_prog_idx = 0; g_prog_idx <= g_prog_cnt && g_prog_status[g_prog_idx].runtime_status.is_running; g_prog_idx++)
     {
-        while (g_shut_lock) sleep_ms(1000);
         if (g_prog_idx == g_prog_cnt) g_prog_idx = 0;
+        while (g_shut_lock) sleep_ms(1000);
         dialer_app();
     }
 

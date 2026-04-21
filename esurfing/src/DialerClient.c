@@ -10,6 +10,7 @@
 
 static InitStatus load(const ByteArray zsm)
 {
+    LOG_DEBUG("load 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
     LOG_DEBUG("接收到的 zsm 数据长度: %zu", zsm.length);
     if (!zsm.data || zsm.length == 0)
     {
@@ -42,6 +43,7 @@ static InitStatus load(const ByteArray zsm)
 
 static AuthStatus init_session()
 {
+    LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
     const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.ticket_url, g_prog_status[g_prog_idx].auth_cfg.algo_id);
     if (result.status == REQUEST_ERROR)
     {
@@ -72,7 +74,7 @@ static AuthStatus init_session()
 static void clean_session()
 {
     LOG_DEBUG("清除会话初始化状态");
-    cipher_factory_destroy();
+    destroy_cipher_factory();
     g_prog_status[g_prog_idx].runtime_status.is_initialized = 0;
 }
 
@@ -85,7 +87,6 @@ RunningStatus term()
         return RUNNING_FAILURE;
     }
     char* encrypt = session_encrypt(payload);
-    free(payload);
     if (!encrypt)
     {
         LOG_ERROR("登出 XML 加密失败");
@@ -114,7 +115,6 @@ static RunningStatus heartbeat()
         return RUNNING_FAILURE;
     }
     char* encrypt = session_encrypt(payload);
-    free(payload);
     if (!encrypt)
     {
         LOG_ERROR("加密心跳 XML 失败");
@@ -158,7 +158,6 @@ static AuthStatus login()
         return AUTH_FAILURE;
     }
     char* encrypt = session_encrypt(payload);
-    free(payload);
     if (!encrypt)
     {
         LOG_ERROR("加密登录 XML 失败");
@@ -222,12 +221,13 @@ static AuthStatus login()
     }
     g_prog_status[g_prog_idx].auth_cfg.keep_retry = str_2_uint64(parsed_interval);
     free(parsed_interval);
-    LOG_INFO("下一次重试: % 秒后" PRIu64, g_prog_status[g_prog_idx].auth_cfg.keep_retry);
+    LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[g_prog_idx].auth_cfg.keep_retry);
     return AUTH_SUCCESS;
 }
 
 static AuthStatus get_ticket()
 {
+    LOG_DEBUG("get_ticket 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
     char* payload = create_xml_payload(GET_TICKET);
     if (!payload)
     {
@@ -235,7 +235,6 @@ static AuthStatus get_ticket()
         return AUTH_FAILURE;
     }
     char* encrypt = session_encrypt(payload);
-    free(payload);
     if (!encrypt)
     {
         LOG_ERROR("加密获取 Ticket XML 失败");
@@ -271,6 +270,7 @@ static AuthStatus get_ticket()
 
 static RunningStatus auth()
 {
+    LOG_DEBUG("auth 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
     if (init_session() == AUTH_FAILURE)
     {
         LOG_FATAL("初始化会话失败");
@@ -298,7 +298,7 @@ static RunningStatus auth()
     LOG_DEBUG("完成登录");
     g_prog_status[g_prog_idx].auth_cfg.tick = get_cur_tm_ms();
     g_prog_status[g_prog_idx].runtime_status.auth_time = get_cur_tm_ms();
-    LOG_DEBUG("登录时间戳 (毫秒): %lld", g_prog_status[g_prog_idx].runtime_status.auth_time);
+    LOG_DEBUG("登录时间戳 (毫秒): %" PRIu64, g_prog_status[g_prog_idx].runtime_status.auth_time);
     g_prog_status[g_prog_idx].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
     return RUNNING_SUCCESS;
@@ -321,7 +321,7 @@ static RunningStatus run()
                         LOG_ERROR("心跳包发送失败");
                         return RUNNING_FAILURE;
                     }
-                    LOG_INFO("下一次重试: % 秒后" PRIu64, g_prog_status[g_prog_idx].auth_cfg.keep_retry);
+                    LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[g_prog_idx].auth_cfg.keep_retry);
                     g_prog_status[g_prog_idx].auth_cfg.tick = get_cur_tm_ms();
                 }
             }
@@ -386,8 +386,8 @@ void dialer_app()
             LOG_INFO("设置已更改, 正在重启认证");
             g_prog_status[g_prog_idx].runtime_status.is_settings_changed = false;
         }
-        LOG_DEBUG("当前时间戳(毫秒): %lld", get_cur_tm_ms());
-        LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟), 为避免被远程服务器踢下线, 正在重新进行认证");
+        LOG_DEBUG("当前时间戳 (毫秒): %" PRIu64, get_cur_tm_ms());
+        LOG_WARN("已登录 2870 分钟 (1 天 23 小时 50 分钟), 为避免被远程服务器踢下线, 正在重新进行认证");
         reset();
     }
     else if (g_prog_status[g_prog_idx].runtime_status.is_settings_changed) // 暂无用处
@@ -397,5 +397,4 @@ void dialer_app()
         g_prog_status[g_prog_idx].runtime_status.is_settings_changed = false;
     }
     run();
-    sleep_ms(1000);
 }

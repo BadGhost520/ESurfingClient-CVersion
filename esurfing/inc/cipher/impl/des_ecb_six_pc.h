@@ -5,10 +5,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 cipherInterfaceT* create_des_ecb_six_pc_cipher(
     const uint8_t* key0,
     const uint8_t* key1,
@@ -17,9 +13,5 @@ cipherInterfaceT* create_des_ecb_six_pc_cipher(
     const uint8_t* key4,
     const uint8_t* key5
 );
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // DES_ECB_SIX_PC_H

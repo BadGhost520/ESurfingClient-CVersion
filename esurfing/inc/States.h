@@ -1,10 +1,9 @@
 #ifndef ESURFINGCLIENT_STATES_H
 #define ESURFINGCLIENT_STATES_H
 
-#include <stdbool.h>
-#include <stdint.h>
-
 #include "cipher/CipherInterface.h"
+
+#include <stdint.h>
 
 #define SCHOOL_NETWORK_SYMBOL 8
 
@@ -89,6 +88,8 @@ typedef struct
     bool is_running;
     /** @brief 认证状态 */
     bool is_authed;
+    /** @brief last_location 数据锁 */
+    bool last_location_lock;
     /** @brief 认证时间 */
     uint64_t auth_time;
 } RuntimeStatus;
