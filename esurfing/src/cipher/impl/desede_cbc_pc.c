@@ -212,12 +212,12 @@ static char* desede_cbc_pc_encrypt(cipherInterfaceT* self, const char* text)
   if (!data) return NULL;
   const size_t text_len = strlen(text);
   size_t padded_len;
-  uint8_t* padded = padToMultiple((const uint8_t*)text, text_len, 8, &padded_len);
+  uint8_t* padded = pad_2_multiple((const uint8_t*)text, text_len, 8, &padded_len);
   if (!padded) return NULL;
   stage_encrypt(padded, padded_len, data->key2 + 0, data->key2 + 8, data->key2 + 16, data->iv2);
   stage_encrypt(padded, padded_len, data->key1 + 0, data->key1 + 8, data->key1 + 16, data->iv1);
-  char* hex = bytesToHexUpper(padded, padded_len);
-  safeFree(padded);
+  char* hex = bytes_2_hex(padded, padded_len);
+  s_free(padded);
   return hex;
 }
 
@@ -227,7 +227,7 @@ static char* desede_cbc_pc_decrypt(cipherInterfaceT* self, const char* hex)
   desede_cbc_pc_data_t* data = self->private_data;
   if (!data) return NULL;
   size_t bytes_len;
-  uint8_t* bytes = hexToBytes(hex, &bytes_len);
+  uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
   if (!bytes) return NULL;
   stage_decrypt(bytes, bytes_len, data->key1 + 0, data->key1 + 8, data->key1 + 16, data->iv1);
   stage_decrypt(bytes, bytes_len, data->key2 + 0, data->key2 + 8, data->key2 + 16, data->iv2);
@@ -235,10 +235,10 @@ static char* desede_cbc_pc_decrypt(cipherInterfaceT* self, const char* hex)
   {
     bytes_len--;
   }
-  char* result = safeMalloc(bytes_len + 1);
+  char* result = s_malloc(bytes_len + 1);
   memcpy(result, bytes, bytes_len);
   result[bytes_len] = '\0';
-  safeFree(bytes);
+  s_free(bytes);
   return result;
 }
 
@@ -246,8 +246,8 @@ static void desede_cbc_pc_destroy(cipherInterfaceT* self)
 {
   if (self)
   {
-    safeFree(self->private_data);
-    safeFree(self);
+    s_free(self->private_data);
+    s_free(self);
   }
 }
 
@@ -255,8 +255,8 @@ cipherInterfaceT* create_desede_cbc_pc_cipher(const uint8_t* key1, const uint8_t
                                                 const uint8_t* iv1, const uint8_t* iv2)
 {
   if (!key1 || !key2 || !iv1 || !iv2) return NULL;
-  cipherInterfaceT* c = safeMalloc(sizeof(cipherInterfaceT));
-  desede_cbc_pc_data_t* d = safeMalloc(sizeof(desede_cbc_pc_data_t));
+  cipherInterfaceT* c = s_malloc(sizeof(cipherInterfaceT));
+  desede_cbc_pc_data_t* d = s_malloc(sizeof(desede_cbc_pc_data_t));
   memcpy(d->key1, key1, 24);
   memcpy(d->key2, key2, 24);
   memcpy(d->iv1, iv1, 8);

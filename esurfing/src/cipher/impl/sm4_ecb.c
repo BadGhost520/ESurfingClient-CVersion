@@ -147,10 +147,10 @@ static uint8_t* sm4_encrypt_ecb(const uint8_t* key, const uint8_t* plaintext,
                                 const size_t plaintext_len, size_t* output_len)
 {
     size_t padded_len;
-    uint8_t* padded_data = pkcs7Padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
+    uint8_t* padded_data = pkcs7_padding(plaintext, plaintext_len, SM4_BLOCK_SIZE, &padded_len);
     if (!padded_data) return NULL;
     const size_t blocks = padded_len / SM4_BLOCK_SIZE;
-    uint8_t* output = safeMalloc(padded_len);
+    uint8_t* output = s_malloc(padded_len);
     uint32_t rk[32];
     sm4_key_expansion(key, rk);
     for (size_t i = 0; i < blocks; i++)
@@ -158,7 +158,7 @@ static uint8_t* sm4_encrypt_ecb(const uint8_t* key, const uint8_t* plaintext,
         sm4_encrypt_block(padded_data + i * SM4_BLOCK_SIZE, 
                           output + i * SM4_BLOCK_SIZE, rk);
     }
-    safeFree(padded_data);
+    s_free(padded_data);
     *output_len = padded_len;
     return output;
 }
@@ -168,7 +168,7 @@ static uint8_t* sm4_decrypt_ecb(const uint8_t* key, const uint8_t* ciphertext,
 {
     if (ciphertext_len % SM4_BLOCK_SIZE != 0) return NULL;
     const size_t blocks = ciphertext_len / SM4_BLOCK_SIZE;
-    uint8_t* output = safeMalloc(ciphertext_len);
+    uint8_t* output = s_malloc(ciphertext_len);
     uint32_t rk[32];
     sm4_key_expansion(key, rk);
     for (size_t i = 0; i < blocks; i++)
@@ -177,8 +177,8 @@ static uint8_t* sm4_decrypt_ecb(const uint8_t* key, const uint8_t* ciphertext,
                           output + i * SM4_BLOCK_SIZE, rk);
     }
     size_t unpadded_len;
-    uint8_t* unpadded_data = removePkcs7Padding(output, ciphertext_len, &unpadded_len);
-    safeFree(output);
+    uint8_t* unpadded_data = rm_pkcs7_padding(output, ciphertext_len, &unpadded_len);
+    s_free(output);
     *output_len = unpadded_len;
     return unpadded_data;
 }
@@ -193,8 +193,8 @@ static char* sm4_ecb_encrypt(cipherInterfaceT* self, const char* text)
     uint8_t* encrypted = sm4_encrypt_ecb(data->key, (const uint8_t*)text, 
                                          text_len, &output_len);
     if (!encrypted) return NULL;
-    char* hex_result = bytesToHexUpper(encrypted, output_len);
-    safeFree(encrypted);
+    char* hex_result = bytes_2_hex(encrypted, output_len);
+    s_free(encrypted);
     return hex_result;
 }
 
@@ -204,16 +204,16 @@ static char* sm4_ecb_decrypt(cipherInterfaceT* self, const char* hex)
     sm4_ecb_data_t* data = self->private_data;
     if (!data) return NULL;
     size_t bytes_len;
-    uint8_t* bytes = hexToBytes(hex, &bytes_len);
+    uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
     if (!bytes) return NULL;
     size_t output_len;
     uint8_t* decrypted = sm4_decrypt_ecb(data->key, bytes, bytes_len, &output_len);
-    safeFree(bytes);
+    s_free(bytes);
     if (!decrypted) return NULL;
-    char* result = safeMalloc(output_len + 1);
+    char* result = s_malloc(output_len + 1);
     memcpy(result, decrypted, output_len);
     result[output_len] = '\0';
-    safeFree(decrypted);
+    s_free(decrypted);
     return result;
 }
 
@@ -221,16 +221,16 @@ static void sm4_ecb_destroy(cipherInterfaceT* self)
 {
     if (self)
     {
-        safeFree(self->private_data);
-        safeFree(self);
+        s_free(self->private_data);
+        s_free(self);
     }
 }
 
 cipherInterfaceT* create_sm4_ecb_cipher(const uint8_t* key)
 {
     if (!key) return NULL;
-    cipherInterfaceT* cipher = safeMalloc(sizeof(cipherInterfaceT));
-    sm4_ecb_data_t* data = safeMalloc(sizeof(sm4_ecb_data_t));
+    cipherInterfaceT* cipher = s_malloc(sizeof(cipherInterfaceT));
+    sm4_ecb_data_t* data = s_malloc(sizeof(sm4_ecb_data_t));
     memcpy(data->key, key, SM4_KEY_SIZE);
     cipher->encrypt = sm4_ecb_encrypt;
     cipher->decrypt = sm4_ecb_decrypt;

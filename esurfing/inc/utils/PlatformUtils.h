@@ -99,14 +99,14 @@ char* uint64_2_str(uint64_t num);
  * @brief 获取当前时间的毫秒时间戳
  * @return 64位时间戳
  */
-uint64_t cur_tm_ms();
+uint64_t get_cur_tm_ms();
 
 /**
  * @brief 获取随机字节
  * @param buf 缓冲
  * @param len 长度
  */
-void rand_bytes(unsigned char* buf, size_t len);
+void get_rand_bytes(unsigned char* buf, size_t len);
 
 /**
  * @brief 睡眠

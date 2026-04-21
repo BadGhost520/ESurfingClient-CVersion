@@ -29,6 +29,7 @@ void shut(const uint8_t exitCode)
 {
     LOG_INFO("主程序正在关闭");
     // if (is_webserver_running) stopWebServer();
+    g_shut_lock = true;
     LOG_INFO("清理资源中");
     LOG_DEBUG("开始配置清理");
     for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
@@ -42,6 +43,7 @@ void shut(const uint8_t exitCode)
     }
     g_prog_idx = 0;
     LOG_DEBUG("操作完成");
+    LOG_INFO("退出程序");
     clean_logger();
     exit(exitCode);
 }

@@ -193,24 +193,24 @@ static char* aes_cbc_pc_encrypt(cipherInterfaceT* self, const char* text)
 {
     if (!self || !text) return NULL;
     const aes_cbc_pc_ctx_t* ctx = self->private_data;
-    const size_t len = safeStrLen(text);
+    const size_t len = s_strlen(text);
     const uint8_t* input = (const uint8_t*)text;
     size_t padded_len = 0;
-    uint8_t* padded = padToMultiple(input, len, 16, &padded_len);
+    uint8_t* padded = pad_2_multiple(input, len, 16, &padded_len);
     if (!padded) return NULL;
     const uint8_t iv1[16] = {0};
-    uint8_t* stage1 = safeMalloc(16 + padded_len);
+    uint8_t* stage1 = s_malloc(16 + padded_len);
     memcpy(stage1, iv1, 16);
     cbc_encrypt(padded, stage1 + 16, padded_len, ctx->round_keys1, iv1);
     const uint8_t iv2[16] = {0};
     const size_t stage1_len = 16 + padded_len;
-    uint8_t* stage2 = safeMalloc(16 + stage1_len);
+    uint8_t* stage2 = s_malloc(16 + stage1_len);
     memcpy(stage2, iv2, 16);
     cbc_encrypt(stage1, stage2 + 16, stage1_len, ctx->round_keys2, iv2);
-    char* hex = bytesToHexUpper(stage2, 16 + stage1_len);
-    safeFree(padded);
-    safeFree(stage1);
-    safeFree(stage2);
+    char* hex = bytes_2_hex(stage2, 16 + stage1_len);
+    s_free(padded);
+    s_free(stage1);
+    s_free(stage2);
     return hex;
 }
 
@@ -219,50 +219,50 @@ static char* aes_cbc_pc_decrypt(cipherInterfaceT* self, const char* hex)
     if (!self || !hex) return NULL;
     const aes_cbc_pc_ctx_t* ctx = self->private_data;
     size_t in_len = 0;
-    uint8_t* in = hexToBytes(hex, &in_len);
+    uint8_t* in = hex_2_bytes(hex, &in_len);
     if (!in || in_len < 32 || (in_len % 16)!=0)
     {
-        safeFree(in);
+        s_free(in);
         return NULL;
     }
     const uint8_t* iv2 = in;
     const uint8_t* c2 = in + 16;
     const size_t c2_len = in_len - 16;
-    uint8_t* stage1 = safeMalloc(c2_len);
+    uint8_t* stage1 = s_malloc(c2_len);
     cbc_decrypt(c2, stage1, c2_len, ctx->round_keys2, iv2);
-    safeFree(in);
+    s_free(in);
     if (c2_len < 32)
     {
-        safeFree(stage1);
+        s_free(stage1);
         return NULL;
     }
     const uint8_t* iv1 = stage1;
     const uint8_t* c1 = stage1 + 16;
     const size_t c1_len = c2_len - 16;
-    uint8_t* out = safeMalloc(c1_len);
+    uint8_t* out = s_malloc(c1_len);
     cbc_decrypt(c1, out, c1_len, ctx->round_keys1, iv1);
-    safeFree(stage1);
+    s_free(stage1);
     size_t plain_len = c1_len;
     while (plain_len > 0 && out[plain_len - 1] == 0x00) plain_len--;
-    char* text = safeMalloc(plain_len + 1);
+    char* text = s_malloc(plain_len + 1);
     memcpy(text, out, plain_len);
     text[plain_len] = '\0';
-    safeFree(out);
+    s_free(out);
     return text;
 }
 
 static void aes_cbc_pc_destroy(cipherInterfaceT* self)
 {
     if (!self) return;
-    if (self->private_data) safeFree(self->private_data);
-    safeFree(self);
+    if (self->private_data) s_free(self->private_data);
+    s_free(self);
 }
 
 cipherInterfaceT* create_aes_cbc_pc_cipher(const uint8_t* key1, const uint8_t* key2)
 {
     if (!key1 || !key2) return NULL;
-    cipherInterfaceT* ci = safeCalloc(1, sizeof(cipherInterfaceT));
-    aes_cbc_pc_ctx_t* ctx = safeCalloc(1, sizeof(aes_cbc_pc_ctx_t));
+    cipherInterfaceT* ci = s_calloc(1, sizeof(cipherInterfaceT));
+    aes_cbc_pc_ctx_t* ctx = s_calloc(1, sizeof(aes_cbc_pc_ctx_t));
     key_expansion(key1, ctx->round_keys1);
     key_expansion(key2, ctx->round_keys2);
     ci->encrypt = aes_cbc_pc_encrypt;

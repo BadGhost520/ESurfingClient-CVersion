@@ -91,11 +91,16 @@ void log_out(LogLevel level, const char* file, uint32_t line, const char* fmt, .
 LogLevel get_logger_level();
 
 /**
+ * @brief 设置日志等级
+ * @param level 日志等级
+ */
+void set_logger_level(LogLevel level);
+
+/**
  * @brief 初始化日志系统
- * @param logger_level 日志等级
  * @return 初始化状态
  */
-LoggerInitStatus init_logger(LogLevel logger_level);
+LoggerInitStatus init_logger();
 
 /**
  * @brief 清理日志系统

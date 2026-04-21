@@ -216,11 +216,11 @@ static char* des_ecb_six_pc_encrypt(cipherInterfaceT* self, const char* text)
 {
     if (!self || !text) return NULL;
     const des_ecb_six_pc_ctx_t* ctx = self->private_data;
-    const size_t len = safeStrLen(text);
+    const size_t len = s_strlen(text);
     size_t padded_len = 0;
-    uint8_t* padded = padToMultiple((const uint8_t*)text, len, 8, &padded_len);
+    uint8_t* padded = pad_2_multiple((const uint8_t*)text, len, 8, &padded_len);
     if (!padded) return NULL;
-    uint8_t* out = safeMalloc(padded_len);
+    uint8_t* out = s_malloc(padded_len);
     for (size_t i = 0; i < padded_len; i += 8)
     {
         uint64_t b = read_be64(padded + i);
@@ -232,9 +232,9 @@ static char* des_ecb_six_pc_encrypt(cipherInterfaceT* self, const char* text)
         b = des_block_core(b, &ctx->ks[2], 0);
         write_be64(out + i, b);
     }
-    char* hex = bytesToHexUpper(out, padded_len);
-    safeFree(padded);
-    safeFree(out);
+    char* hex = bytes_2_hex(out, padded_len);
+    s_free(padded);
+    s_free(out);
     return hex;
 }
 
@@ -243,12 +243,12 @@ static char* des_ecb_six_pc_decrypt(cipherInterfaceT* self, const char* hex)
     if (!self || !hex) return NULL;
     const des_ecb_six_pc_ctx_t* ctx = self->private_data;
     size_t in_len = 0;
-    uint8_t* in = hexToBytes(hex, &in_len);
+    uint8_t* in = hex_2_bytes(hex, &in_len);
     if (!in || (in_len % 8) != 0)
     {
-        safeFree(in); return NULL;
+        s_free(in); return NULL;
     }
-    uint8_t* out = safeMalloc(in_len);
+    uint8_t* out = s_malloc(in_len);
     for (size_t i = 0; i < in_len; i += 8)
     {
         uint64_t b = read_be64(in + i);
@@ -262,19 +262,19 @@ static char* des_ecb_six_pc_decrypt(cipherInterfaceT* self, const char* hex)
     }
     size_t plain_len = in_len;
     while (plain_len > 0 && out[plain_len - 1] == 0x00) plain_len--;
-    char* text = safeMalloc(plain_len + 1);
+    char* text = s_malloc(plain_len + 1);
     memcpy(text, out, plain_len);
     text[plain_len] = '\0';
-    safeFree(in);
-    safeFree(out);
+    s_free(in);
+    s_free(out);
     return text;
 }
 
 static void des_ecb_six_pc_destroy(cipherInterfaceT* self)
 {
     if (!self) return;
-    if (self->private_data) safeFree(self->private_data);
-    safeFree(self);
+    if (self->private_data) s_free(self->private_data);
+    s_free(self);
 }
 
 cipherInterfaceT* create_des_ecb_six_pc_cipher(
@@ -287,8 +287,8 @@ cipherInterfaceT* create_des_ecb_six_pc_cipher(
 )
 {
     if (!key0 || !key1 || !key2 || !key3 || !key4 || !key5) return NULL;
-    cipherInterfaceT* ci = safeCalloc(1, sizeof(cipherInterfaceT));
-    des_ecb_six_pc_ctx_t* ctx = safeCalloc(1, sizeof(des_ecb_six_pc_ctx_t));
+    cipherInterfaceT* ci = s_calloc(1, sizeof(cipherInterfaceT));
+    des_ecb_six_pc_ctx_t* ctx = s_calloc(1, sizeof(des_ecb_six_pc_ctx_t));
     ctx->ks[0] = des_schedule(key0);
     ctx->ks[1] = des_schedule(key1);
     ctx->ks[2] = des_schedule(key2);

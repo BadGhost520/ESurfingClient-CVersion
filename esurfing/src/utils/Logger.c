@@ -148,9 +148,14 @@ LogLevel get_logger_level()
     return s_logger_cfg.level;
 }
 
-LoggerInitStatus init_logger(const LogLevel logger_level)
+void set_logger_level(const LogLevel level)
 {
-    s_logger_cfg.level = logger_level;
+    s_logger_cfg.level = level;
+    LOG_INFO("设置日志等级为 [%s]", get_level_str(level));
+}
+
+LoggerInitStatus init_logger()
+{
     if (ensure_log_dir(s_logger_cfg.log_dir) != 0)
     {
         fprintf(stderr, "错误: 无法准备日志目录\n");

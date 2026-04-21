@@ -10,6 +10,10 @@ uint8_t g_prog_cnt = 0;
 
 uint8_t g_prog_idx = 0;
 
+bool g_use_cus_ip = false;
+
+bool g_shut_lock = false;
+
 ProgStatus* g_prog_status;
 
 char school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
@@ -18,7 +22,7 @@ static void set_hostname()
 {
     char host_name[16];
     unsigned char host_bytes[10];
-    rand_bytes(host_bytes, 10);
+    get_rand_bytes(host_bytes, 10);
     host_bytes[0] = host_bytes[0] & 0xFEU;
     sprintf(host_name, "%02x%02x%02x%02x%02x",
     host_bytes[0], host_bytes[1],
@@ -32,7 +36,7 @@ static void set_client_id()
 {
     char client_id[40];
     unsigned char client_bytes[16];
-    rand_bytes(client_bytes, 16);
+    get_rand_bytes(client_bytes, 16);
     snprintf(client_id, 37,
         "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
         client_bytes[0], client_bytes[1],
@@ -53,7 +57,7 @@ static void set_mac_address()
 {
     char mac_address[20];
     unsigned char mac_bytes[6];
-    rand_bytes(mac_bytes, 6);
+    get_rand_bytes(mac_bytes, 6);
     mac_bytes[0] = mac_bytes[0] & 0xFEU;
     sprintf(mac_address, "%02x:%02x:%02x:%02x:%02x:%02x",
     mac_bytes[0], mac_bytes[1],

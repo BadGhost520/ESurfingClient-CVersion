@@ -90,13 +90,13 @@ static char* ab6c8_encrypt(cipherInterfaceT* self, const char* text)
     if (!self || !text) return NULL;
     ab6c8_ctx_t* ctx = self->private_data;
     if (!ctx) return NULL;
-    const size_t len = safeStrLen(text);
+    const size_t len = s_strlen(text);
     size_t padded_len = 0;
-    uint8_t* padded = padToMultiple((const uint8_t*)text, len, 8, &padded_len);
+    uint8_t* padded = pad_2_multiple((const uint8_t*)text, len, 8, &padded_len);
     if (!padded) return NULL;
-    uint8_t* out = safeMalloc(padded_len);
+    uint8_t* out = s_malloc(padded_len);
     memcpy(out, padded, padded_len);
-    safeFree(padded);
+    s_free(padded);
     uint32_t chain0 = ctx->iv[0];
     uint32_t chain1 = ctx->iv[1];
     for (size_t i = 0; i < padded_len; i += 8)
@@ -111,8 +111,8 @@ static char* ab6c8_encrypt(cipherInterfaceT* self, const char* text)
         set_uint32_le(out, i + 4, v1);
         chain0 = v0; chain1 = v1;
     }
-    char* hex = bytesToHexUpper(out, padded_len);
-    safeFree(out);
+    char* hex = bytes_2_hex(out, padded_len);
+    s_free(out);
     return hex;
 }
 
@@ -122,9 +122,9 @@ static char* ab6c8_decrypt(cipherInterfaceT* self, const char* hex)
     ab6c8_ctx_t* ctx = self->private_data;
     if (!ctx) return NULL;
     size_t ct_len = 0;
-    uint8_t* ct = hexToBytes(hex, &ct_len);
+    uint8_t* ct = hex_2_bytes(hex, &ct_len);
     if (!ct) return NULL;
-    uint8_t* out = safeMalloc(ct_len);
+    uint8_t* out = s_malloc(ct_len);
     memcpy(out, ct, ct_len);
     uint32_t prev0 = ctx->iv[0];
     uint32_t prev1 = ctx->iv[1];
@@ -142,28 +142,28 @@ static char* ab6c8_decrypt(cipherInterfaceT* self, const char* hex)
         prev0 = c0; prev1 = c1;
     }
 
-    safeFree(ct);
+    s_free(ct);
     while (ct_len > 0 && out[ct_len - 1] == 0) ct_len--;
-    char* text = safeMalloc(ct_len + 1);
+    char* text = s_malloc(ct_len + 1);
     memcpy(text, out, ct_len);
     text[ct_len] = '\0';
-    safeFree(out);
+    s_free(out);
     return text;
 }
 
 static void ab6c8_destroy(cipherInterfaceT* self)
 {
     if (!self) return;
-    if (self->private_data) safeFree(self->private_data);
-    safeFree(self);
+    if (self->private_data) s_free(self->private_data);
+    s_free(self);
 }
 
 cipherInterfaceT* create_ab6c8_cipher(const uint32_t* key0, const uint32_t* key1,
                                         const uint32_t* key2, const uint32_t* iv)
 {
     if (!key0 || !key1 || !key2 || !iv) return NULL;
-    cipherInterfaceT* ci = safeCalloc(1, sizeof(cipherInterfaceT));
-    ab6c8_ctx_t* ctx = safeCalloc(1, sizeof(ab6c8_ctx_t));
+    cipherInterfaceT* ci = s_calloc(1, sizeof(cipherInterfaceT));
+    ab6c8_ctx_t* ctx = s_calloc(1, sizeof(ab6c8_ctx_t));
     memcpy(ctx->k0, key0, 4 * sizeof(uint32_t));
     memcpy(ctx->k1, key1, 4 * sizeof(uint32_t));
     memcpy(ctx->k2, key2, 4 * sizeof(uint32_t));

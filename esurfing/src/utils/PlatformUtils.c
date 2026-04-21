@@ -26,7 +26,8 @@ static const char s_xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n
 static const char s_xml_footer[] = "</request>\n";
 
 static const char s_default_cfg[] = "{\n"
-                                    "   \"logger_level\": 4,\n"
+                                    "   \"debug\": false,\n"
+                                    "   \"use_cus_ip\": false,\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
@@ -174,7 +175,7 @@ char* uint64_2_str(const uint64_t num)
     return result;
 }
 
-uint64_t cur_tm_ms()
+uint64_t get_cur_tm_ms()
 {
 #ifdef _WIN32
     FILETIME ft;
@@ -190,7 +191,7 @@ uint64_t cur_tm_ms()
 #endif
 }
 
-void rand_bytes(unsigned char* buf, const size_t len)
+void get_rand_bytes(unsigned char* buf, const size_t len)
 {
 #ifdef _WIN32
     HCRYPTPROV h_crypt_prov;
@@ -399,7 +400,9 @@ bool save_cfg()
 {
     cJSON* cfg_json = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(cfg_json, "logger_level", get_logger_level());
+    cJSON_AddBoolToObject(cfg_json, "debug", get_logger_level() == LOG_LEVEL_DEBUG);
+
+    cJSON_AddBoolToObject(cfg_json, "use_cus_ip", g_use_cus_ip);
 
     cJSON* accounts = cJSON_CreateArray();
     cJSON_AddItemToObject(cfg_json, "accounts", accounts);
@@ -469,8 +472,28 @@ bool load_cfg()
         return false;
     }
 
-    const cJSON* logger_level = cJSON_GetObjectItem(cfg_json, "logger_level");
-    if (!logger_level) LOG_INFO("日志等级加载失败, 使用默认等级 (INFO)");
+    const cJSON* debug = cJSON_GetObjectItem(cfg_json, "debug");
+    if (debug && cJSON_IsBool(debug))
+    {
+        if (cJSON_IsTrue(debug))
+        {
+            set_logger_level(LOG_LEVEL_DEBUG);
+        }
+        else
+        {
+            set_logger_level(LOG_LEVEL_INFO);
+        }
+    }
+    else
+    {
+        LOG_INFO("日志等级加载失败, 使用默认等级 (INFO)");
+    }
+
+    const cJSON* use_cus_ip = cJSON_GetObjectItem(cfg_json, "use_cus_ip");
+    if (use_cus_ip && cJSON_IsBool(use_cus_ip))
+    {
+        g_use_cus_ip = cJSON_IsTrue(use_cus_ip);
+    }
 
     cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
@@ -491,7 +514,7 @@ bool load_cfg()
 
     uint8_t valid_cnt = 0;
 
-    for (uint8_t i = 0; i < cnt; i++)
+    for (uint8_t i = 0, valid_i = 0; i < cnt; i++)
     {
         const cJSON* account = cJSON_GetArrayItem(accounts, i);
 
@@ -501,26 +524,32 @@ bool load_cfg()
         const cJSON* ip = cJSON_GetObjectItem(account, "bind_ip");
         const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
 
-        if (usr->valuestring[0] != '\0' && pwd->valuestring[0] != '\0' && chn->valuestring[0] != '\0' && ip->valuestring[0] != '\0')
+        if (usr->valuestring[0] != '\0' && pwd->valuestring[0] != '\0' && chn->valuestring[0] != '\0' && ip->valuestring[0] != '\0' && cJSON_IsBool(auto_start))
         {
-            if (check_ip_validity(ip->valuestring))
+            if (check_ip_validity(ip->valuestring) || !g_use_cus_ip)
             {
-                snprintf(g_prog_status[i].login_cfg.usr, USR_LEN, "%s", usr->valuestring);
-                snprintf(g_prog_status[i].login_cfg.pwd, PWD_LEN, "%s", pwd->valuestring);
-                snprintf(g_prog_status[i].login_cfg.chn, CHN_LEN, "%s", chn->valuestring);
-                snprintf(g_prog_status[i].login_cfg.ip, IP_LEN, "%s", ip->valuestring);
-                g_prog_status[i].login_cfg.auto_start = auto_start->valueint;
+                snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", usr->valuestring);
+                snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", pwd->valuestring);
+                snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", chn->valuestring);
+                snprintf(g_prog_status[valid_i].login_cfg.ip, IP_LEN, "%s", ip->valuestring);
+                g_prog_status[valid_i].login_cfg.auto_start = auto_start->valueint;
                 if (strcmp(chn->valuestring, "pc") == 0)
                 {
-                    snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
+                    snprintf(g_prog_status[valid_i].auth_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
                 }
                 else
                 {
-                    snprintf(g_prog_status[i].auth_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+                    snprintf(g_prog_status[valid_i].auth_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
                 }
-                g_prog_status[i].login_cfg.idx = i + 1;
-                LOG_INFO("配置 %d 不为空且 IP 地址可用, 将会尝试使用", i + 1);
+                g_prog_status[valid_i].login_cfg.idx = i + 1;
+                LOG_INFO("配置 %d 可用, 将会尝试使用", i + 1);
                 valid_cnt++;
+                valid_i++;
+                if (!g_use_cus_ip)
+                {
+                    LOG_INFO("IP 自定义已关闭, 仅会使用第一个账户配置");
+                    break;
+                }
             }
             else
             {

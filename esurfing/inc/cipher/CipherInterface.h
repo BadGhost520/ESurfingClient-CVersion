@@ -1,10 +1,6 @@
 #ifndef CIPHER_INTERFACE_H
 #define CIPHER_INTERFACE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef struct cipherInterface {
     char* (*encrypt)(struct cipherInterface* self, const char* text);
     char* (*decrypt)(struct cipherInterface* self, const char* hex);
@@ -15,31 +11,27 @@ typedef struct cipherInterface {
 /**
  * 销毁加解密工厂
  */
-void cipherFactoryDestroy();
+void cipher_factory_destroy();
 
 /**
  * 初始化加解密工厂
  * @param algo_id 算法 ID
  * @return 初始化状态
  */
-int initCipher(const char* algo_id);
+int init_cipher(const char* algo_id);
 
 /**
  * 加密函数
  * @param text 需要加密的文本
  * @return 加密后文本
  */
-char* sessionEncrypt(const char* text);
+char* session_encrypt(const char* text);
 
 /**
  * 解密函数
  * @param text 需要解密的文本
  * @return 加密后文本
  */
-char* sessionDecrypt(const char* text);
-
-#ifdef __cplusplus
-}
-#endif
+char* session_decrypt(const char* text);
 
 #endif // CIPHER_INTERFACE_H

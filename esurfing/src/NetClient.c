@@ -52,6 +52,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
             snprintf(s_school_id, SCHOOL_ID_LENGTH, "%.*s", (uint8_t)valid_len, value);
+            LOG_INFO("School Id: %s", s_school_id);
         }
     }
     if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !s_domain[0])
@@ -62,6 +63,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
             snprintf(s_domain, DOMAIN_LENGTH, "%.*s", (uint8_t)valid_len, value);
+            LOG_INFO("Domain: %s", s_domain);
         }
     }
     if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !s_area[0])
@@ -72,6 +74,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
             snprintf(s_area, AREA_LENGTH, "%.*s", (uint8_t)valid_len, value);
+            LOG_INFO("Area: %s", s_area);
         }
     }
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
@@ -79,7 +82,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
         const char* value = header + 9;
         while (*value == ' ') value++;
         const size_t valid_len = strcspn(value, "\r\n");
-        snprintf(g_prog_status[g_prog_idx].auth_cfg.last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
+        snprintf(g_prog_status[g_prog_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
     }
     return real_size;
 }
@@ -148,7 +151,7 @@ static CurlStatus create_post_client(CURL** curl, struct curl_slist** headers, H
     curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_CONNECTTIMEOUT, 5L);
-    curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
+    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
     return CURL_INIT_SUCCESS;
 }
 
@@ -164,7 +167,7 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
-    curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
+    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
     return CURL_INIT_SUCCESS;
 }
 
@@ -227,7 +230,7 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
     curl_easy_cleanup(curl);
     if (resp_code == 302)
     {
-        LOG_VERBOSE("重定向至: %s", g_prog_status[g_prog_idx].auth_cfg.last_location);
+        LOG_VERBOSE("重定向至: %s", g_prog_status[g_prog_idx].last_location);
         resp.status = REQUEST_REDIRECT;
         return resp;
     }
@@ -285,7 +288,7 @@ HTTPResponse get_with_header(const char* url)
 
 static void get_school_ip_symbol()
 {
-    const char* school_ip = extract_url_param(g_prog_status[0].auth_cfg.last_location, "wlanuserip");
+    const char* school_ip = extract_url_param(g_prog_status[0].last_location, "wlanuserip");
     snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.')));
     LOG_DEBUG("校园网标志: %s", school_network_symbol);
 }
@@ -294,10 +297,11 @@ void get_last_location()
 {
     for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
     {
+        refresh_states();
         HTTPResponse resp = {0};
         resp = get_with_header(s_generate_url);
-        while (resp.status == REQUEST_REDIRECT) resp = get_with_header(g_prog_status[g_prog_idx].auth_cfg.last_location);
-        LOG_DEBUG("配置 %d 获取认证配置 URL: %s", g_prog_status[g_prog_idx].login_cfg.idx, g_prog_status[g_prog_idx].auth_cfg.last_location);
+        while (resp.status == REQUEST_REDIRECT) resp = get_with_header(g_prog_status[g_prog_idx].last_location);
+        LOG_DEBUG("配置 %d 获取认证配置 URL: %s", g_prog_status[g_prog_idx].login_cfg.idx, g_prog_status[g_prog_idx].last_location);
     }
     g_prog_idx = 0;
     get_school_ip_symbol();
@@ -308,16 +312,8 @@ NetworkStatus check_auth_status()
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
     HTTPResponse resp = {0};
-    struct curl_slist *headers = NULL;
-    add_header(&headers, "User-Agent: %s", g_prog_status[g_prog_idx].auth_cfg.user_agent);
-    add_header(&headers, "Accept: %s", s_req_accept);
-    add_header(&headers, "Client-ID: %s", g_prog_status[g_prog_idx].auth_cfg.client_id);
-    resp = get(s_generate_url, NULL);
-    while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[g_prog_idx].auth_cfg.last_location, headers);
+    resp = get_with_header(g_prog_status[g_prog_idx].last_location);
     if (resp.status == REQUEST_SUCCESS || resp.status == REQUEST_WARNING) return resp.status;
-    LOG_INFO("School Id: %s", s_school_id);
-    LOG_INFO("Domain: %s", s_domain);
-    LOG_INFO("Area: %s", s_area);
     if (resp.status == REQUEST_ERROR)
     {
         LOG_ERROR("GET 错误");
@@ -378,6 +374,7 @@ NetworkStatus check_auth_status()
 
 bool check_ip_validity(const char* ip)
 {
+    if (!g_use_cus_ip) return false;
     LOG_DEBUG("传入的 IP 地址: %s", ip);
     char cmd[256];
 #ifdef _WIN32

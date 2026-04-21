@@ -1,5 +1,6 @@
 {
-  "logger_level": 4,
+  "debug": true,
+  "use_cus_ip": false,
   "accounts": [
     {
       "username": "",

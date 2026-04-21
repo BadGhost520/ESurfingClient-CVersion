@@ -30,7 +30,7 @@ static InitStatus load(const ByteArray zsm)
     char algo_id[ALGO_ID_LEN];
     memcpy(algo_id, str + length - 37, ALGO_ID_LEN - 1);
     LOG_INFO("Algo ID: %s", algo_id);
-    if (!initCipher(algo_id))
+    if (!init_cipher(algo_id))
     {
         LOG_ERROR("初始化加解密工厂失败");
         return INIT_FAILURE;
@@ -40,7 +40,7 @@ static InitStatus load(const ByteArray zsm)
     return INIT_SUCCESS;
 }
 
-static AuthStatus initSession()
+static AuthStatus init_session()
 {
     const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.ticket_url, g_prog_status[g_prog_idx].auth_cfg.algo_id);
     if (result.status == REQUEST_ERROR)
@@ -49,7 +49,7 @@ static AuthStatus initSession()
         free(result.body_data);
         return AUTH_FAILURE;
     }
-    LOG_DEBUG("会话响应内容: %s", result.body_data);
+    LOG_VERBOSE("会话响应内容: %s", result.body_data);
     const ByteArray zsm = str_2_bytes(result.body_data);
     free(result.body_data);
 
@@ -72,7 +72,7 @@ static AuthStatus initSession()
 static void clean_session()
 {
     LOG_DEBUG("清除会话初始化状态");
-    cipherFactoryDestroy();
+    cipher_factory_destroy();
     g_prog_status[g_prog_idx].runtime_status.is_initialized = 0;
 }
 
@@ -84,7 +84,7 @@ RunningStatus term()
         LOG_ERROR("登出 XML 创建失败");
         return RUNNING_FAILURE;
     }
-    char* encrypt = sessionEncrypt(payload);
+    char* encrypt = session_encrypt(payload);
     free(payload);
     if (!encrypt)
     {
@@ -113,7 +113,7 @@ static RunningStatus heartbeat()
         LOG_ERROR("心跳 XML 创建失败");
         return RUNNING_FAILURE;
     }
-    char* encrypt = sessionEncrypt(payload);
+    char* encrypt = session_encrypt(payload);
     free(payload);
     if (!encrypt)
     {
@@ -129,7 +129,7 @@ static RunningStatus heartbeat()
         free(result.body_data);
         return RUNNING_FAILURE;
     }
-    char* decrypted_data = sessionDecrypt(result.body_data);
+    char* decrypted_data = session_decrypt(result.body_data);
     free(result.body_data);
     if (!decrypted_data)
     {
@@ -144,7 +144,7 @@ static RunningStatus heartbeat()
         LOG_ERROR("心跳内容解析失败");
         return RUNNING_FAILURE;
     }
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.keep_retry, KEEP_RETRY_LEN, "%s", parsed_interval);
+    g_prog_status[g_prog_idx].auth_cfg.keep_retry = str_2_uint64(parsed_interval);
     free(parsed_interval);
     return RUNNING_SUCCESS;
 }
@@ -157,7 +157,7 @@ static AuthStatus login()
         LOG_ERROR("登录 XML 创建失败");
         return AUTH_FAILURE;
     }
-    char* encrypt = sessionEncrypt(payload);
+    char* encrypt = session_encrypt(payload);
     free(payload);
     if (!encrypt)
     {
@@ -174,7 +174,7 @@ static AuthStatus login()
         return AUTH_FAILURE;
     }
     LOG_VERBOSE("登录响应内容: %s", result.body_data);
-    char* decrypted_data = sessionDecrypt(result.body_data);
+    char* decrypted_data = session_decrypt(result.body_data);
     free(result.body_data);
     if (!decrypted_data)
     {
@@ -220,9 +220,9 @@ static AuthStatus login()
         LOG_ERROR("解析 KeepRetry 失败");
         return AUTH_FAILURE;
     }
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.keep_retry, KEEP_RETRY_LEN, "%s", parsed_interval);
+    g_prog_status[g_prog_idx].auth_cfg.keep_retry = str_2_uint64(parsed_interval);
     free(parsed_interval);
-    LOG_INFO("下一次重试: %s 秒后", g_prog_status[g_prog_idx].auth_cfg.keep_retry);
+    LOG_INFO("下一次重试: % 秒后" PRIu64, g_prog_status[g_prog_idx].auth_cfg.keep_retry);
     return AUTH_SUCCESS;
 }
 
@@ -234,7 +234,7 @@ static AuthStatus get_ticket()
         LOG_ERROR("创建获取 Ticket XML 失败");
         return AUTH_FAILURE;
     }
-    char* encrypt = sessionEncrypt(payload);
+    char* encrypt = session_encrypt(payload);
     free(payload);
     if (!encrypt)
     {
@@ -251,7 +251,7 @@ static AuthStatus get_ticket()
         return AUTH_FAILURE;
     }
     LOG_VERBOSE("获取 Ticket 响应内容: %s", result.body_data);
-    char* decrypt = sessionDecrypt(result.body_data);
+    char* decrypt = session_decrypt(result.body_data);
     free(result.body_data);
     if (!decrypt)
     {
@@ -271,7 +271,7 @@ static AuthStatus get_ticket()
 
 static RunningStatus auth()
 {
-    if (initSession() == AUTH_FAILURE)
+    if (init_session() == AUTH_FAILURE)
     {
         LOG_FATAL("初始化会话失败");
         clean_session();
@@ -296,8 +296,8 @@ static RunningStatus auth()
         return RUNNING_FAILURE;
     }
     LOG_DEBUG("完成登录");
-    g_prog_status[g_prog_idx].auth_cfg.tick = cur_tm_ms();
-    g_prog_status[g_prog_idx].runtime_status.auth_time = cur_tm_ms();
+    g_prog_status[g_prog_idx].auth_cfg.tick = get_cur_tm_ms();
+    g_prog_status[g_prog_idx].runtime_status.auth_time = get_cur_tm_ms();
     LOG_DEBUG("登录时间戳 (毫秒): %lld", g_prog_status[g_prog_idx].runtime_status.auth_time);
     g_prog_status[g_prog_idx].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
@@ -311,10 +311,9 @@ static RunningStatus run()
     case REQUEST_SUCCESS:
         if (g_prog_status[g_prog_idx].runtime_status.is_initialized && g_prog_status[g_prog_idx].runtime_status.is_authed)
         {
-            const uint64_t keep_retry = str_2_uint64(g_prog_status[g_prog_idx].auth_cfg.keep_retry);
-            if (keep_retry != 0)
+            if (g_prog_status[g_prog_idx].auth_cfg.keep_retry != 0)
             {
-                if (cur_tm_ms() - g_prog_status[g_prog_idx].auth_cfg.tick >= keep_retry * 1000)
+                if (get_cur_tm_ms() - g_prog_status[g_prog_idx].auth_cfg.tick >= g_prog_status[g_prog_idx].auth_cfg.keep_retry * 1000)
                 {
                     LOG_INFO("发送心跳包");
                     if (heartbeat() == RUNNING_FAILURE)
@@ -322,13 +321,15 @@ static RunningStatus run()
                         LOG_ERROR("心跳包发送失败");
                         return RUNNING_FAILURE;
                     }
-                    LOG_INFO("下一次重试: %s 秒后", g_prog_status[g_prog_idx].auth_cfg.keep_retry);
-                    g_prog_status[g_prog_idx].auth_cfg.tick = cur_tm_ms();
+                    LOG_INFO("下一次重试: % 秒后" PRIu64, g_prog_status[g_prog_idx].auth_cfg.keep_retry);
+                    g_prog_status[g_prog_idx].auth_cfg.tick = get_cur_tm_ms();
                 }
             }
         }
         else
+        {
             LOG_INFO("网络已连接");
+        }
         sleep_ms(1000);
         return RUNNING_SUCCESS;
     case REQUEST_AUTHORIZATION:
@@ -363,7 +364,7 @@ static RunningStatus run()
     }
 }
 
-static void restart()
+static void reset()
 {
     if (g_prog_status[g_prog_idx].runtime_status.is_initialized)
     {
@@ -378,27 +379,23 @@ static void restart()
 
 void dialer_app()
 {
-    refresh_states();
-    while (g_prog_status[g_prog_idx].runtime_status.is_running)
+    if (get_cur_tm_ms() - g_prog_status[g_prog_idx].runtime_status.auth_time >= 172200000 && g_prog_status[g_prog_idx].runtime_status.auth_time != 0)
     {
-        if (cur_tm_ms() - g_prog_status[g_prog_idx].runtime_status.auth_time >= 172200000 && g_prog_status[g_prog_idx].runtime_status.auth_time != 0)
+        if (g_prog_status[g_prog_idx].runtime_status.is_settings_changed) // 暂无用处
         {
-            if (g_prog_status[g_prog_idx].runtime_status.is_settings_changed)
-            {
-                LOG_INFO("设置已更改，正在重启认证");
-                g_prog_status[g_prog_idx].runtime_status.is_settings_changed = false;
-            }
-            LOG_DEBUG("当前时间戳(毫秒): %lld", cur_tm_ms());
-            LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟)，为避免被远程服务器踢下线，正在重新进行认证");
-            restart();
-        }
-        else if (g_prog_status[g_prog_idx].runtime_status.is_settings_changed)
-        {
-            LOG_INFO("设置已更改，正在重启认证");
-            restart();
+            LOG_INFO("设置已更改, 正在重启认证");
             g_prog_status[g_prog_idx].runtime_status.is_settings_changed = false;
         }
-        run();
-        sleep_ms(1000);
+        LOG_DEBUG("当前时间戳(毫秒): %lld", get_cur_tm_ms());
+        LOG_WARN("已登录 2870 分钟(1 天 23 小时 50 分钟), 为避免被远程服务器踢下线, 正在重新进行认证");
+        reset();
     }
+    else if (g_prog_status[g_prog_idx].runtime_status.is_settings_changed) // 暂无用处
+    {
+        LOG_INFO("设置已更改, 正在重启认证");
+        reset();
+        g_prog_status[g_prog_idx].runtime_status.is_settings_changed = false;
+    }
+    run();
+    sleep_ms(1000);
 }

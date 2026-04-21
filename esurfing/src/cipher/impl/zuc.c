@@ -205,7 +205,7 @@ static void zuc_process_bytes(zuc_state_t* st, const uint8_t* in, const size_t l
 
 static uint8_t* zero_pad_to_4(const uint8_t* data, const size_t data_len, size_t* out_len)
 {
-    return padToMultiple(data, data_len, 4, out_len);
+    return pad_2_multiple(data, data_len, 4, out_len);
 }
 
 static size_t trim_trailing_zeros_len(const uint8_t* data, size_t len)
@@ -225,12 +225,12 @@ static char* zuc_encrypt(cipherInterfaceT* self, const char* text)
     size_t padded_len=0;
     uint8_t* padded = zero_pad_to_4((const uint8_t*)text, text_len, &padded_len);
     if(!padded) return NULL;
-    uint8_t* out = safeMalloc(padded_len);
+    uint8_t* out = s_malloc(padded_len);
     zuc_state_t st; zuc_init(&st, d->key, d->iv);
     zuc_process_bytes(&st, padded, padded_len, out);
-    safeFree(padded);
-    char* hex = bytesToHexUpper(out, padded_len);
-    safeFree(out);
+    s_free(padded);
+    char* hex = bytes_2_hex(out, padded_len);
+    s_free(out);
     return hex;
 }
 
@@ -239,17 +239,17 @@ static char* zuc_decrypt(cipherInterfaceT* self, const char* hex)
     if(!self || !hex) return NULL;
     const zuc_cipher_data_t* d = self->private_data;
     size_t bytes_len=0;
-    uint8_t* bytes = hexToBytes(hex, &bytes_len);
+    uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
     if(!bytes) return NULL;
-    uint8_t* out = safeMalloc(bytes_len);
+    uint8_t* out = s_malloc(bytes_len);
     zuc_state_t st; zuc_init(&st, d->key, d->iv);
     zuc_process_bytes(&st, bytes, bytes_len, out);
-    safeFree(bytes);
+    s_free(bytes);
     const size_t trimmed = trim_trailing_zeros_len(out, bytes_len);
-    char* result = safeMalloc(trimmed + 1);
+    char* result = s_malloc(trimmed + 1);
     memcpy(result, out, trimmed);
     result[trimmed] = '\0';
-    safeFree(out);
+    s_free(out);
     return result;
 }
 
@@ -257,15 +257,15 @@ static void zuc_destroy(cipherInterfaceT* self)
 {
     if(self)
     {
-        safeFree(self->private_data); safeFree(self);
+        s_free(self->private_data); s_free(self);
     }
 }
 
 cipherInterfaceT* create_zuc_cipher(const uint8_t* key, const uint8_t* iv)
 {
     if(!key || !iv) return NULL;
-    cipherInterfaceT* ci = safeMalloc(sizeof(cipherInterfaceT));
-    zuc_cipher_data_t* d = safeMalloc(sizeof(zuc_cipher_data_t));
+    cipherInterfaceT* ci = s_malloc(sizeof(cipherInterfaceT));
+    zuc_cipher_data_t* d = s_malloc(sizeof(zuc_cipher_data_t));
     memcpy(d->key, key, 16);
     memcpy(d->iv, iv, 16);
     ci->encrypt = zuc_encrypt;

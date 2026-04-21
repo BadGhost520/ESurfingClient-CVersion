@@ -4,13 +4,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "cipher/CipherInterface.h"
+
 #define SCHOOL_NETWORK_SYMBOL 8
 
 #define LAST_LOCATION_LEN 256
 #define MAC_ADDRESS_LEN 20
 #define TICKET_URL_LEN 256
 #define USER_AGENT_LEN 32
-#define KEEP_RETRY_LEN 8
 #define CLIENT_ID_LEN 40
 #define HOST_NAME_LEN 16
 #define KEEP_URL_LEN 80
@@ -28,15 +29,12 @@
 /** @brief 认证配置 */
 typedef struct
 {
-    char last_location[LAST_LOCATION_LEN];
     /** @brief MAC 地址 */
     char mac_address[MAC_ADDRESS_LEN];
     /** @brief 票据 URL */
     char ticket_url[TICKET_URL_LEN];
     /** @brief 设备 UA */
     char user_agent[USER_AGENT_LEN];
-    /** @brief 重试时间 */
-    char keep_retry[KEEP_RETRY_LEN];
     /** @brief 客户端 ID */
     char client_id[CLIENT_ID_LEN];
     /** @brief 主机名 */
@@ -55,6 +53,10 @@ typedef struct
     char client_ip[IP_LEN];
     /** @brief 服务端 IP */
     char ac_ip[IP_LEN];
+    /** @brief 加解密工厂 */
+    cipherInterfaceT* cipher;
+    /** @brief 重试时间 */
+    uint64_t keep_retry;
     /** @brief 当前时间 (用于检测认证时间) */
     uint64_t tick;
 } AuthConfig;
@@ -100,6 +102,8 @@ typedef struct
     LoginConfig login_cfg;
     /** @brief 运行状态 */
     RuntimeStatus runtime_status;
+    /** @brief 获取认证配置地址 */
+    char last_location[LAST_LOCATION_LEN];
 } ProgStatus;
 
 /** @brief 全局运行时间 */
@@ -110,6 +114,12 @@ extern uint8_t g_prog_cnt;
 
 /** @brief 正在操作的适配器下标 */
 extern uint8_t g_prog_idx;
+
+/** @brief 是否使用自定义 IP */
+extern bool g_use_cus_ip;
+
+/** @brief 关闭锁 */
+extern bool g_shut_lock;
 
 /** @brief 主程序状态 */
 extern ProgStatus* g_prog_status;

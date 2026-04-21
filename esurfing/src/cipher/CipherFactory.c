@@ -1,6 +1,7 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/KeyData.h"
 #include "utils/Logger.h"
+#include "States.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -30,9 +31,7 @@ extern cipherInterfaceT* create_des_ecb_six_pc_cipher(const uint8_t* key0, const
                                                         const uint8_t* key2, const uint8_t* key3,
                                                         const uint8_t* key4, const uint8_t* key5);
 
-static __thread cipherInterfaceT* cipher = NULL;
-
-static cipherInterfaceT* cipherFactoryCreate(const char* algo_id)
+static cipherInterfaceT* cipher_factory_create(const char* algo_id)
 {
     if (!algo_id) return NULL;
     // AES-CBC
@@ -188,19 +187,20 @@ static cipherInterfaceT* cipherFactoryCreate(const char* algo_id)
     return NULL;
 }
 
-void cipherFactoryDestroy()
+void cipher_factory_destroy()
 {
-    if (cipher && cipher->destroy) cipher->destroy(cipher);
-    cipher = NULL;
+    if (g_prog_status[g_prog_idx].auth_cfg.cipher && g_prog_status[g_prog_idx].auth_cfg.cipher->destroy)
+        g_prog_status[g_prog_idx].auth_cfg.cipher->destroy(g_prog_status[g_prog_idx].auth_cfg.cipher);
+    g_prog_status[g_prog_idx].auth_cfg.cipher = NULL;
     LOG_DEBUG("销毁加解密工厂");
 }
 
-int initCipher(const char* algo_id)
+int init_cipher(const char* algo_id)
 {
     LOG_DEBUG("开始初始化加解密工厂");
-    if (cipher) cipherFactoryDestroy();
-    cipher = cipherFactoryCreate(algo_id);
-    if (!cipher)
+    if (g_prog_status[g_prog_idx].auth_cfg.cipher) cipher_factory_destroy();
+    g_prog_status[g_prog_idx].auth_cfg.cipher = cipher_factory_create(algo_id);
+    if (!g_prog_status[g_prog_idx].auth_cfg.cipher)
     {
         LOG_ERROR("初始化加密工厂失败");
         return 0;
@@ -209,12 +209,12 @@ int initCipher(const char* algo_id)
     return 1;
 }
 
-char* sessionEncrypt(const char* text)
+char* session_encrypt(const char* text)
 {
-    return cipher->encrypt(cipher, text);
+    return g_prog_status[g_prog_idx].auth_cfg.cipher->encrypt(g_prog_status[g_prog_idx].auth_cfg.cipher, text);
 }
 
-char* sessionDecrypt(const char* text)
+char* session_decrypt(const char* text)
 {
-    return cipher->decrypt(cipher, text);
+    return g_prog_status[g_prog_idx].auth_cfg.cipher->decrypt(g_prog_status[g_prog_idx].auth_cfg.cipher, text);
 }

@@ -177,21 +177,21 @@ static char* aes_ecb_pc_encrypt(cipherInterfaceT* self, const char* text)
 {
     if (!self || !text) return NULL;
     const aes_ecb_pc_ctx_t* ctx = self->private_data;
-    const size_t len = safeStrLen(text);
+    const size_t len = s_strlen(text);
     const uint8_t* input = (const uint8_t*)text;
     size_t padded_len = 0;
-    uint8_t* padded = padToMultiple(input, len, 16, &padded_len);
+    uint8_t* padded = pad_2_multiple(input, len, 16, &padded_len);
     if (!padded) return NULL;
-    uint8_t* out = safeMalloc(padded_len);
+    uint8_t* out = s_malloc(padded_len);
     for (size_t i = 0; i < padded_len; i += 16)
     {
         uint8_t tmp[16];
         aes128_encrypt_block(padded + i, tmp, ctx->round_keys2);
         aes128_encrypt_block(tmp, out + i, ctx->round_keys1);
     }
-    char* hex = bytesToHexUpper(out, padded_len);
-    safeFree(padded);
-    safeFree(out);
+    char* hex = bytes_2_hex(out, padded_len);
+    s_free(padded);
+    s_free(out);
     return hex;
 }
 
@@ -200,12 +200,12 @@ static char* aes_ecb_pc_decrypt(cipherInterfaceT* self, const char* hex)
     if (!self || !hex) return NULL;
     const aes_ecb_pc_ctx_t* ctx = self->private_data;
     size_t in_len = 0;
-    uint8_t* in = hexToBytes(hex, &in_len);
+    uint8_t* in = hex_2_bytes(hex, &in_len);
     if (!in || in_len % 16 != 0)
     {
-        safeFree(in); return NULL;
+        s_free(in); return NULL;
     }
-    uint8_t* out = safeMalloc(in_len);
+    uint8_t* out = s_malloc(in_len);
     for (size_t i = 0; i < in_len; i += 16)
     {
         uint8_t tmp[16];
@@ -214,26 +214,26 @@ static char* aes_ecb_pc_decrypt(cipherInterfaceT* self, const char* hex)
     }
     size_t plain_len = in_len;
     while (plain_len > 0 && out[plain_len - 1] == 0x00) plain_len--;
-    char* text = safeMalloc(plain_len + 1);
+    char* text = s_malloc(plain_len + 1);
     memcpy(text, out, plain_len);
     text[plain_len] = '\0';
-    safeFree(in);
-    safeFree(out);
+    s_free(in);
+    s_free(out);
     return text;
 }
 
 static void aes_ecb_pc_destroy(cipherInterfaceT* self)
 {
     if (!self) return;
-    if (self->private_data) safeFree(self->private_data);
-    safeFree(self);
+    if (self->private_data) s_free(self->private_data);
+    s_free(self);
 }
 
 cipherInterfaceT* create_aes_ecb_pc_cipher(const uint8_t* key1, const uint8_t* key2)
 {
     if (!key1 || !key2) return NULL;
-    cipherInterfaceT* ci = safeCalloc(1, sizeof(cipherInterfaceT));
-    aes_ecb_pc_ctx_t* ctx = safeCalloc(1, sizeof(aes_ecb_pc_ctx_t));
+    cipherInterfaceT* ci = s_calloc(1, sizeof(cipherInterfaceT));
+    aes_ecb_pc_ctx_t* ctx = s_calloc(1, sizeof(aes_ecb_pc_ctx_t));
     key_expansion(key1, ctx->round_keys1);
     key_expansion(key2, ctx->round_keys2);
     ci->encrypt = aes_ecb_pc_encrypt;

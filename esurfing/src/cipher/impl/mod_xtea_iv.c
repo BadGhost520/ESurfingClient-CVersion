@@ -64,11 +64,11 @@ static char* mod_xtea_iv_encrypt(cipherInterfaceT* self, const char* text)
     if (!data) return NULL;
     const size_t text_len = strlen(text);
     size_t padded_len;
-    uint8_t* padded_data = padToMultiple((const uint8_t*)text, text_len, 8, &padded_len);
+    uint8_t* padded_data = pad_2_multiple((const uint8_t*)text, text_len, 8, &padded_len);
     if (!padded_data) return NULL;
-    uint8_t* output = safeMalloc(padded_len);
+    uint8_t* output = s_malloc(padded_len);
     memcpy(output, padded_data, padded_len);
-    safeFree(padded_data);
+    s_free(padded_data);
     uint32_t previous[2];
     previous[0] = data->iv[0];
     previous[1] = data->iv[1];
@@ -85,8 +85,8 @@ static char* mod_xtea_iv_encrypt(cipherInterfaceT* self, const char* text)
         previous[0] = v0;
         previous[1] = v1;
     }
-    char* hex_result = bytesToHexUpper(output, padded_len);
-    safeFree(output);
+    char* hex_result = bytes_2_hex(output, padded_len);
+    s_free(output);
     return hex_result;
 }
 
@@ -96,9 +96,9 @@ static char* mod_xtea_iv_decrypt(cipherInterfaceT* self, const char* hex)
     mod_xtea_iv_data_t* data = self->private_data;
     if (!data) return NULL;
     size_t bytes_len;
-    uint8_t* bytes = hexToBytes(hex, &bytes_len);
+    uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
     if (!bytes) return NULL;
-    uint8_t* output = safeMalloc(bytes_len);
+    uint8_t* output = s_malloc(bytes_len);
     memcpy(output, bytes, bytes_len);
     uint32_t previous[2];
     previous[0] = data->iv[0];
@@ -117,15 +117,15 @@ static char* mod_xtea_iv_decrypt(cipherInterfaceT* self, const char* hex)
         previous[0] = cipher_block[0];
         previous[1] = cipher_block[1];
     }
-    safeFree(bytes);
+    s_free(bytes);
     while (bytes_len > 0 && output[bytes_len - 1] == 0)
     {
         bytes_len--;
     }
-    char* result = safeMalloc(bytes_len + 1);
+    char* result = s_malloc(bytes_len + 1);
     memcpy(result, output, bytes_len);
     result[bytes_len] = '\0';
-    safeFree(output);
+    s_free(output);
     return result;
 }
 
@@ -133,8 +133,8 @@ static void mod_xtea_iv_destroy(cipherInterfaceT* self)
 {
     if (self)
     {
-        safeFree(self->private_data);
-        safeFree(self);
+        s_free(self->private_data);
+        s_free(self);
     }
 }
 
@@ -142,8 +142,8 @@ cipherInterfaceT* create_mod_xtea_iv_cipher(const uint32_t* key1, const uint32_t
                                               const uint32_t* key3, const uint32_t* iv)
 {
     if (!key1 || !key2 || !key3 || !iv) return NULL;
-    cipherInterfaceT* cipher = safeMalloc(sizeof(cipherInterfaceT));
-    mod_xtea_iv_data_t* data = safeMalloc(sizeof(mod_xtea_iv_data_t));
+    cipherInterfaceT* cipher = s_malloc(sizeof(cipherInterfaceT));
+    mod_xtea_iv_data_t* data = s_malloc(sizeof(mod_xtea_iv_data_t));
     memcpy(data->key1, key1, 4 * sizeof(uint32_t));
     memcpy(data->key2, key2, 4 * sizeof(uint32_t));
     memcpy(data->key3, key3, 4 * sizeof(uint32_t));

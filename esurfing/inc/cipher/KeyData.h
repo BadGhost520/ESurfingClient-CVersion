@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------
 // Algo Id: CAFBCBAD-B6E7-4CAB-8A67-14D39F00CE1E (AES/CBC/NoPadding)
 // -----------------------------------------------------------------
@@ -111,9 +107,5 @@ extern const uint8_t key3_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
 extern const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
 extern const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
 extern const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // KEY_DATA_H
