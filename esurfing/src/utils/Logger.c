@@ -180,12 +180,12 @@ LoggerInitStatus init_logger()
 
 void clean_logger()
 {
+    LOG_DEBUG("关闭日志系统");
     if (!s_logger_cfg.file_handle)
     {
         fprintf(stderr, "错误: 日志系统未启动\n");
         return;
     }
-    LOG_DEBUG("关闭日志系统");
     fclose(s_logger_cfg.file_handle);
     s_logger_cfg.file_handle = NULL;
     if (strlen(s_logger_cfg.log_file) == 0)

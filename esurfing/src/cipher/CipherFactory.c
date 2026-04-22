@@ -193,14 +193,15 @@ void destroy_cipher_factory()
 bool init_cipher(const char* algo_id)
 {
     LOG_DEBUG("开始初始化加解密工厂");
-    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
-    if (cipher) destroy_cipher_factory();
+    cipherInterfaceT* cipher = NULL;
+    LOG_VERBOSE("创建加解密工厂, 使用 algo_id: %s", algo_id);
     cipher = create_cipher_factory(algo_id);
     if (!cipher)
     {
         LOG_ERROR("初始化加密工厂失败");
         return false;
     }
+    g_prog_status[g_prog_cnt].auth_cfg.cipher = cipher;
     LOG_DEBUG("初始化加解密工厂成功");
     return true;
 }

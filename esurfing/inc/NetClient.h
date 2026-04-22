@@ -26,6 +26,14 @@ typedef struct {
 } HTTPResponse;
 
 /**
+ * @brief 截取 URL 中指定参数
+ * @param url URL 地址
+ * @param search_str_start 要查找的参数名
+ * @return 查找到的参数
+ */
+char* extract_url_param(const char* url, const char* search_str_start);
+
+/**
  * @brief 带默认头的 POST
  * @param url 地址
  * @param data 数据
@@ -46,10 +54,10 @@ HTTPResponse get_with_header(const char* url);
 void get_last_location();
 
 /**
- * @brief 检测认证状态
+ * @brief 检测网络状态
  * @return 网络状态
  */
-NetworkStatus check_auth_status();
+NetworkStatus check_network_status();
 
 /**
  * @brief 检查 IP 是否有效

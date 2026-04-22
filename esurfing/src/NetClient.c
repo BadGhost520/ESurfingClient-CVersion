@@ -20,7 +20,7 @@ static char s_school_id[SCHOOL_ID_LENGTH];
 static char s_domain[DOMAIN_LENGTH];
 static char s_area[AREA_LENGTH];
 
-static char* extract_url_param(const char* url, const char* search_str_start)
+char* extract_url_param(const char* url, const char* search_str_start)
 {
     if (!url)
     {
@@ -44,6 +44,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
 {
     const size_t real_size = size * nmemb;
     const char* header = contents;
+
     if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0 && !s_school_id[0])
     {
         if (s_school_id[0] == '\0')
@@ -55,6 +56,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             LOG_INFO("School Id: %s", s_school_id);
         }
     }
+
     if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !s_domain[0])
     {
         if (s_domain[0] == '\0')
@@ -66,6 +68,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             LOG_INFO("Domain: %s", s_domain);
         }
     }
+
     if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !s_area[0])
     {
         if (s_area[0] == '\0')
@@ -77,6 +80,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             LOG_INFO("Area: %s", s_area);
         }
     }
+
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
     {
         if (!g_prog_status[g_prog_idx].runtime_status.last_location_lock)
@@ -87,6 +91,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             snprintf(g_prog_status[g_prog_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
         }
     }
+
     return real_size;
 }
 
@@ -95,11 +100,14 @@ static size_t write_cb(const void* contents, const size_t size, const size_t nme
     HTTPResponse* resp = userdata;
     const size_t real_size = size * nmemb;
     char* ptr = realloc(resp->body_data, resp->body_size + real_size + 1);
+
     if (!ptr) return 0;
+
     resp->body_data = ptr;
     memcpy(&resp->body_data[resp->body_size], contents, real_size);
     resp->body_size += real_size;
     resp->body_data[resp->body_size] = 0;
+
     return real_size;
 }
 
@@ -108,17 +116,20 @@ static char* calc_md5(const char* data)
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_len;
     char* md5_str = malloc(33);
+
     if (!md5_str)
     {
         LOG_ERROR("分配内存失败");
         return NULL;
     }
+
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     if (!mdctx)
     {
         free(md5_str);
         return NULL;
     }
+
     const EVP_MD* md = EVP_md5();
     if (EVP_DigestInit_ex(mdctx, md, NULL) != 1)
     {
@@ -126,12 +137,14 @@ static char* calc_md5(const char* data)
         free(md5_str);
         return NULL;
     }
+
     if (EVP_DigestUpdate(mdctx, data, strlen(data)) != 1)
     {
         EVP_MD_CTX_free(mdctx);
         free(md5_str);
         return NULL;
     }
+
     if (EVP_DigestFinal_ex(mdctx, digest, &digest_len) != 1)
     {
         EVP_MD_CTX_free(mdctx);
@@ -139,7 +152,9 @@ static char* calc_md5(const char* data)
         return NULL;
     }
     EVP_MD_CTX_free(mdctx);
+
     for (unsigned int i = 0; i < digest_len; i++) sprintf(&md5_str[i*2], "%02x", (unsigned int)digest[i]);
+
     return md5_str;
 }
 
@@ -147,6 +162,7 @@ static CurlStatus create_post_client(CURL** curl, struct curl_slist** headers, H
 {
     *curl = curl_easy_init();
     if (!*curl) return CURL_INIT_FAILURE;
+
     curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
     curl_easy_setopt(*curl, CURLOPT_URL, post_url);
     curl_easy_setopt(*curl, CURLOPT_POSTFIELDS, post_data);
@@ -154,7 +170,9 @@ static CurlStatus create_post_client(CURL** curl, struct curl_slist** headers, H
     curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_CONNECTTIMEOUT, 5L);
+
     if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
+
     return CURL_INIT_SUCCESS;
 }
 
@@ -162,6 +180,7 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
 {
     *curl = curl_easy_init();
     if (!*curl) return CURL_INIT_FAILURE;
+
     curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
     curl_easy_setopt(*curl, CURLOPT_URL, get_url);
     curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
@@ -170,7 +189,9 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
+
     if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
+
     return CURL_INIT_SUCCESS;
 }
 
@@ -178,32 +199,73 @@ static void add_header(struct curl_slist** headers, const char* fmt, ...)
 {
     va_list local_args;
     char header_buf[128];
+
     va_start(local_args, fmt);
     vsnprintf(header_buf, sizeof(header_buf), fmt, local_args);
     va_end(local_args);
+
     *headers = curl_slist_append(*headers, header_buf);
+}
+
+static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
+{
+    switch (curl_code)
+    {
+    case CURLE_COULDNT_RESOLVE_HOST:
+        LOG_ERROR("curl 错误码: 6, 错误原因: DNS 解析错误");
+        return REQUEST_ERROR;
+    case CURLE_COULDNT_CONNECT:
+        LOG_ERROR("curl 错误码: 7, 错误原因: 连接服务器失败");
+        return REQUEST_ERROR;
+    case CURLE_OPERATION_TIMEDOUT:
+        LOG_ERROR("curl 错误码: 28, 错误原因: 操作超时");
+        return REQUEST_WARNING;
+    case CURLE_HTTP_RETURNED_ERROR:
+        LOG_ERROR("curl 错误码: 22, 错误原因: HTTP 状态码 ≥ 400");
+        return REQUEST_ERROR;
+    case CURLE_GOT_NOTHING:
+        LOG_ERROR("curl 错误码: 52, 错误原因: 服务器返回空数据");
+        return REQUEST_ERROR;
+    case CURLE_URL_MALFORMAT:
+        LOG_ERROR("curl 错误码: 3, 错误原因: URL 格式错误");
+        return REQUEST_ERROR;
+    case CURLE_WRITE_ERROR:
+        LOG_ERROR("curl 错误码: 23, 错误原因: 写入数据失败");
+        return REQUEST_ERROR;
+    case CURLE_ABORTED_BY_CALLBACK:
+        LOG_ERROR("curl 错误码: 42, 错误原因: 回调函数中止");
+        return REQUEST_ERROR;
+    default:
+        LOG_ERROR("未知错误");
+        return REQUEST_ERROR;
+    }
 }
 
 static HTTPResponse post(const char* url, const char* data, struct curl_slist* headers)
 {
     LOG_VERBOSE("POST 地址: %s", url);
     LOG_VERBOSE("POST 数据: %s", data);
+
     CURL* curl;
     HTTPResponse resp = {0};
+
     if (create_post_client(&curl, &headers, &resp, url, data) == CURL_INIT_FAILURE)
     {
         resp.status = INIT_ERROR;
         return resp;
     }
-    const CURLcode res_code = curl_easy_perform(curl);
-    if (res_code != CURLE_OK)
+
+    const CURLcode curl_code = curl_easy_perform(curl);
+    if (curl_code != CURLE_OK)
     {
-        resp.status = REQUEST_ERROR;
-        LOG_ERROR("网络错误，原因: %s",curl_easy_strerror(res_code));
+        curl_easy_cleanup(curl);
+        resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
+
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
+
     resp.status = REQUEST_SUCCESS;
     return resp;
 }
@@ -212,19 +274,18 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
 {
     CURL* curl;
     HTTPResponse resp = {0};
+
     if (create_get_client(&curl, &headers, &resp, url) == CURL_INIT_FAILURE)
     {
         resp.status = INIT_ERROR;
         return resp;
     }
-    const CURLcode res_code = curl_easy_perform(curl);
-    if (res_code != CURLE_OK)
+
+    const CURLcode curl_code = curl_easy_perform(curl);
+    if (curl_code != CURLE_OK)
     {
-        const char* err_msg = curl_easy_strerror(res_code);
-        LOG_ERROR("HTTP 请求错误: %s ,错误码: %d, GET URL: %s", err_msg, res_code, url);
         curl_easy_cleanup(curl);
-        if (res_code == 28) resp.status = REQUEST_WARNING;
-        else resp.status = REQUEST_ERROR;
+        resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
     long resp_code;
@@ -310,87 +371,10 @@ void get_last_location()
     get_school_ip_symbol();
 }
 
-NetworkStatus check_auth_status()
+NetworkStatus check_network_status()
 {
-    const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
-    const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
-    HTTPResponse resp = {0};
-
-    resp = get_with_header(s_generate_url);
-    if (resp.status == REQUEST_SUCCESS || resp.status == REQUEST_WARNING) return resp.status;
-    if (resp.status == REQUEST_ERROR)
-    {
-        LOG_ERROR("GET 错误");
-        return REQUEST_ERROR;
-    }
-
-    resp = get_with_header(g_prog_status[g_prog_idx].last_location);
-    if (resp.status == REQUEST_WARNING) return resp.status;
-    if (resp.status == REQUEST_ERROR)
-    {
-        LOG_ERROR("GET 错误");
-        return REQUEST_ERROR;
-    }
-
-    char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag);
-    free(resp.body_data);
-    if (!portal_config)
-    {
-        LOG_ERROR("提取门户配置失败");
-        return REQUEST_ERROR;
-    }
-    char* auth_url = xml_parser(portal_config, "auth-url");
-    if (!auth_url)
-    {
-        LOG_ERROR("提取 Auth URL 失败");
-        return REQUEST_ERROR;
-    }
-    char* cleaned_auth_url = clean_CDATA(auth_url);
-    free(auth_url);
-    if (!cleaned_auth_url)
-    {
-        LOG_ERROR("清除 Auth URL 失败");
-        return REQUEST_ERROR;
-    }
-    LOG_INFO("Auth URL: %s", cleaned_auth_url);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.auth_url, AUTH_URL_LEN, "%s", cleaned_auth_url);
-    free(cleaned_auth_url);
-    char* ticket_url = xml_parser(portal_config, "ticket-url");
-    free(portal_config);
-    if (!ticket_url)
-    {
-        LOG_ERROR("提取 Ticket URL 失败");
-        return REQUEST_ERROR;
-    }
-    char* cleaned_ticket_url = clean_CDATA(ticket_url);
-    free(ticket_url);
-    if (!cleaned_ticket_url)
-    {
-        LOG_ERROR("清除 Ticket URL CDATA 失败");
-        return REQUEST_ERROR;
-    }
-    LOG_INFO("Ticket URL: %s", cleaned_ticket_url);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.ticket_url, TICKET_URL_LEN, "%s", cleaned_ticket_url);
-    char* client_ip = extract_url_param(cleaned_ticket_url, "wlanuserip");
-    if (!client_ip)
-    {
-        LOG_ERROR("提取 Client IP 失败");
-        return REQUEST_ERROR;
-    }
-    LOG_INFO("Client IP: %s", client_ip);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.client_ip, IP_LEN, "%s", client_ip);
-    free(client_ip);
-    char* ac_ip = extract_url_param(cleaned_ticket_url, "wlanacip");
-    free(cleaned_ticket_url);
-    if (!ac_ip)
-    {
-        LOG_ERROR("提取 AC IP 失败");
-        return REQUEST_ERROR;
-    }
-    LOG_INFO("AC IP: %s", ac_ip);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.ac_ip, IP_LEN, "%s", ac_ip);
-    free(ac_ip);
-    return REQUEST_AUTHORIZATION;
+    const HTTPResponse resp = get_with_header(s_generate_url);
+    return resp.status;
 }
 
 bool check_ip_validity(const char* ip)

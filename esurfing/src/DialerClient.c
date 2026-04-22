@@ -8,76 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static InitStatus load(const ByteArray zsm)
-{
-    LOG_DEBUG("load 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
-    LOG_DEBUG("接收到的 zsm 数据长度: %zu", zsm.length);
-    if (!zsm.data || zsm.length == 0)
-    {
-        LOG_ERROR("无效的 zsm 数据");
-        return INIT_FAILURE;
-    }
-    char str[zsm.length + 1];
-    memcpy(str, zsm.data, zsm.length);
-    str[zsm.length] = '\0';
-    const size_t length = strlen(str);
-    LOG_DEBUG("原始字符串: %s", str);
-    LOG_DEBUG("字符串长度: %zu", length);
-    if (length < 4 + 38)
-    {
-        LOG_ERROR("字符串长度不足");
-        return INIT_FAILURE;
-    }
-    char algo_id[ALGO_ID_LEN];
-    memcpy(algo_id, str + length - 37, ALGO_ID_LEN - 1);
-    LOG_INFO("Algo ID: %s", algo_id);
-    if (!init_cipher(algo_id))
-    {
-        LOG_ERROR("初始化加解密工厂失败");
-        return INIT_FAILURE;
-    }
-    LOG_DEBUG("全局 AlgoID 已更新: '%s'", algo_id);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", algo_id);
-    return INIT_SUCCESS;
-}
-
-static AuthStatus init_session()
-{
-    LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
-    const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.ticket_url, g_prog_status[g_prog_idx].auth_cfg.algo_id);
-    if (result.status == REQUEST_ERROR)
-    {
-        LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
-        free(result.body_data);
-        return AUTH_FAILURE;
-    }
-    LOG_VERBOSE("会话响应内容: %s", result.body_data);
-    const ByteArray zsm = str_2_bytes(result.body_data);
-    free(result.body_data);
-
-    LOG_DEBUG("开始初始化会话");
-    if (load(zsm) == INIT_SUCCESS)
-    {
-        LOG_DEBUG("初始化会话成功");
-        g_prog_status[g_prog_idx].runtime_status.is_initialized = 1;
-    }
-    else
-    {
-        LOG_DEBUG("初始化会话失败");
-        g_prog_status[g_prog_idx].runtime_status.is_initialized = 0;
-    }
-
-    free(zsm.data);
-    return AUTH_SUCCESS;
-}
-
-static void clean_session()
-{
-    LOG_DEBUG("清除会话初始化状态");
-    destroy_cipher_factory();
-    g_prog_status[g_prog_idx].runtime_status.is_initialized = 0;
-}
-
 RunningStatus term()
 {
     char* payload = create_xml_payload(TERM);
@@ -268,9 +198,156 @@ static AuthStatus get_ticket()
     return AUTH_SUCCESS;
 }
 
+static InitStatus load(const ByteArray zsm)
+{
+    LOG_DEBUG("load 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
+    LOG_DEBUG("接收到的 zsm 数据长度: %zu", zsm.length);
+    if (!zsm.data || zsm.length == 0)
+    {
+        LOG_ERROR("无效的 zsm 数据");
+        return INIT_FAILURE;
+    }
+    char str[zsm.length + 1];
+    memcpy(str, zsm.data, zsm.length);
+    str[zsm.length] = '\0';
+    const size_t length = strlen(str);
+    LOG_DEBUG("原始字符串: %s", str);
+    LOG_DEBUG("字符串长度: %zu", length);
+    if (length < 4 + 38)
+    {
+        LOG_ERROR("字符串长度不足");
+        return INIT_FAILURE;
+    }
+    char algo_id[ALGO_ID_LEN];
+    memcpy(algo_id, str + length - 37, ALGO_ID_LEN - 1);
+    algo_id[ALGO_ID_LEN - 1] = '\0';
+    LOG_INFO("Algo ID: %s", algo_id);
+    if (!init_cipher(algo_id))
+    {
+        LOG_ERROR("初始化加解密工厂失败");
+        return INIT_FAILURE;
+    }
+    LOG_DEBUG("全局 AlgoID 已更新: '%s'", algo_id);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", algo_id);
+    return INIT_SUCCESS;
+}
+
+static void clean_session()
+{
+    LOG_DEBUG("清除会话初始化状态");
+    destroy_cipher_factory();
+    g_prog_status[g_prog_idx].runtime_status.is_initialized = 0;
+}
+
+static AuthStatus init_session()
+{
+    LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
+    const HTTPResponse result = post_with_header(g_prog_status[g_prog_idx].auth_cfg.ticket_url, g_prog_status[g_prog_idx].auth_cfg.algo_id);
+    if (result.status == REQUEST_ERROR)
+    {
+        LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
+        free(result.body_data);
+        return AUTH_FAILURE;
+    }
+    LOG_VERBOSE("会话响应内容: %s", result.body_data);
+    const ByteArray zsm = str_2_bytes(result.body_data);
+    free(result.body_data);
+
+    LOG_DEBUG("开始初始化会话");
+    if (load(zsm) == INIT_SUCCESS)
+    {
+        LOG_DEBUG("初始化会话成功");
+        g_prog_status[g_prog_idx].runtime_status.is_initialized = 1;
+    }
+    else
+    {
+        LOG_DEBUG("初始化会话失败");
+        g_prog_status[g_prog_idx].runtime_status.is_initialized = 0;
+    }
+
+    free(zsm.data);
+    return AUTH_SUCCESS;
+}
+
 static RunningStatus auth()
 {
     LOG_DEBUG("auth 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx, g_prog_idx);
+
+    const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
+    const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
+
+    const HTTPResponse resp = get_with_header(g_prog_status[g_prog_idx].last_location);
+    if (resp.status != REQUEST_HAVE_RES)
+    {
+        LOG_ERROR("响应体为空, 无法提取认证配置");
+        return RUNNING_FAILURE;
+    }
+
+    char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag);
+    free(resp.body_data);
+    if (!portal_config)
+    {
+        LOG_ERROR("提取门户配置失败");
+        return RUNNING_FAILURE;
+    }
+
+    char* auth_url = xml_parser(portal_config, "auth-url");
+    if (!auth_url)
+    {
+        LOG_ERROR("提取 Auth URL 失败");
+        return RUNNING_FAILURE;
+    }
+
+    char* cleaned_auth_url = clean_CDATA(auth_url);
+    free(auth_url);
+    if (!cleaned_auth_url)
+    {
+        LOG_ERROR("清除 Auth URL 失败");
+        return RUNNING_FAILURE;
+    }
+    LOG_INFO("Auth URL: %s", cleaned_auth_url);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.auth_url, AUTH_URL_LEN, "%s", cleaned_auth_url);
+    free(cleaned_auth_url);
+
+    char* ticket_url = xml_parser(portal_config, "ticket-url");
+    free(portal_config);
+    if (!ticket_url)
+    {
+        LOG_ERROR("提取 Ticket URL 失败");
+        return RUNNING_FAILURE;
+    }
+
+    char* cleaned_ticket_url = clean_CDATA(ticket_url);
+    free(ticket_url);
+    if (!cleaned_ticket_url)
+    {
+        LOG_ERROR("清除 Ticket URL CDATA 失败");
+        return RUNNING_FAILURE;
+    }
+    LOG_INFO("Ticket URL: %s", cleaned_ticket_url);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.ticket_url, TICKET_URL_LEN, "%s", cleaned_ticket_url);
+
+    char* client_ip = extract_url_param(cleaned_ticket_url, "wlanuserip");
+    if (!client_ip)
+    {
+        LOG_ERROR("提取 Client IP 失败");
+        return RUNNING_FAILURE;
+    }
+    LOG_INFO("Client IP: %s", client_ip);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.client_ip, IP_LEN, "%s", client_ip);
+    free(client_ip);
+
+    char* ac_ip = extract_url_param(cleaned_ticket_url, "wlanacip");
+    free(cleaned_ticket_url);
+    if (!ac_ip)
+    {
+        LOG_ERROR("提取 AC IP 失败");
+        return RUNNING_FAILURE;
+    }
+    LOG_INFO("AC IP: %s", ac_ip);
+    snprintf(g_prog_status[g_prog_idx].auth_cfg.ac_ip, IP_LEN, "%s", ac_ip);
+    free(ac_ip);
+
     if (init_session() == AUTH_FAILURE)
     {
         LOG_FATAL("初始化会话失败");
@@ -306,9 +383,20 @@ static RunningStatus auth()
 
 static RunningStatus run()
 {
-    switch (check_auth_status())
+    switch (check_network_status())
     {
     case REQUEST_SUCCESS:
+        ;
+        bool is_auth = false;
+        for (uint8_t i = 0; i < g_prog_cnt; i++)
+        {
+            if (g_prog_status[g_prog_idx].runtime_status.is_authed) is_auth = true;
+        }
+        if (is_auth)
+        {
+            if (!g_prog_status[g_prog_idx].runtime_status.is_authed) auth();
+        }
+
         if (g_prog_status[g_prog_idx].runtime_status.is_initialized && g_prog_status[g_prog_idx].runtime_status.is_authed)
         {
             if (g_prog_status[g_prog_idx].auth_cfg.keep_retry != 0)
@@ -328,11 +416,11 @@ static RunningStatus run()
         }
         else
         {
-            LOG_INFO("网络已连接");
+            LOG_INFO("已连接到互联网");
         }
         sleep_ms(1000);
         return RUNNING_SUCCESS;
-    case REQUEST_AUTHORIZATION:
+    case REQUEST_REDIRECT:
         LOG_INFO("需要认证");
         if (auth() == RUNNING_FAILURE)
         {
@@ -341,22 +429,6 @@ static RunningStatus run()
         }
         sleep_ms(1000);
         return RUNNING_SUCCESS;
-    case REQUEST_ERROR:
-        LOG_ERROR("网络错误");
-        sleep_ms(5000);
-        return RUNNING_FAILURE;
-    case REQUEST_REDIRECT:
-        LOG_WARN("需要重定向");
-        sleep_ms(1000);
-        return RUNNING_WARNING;
-    case REQUEST_WARNING:
-        LOG_WARN("网络超时");
-        sleep_ms(5000);
-        return RUNNING_WARNING;
-    case INIT_ERROR:
-        LOG_ERROR("初始化错误");
-        sleep_ms(5000);
-        return RUNNING_FAILURE;
     default:
         LOG_ERROR("未知错误");
         sleep_ms(5000);

@@ -24,6 +24,12 @@ int main()
 
     init_shutdown_hook();
 
+    while (check_network_status() == REQUEST_SUCCESS)
+    {
+        LOG_INFO("已连接到互联网");
+        sleep_ms(5000);
+    }
+
     get_last_location();
 
     for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
@@ -31,9 +37,10 @@ int main()
         g_prog_status[g_prog_idx].runtime_status.is_running = true;
     }
 
-    for (g_prog_idx = 0; g_prog_idx <= g_prog_cnt && g_prog_status[g_prog_idx].runtime_status.is_running; g_prog_idx++)
+    for (g_prog_idx = 0; g_prog_idx <= g_prog_cnt; g_prog_idx++)
     {
         if (g_prog_idx == g_prog_cnt) g_prog_idx = 0;
+        if (!g_prog_status[g_prog_idx].runtime_status.is_running) break;
         while (g_shut_lock) sleep_ms(1000);
         dialer_app();
     }
