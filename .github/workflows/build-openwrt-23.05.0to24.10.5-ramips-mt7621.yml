@@ -1,4 +1,4 @@
-name: Build OpenWrt 24.10.5 ramips-mt7621 Package with Dependencies
+name: Build OpenWrt 23.05.0 to 24.10.6 ramips-mt7621 Package with Dependencies
 
 permissions:
   actions: write
@@ -24,17 +24,15 @@ jobs:
 
       - name: Download and extract SDK
         run: |
-          SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/24.10.5/targets/ramips/mt7621/openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          SDK_URL="https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           wget "$SDK_URL"
-          tar -I zstd -xf openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          mv openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
+          tar -I zstd -xf openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
 
       - name: Copy package source to SDK
         run: |
-          # 复制你的程序包
           cp -r esurfingclient openwrt-sdk/package/
           
-          # 如果有本地源码压缩包，也复制过去
           if [ -f esurfingclient.tar.gz ]; then
             cp esurfingclient.tar.gz openwrt-sdk/dl/
           fi
@@ -43,61 +41,39 @@ jobs:
         run: |
           cd openwrt-sdk
           
-          # 更新 feeds
           scripts/feeds update -a
           scripts/feeds install -a
           
-          # 使用默认配置 + 选中需要的包
           echo "CONFIG_TARGET_ramips_mt7621=y" >> .config
           echo "CONFIG_TARGET_ramips_mt7621_DEVICE_generic=y" >> .config
           
-          # 选中你的包（会自动选中依赖）
           echo "CONFIG_PACKAGE_esurfingclient=y" >> .config
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
           
-          # 关闭内核配置检查（加速编译）
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
           echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
           
-          # 生成完整配置
           make defconfig
 
       - name: Compile all packages
         run: |
           cd openwrt-sdk
-          # 编译你的包（会自动编译依赖）
           make package/esurfingclient/compile V=sc -j$(nproc)
 
       - name: Collect required packages
         run: |
           cd openwrt-sdk
 
-          # 创建离线仓库目录
           mkdir -p offline-repo
 
-          # 根据依赖树，需要打包的包列表
-          # 直接依赖
-          PACKAGES="esurfingclient libcurl libopenssl ca-bundle"
-          # 间接依赖
-          PACKAGES="$PACKAGES libmbedtls libnghttp libatomic"
-
-          # 复制所有需要的包
-          find bin/packages -name "*.ipk" | sort
-          # 递归搜索所有子目录
-          for pkg in $PACKAGES; do
-            pkg_file=$(find bin/packages -type f -name "${pkg}*.ipk" -not -name "${pkg}-*.ipk" 2>/dev/null | head -1)
-            if [ -n "$pkg_file" ]; then
-              cp "$pkg_file" offline-repo/
-              echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
-            else
-              echo "⚠️ 警告: 找不到 $pkg"
-            fi
-          done
+          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/packages/mipsel_24kc/packages/libnghttp2-14_1.63.0-r1_mipsel_24kc.ipk"
+          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/packages/mipsel_24kc/packages/libcurl4_8.12.1-r1_mipsel_24kc.ipk"
+          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/packages/mipsel_24kc/base/libopenssl3_3.0.19-r1_mipsel_24kc.ipk"
+          wget -P offline-repo "https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/packages/libatomic1_13.3.0-r4_mipsel_24kc.ipk"
+          cp bin/packages/mipsel_24kc/base/esurfingclient_2.0.0-r1_mipsel_24kc.ipk offline-repo/
           
-          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/targets/ramips/mt7621/packages/libatomic1_13.3.0-r4_mipsel_24kc.ipk"
-
           echo ""
           echo "📦 打包的文件列表："
           ls -la offline-repo/
@@ -111,7 +87,7 @@ jobs:
           cd openwrt-sdk
 
           # 打包
-          tar -czf ../esurfingclient-offline-repo.tar.gz offline-repo/
+          tar -czf ../esurfingclient-offline-repo.tar.gz offline-repo/*
 
           echo "✅ 离线包创建完成"
           echo "📦 压缩包大小: $(ls -lh ../esurfingclient-offline-repo.tar.gz | cut -d' ' -f5)"
