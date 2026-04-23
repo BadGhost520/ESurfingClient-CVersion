@@ -4,19 +4,19 @@ PKG_NAME:=esurfingclient
 PKG_VERSION:=2.0.0
 PKG_RELEASE:=1
 
-PKG_SOURCE:=esurfingclient.tar.gz
-PKG_SOURCE_URL:=file://$(TOPDIR)/dl
-PKG_SOURCE_SUBDIR:=esurfing
-PKG_BUILD_DIR:=$(BUILD_DIR)/esurfing
-PKG_HASH:=skip
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
-
 PKG_BUILD_DEPENDS:=libcurl libopenssl
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
-CMAKE_SOURCE_SUBDIR:=
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) $(CURDIR)/esurfing/* $(PKG_BUILD_DIR)/
+endef
+
+CMAKE_SOURCE_SUBDIR:=.
 CMAKE_INSTALL:=1
 CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=Release \
@@ -41,13 +41,13 @@ endef
 
 define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/esurfingclient
-	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/esurfingclient/
+	$(CP) $(PKG_BUILD_DIR)/ESurfingClient $(1)/usr/esurfingclient/
 
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(CP) ./files/usr/bin/dialer.json $(1)/usr/bin/
+	$(CP) $(CURDIR)/files/usr/bin/dialer.json $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,esurfingclient))
