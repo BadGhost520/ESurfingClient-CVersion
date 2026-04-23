@@ -72,7 +72,14 @@ jobs:
           wget -P esurfingclient-packages -r -nd --accept-regex='libcurl4_*' https://downloads.openwrt.org/releases/22.03.7/packages/mipsel_24kc/packages/
           wget -P esurfingclient-packages -r -nd --accept-regex='libopenssl1.1_*' https://downloads.openwrt.org/releases/22.03.7/packages/mipsel_24kc/base/
           wget -P esurfingclient-packages -r -nd --accept-regex='libatomic1_*' https://downloads.openwrt.org/releases/22.03.7/targets/ramips/mt7621/packages/
-          cp bin/packages/mipsel_24kc/base/esurfingclient_2.0.0-r1_mipsel_24kc.ipk esurfingclient-packages/
+          
+          pkg_file=$(find bin/packages -type f -name "esurfingclient*.ipk" 2>/dev/null | head -1)
+          if [ -n "$pkg_file" ]; then
+            cp "$pkg_file" offline-repo/
+            echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
+          else
+            echo "⚠️ 警告: 找不到 $pkg"
+          fi
           
           echo ""
           echo "📦 打包的文件列表："

@@ -37,8 +37,7 @@ jobs:
             pkg-config \
             file \
             upx-ucl \
-            binutils \
-            ldd
+            binutils
           # libcurl 和 OpenSSL 使用系统包，不自己编译
           apt-get install -y --no-install-recommends \
             libcurl4-openssl-dev
