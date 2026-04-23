@@ -87,11 +87,36 @@ jobs:
         run: |
           cd openwrt-sdk/offline-repo
 
-          # 使用 scripts 目录下的脚本（正确路径）
-          ../scripts/ipkg-make-index.sh . 2>/dev/null > Packages
-          gzip -9nc Packages > Packages.gz
+          # 检查脚本位置并执行
+          if [ -f "../scripts/ipkg-make-index.sh" ]; then
+              echo "使用 scripts/ipkg-make-index.sh"
+              ../scripts/ipkg-make-index.sh . > Packages 2>/dev/null
+          elif [ -f "../staging_dir/host/bin/ipkg-make-index.sh" ]; then
+              echo "使用 staging_dir/host/bin/ipkg-make-index.sh"
+              ../staging_dir/host/bin/ipkg-make-index.sh . > Packages 2>/dev/null
+          else
+              echo "⚠️ 找不到 ipkg-make-index.sh，手动生成 Packages"
+              # 手动生成
+              for ipk in *.ipk; do
+                  name=$(basename "$ipk" .ipk)
+                  # 提取包名和版本（从 ipk 文件名）
+                  pkg_name=$(echo "$name" | sed 's/_[0-9].*$//')
+                  pkg_version=$(echo "$name" | sed 's/^[^_]*_//')
 
-          echo "Repository index generated"
+                  echo "Package: $pkg_name" >> Packages
+                  echo "Version: $pkg_version" >> Packages
+                  echo "Filename: $ipk" >> Packages
+                  echo "Size: $(stat -c%s "$ipk")" >> Packages
+                  echo "MD5Sum: $(md5sum "$ipk" | cut -d' ' -f1)" >> Packages
+                  echo "" >> Packages
+              done
+          fi
+
+          gzip -9nc Packages > Packages.gz
+          echo "✅ Repository index generated"
+
+          # 验证
+          ls -la Packages Packages.gz
 
       - name: Create final offline bundle
         run: |
