@@ -66,35 +66,35 @@ jobs:
         run: |
           cd openwrt-sdk
 
-          mkdir -p offline-repo
+          mkdir -p esurfingclient-packages
 
-          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/packages/mipsel_24kc/packages/libnghttp2-14_1.63.0-r1_mipsel_24kc.ipk"
-          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/packages/mipsel_24kc/packages/libcurl4_8.12.1-r1_mipsel_24kc.ipk"
-          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/packages/mipsel_24kc/base/libopenssl3_3.0.19-r1_mipsel_24kc.ipk"
-          wget -P offline-repo "https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/packages/libatomic1_13.3.0-r4_mipsel_24kc.ipk"
-          cp bin/packages/mipsel_24kc/base/esurfingclient_2.0.0-r1_mipsel_24kc.ipk offline-repo/
+          wget -P esurfingclient-packages -r -nd --accept-regex='libnghttp2-*' https://downloads.openwrt.org/releases/24.10.6/packages/mipsel_24kc/packages/
+          wget -P esurfingclient-packages -r -nd --accept-regex='libcurl4_*' https://downloads.openwrt.org/releases/24.10.6/packages/mipsel_24kc/packages/
+          wget -P esurfingclient-packages -r -nd --accept-regex='libopenssl3_*' https://downloads.openwrt.org/releases/24.10.6/packages/mipsel_24kc/base/
+          wget -P esurfingclient-packages -r -nd --accept-regex='libatomic1_*' https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/packages/
+          cp bin/packages/mipsel_24kc/base/esurfingclient_2.0.0-r1_mipsel_24kc.ipk esurfingclient-packages/
           
           echo ""
           echo "📦 打包的文件列表："
-          ls -la offline-repo/
+          ls -la esurfingclient-packages/
 
           echo ""
-          echo "📊 文件数量: $(ls offline-repo/*.ipk 2>/dev/null | wc -l)"
-          echo "💾 总大小: $(du -sh offline-repo/ | cut -f1)"
+          echo "📊 文件数量: $(ls esurfingclient-packages/*.ipk 2>/dev/null | wc -l)"
+          echo "💾 总大小: $(du -sh esurfingclient-packages/ | cut -f1)"
 
       - name: Create offline bundle
         run: |
           cd openwrt-sdk
 
           # 打包
-          tar -czf ../esurfingclient-offline-repo.tar.gz offline-repo/*
+          tar -czf ../esurfingclient-openwrt-24.10.6-ramips-mt7621.tar.gz esurfingclient-packages/
 
           echo "✅ 离线包创建完成"
-          echo "📦 压缩包大小: $(ls -lh ../esurfingclient-offline-repo.tar.gz | cut -d' ' -f5)"
+          echo "📦 压缩包大小: $(ls -lh ../esurfingclient-openwrt-24.10.6-ramips-mt7621.tar.gz | cut -d' ' -f5)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-offline-repo-ramips-mt7621
-          path: esurfingclient-offline-repo.tar.gz
+          name: esurfingclient-openwrt-24.10.6-ramips-mt7621
+          path: esurfingclient-openwrt-24.10.6-ramips-mt7621.tar.gz
           retention-days: 30

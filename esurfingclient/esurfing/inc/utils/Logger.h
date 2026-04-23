@@ -2,6 +2,7 @@
 #define ESURFINGCLIENT_LOGGER_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #ifndef _WIN32
