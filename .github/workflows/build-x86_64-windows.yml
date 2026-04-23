@@ -155,7 +155,7 @@ jobs:
     - name: Verify build output
       shell: msys2 {0}
       run: |
-        cd esurfing
+        cd esurfingclient/esurfing
         if [ ! -f "ESurfingClient-x86_64-windows.exe" ]; then
           echo "❌ Build failed: ESurfingClient-x86_64-windows.exe not found"
           exit 1
@@ -175,12 +175,11 @@ jobs:
         echo "📦 Creating Windows x64 package"
         
         # Copy executable to root directory for packaging
-        cp esurfing/ESurfingClient-x86_64-windows.exe ./
+        cp esurfingclient/esurfing/ESurfingClient-x86_64-windows.exe ./
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: esurfingclient-windows-x64
-        path: |
-          ESurfingClient-x86_64-windows.exe
+        path: ESurfingClient-x86_64-windows.exe
         retention-days: 30
