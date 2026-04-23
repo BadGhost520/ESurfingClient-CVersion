@@ -77,7 +77,7 @@ jobs:
         run: |
           echo "🏗️ Starting x64 Linux build process"
           echo "📁 Go to esurfing dir"
-          cd esurfing
+          cd esurfingclient/esurfing
           
           echo "⚙️ CMake configuring"
           cmake -DBUILD_STATIC=ON .
