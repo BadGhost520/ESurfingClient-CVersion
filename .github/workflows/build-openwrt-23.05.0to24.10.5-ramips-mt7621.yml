@@ -56,7 +56,6 @@ jobs:
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
-          echo "CONFIG_PACKAGE_libatomic=y" >> .config
           
           # 关闭内核配置检查（加速编译）
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
@@ -96,6 +95,8 @@ jobs:
               echo "⚠️ 警告: 找不到 $pkg"
             fi
           done
+          
+          wget -P offline-repo "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/targets/ramips/mt7621/packages/libatomic1_13.3.0-r4_mipsel_24kc.ipk"
 
           echo ""
           echo "📦 打包的文件列表："
