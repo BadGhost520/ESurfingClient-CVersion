@@ -75,7 +75,7 @@
     #include <pthread.h>
     #include <unistd.h>
     
-    struct simple_thread {
+    struct SimThread {
         pthread_t thread;
         int detached;
     };
