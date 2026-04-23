@@ -26,7 +26,7 @@ static const char s_xml_header[] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n
 static const char s_xml_footer[] = "</request>\n";
 
 static const char s_default_cfg[] = "{\n"
-                                    "   \"debug\": false,\n"
+                                    "   \"log_lv\": 4,\n"
                                     "   \"use_cus_ip\": false,\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"

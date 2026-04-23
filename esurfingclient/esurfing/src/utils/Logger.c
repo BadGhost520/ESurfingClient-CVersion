@@ -150,7 +150,7 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
         sim_thread_cur_id(),
         get_thread_str(),
         get_level_str(level),
-        strrchr(file, '/') ? strrchr(file, '/') + 1 : file,
+        strrchr(file, '/') ? strrchr(file, '/') + 1 : strrchr(file, '\\') ? strrchr(file, '\\') + 1 : file,
         line,
         msg);
     write_2_console(final_msg);
