@@ -70,50 +70,59 @@ jobs:
           # 编译你的包（会自动编译依赖）
           make package/esurfingclient/compile V=sc -j$(nproc)
 
-      - name: Collect minimal packages
+      - name: Collect required packages
         run: |
           cd openwrt-sdk
 
+          # 创建离线仓库目录
           mkdir -p offline-repo
 
-          # 复制主程序
-          main_pkg=$(find bin/packages -name "esurfingclient_*.ipk" | head -1)
-          if [ -n "$main_pkg" ]; then
-              cp "$main_pkg" offline-repo/
-              echo "✅ 主程序: $(basename "$main_pkg")"
-          fi
+          # 根据依赖树，需要打包的包列表
+          # 直接依赖
+          PACKAGES="esurfingclient libcurl libopenssl"
+          # 间接依赖
+          PACKAGES="$PACKAGES libnghttp libatomic"
 
-          # 复制运行时依赖
-          for dep in libcurl libopenssl ca-bundle; do
-              dep_pkg=$(find bin/packages -name "${dep}_*.ipk" | head -1)
-              if [ -n "$dep_pkg" ]; then
-                  cp "$dep_pkg" offline-repo/
-                  echo "✅ 依赖: $(basename "$dep_pkg")"
-              fi
-          done
-
-          # 可选：libpthread 和 librt（通常已内置，但有时需要）
-          for lib in libpthread librt; do
-              lib_pkg=$(find bin/packages -name "${lib}_*.ipk" 2>/dev/null | head -1)
-              if [ -n "$lib_pkg" ]; then
-                  cp "$lib_pkg" offline-repo/
-                  echo "✅ 系统库: $(basename "$lib_pkg")"
+          # 复制所有需要的包
+          for pkg in $PACKAGES; do
+              # 查找对应的 ipk 文件（可能带版本号）
+              pkg_file=$(find bin/packages -name "${pkg}_*.ipk" 2>/dev/null | head -1)
+              if [ -n "$pkg_file" ]; then
+                  cp "$pkg_file" offline-repo/
+                  echo "✅ 添加: $(basename "$pkg_file")"
+              else
+                  # 尝试其他可能的命名方式
+                  pkg_file=$(find bin/packages -name "${pkg}.ipk" 2>/dev/null | head -1)
+                  if [ -n "$pkg_file" ]; then
+                      cp "$pkg_file" offline-repo/
+                      echo "✅ 添加: $(basename "$pkg_file")"
+                  else
+                      echo "⚠️ 警告: 找不到 $pkg"
+                  fi
               fi
           done
 
           echo ""
-          echo "📦 最终打包的文件（共 $(ls offline-repo/*.ipk 2>/dev/null | wc -l) 个）："
-          ls -lh offline-repo/
+          echo "📦 打包的文件列表："
+          ls -la offline-repo/
+
           echo ""
+          echo "📊 文件数量: $(ls offline-repo/*.ipk 2>/dev/null | wc -l)"
           echo "💾 总大小: $(du -sh offline-repo/ | cut -f1)"
 
       - name: Create offline bundle
         run: |
-          tar -czf esurfingclient-offline-repo.tar.gz openwrt-sdk/offline-repo/
-          ls -lh esurfingclient-offline-repo.tar.gz
+          cd openwrt-sdk
+
+          # 打包
+          tar -czf ../esurfingclient-offline-repo.tar.gz offline-repo/
+
+          echo "✅ 离线包创建完成"
+          echo "📦 压缩包大小: $(ls -lh ../esurfingclient-offline-repo.tar.gz | cut -d' ' -f5)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-offline-repo
+          name: esurfingclient-offline-repo-ramips-mt7621
           path: esurfingclient-offline-repo.tar.gz
+          retention-days: 30
