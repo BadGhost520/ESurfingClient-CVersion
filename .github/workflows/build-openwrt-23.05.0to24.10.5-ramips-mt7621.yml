@@ -56,6 +56,7 @@ jobs:
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+          echo "CONFIG_PACKAGE_libatomic=y" >> .config
           
           # 关闭内核配置检查（加速编译）
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
@@ -81,27 +82,18 @@ jobs:
           # 直接依赖
           PACKAGES="esurfingclient libcurl libopenssl ca-bundle"
           # 间接依赖
-          PACKAGES="$PACKAGES libmbedtls libnghttp libatomic libgcc"
+          PACKAGES="$PACKAGES libmbedtls libnghttp libatomic"
 
           # 复制所有需要的包
           find bin/packages -name "*.ipk" | sort
           # 递归搜索所有子目录
           for pkg in $PACKAGES; do
-            # 使用 find 递归搜索整个 bin/packages 目录
-            pkg_file=$(find bin/packages -type f -name "${pkg}_*.ipk" 2>/dev/null | head -1)
-            
+            pkg_file=$(find bin/packages -type f -name "${pkg}*.ipk" -not -name "${pkg}-*.ipk" 2>/dev/null | head -1)
             if [ -n "$pkg_file" ]; then
               cp "$pkg_file" offline-repo/
               echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
             else
-              # 尝试不带版本号的匹配
-              pkg_file=$(find bin/packages -type f -name "${pkg}.ipk" 2>/dev/null | head -1)
-              if [ -n "$pkg_file" ]; then
-                cp "$pkg_file" offline-repo/
-                echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
-              else
-                echo "⚠️ 警告: 找不到 $pkg"
-              fi
+              echo "⚠️ 警告: 找不到 $pkg"
             fi
           done
 
