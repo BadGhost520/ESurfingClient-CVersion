@@ -26,8 +26,8 @@ jobs:
         run: |
           SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/24.10.5/targets/ramips/mt7621/openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           wget "$SDK_URL"
-          tar -I zstd -xf openwrt-sdk-*.tar.zst
-          mv openwrt-sdk-* openwrt-sdk
+          tar -I zstd -xf openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
 
       - name: Copy package source to SDK
         run: |
