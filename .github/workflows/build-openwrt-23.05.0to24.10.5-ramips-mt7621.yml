@@ -79,9 +79,9 @@ jobs:
 
           # 根据依赖树，需要打包的包列表
           # 直接依赖
-          PACKAGES="esurfingclient libcurl libopenssl"
+          PACKAGES="esurfingclient libcurl libopenssl ca-bundle"
           # 间接依赖
-          PACKAGES="$PACKAGES libnghttp libatomic"
+          PACKAGES="$PACKAGES libmbedtls libnghttp libatomic libgcc"
 
           # 复制所有需要的包
           for pkg in $PACKAGES; do
