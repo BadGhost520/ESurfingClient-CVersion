@@ -83,12 +83,12 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
 
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
     {
-        if (!g_prog_status[g_prog_idx].runtime_status.last_location_lock)
+        if (!g_prog_status[thread_idx].runtime_status.last_location_lock)
         {
             const char* value = header + 9;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(g_prog_status[g_prog_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
+            snprintf(g_prog_status[thread_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
         }
     }
 
@@ -171,7 +171,7 @@ static CurlStatus create_post_client(CURL** curl, struct curl_slist** headers, H
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_CONNECTTIMEOUT, 5L);
 
-    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
+    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
 
     return CURL_INIT_SUCCESS;
 }
@@ -190,7 +190,7 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
 
-    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[g_prog_idx].login_cfg.ip);
+    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
 
     return CURL_INIT_SUCCESS;
 }
@@ -293,7 +293,7 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
     curl_easy_cleanup(curl);
     if (resp_code == 302)
     {
-        LOG_VERBOSE("重定向至: %s", g_prog_status[g_prog_idx].last_location);
+        LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
         resp.status = REQUEST_REDIRECT;
         return resp;
     }
@@ -327,10 +327,10 @@ HTTPResponse post_with_header(const char* url, const char* data)
     add_header(&headers, "CDC-Checksum: %s", md5_hash);
     free(md5_hash);
     add_header(&headers, "Content-Type: %s", s_req_content_type);
-    add_header(&headers, "User-Agent: %s", g_prog_status[g_prog_idx].auth_cfg.user_agent);
+    add_header(&headers, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
     add_header(&headers, "Accept: %s", s_req_accept);
-    add_header(&headers, "Client-ID: %s", g_prog_status[g_prog_idx].auth_cfg.client_id);
-    add_header(&headers, "Algo-ID: %s", g_prog_status[g_prog_idx].auth_cfg.algo_id);
+    add_header(&headers, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
+    add_header(&headers, "Algo-ID: %s", g_prog_status[thread_idx].auth_cfg.algo_id);
     add_header(&headers, "CDC-SchoolId: %s", s_school_id);
     add_header(&headers, "CDC-Domain: %s", s_domain);
     add_header(&headers, "CDC-Area: %s", s_area);
@@ -342,9 +342,9 @@ HTTPResponse get_with_header(const char* url)
 {
     struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
-    add_header(&headers, "User-Agent: %s", g_prog_status[g_prog_idx].auth_cfg.user_agent);
+    add_header(&headers, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
     add_header(&headers, "Accept: %s", s_req_accept);
-    add_header(&headers, "Client-ID: %s", g_prog_status[g_prog_idx].auth_cfg.client_id);
+    add_header(&headers, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
     resp = get(url, headers);
     return resp;
 }
@@ -358,16 +358,15 @@ static void get_school_ip_symbol()
 
 void get_last_location()
 {
-    for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
+    for (thread_idx = 0; thread_idx < g_prog_cnt; thread_idx++)
     {
         refresh_states();
         HTTPResponse resp = {0};
         resp = get_with_header(s_generate_url);
-        while (resp.status == REQUEST_REDIRECT) resp = get_with_header(g_prog_status[g_prog_idx].last_location);
-        g_prog_status[g_prog_idx].runtime_status.last_location_lock = true;
-        LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[g_prog_idx].login_cfg.idx, g_prog_status[g_prog_idx].last_location);
+        while (resp.status == REQUEST_REDIRECT) resp = get_with_header(g_prog_status[thread_idx].last_location);
+        g_prog_status[thread_idx].runtime_status.last_location_lock = true;
+        LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
     }
-    g_prog_idx = 0;
     get_school_ip_symbol();
 }
 

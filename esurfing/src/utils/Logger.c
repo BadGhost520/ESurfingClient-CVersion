@@ -119,6 +119,20 @@ static void write_2_file(const char* msg)
     }
 }
 
+static char* get_thread_str()
+{
+    for (uint8_t i = 0; i < g_prog_cnt; i++)
+    {
+        if (sim_thread_cur_id() == g_prog_status[i].thread_id)
+        {
+            static char str[4];
+            snprintf(str, sizeof(str), "%" PRIu8, i);
+            return str;
+        }
+    }
+    return "Main";
+}
+
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
 {
     if (level > s_logger_cfg.lv) return;
@@ -131,8 +145,10 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
     vsnprintf(msg, sizeof(msg), fmt, local_args);
     va_end(local_args);
     snprintf(final_msg, sizeof(final_msg),
-        "[%s] [%s] [%s:%d] %s\n",
+        "[%s] [TID %" PRIu64 "] [T-%s] [%s] [%s:%d] %s\n",
         ts,
+        sim_thread_cur_id(),
+        get_thread_str(),
         get_level_str(level),
         strrchr(file, '/') ? strrchr(file, '/') + 1 : file,
         line,

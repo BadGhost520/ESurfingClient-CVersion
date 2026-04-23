@@ -1,6 +1,5 @@
-name: Build OpenWrt 23.05.0 to 24.10.5 ramips-mt7621 Package
+name: Build OpenWrt 24.10.5 ramips-mt7621 Package with Dependencies
 
-# 配置工作流权限
 permissions:
   actions: write
   contents: read
@@ -9,156 +8,127 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-openwrt-23-05-0-to-24-10-5-ramips-mt7621:
+  build-openwrt-offline-repo:
     runs-on: ubuntu-latest
     container:
       image: debian:11
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-    - name: Install packages with retry
-      run: |
-        # 安装多个包，最多重试3次
-        PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd python3-setuptools swig"
+      - name: Install build dependencies
+        run: |
+          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd python3-setuptools swig"
+          apt-get update && apt-get install -y $PACKAGES
 
-        for i in 1 2 3; do
-          echo "Attempt $i: Installing $PACKAGES"
-          if apt-get update && apt-get install -y $PACKAGES; then
-            echo "✅ All packages installed"
-            break
-          fi
-          echo "❌ Attempt $i failed"
-          sleep 3
-        done
+      - name: Download and extract SDK
+        run: |
+          SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/24.10.5/targets/ramips/mt7621/openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          wget "$SDK_URL"
+          tar -I zstd -xf openwrt-sdk-*.tar.zst
+          mv openwrt-sdk-* openwrt-sdk
 
-    - name: Set SDK filename variable
-      run: |
-        echo "SDK_FILENAME=openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst" >> $GITHUB_ENV
-    
-    - name: Check if SDK exists and download if needed
-      run: |
-        SDK_URL="https://mirrors.sustech.edu.cn/openwrt/releases/24.10.5/targets/ramips/mt7621/openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
-        MAX_RETRIES=5
-        RETRY_COUNT=0
-        
-        echo "🔄 Downloading SDK with retry mechanism (max $MAX_RETRIES attempts)"
-        
-        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-          RETRY_COUNT=$((RETRY_COUNT + 1))
-          echo "📥 Attempt $RETRY_COUNT/$MAX_RETRIES: Downloading SDK..."
+      - name: Copy package source to SDK
+        run: |
+          # 复制你的程序包
+          cp -r esurfingclient openwrt-sdk/package/
           
-          if wget --timeout=30 --tries=1 "$SDK_URL"; then
-            echo "✅ SDK downloaded successfully on attempt $RETRY_COUNT"
-            break
-          else
-            echo "❌ Download failed on attempt $RETRY_COUNT"
-            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              WAIT_TIME=$((RETRY_COUNT * 10))
-              echo "⏳ Waiting ${WAIT_TIME} seconds before retry..."
-              sleep $WAIT_TIME
-            else
-              echo "💥 All $MAX_RETRIES download attempts failed"
-              exit 1
-            fi
+          # 如果有本地源码压缩包，也复制过去
+          if [ -f esurfingclient.tar.gz ]; then
+            cp esurfingclient.tar.gz openwrt-sdk/dl/
           fi
-        done
-    
-    - name: Extract SDK
-      run: |
-        echo "Extracting SDK"
-        tar -I zstd -xf $SDK_FILENAME
-    
-    - name: Rename SDK directory
-      run: |
-        echo "Rename SDK dir"
-        mv openwrt-sdk-24.10.5-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
-    
-    - name: Copy esurfingclient package to dl directory
-      run: |
-        echo "Copy esurfingclient package to dl dir"
-        tar -czf esurfingclient.tar.gz esurfing
-        mv esurfingclient.tar.gz openwrt-sdk/dl/
-    
-    - name: Copy esurfing package to package directory
-      run: |
-        echo "Copy esurfing package to package dir"
-        cp -r esurfingclient openwrt-sdk/package/
-    
-    - name: Copy menuconfig and cover .config
-      run: |
-        echo "Copy menuconfig and cover .config"
-        cp menuconfig.config openwrt-sdk/.config
-    
-    - name: Update feeds
-      run: |
-        echo "Go to openwrt-sdk dir"
-        cd openwrt-sdk
-        echo "Updating feeds with retry mechanism"
-        retry_count=0
-        max_retries=5
-        
-        while [ $retry_count -lt $max_retries ]; do
-          echo "Attempt $((retry_count + 1)) of $max_retries: Updating feeds"
-          if scripts/feeds update -a; then
-            echo "Update feeds successful"
-            echo "Installing feeds packages"
-            scripts/feeds install -a
-            break
-          else
-            retry_count=$((retry_count + 1))
-            echo "Update feeds failed (attempt $retry_count)"
-            if [ $retry_count -eq $max_retries ]; then
-              echo "Update feeds failed after $max_retries attempts"
-              echo "Triggering workflow restart..."
-              curl -X POST \
-                -H "Accept: application/vnd.github.v3+json" \
-                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-openwrt-23.05.0to24.10.5-ramips-mt7621.yml/dispatches \
-                -d '{"ref":"${{ github.ref }}"}'
-              exit 1
-            fi
-            echo "Retrying in 5 seconds..."
-            sleep 5
-          fi
-        done
-    
-    - name: Compile curl package
-      run: |
-        cd openwrt-sdk
-        echo "Making curl package"
-        make package/curl/compile V=sc -j$(nproc)
-    
-    - name: Compile openssl package
-      run: |
-        cd openwrt-sdk
-        echo "Making openssl package"
-        make package/openssl/compile V=sc -j$(nproc)
-    
-    - name: Compile esurfingclient package
-      run: |
-        cd openwrt-sdk
-        echo "Making esurfingclient package"
-        make package/esurfingclient/compile V=sc -j$(nproc)
-    
-    - name: Copy built package
-      run: |
-        echo "Copy esurfingclient package to bash dir"
-        # Find the esurfingclient IPK file with pattern matching
-        ipk_file=$(find openwrt-sdk/bin/packages/mipsel_24kc/base/ -name "esurfingclient_*.ipk" | head -1)
-        if [ -n "$ipk_file" ]; then
-          echo "Found IPK file: $ipk_file"
-          cp "$ipk_file" esurfingclient-openwrt-23.05.0to24.10.5-ramips-mt7621.ipk
-        else
-          echo "Error: No esurfingclient IPK file found"
-          ls openwrt-sdk/bin/packages/
-          exit 1
-        fi
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: esurfingclient-openwrt-23.05.0to24.10.5-ramips-mt7621
-        path: esurfingclient-openwrt-23.05.0to24.10.5-ramips-mt7621.ipk
-        retention-days: 30
+
+      - name: Configure build
+        run: |
+          cd openwrt-sdk
+          
+          # 更新 feeds
+          scripts/feeds update -a
+          scripts/feeds install -a
+          
+          # 使用默认配置 + 选中需要的包
+          echo "CONFIG_TARGET_ramips_mt7621=y" >> .config
+          echo "CONFIG_TARGET_ramips_mt7621_DEVICE_generic=y" >> .config
+          
+          # 选中你的包（会自动选中依赖）
+          echo "CONFIG_PACKAGE_esurfingclient=y" >> .config
+          echo "CONFIG_PACKAGE_libcurl=y" >> .config
+          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
+          echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+          
+          # 关闭内核配置检查（加速编译）
+          echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
+          echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
+          
+          # 生成完整配置
+          make defconfig
+
+      - name: Compile all packages
+        run: |
+          cd openwrt-sdk
+          # 编译你的包（会自动编译依赖）
+          make package/esurfingclient/compile V=sc -j$(nproc)
+
+      - name: Collect all IPK files
+        run: |
+          cd openwrt-sdk
+          
+          # 创建离线仓库目录
+          mkdir -p offline-repo
+          
+          # 查找所有生成的 IPK 文件
+          find bin/packages -name "*.ipk" -exec cp {} offline-repo/ \;
+          
+          echo "📦 Collected packages:"
+          ls -la offline-repo/
+
+      - name: Generate repository index
+        run: |
+          cd openwrt-sdk/offline-repo
+          
+          # 生成 Packages 索引文件（opkg 需要）
+          ../staging_dir/host/bin/ipkg-make-index.sh . 2>/dev/null > Packages
+          gzip -9nc Packages > Packages.gz
+          
+          # 可选：生成签名（如果不需要可跳过）
+          echo "Repository index generated"
+
+      - name: Create final offline bundle
+        run: |
+          # 创建最终的压缩包
+          BUNDLE_NAME="esurfingclient-offline-repo-ramips-mt7621"
+          
+          mv openwrt-sdk/offline-repo $BUNDLE_NAME
+          
+          # 添加安装说明
+          cat > $BUNDLE_NAME/README.txt << 'EOF'
+          ========================================
+          ESurfingClient Offline Repository
+          ========================================
+          
+          安装方法：
+          
+          1. 将此文件夹上传到路由器（例如 /tmp/repo）
+          
+          2. 配置 opkg 使用本地源：
+             opkg update
+             opkg install esurfingclient
+          
+          3. 或者直接安装（不配置源）：
+             opkg install ./esurfingclient_*.ipk
+          
+          注意：依赖包会自动安装，无需手动处理
+          ========================================
+          EOF
+          
+          tar -czf $BUNDLE_NAME.tar.gz $BUNDLE_NAME
+          
+          echo "✅ Offline bundle created: $BUNDLE_NAME.tar.gz"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esurfingclient-offline-repo-ramips-mt7621
+          path: esurfingclient-offline-repo-ramips-mt7621.tar.gz
+          retention-days: 30

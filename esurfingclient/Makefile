@@ -10,14 +10,13 @@ PKG_SOURCE_SUBDIR:=esurfing
 PKG_BUILD_DIR:=$(BUILD_DIR)/esurfing
 PKG_HASH:=skip
 PKG_BUILD_PARALLEL:=1
-PKG_BUILD_DEPENDS:=curl openssl
-DEPENDS:=+libcurl +libopenssl +ca-bundle
+
+PKG_BUILD_DEPENDS:=libcurl libopenssl
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
 CMAKE_SOURCE_SUBDIR:=
-
 CMAKE_INSTALL:=1
 CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=Release \
@@ -37,7 +36,6 @@ endef
 
 define Build/Compile
 	$(call Build/Compile/Default)
-
 	$(TARGET_CROSS)strip --strip-all $(PKG_BUILD_DIR)/ESurfingClient 2>/dev/null || true
 endef
 

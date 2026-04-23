@@ -283,14 +283,14 @@ char* create_xml_payload(const XmlChoose choose)
             "    <gwip>%s</gwip>\n"
             "%s",
             s_xml_header,
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.user_agent),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_id),
+            safe_str(g_prog_status[thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[thread_idx].auth_cfg.client_id),
             cur_tm,
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_ip),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.mac_address),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.ac_ip),
+            safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[thread_idx].auth_cfg.client_ip),
+            safe_str(g_prog_status[thread_idx].auth_cfg.mac_address),
+            safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[thread_idx].auth_cfg.ac_ip),
             s_xml_footer
         );
         break;
@@ -305,12 +305,12 @@ char* create_xml_payload(const XmlChoose choose)
             "    <passwd>%s</passwd>\n"
             "%s",
             s_xml_header,
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.user_agent),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_id),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.ticket),
+            safe_str(g_prog_status[thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[thread_idx].auth_cfg.client_id),
+            safe_str(g_prog_status[thread_idx].auth_cfg.ticket),
             cur_tm,
-            safe_str(g_prog_status[g_prog_idx].login_cfg.usr),
-            safe_str(g_prog_status[g_prog_idx].login_cfg.pwd),
+            safe_str(g_prog_status[thread_idx].login_cfg.usr),
+            safe_str(g_prog_status[thread_idx].login_cfg.pwd),
             s_xml_footer
         );
         break;
@@ -329,14 +329,14 @@ char* create_xml_payload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "%s",
             s_xml_header,
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.user_agent),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_id),
+            safe_str(g_prog_status[thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[thread_idx].auth_cfg.client_id),
             cur_tm,
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.client_ip),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.ticket),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.mac_address),
-            safe_str(g_prog_status[g_prog_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[thread_idx].auth_cfg.client_ip),
+            safe_str(g_prog_status[thread_idx].auth_cfg.ticket),
+            safe_str(g_prog_status[thread_idx].auth_cfg.mac_address),
+            safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
             s_xml_footer
         );
         break;
@@ -506,7 +506,7 @@ bool load_cfg()
         memset(g_prog_status, 0, sizeof(ProgStatus) * cnt);
     }
 
-    uint8_t valid_cnt = 0;
+    int8_t valid_cnt = 0;
 
     for (uint8_t i = 0, valid_i = 0; i < cnt; i++)
     {
@@ -529,11 +529,11 @@ bool load_cfg()
                 g_prog_status[valid_i].login_cfg.auto_start = auto_start->valueint;
                 if (strcmp(chn->valuestring, "pc") == 0)
                 {
-                    snprintf(g_prog_status[valid_i].auth_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
+                    snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
                 }
                 else
                 {
-                    snprintf(g_prog_status[valid_i].auth_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+                    snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
                 }
                 g_prog_status[valid_i].login_cfg.idx = i + 1;
                 LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);

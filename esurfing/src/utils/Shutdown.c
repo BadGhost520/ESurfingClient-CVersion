@@ -1,10 +1,8 @@
 // #include "webserver/WebServer.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
-#include "DialerClient.h"
 #include "States.h"
 
-#include <inttypes.h>
 #include <signal.h>
 #include <stdlib.h>
 
@@ -30,20 +28,16 @@ void shut(const uint8_t exitCode)
 {
     LOG_INFO("主程序正在关闭");
     // if (is_webserver_running) stopWebServer();
-    g_shut_lock = true;
     LOG_INFO("清理资源中");
-    LOG_DEBUG("开始配置清理");
-    for (g_prog_idx = 0; g_prog_idx < g_prog_cnt; g_prog_idx++)
+    LOG_DEBUG("关闭线程保活");
+    thread_keep_alive = false;
+    LOG_DEBUG("关闭线程");
+    for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        LOG_DEBUG("操作配置 %" PRIu8, g_prog_status[g_prog_idx].login_cfg.idx);
-        if (g_prog_status[g_prog_idx].runtime_status.is_authed)
-        {
-            LOG_DEBUG("配置 %" PRIu8 " 登出", g_prog_status[g_prog_idx].login_cfg.idx);
-            term();
-        }
+        int result_code = 0;
+        g_prog_status[i].runtime_status.is_running = false;
+        sim_thread_join(g_prog_status[i].thread, &result_code);
     }
-    g_prog_idx = 0;
-    LOG_DEBUG("操作完成");
     LOG_INFO("退出程序");
     clean_logger();
     exit(exitCode);

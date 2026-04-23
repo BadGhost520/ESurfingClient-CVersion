@@ -181,7 +181,7 @@ static cipherInterfaceT* create_cipher_factory(const char* algo_id)
 
 void destroy_cipher_factory()
 {
-    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
+    cipherInterfaceT* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
     if (cipher && cipher->destroy)
     {
         cipher->destroy(cipher);
@@ -201,7 +201,7 @@ bool init_cipher(const char* algo_id)
         LOG_ERROR("初始化加密工厂失败");
         return false;
     }
-    g_prog_status[g_prog_cnt].auth_cfg.cipher = cipher;
+    g_prog_status[thread_idx].auth_cfg.cipher = cipher;
     LOG_DEBUG("初始化加解密工厂成功");
     return true;
 }
@@ -209,13 +209,13 @@ bool init_cipher(const char* algo_id)
 char* session_encrypt(const char* text)
 {
     LOG_VERBOSE("要加密的文本:\n%s", text);
-    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
+    cipherInterfaceT* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
     return cipher->encrypt(cipher, text);
 }
 
 char* session_decrypt(const char* text)
 {
     LOG_VERBOSE("要解密的文本:\n%s", text);
-    cipherInterfaceT* cipher = g_prog_status[g_prog_cnt].auth_cfg.cipher;
+    cipherInterfaceT* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
     return cipher->decrypt(cipher, text);
 }

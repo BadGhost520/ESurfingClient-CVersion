@@ -2,6 +2,7 @@
 #define ESURFINGCLIENT_STATES_H
 
 #include "cipher/CipherInterface.h"
+#include "utils/SimThread.h"
 
 #include <stdint.h>
 
@@ -32,8 +33,6 @@ typedef struct
     char mac_address[MAC_ADDRESS_LEN];
     /** @brief 票据 URL */
     char ticket_url[TICKET_URL_LEN];
-    /** @brief 设备 UA */
-    char user_agent[USER_AGENT_LEN];
     /** @brief 客户端 ID */
     char client_id[CLIENT_ID_LEN];
     /** @brief 主机名 */
@@ -56,6 +55,8 @@ typedef struct
     cipherInterfaceT* cipher;
     /** @brief 重试时间 */
     uint64_t keep_retry;
+    /** @brief 认证时间 */
+    uint64_t auth_time;
     /** @brief 当前时间 (用于检测认证时间) */
     uint64_t tick;
 } AuthConfig;
@@ -69,6 +70,8 @@ typedef struct
     char pwd[PWD_LEN];
     /** @brief 认证通道 */
     char chn[CHN_LEN];
+    /** @brief 设备 UA */
+    char user_agent[USER_AGENT_LEN];
     /** @brief 认证使用的 IP */
     char ip[IP_LEN];
     /** @brief 自启状态 */
@@ -80,21 +83,21 @@ typedef struct
 /** @brief 运行状态 */
 typedef struct
 {
-    /** @brief 设置是否变化 */
-    bool is_settings_changed;
+    // /** @brief 设置是否变化 */
+    // bool is_settings_changed;
     /** @brief 初始化状态 */
     bool is_initialized;
     /** @brief 运行状态 */
     bool is_running;
     /** @brief 认证状态 */
     bool is_authed;
+    /** @brief 需要重置 */
+    bool is_need_reset;
     /** @brief last_location 数据锁 */
     bool last_location_lock;
-    /** @brief 认证时间 */
-    uint64_t auth_time;
 } RuntimeStatus;
 
-/** @brief 主认证程序状态 */
+/** @brief 认证线程状态 */
 typedef struct
 {
     /** @brief 认证配置 */
@@ -105,24 +108,28 @@ typedef struct
     RuntimeStatus runtime_status;
     /** @brief 获取认证配置地址 */
     char last_location[LAST_LOCATION_LEN];
+    /** @brief 线程 ID */
+    uint64_t thread_id;
+    /** @brief 线程 */
+    sim_thread_t* thread;
 } ProgStatus;
 
 /** @brief 全局运行时间 */
 extern uint64_t g_running_tm;
 
 /** @brief 适配器数 */
-extern uint8_t g_prog_cnt;
+extern int8_t g_prog_cnt;
 
-/** @brief 正在操作的适配器下标 */
-extern uint8_t g_prog_idx;
+/** @brief 线程独立下标 */
+extern _Thread_local int8_t thread_idx;
 
 /** @brief 是否使用自定义 IP */
 extern bool g_use_cus_ip;
 
-/** @brief 关闭锁 */
-extern bool g_shut_lock;
+/** @brief 线程保活 */
+extern bool thread_keep_alive;
 
-/** @brief 主程序状态 */
+/** @brief 认证线程状态 */
 extern ProgStatus* g_prog_status;
 
 /** @brief 校园网标志 */

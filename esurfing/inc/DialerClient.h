@@ -21,14 +21,15 @@ typedef enum
 } InitStatus;
 
 /**
- * @brief 登出
- * @return 认证状态码
+ * @brief 重置数据
  */
-RunningStatus term();
+void reset();
 
 /**
- * @brief 认证主程序
+ * @brief 认证线程
+ * @param arg 传入参数
+ * @return 线程返回值
  */
-void dialer_app();
+int dialer_app(void* arg);
 
 #endif // CLIENT_H

@@ -41,6 +41,7 @@ add_executable(ESurfingClient
 #        src/webserver/WebServer.c
 #        src/webserver/mongoose.c
         src/utils/PlatformUtils.c
+        src/utils/SimThread.c
         src/utils/Shutdown.c
         src/utils/Logger.c
         src/utils/cJSON.c

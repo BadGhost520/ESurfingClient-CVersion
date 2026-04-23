@@ -6,13 +6,13 @@
 
 uint64_t g_running_tm = 0;
 
-uint8_t g_prog_cnt = 0;
+int8_t g_prog_cnt = 0;
 
-uint8_t g_prog_idx = 0;
+_Thread_local int8_t thread_idx = -1;
+
+bool thread_keep_alive = false;
 
 bool g_use_cus_ip = false;
-
-bool g_shut_lock = false;
 
 ProgStatus* g_prog_status;
 
@@ -29,7 +29,7 @@ static void set_hostname()
     host_bytes[2], host_bytes[3],
     host_bytes[4]);
     LOG_DEBUG("新的主机名: %s", host_name);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.host_name, HOST_NAME_LEN, "%s", host_name);
+    snprintf(g_prog_status[thread_idx].auth_cfg.host_name, HOST_NAME_LEN, "%s", host_name);
 }
 
 static void set_client_id()
@@ -50,7 +50,7 @@ static void set_client_id()
         client_bytes[14], client_bytes[15]);
     for (int i = 0; client_id[i]; i++) client_id[i] = (char)tolower((unsigned char)client_id[i]);
     LOG_DEBUG("新的 Client Id: %s", client_id);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.client_id, CLIENT_ID_LEN, "%s", client_id);
+    snprintf(g_prog_status[thread_idx].auth_cfg.client_id, CLIENT_ID_LEN, "%s", client_id);
 }
 
 static void set_mac_address()
@@ -64,12 +64,12 @@ static void set_mac_address()
     mac_bytes[2], mac_bytes[3],
     mac_bytes[4], mac_bytes[5]);
     LOG_DEBUG("新的 MAC 地址: %s", mac_address);
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.mac_address, MAC_ADDRESS_LEN, "%s", mac_address);
+    snprintf(g_prog_status[thread_idx].auth_cfg.mac_address, MAC_ADDRESS_LEN, "%s", mac_address);
 }
 
 void refresh_states()
 {
-    snprintf(g_prog_status[g_prog_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000");
+    snprintf(g_prog_status[thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000");
     set_hostname();
     set_client_id();
     set_mac_address();
