@@ -70,89 +70,27 @@ jobs:
           # 编译你的包（会自动编译依赖）
           make package/esurfingclient/compile V=sc -j$(nproc)
 
-      - name: Collect all IPK files
+      - name: Collect and pack packages
         run: |
           cd openwrt-sdk
-          
-          # 创建离线仓库目录
+
+          # 创建仓库目录
           mkdir -p offline-repo
-          
-          # 查找所有生成的 IPK 文件
+
+          # 复制所有 ipk
           find bin/packages -name "*.ipk" -exec cp {} offline-repo/ \;
-          
-          echo "📦 Collected packages:"
+
+          # 列出内容
+          echo "打包的 ipk 文件："
           ls -la offline-repo/
 
-      - name: Generate repository index
-        run: |
-          cd openwrt-sdk/offline-repo
+          # 直接打包
+          tar -czf ../esurfingclient-offline-repo.tar.gz offline-repo/
 
-          # 检查脚本位置并执行
-          if [ -f "../scripts/ipkg-make-index.sh" ]; then
-              echo "使用 scripts/ipkg-make-index.sh"
-              ../scripts/ipkg-make-index.sh . > Packages 2>/dev/null
-          elif [ -f "../staging_dir/host/bin/ipkg-make-index.sh" ]; then
-              echo "使用 staging_dir/host/bin/ipkg-make-index.sh"
-              ../staging_dir/host/bin/ipkg-make-index.sh . > Packages 2>/dev/null
-          else
-              echo "⚠️ 找不到 ipkg-make-index.sh，手动生成 Packages"
-              # 手动生成
-              for ipk in *.ipk; do
-                  name=$(basename "$ipk" .ipk)
-                  # 提取包名和版本（从 ipk 文件名）
-                  pkg_name=$(echo "$name" | sed 's/_[0-9].*$//')
-                  pkg_version=$(echo "$name" | sed 's/^[^_]*_//')
-
-                  echo "Package: $pkg_name" >> Packages
-                  echo "Version: $pkg_version" >> Packages
-                  echo "Filename: $ipk" >> Packages
-                  echo "Size: $(stat -c%s "$ipk")" >> Packages
-                  echo "MD5Sum: $(md5sum "$ipk" | cut -d' ' -f1)" >> Packages
-                  echo "" >> Packages
-              done
-          fi
-
-          gzip -9nc Packages > Packages.gz
-          echo "✅ Repository index generated"
-
-          # 验证
-          ls -la Packages Packages.gz
-
-      - name: Create final offline bundle
-        run: |
-          # 创建最终的压缩包
-          BUNDLE_NAME="esurfingclient-offline-repo-ramips-mt7621"
-          
-          mv openwrt-sdk/offline-repo $BUNDLE_NAME
-          
-          # 添加安装说明
-          cat > $BUNDLE_NAME/README.txt << 'EOF'
-          ========================================
-          ESurfingClient Offline Repository
-          ========================================
-          
-          安装方法：
-          
-          1. 将此文件夹上传到路由器（例如 /tmp/repo）
-          
-          2. 配置 opkg 使用本地源：
-             opkg update
-             opkg install esurfingclient
-          
-          3. 或者直接安装（不配置源）：
-             opkg install ./esurfingclient_*.ipk
-          
-          注意：依赖包会自动安装，无需手动处理
-          ========================================
-          EOF
-          
-          tar -czf $BUNDLE_NAME.tar.gz $BUNDLE_NAME
-          
-          echo "✅ Offline bundle created: $BUNDLE_NAME.tar.gz"
+          echo "✅ 打包完成"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-offline-repo-ramips-mt7621
-          path: esurfingclient-offline-repo-ramips-mt7621.tar.gz
-          retention-days: 30
+          name: esurfingclient-offline-repo
+          path: esurfingclient-offline-repo.tar.gz
