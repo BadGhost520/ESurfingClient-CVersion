@@ -1,4 +1,4 @@
-name: Build OpenWrt 19.07.0 to 22.03.7 x86-64 Package with Dependencies
+name: Build OpenWrt 19.07.0 to 22.03.7 x86 64 Package with Dependencies
 
 permissions:
   actions: write
