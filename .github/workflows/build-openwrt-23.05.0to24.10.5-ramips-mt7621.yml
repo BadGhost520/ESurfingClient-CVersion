@@ -70,24 +70,47 @@ jobs:
           # 编译你的包（会自动编译依赖）
           make package/esurfingclient/compile V=sc -j$(nproc)
 
-      - name: Collect and pack packages
+      - name: Collect minimal packages
         run: |
           cd openwrt-sdk
 
-          # 创建仓库目录
           mkdir -p offline-repo
 
-          # 复制所有 ipk
-          find bin/packages -name "*.ipk" -exec cp {} offline-repo/ \;
+          # 复制主程序
+          main_pkg=$(find bin/packages -name "esurfingclient_*.ipk" | head -1)
+          if [ -n "$main_pkg" ]; then
+              cp "$main_pkg" offline-repo/
+              echo "✅ 主程序: $(basename "$main_pkg")"
+          fi
 
-          # 列出内容
-          echo "打包的 ipk 文件："
-          ls -la offline-repo/
+          # 复制运行时依赖
+          for dep in libcurl libopenssl ca-bundle; do
+              dep_pkg=$(find bin/packages -name "${dep}_*.ipk" | head -1)
+              if [ -n "$dep_pkg" ]; then
+                  cp "$dep_pkg" offline-repo/
+                  echo "✅ 依赖: $(basename "$dep_pkg")"
+              fi
+          done
 
-          # 直接打包
-          tar -czf ../esurfingclient-offline-repo.tar.gz offline-repo/
+          # 可选：libpthread 和 librt（通常已内置，但有时需要）
+          for lib in libpthread librt; do
+              lib_pkg=$(find bin/packages -name "${lib}_*.ipk" 2>/dev/null | head -1)
+              if [ -n "$lib_pkg" ]; then
+                  cp "$lib_pkg" offline-repo/
+                  echo "✅ 系统库: $(basename "$lib_pkg")"
+              fi
+          done
 
-          echo "✅ 打包完成"
+          echo ""
+          echo "📦 最终打包的文件（共 $(ls offline-repo/*.ipk 2>/dev/null | wc -l) 个）："
+          ls -lh offline-repo/
+          echo ""
+          echo "💾 总大小: $(du -sh offline-repo/ | cut -f1)"
+
+      - name: Create offline bundle
+        run: |
+          tar -czf esurfingclient-offline-repo.tar.gz openwrt-sdk/offline-repo/
+          ls -lh esurfingclient-offline-repo.tar.gz
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
