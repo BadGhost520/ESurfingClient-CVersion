@@ -84,7 +84,7 @@ jobs:
           PACKAGES="$PACKAGES libmbedtls libnghttp libatomic libgcc"
 
           # 复制所有需要的包
-          ls bin/packages
+          find bin/packages -name "*.ipk" | sort
           for pkg in $PACKAGES; do
               # 查找对应的 ipk 文件（可能带版本号）
               pkg_file=$(find bin/packages -name "${pkg}_*.ipk" 2>/dev/null | head -1)
