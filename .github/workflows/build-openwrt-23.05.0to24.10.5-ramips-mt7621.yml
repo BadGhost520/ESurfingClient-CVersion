@@ -85,22 +85,24 @@ jobs:
 
           # 复制所有需要的包
           find bin/packages -name "*.ipk" | sort
+          # 递归搜索所有子目录
           for pkg in $PACKAGES; do
-              # 查找对应的 ipk 文件（可能带版本号）
-              pkg_file=$(find bin/packages -name "${pkg}_*.ipk" 2>/dev/null | head -1)
+            # 使用 find 递归搜索整个 bin/packages 目录
+            pkg_file=$(find bin/packages -type f -name "${pkg}_*.ipk" 2>/dev/null | head -1)
+            
+            if [ -n "$pkg_file" ]; then
+              cp "$pkg_file" offline-repo/
+              echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
+            else
+              # 尝试不带版本号的匹配
+              pkg_file=$(find bin/packages -type f -name "${pkg}.ipk" 2>/dev/null | head -1)
               if [ -n "$pkg_file" ]; then
-                  cp "$pkg_file" offline-repo/
-                  echo "✅ 添加: $(basename "$pkg_file")"
+                cp "$pkg_file" offline-repo/
+                echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
               else
-                  # 尝试其他可能的命名方式
-                  pkg_file=$(find bin/packages -name "${pkg}.ipk" 2>/dev/null | head -1)
-                  if [ -n "$pkg_file" ]; then
-                      cp "$pkg_file" offline-repo/
-                      echo "✅ 添加: $(basename "$pkg_file")"
-                  else
-                      echo "⚠️ 警告: 找不到 $pkg"
-                  fi
+                echo "⚠️ 警告: 找不到 $pkg"
               fi
+            fi
           done
 
           echo ""
