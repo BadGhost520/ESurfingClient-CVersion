@@ -11,14 +11,24 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# ========== 静态链接配置 ==========
 if(WIN32)
-    set(CURL_USE_STATIC_LIBS ON)
-    set(OPENSSL_USE_STATIC_LIBS ON)
+    add_definitions(-DCURL_STATICLIB)
+    add_definitions(-DOPENSSL_NO_DYNAMIC_ENGINE)
+
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
+
+elseif(UNIX AND NOT WIN32)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -pthread")
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
+# ========== 查找库（不使用 pkg-config）==========
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+# ========== 源文件 ==========
 add_executable(ESurfingClient
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
         src/cipher/impl/des_ecb_six_pc.c
@@ -51,39 +61,41 @@ add_executable(ESurfingClient
         Main.c
 )
 
-target_link_libraries(ESurfingClient PRIVATE
-        CURL::libcurl
-        OpenSSL::SSL
-        OpenSSL::Crypto
-)
-
-if(WIN32)
-    target_compile_definitions(ESurfingClient PRIVATE
-            _CRT_SECURE_NO_WARNINGS
-            CURL_STATICLIB
-    )
-
-    target_link_libraries(ESurfingClient PRIVATE
-            iphlpapi
-            ws2_32
-            crypt32
-    )
-
-    target_link_options(ESurfingClient PRIVATE -static -static-libgcc -static-libstdc++)
-endif()
-
-if(UNIX AND NOT WIN32)
-    target_link_libraries(ESurfingClient PRIVATE pthread dl)
-    target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
-endif()
-
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
 )
 
+# ========== 链接库 ==========
+if(WIN32)
+    target_link_libraries(ESurfingClient PRIVATE
+            CURL::libcurl
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            ws2_32
+            wldap32
+            winmm
+            crypt32
+            normaliz
+            secur32
+            bcrypt
+            iphlpapi
+    )
+elseif(UNIX AND NOT WIN32)
+    target_link_libraries(ESurfingClient PRIVATE
+            CURL::libcurl
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            pthread
+            dl
+    )
+endif()
+
 target_compile_options(ESurfingClient PRIVATE -O3)
+
+if(UNIX AND NOT WIN32)
+    target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+
 set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
 
-install(TARGETS ESurfingClient
-        RUNTIME DESTINATION bin
-)
+install(TARGETS ESurfingClient RUNTIME DESTINATION bin)
