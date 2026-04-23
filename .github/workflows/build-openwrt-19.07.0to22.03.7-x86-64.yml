@@ -75,7 +75,7 @@ jobs:
           
           pkg_file=$(find bin/packages -type f -name "esurfingclient*.ipk" 2>/dev/null | head -1)
           if [ -n "$pkg_file" ]; then
-            cp "$pkg_file" offline-repo/
+            cp "$pkg_file" esurfingclient-packages/
             echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
           else
             echo "⚠️ 警告: 找不到 $pkg"

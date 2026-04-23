@@ -36,41 +36,40 @@ jobs:
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-upx
 
-      - name: Build ESurfingClient (Static)
+      - name: Build ESurfingClient (Forced Static)
         shell: msys2 {0}
-        env:
-          PKG_CONFIG_ALL_STATIC: 1
         run: |
-          echo "🏗️ Starting Windows x64 static build"
-          
           cd esurfingclient/esurfing
-          
-          echo "⚙️ CMake configuring"
+
           mkdir -p build && cd build
-          
+
+          # 查找静态库路径
+          CURL_STATIC=$(find /mingw64/lib -name "libcurl.a" | head -1)
+          SSL_STATIC=$(find /mingw64/lib -name "libssl.a" | head -1)
+          CRYPTO_STATIC=$(find /mingw64/lib -name "libcrypto.a" | head -1)
+
+          echo "CURL static: $CURL_STATIC"
+          echo "SSL static: $SSL_STATIC"
+
           cmake -G "MinGW Makefiles" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc \
-            -DCMAKE_CXX_COMPILER=g++ \
             -DBUILD_SHARED_LIBS=OFF \
-            -DCURL_USE_STATIC_LIBS=ON \
-            -DOPENSSL_USE_STATIC_LIBS=ON \
+            -DCURL_STATICLIB=ON \
+            -DCURL_LIBRARY="$CURL_STATIC" \
+            -DOPENSSL_SSL_LIBRARY="$SSL_STATIC" \
+            -DOPENSSL_CRYPTO_LIBRARY="$CRYPTO_STATIC" \
             -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
-            -DCMAKE_C_FLAGS="-DCURL_STATICLIB" \
             ..
-          
-          echo "🔨 Building..."
+
           mingw32-make -j$(nproc)
-          
-          cd ..
-          
-          # 移动并重命名可执行文件
-          if [ -f "build/ESurfingClient.exe" ]; then
-            cp build/ESurfingClient.exe ESurfingClient-x86_64-windows.exe
-            echo "✅ Build successful"
-          else
-            echo "❌ ESurfingClient.exe not found"
+
+          # 验证没有 libcurl-4.dll
+          if objdump -p ESurfingClient.exe | grep -q "libcurl-4.dll"; then
+            echo "❌ Still has dynamic libcurl dependency!"
+            objdump -p ESurfingClient.exe | grep "DLL Name"
             exit 1
+          else
+            echo "✅ Static build successful - no libcurl.dll dependency"
           fi
 
       - name: Strip and compress
@@ -82,8 +81,7 @@ jobs:
           strip --strip-all ESurfingClient-x86_64-windows.exe
           
           echo "🗜️ Compressing with UPX"
-          upx --best --lzma ESurfingClient-x86_64-windows.exe 2>/dev/null || \
-          upx --best ESurfingClient-x86_64-windows.exe
+          upx --best --lzma ESurfingClient-x86_64-windows.exe || echo "⚠️ UPX compression failed, continuing..."
           
           echo "📊 Final size: $(du -h ESurfingClient-x86_64-windows.exe | cut -f1)"
           
