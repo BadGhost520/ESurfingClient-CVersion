@@ -67,7 +67,7 @@ jobs:
       - name: Compile libcurl
         run: |
           cd openwrt-sdk
-          make package/libcurl/compile V=sc -j$(nproc)
+          make package/curl/compile V=sc -j$(nproc)
 
       - name: Compile nghttp2
         run: |
