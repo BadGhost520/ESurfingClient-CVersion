@@ -19,15 +19,15 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file python3-setuptools swig"
+          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd python3-setuptools swig"
           apt-get update && apt-get install -y $PACKAGES
 
       - name: Download and extract SDK
         run: |
-          SDK_URL="https://archive.openwrt.org/releases/23.05.0/targets/ramips/mt7621/openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          SDK_URL="https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           wget "$SDK_URL"
-          tar -xf openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-          mv openwrt-sdk-23.05.0-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
+          tar -I zstd -xf openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
           
           cp -r esurfingclient openwrt-sdk/package/
           
