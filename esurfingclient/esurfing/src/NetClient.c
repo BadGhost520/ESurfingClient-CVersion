@@ -179,9 +179,16 @@ static CurlStatus create_post_client(CURL** curl, struct curl_slist** headers, H
 
 static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HTTPResponse* response, const char* get_url)
 {
+    LOG_VERBOSE("create_get_client: 开始");
     *curl = curl_easy_init();
-    if (!*curl) return CURL_INIT_FAILURE;
+    LOG_VERBOSE("create_get_client: curl_easy_init 完成, curl=%p", *curl);
 
+    if (!*curl) {
+        LOG_VERBOSE("create_get_client: curl 初始化失败");
+        return CURL_INIT_FAILURE;
+    }
+
+    LOG_VERBOSE("create_get_client: 设置选项...");
     curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
     curl_easy_setopt(*curl, CURLOPT_URL, get_url);
     curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
@@ -191,8 +198,13 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
 
-    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
+    LOG_VERBOSE("create_get_client: g_use_cus_ip=%d", g_use_cus_ip);
+    if (g_use_cus_ip) {
+        LOG_VERBOSE("create_get_client: 设置网络接口 %s", g_prog_status[thread_idx].login_cfg.ip);
+        curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
+    }
 
+    LOG_VERBOSE("create_get_client: 完成");
     return CURL_INIT_SUCCESS;
 }
 
@@ -273,52 +285,41 @@ static HTTPResponse post(const char* url, const char* data, struct curl_slist* h
 
 static HTTPResponse get(const char* url, struct curl_slist* headers)
 {
-    LOG_VERBOSE("1");
     CURL* curl;
-    LOG_VERBOSE("2");
     HTTPResponse resp = {0};
-    LOG_VERBOSE("3");
     if (create_get_client(&curl, &headers, &resp, url) == CURL_INIT_FAILURE)
     {
-        LOG_VERBOSE("4");
+        LOG_ERROR("初始化错误");
         resp.status = INIT_ERROR;
         return resp;
     }
-    LOG_VERBOSE("5");
+    LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(curl);
-    LOG_VERBOSE("6");
     if (curl_code != CURLE_OK)
     {
-        LOG_VERBOSE("7");
         curl_easy_cleanup(curl);
         resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
-    LOG_VERBOSE("8");
+    LOG_VERBOSE("获取响应码");
     long resp_code;
-    LOG_VERBOSE("9");
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
-    LOG_VERBOSE("10");
     curl_easy_cleanup(curl);
-    LOG_VERBOSE("11");
     if (resp_code == 302)
     {
-        if (g_prog_status[thread_idx].last_location[0] != '\0') {
-            LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
-        } else {
-            LOG_VERBOSE("重定向，但 last_location 未初始化");
-        }
+        LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
         resp.status = REQUEST_REDIRECT;
         return resp;
     }
     if (resp_code == 200)
     {
-        LOG_DEBUG("有响应体");
+        LOG_DEBUG("有响应体, 响应码: 200");
         resp.status = REQUEST_HAVE_RES;
         return resp;
     }
     if (resp_code == 204)
     {
+        LOG_VERBOSE("响应码: 204");
         resp.status = REQUEST_SUCCESS;
         return resp;
     }
