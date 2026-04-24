@@ -1,4 +1,4 @@
-name: Build OpenWrt 19.07.0 to 22.03.7 x86 64 Package with Dependencies
+name: Build OpenWrt 23.05.0 to 24.10.6 ramips mt7621 Package with Dependencies
 
 permissions:
   actions: write
@@ -19,7 +19,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file python3-setuptools swig"
+          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd python3-setuptools swig"
           
           for i in 1 2 3; do
             echo "Attempt $i: Installing $PACKAGES"
@@ -33,10 +33,10 @@ jobs:
 
       - name: Download and extract SDK
         run: |
-          SDK_URL="https://downloads.openwrt.org/releases/22.03.7/targets/x86/64/openwrt-sdk-22.03.7-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz"
+          SDK_URL="https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           wget "$SDK_URL"
-          tar -xf openwrt-sdk-22.03.7-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz
-          mv openwrt-sdk-22.03.7-x86-64_gcc-11.2.0_musl.Linux-x86_64 openwrt-sdk
+          tar -I zstd -xf openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
           
           cp -r esurfingclient openwrt-sdk/package/
           
@@ -51,8 +51,8 @@ jobs:
           scripts/feeds update -a
           scripts/feeds install -a
 
-          echo "CONFIG_TARGET_x86_64=y" >> .config
-          echo "CONFIG_TARGET_x86_64_DEVICE_generic=y" >> .config
+          echo "CONFIG_TARGET_ramips_mt7621=y" >> .config
+          echo "CONFIG_TARGET_ramips_mt7621_DEVICE_generic=y" >> .config
 
           echo "CONFIG_PACKAGE_esurfingclient=y" >> .config
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
@@ -102,42 +102,11 @@ jobs:
         run: |
           cd openwrt-sdk
 
-          mkdir -p esurfingclient-packages
-
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} esurfingclient-packages/ \;
-
-          download_pkg() {
-            local url=$1
-            local pkg=$2
-            local dir=$3
-
-            wget -q -r -l1 -nd -A "${pkg}_*.ipk" "$url/$dir/" -P esurfingclient-packages/ 2>/dev/null || true
-          }
-
-          BASE_URL="https://downloads.openwrt.org/releases/22.03.7/packages/x86_64"
-          TARGET_URL="https://downloads.openwrt.org/releases/22.03.7/targets/x86/64/packages"
-
-          download_pkg "$BASE_URL" "libnghttp2-14" "packages"
-          download_pkg "$BASE_URL" "libcurl4" "packages"
-          download_pkg "$BASE_URL" "libopenssl1.1" "base"
-          download_pkg "$TARGET_URL" "libatomic1" "."
-
-          echo "📦 打包的文件："
-          ls -la esurfingclient-packages/
-
-      - name: Create offline bundle
-        run: |
-          cd openwrt-sdk
-
-          # 打包
-          tar -czf ../esurfingclient-openwrt-22.03.7-x86-64.tar.gz esurfingclient-packages/
-
-          echo "✅ 离线包创建完成"
-          echo "📦 压缩包大小: $(ls -lh ../esurfingclient-openwrt-22.03.7-x86-64.tar.gz | cut -d' ' -f5)"
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-ramips_mt7621.ipk \;
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-openwrt-22.03.7-x86-64
-          path: esurfingclient-openwrt-22.03.7-x86-64.tar.gz
+          name: esurfingclient-openwrt-ramips_mt7621
+          path: esurfingclient-openwrt-ramips_mt7621.ipk
           retention-days: 30

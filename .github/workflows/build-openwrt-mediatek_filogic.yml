@@ -102,42 +102,11 @@ jobs:
         run: |
           cd openwrt-sdk
 
-          mkdir -p esurfingclient-packages
-
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} esurfingclient-packages/ \;
-
-          download_pkg() {
-            local url=$1
-            local pkg=$2
-            local dir=$3
-
-            wget -q -r -l1 -nd -A "${pkg}_*.ipk" "$url/$dir/" -P esurfingclient-packages/ 2>/dev/null || true
-          }
-
-          BASE_URL="https://downloads.openwrt.org/releases/24.10.6/packages/aarch64_cortex-a53"
-          TARGET_URL="https://downloads.openwrt.org/releases/24.10.6/targets/mediatek/filogic/packages"
-
-          download_pkg "$BASE_URL" "libnghttp2-14" "packages"
-          download_pkg "$BASE_URL" "libcurl4" "packages"
-          download_pkg "$BASE_URL" "libopenssl3" "base"
-          download_pkg "$TARGET_URL" "libatomic1" "."
-
-          echo "📦 打包的文件："
-          ls -la esurfingclient-packages/
-
-      - name: Create offline bundle
-        run: |
-          cd openwrt-sdk
-
-          # 打包
-          tar -czf ../esurfingclient-openwrt-24.10.6-mediatek-filogic.tar.gz esurfingclient-packages/
-
-          echo "✅ 离线包创建完成"
-          echo "📦 压缩包大小: $(ls -lh ../esurfingclient-openwrt-24.10.6-mediatek-filogic.tar.gz | cut -d' ' -f5)"
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-mediatek_filogic.ipk \;
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-openwrt-24.10.6-mediatek-filogic
-          path: esurfingclient-openwrt-24.10.6-mediatek-filogic.tar.gz
+          name: esurfingclient-openwrt-mediatek_filogic
+          path: esurfingclient-openwrt-mediatek_filogic.ipk
           retention-days: 30

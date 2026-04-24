@@ -1,30 +1,26 @@
 name: Build All Platforms
 
-# 配置工作流权限
 permissions:
   actions: write
-  contents: write  # 需要写权限来创建 Release
+  contents: write
 
 on:
   workflow_dispatch:
     inputs:
       platforms:
-        description: 'Select platform to build'
+        description: '选择要构建的平台'
         type: choice
         required: true
         default: 'all'
         options:
           - all
-          - 19.07.0to22.03.7-x86-64
-          - 23.05.0to24.10.6-x86-64
-          - 19.07.0to22.03.7-ramips-mt7621
-          - 23.05.0to24.10.6-ramips-mt7621
-          - 23.05.0to24.10.6-mediatek-filogic
-          - x86_64-linux
-          - x86_64-windows
+          - windows-x86_64
+          - linux-x86_64
+          - openwrt-x86_64
+          - openwrt-ramips_mt7621
+          - openwrt-mediatek_filogic
 
 jobs:
-  # 检查要构建的平台
   check-platforms:
     runs-on: ubuntu-latest
     outputs:
@@ -37,7 +33,6 @@ jobs:
           echo "Selected platform: $platforms"
           echo "selected-platform=$platforms" >> $GITHUB_OUTPUT
 
-  # 统一构建和收集作业
   build-and-collect:
     needs: check-platforms
     runs-on: ubuntu-latest
@@ -54,13 +49,11 @@ jobs:
           script: |
             const fs = require('fs');
             const workflows = [
-              { file: 'build-openwrt-19.07.0to22.03.7-x86-64.yml', platform: '19.07.0to22.03.7-x86-64' },
-              { file: 'build-openwrt-23.05.0to24.10.6-x86-64.yml', platform: '23.05.0to24.10.6-x86-64' },
-              { file: 'build-openwrt-19.07.0to22.03.7-ramips-mt7621.yml', platform: '19.07.0to22.03.7-ramips-mt7621' },
-              { file: 'build-openwrt-23.05.0to24.10.6-ramips-mt7621.yml', platform: '23.05.0to24.10.6-ramips-mt7621' },
-              { file: 'build-openwrt-23.05.0to24.10.6-mediatek-filogic.yml', platform: '23.05.0to24.10.6-mediatek-filogic' },
-              { file: 'build-x86_64-linux.yml', platform: 'x86_64-linux' },
-              { file: 'build-x86_64-windows.yml', platform: 'x86_64-windows' }
+              { file: 'build-x86_64-windows.yml', platform: 'windows-x86_64' },
+              { file: 'build-x86_64-linux.yml', platform: 'linux-x86_64' },
+              { file: 'build-openwrt-x86_64.yml', platform: 'openwrt-x86_64' },
+              { file: 'build-openwrt-ramips_mt7621.yml', platform: 'openwrt-ramips_mt7621' },
+              { file: 'build-openwrt-mediatek_filogic.yml', platform: 'openwrt-mediatek_filogic' },
             ];
             
             const selectedPlatform = '${{ needs.check-platforms.outputs.selected-platform }}';
