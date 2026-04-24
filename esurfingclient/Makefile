@@ -22,7 +22,7 @@ CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF \
-	-DCMAKE_EXE_LINKER_FLAGS="-lnghttp2 -latomic -lpthread" \
+	-DCMAKE_EXE_LINKER_FLAGS="-static" \
 	-DCMAKE_C_FLAGS="-DCURL_STATICLIB" \
 	-DCMAKE_THREAD_LIBS_INIT="-lpthread" \
 	-DCMAKE_USE_PTHREADS_INIT=ON
@@ -31,7 +31,7 @@ define Package/esurfingclient
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=ESurfingClient
-	DEPENDS:=+libcurl +libopenssl +ca-bundle +libnghttp2
+	DEPENDS:=+libcurl +libopenssl +ca-bundle
 endef
 
 define Package/esurfingclient/description

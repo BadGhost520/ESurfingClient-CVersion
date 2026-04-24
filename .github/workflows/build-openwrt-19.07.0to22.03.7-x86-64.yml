@@ -40,23 +40,24 @@ jobs:
       - name: Configure build
         run: |
           cd openwrt-sdk
-          
+
           scripts/feeds update -a
           scripts/feeds install -a
-          
+
           echo "CONFIG_TARGET_x86_64=y" >> .config
           echo "CONFIG_TARGET_x86_64_DEVICE_generic=y" >> .config
-          
+
           echo "CONFIG_PACKAGE_esurfingclient=y" >> .config
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+
           echo "CONFIG_LIBCURL_HTTP2=n" >> .config
           echo "CONFIG_PACKAGE_libnghttp2=n" >> .config
-          
+
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
           echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
-          
+
           make defconfig
 
       - name: Compile all packages
@@ -70,26 +71,26 @@ jobs:
 
           mkdir -p esurfingclient-packages
 
-          wget -P esurfingclient-packages -r -nd --accept-regex='libnghttp2-*' https://downloads.openwrt.org/releases/22.03.7/packages/x86_64/packages/
-          wget -P esurfingclient-packages -r -nd --accept-regex='libcurl4_*' https://downloads.openwrt.org/releases/22.03.7/packages/x86_64/packages/
-          wget -P esurfingclient-packages -r -nd --accept-regex='libopenssl1.1_*' https://downloads.openwrt.org/releases/22.03.7/packages/x86_64/base/
-          wget -P esurfingclient-packages -r -nd --accept-regex='libatomic1_*' https://downloads.openwrt.org/releases/22.03.7/targets/x86/64/packages/
-          
-          pkg_file=$(find bin/packages -type f -name "esurfingclient*.ipk" 2>/dev/null | head -1)
-          if [ -n "$pkg_file" ]; then
-            cp "$pkg_file" esurfingclient-packages/
-            echo "✅ 添加: $(basename "$pkg_file") (来自: $(dirname "$pkg_file"))"
-          else
-            echo "⚠️ 警告: 找不到 $pkg"
-          fi
-          
-          echo ""
-          echo "📦 打包的文件列表："
-          ls -la esurfingclient-packages/
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} esurfingclient-packages/ \;
 
-          echo ""
-          echo "📊 文件数量: $(ls esurfingclient-packages/*.ipk 2>/dev/null | wc -l)"
-          echo "💾 总大小: $(du -sh esurfingclient-packages/ | cut -f1)"
+          download_pkg() {
+            local url=$1
+            local pkg=$2
+            local dir=$3
+
+            wget -q -r -l1 -nd -A "${pkg}_*.ipk" "$url/$dir/" -P esurfingclient-packages/ 2>/dev/null || true
+          }
+
+          BASE_URL="https://downloads.openwrt.org/releases/22.03.7/packages/x86_64"
+          TARGET_URL="https://downloads.openwrt.org/releases/22.03.7/targets/x86/64/packages"
+
+          download_pkg "$BASE_URL" "libnghttp2-14" "packages"
+          download_pkg "$BASE_URL" "libcurl4" "packages"
+          download_pkg "$BASE_URL" "libopenssl1.1" "base"
+          download_pkg "$TARGET_URL" "libatomic1" "."
+
+          echo "📦 打包的文件："
+          ls -la esurfingclient-packages/
 
       - name: Create offline bundle
         run: |
