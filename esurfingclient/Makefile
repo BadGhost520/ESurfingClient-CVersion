@@ -1,12 +1,5 @@
 include $(TOPDIR)/rules.mk
 
-# 在 Makefile 开头添加
-PKG_BUILD_FLAGS := no-mips16
-
-# 或者
-TARGET_STRIP:=true
-TARGET_STRIP_COMMAND:=
-
 PKG_NAME:=esurfingclient
 PKG_VERSION:=2.0.0
 PKG_RELEASE:=1
@@ -61,9 +54,6 @@ endef
 define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/
-
-	cp -p $(PKG_BUILD_DIR)/ESurfingClient $(1)/usr/esurfingclient/
-	chmod 755 $(1)/usr/esurfingclient/ESurfingClient
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
