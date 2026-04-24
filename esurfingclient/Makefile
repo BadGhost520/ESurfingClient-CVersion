@@ -29,7 +29,6 @@ define Package/esurfingclient
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=ESurfingClient
-	DEPENDS:=+libcurl +libopenssl +ca-bundle
 endef
 
 define Package/esurfingclient/description
