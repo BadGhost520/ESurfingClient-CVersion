@@ -1,5 +1,12 @@
 include $(TOPDIR)/rules.mk
 
+# 在 Makefile 开头添加
+PKG_BUILD_FLAGS := no-mips16
+
+# 或者
+TARGET_STRIP:=true
+TARGET_STRIP_COMMAND:=
+
 PKG_NAME:=esurfingclient
 PKG_VERSION:=2.0.0
 PKG_RELEASE:=1
@@ -7,8 +14,6 @@ PKG_RELEASE:=1
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=libcurl libopenssl
-
-TARGET_STRIP:=true
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
@@ -25,7 +30,7 @@ CMAKE_OPTIONS += \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF \
 	-DCMAKE_EXE_LINKER_FLAGS="-static -lpthread -latomic" \
-	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread"
+	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -g -O0"
 
 define Package/esurfingclient
 	SECTION:=net
@@ -57,7 +62,8 @@ define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/
 
-	chmod +x $(1)//usr/bin/ESurfingClient
+	cp -p $(PKG_BUILD_DIR)/ESurfingClient $(1)/usr/esurfingclient/
+	chmod 755 $(1)/usr/esurfingclient/ESurfingClient
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
@@ -68,7 +74,5 @@ define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(CURDIR)/files/usr/bin/ESurfingClient.json $(1)/usr/bin/
 endef
-
-PKG_BUILD_FLAGS:=no-mips16
 
 $(eval $(call BuildPackage,esurfingclient))

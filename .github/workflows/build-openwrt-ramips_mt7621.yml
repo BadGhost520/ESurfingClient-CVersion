@@ -98,15 +98,28 @@ jobs:
           cd openwrt-sdk
           make package/esurfingclient/compile V=sc -j$(nproc)
 
+      - name: Copy unstripped binary
+        run: |
+          cd openwrt-sdk
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-unstripped \;
+          file ../ESurfingClient-unstripped
+
       - name: Collect required packages
         run: |
           cd openwrt-sdk
 
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-ramips_mt7621.ipk \;
 
+      - name: zip
+        run: |
+          mkdir test
+          cp ESurfingClient-unstripped test/ESurfingClient-unstripped
+          cp esurfingclient-openwrt-ramips_mt7621.ipk test/esurfingclient-openwrt-ramips_mt7621.ipk
+          tar -czf test.tar.gz test
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-openwrt-ramips_mt7621
-          path: esurfingclient-openwrt-ramips_mt7621.ipk
+          name: test
+          path: test.tar.gz
           retention-days: 30

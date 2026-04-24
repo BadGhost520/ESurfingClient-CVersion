@@ -7,10 +7,9 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
 add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
 
-set(CMAKE_BUILD_TYPE Release)
-
-set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
 
 if(WIN32)
     add_definitions(-DCURL_STATICLIB)
