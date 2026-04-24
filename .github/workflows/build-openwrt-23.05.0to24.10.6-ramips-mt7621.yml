@@ -52,12 +52,22 @@ jobs:
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
 
-          echo "CONFIG_PACKAGE_libnghttp2=y" >> .config
+          # 关键：禁用 HTTP/2
+          echo "CONFIG_LIBCURL_HTTP2=n" >> .config
+          echo "CONFIG_LIBCURL_NGHTTP2=n" >> .config
+          
+          # 确保 nghttp2 不被编译
+          echo "CONFIG_PACKAGE_libnghttp2=n" >> .config
 
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
           echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
 
           make defconfig
+
+      - name: Compile libcurl
+        run: |
+          cd openwrt-sdk
+          make package/libcurl/compile V=sc -j$(nproc)
 
       - name: Compile nghttp2
         run: |
