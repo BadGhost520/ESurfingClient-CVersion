@@ -7,11 +7,11 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
 add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
-endif()
+set(CMAKE_BUILD_TYPE Release)
 
-# ========== 静态链接配置 ==========
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
+
 if(WIN32)
     add_definitions(-DCURL_STATICLIB)
     add_definitions(-DOPENSSL_NO_DYNAMIC_ENGINE)
@@ -24,11 +24,9 @@ elseif(UNIX AND NOT WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-# ========== 查找库（不使用 pkg-config）==========
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-# ========== 源文件 ==========
 add_executable(ESurfingClient
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
         src/cipher/impl/des_ecb_six_pc.c
@@ -65,7 +63,6 @@ target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
 )
 
-# ========== 链接库 ==========
 if(WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
