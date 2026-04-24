@@ -179,32 +179,30 @@ static CurlStatus create_post_client(CURL** curl, struct curl_slist** headers, H
 
 static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HTTPResponse* response, const char* get_url)
 {
-    LOG_VERBOSE("create_get_client: 开始");
     *curl = curl_easy_init();
-    LOG_VERBOSE("create_get_client: curl_easy_init 完成, curl=%p", *curl);
+    LOG_VERBOSE("curl_easy_init 完成, curl=%p", *curl);
 
     if (!*curl) {
-        LOG_VERBOSE("create_get_client: curl 初始化失败");
+        LOG_ERROR("curl 初始化失败");
         return CURL_INIT_FAILURE;
     }
 
-    LOG_VERBOSE("create_get_client: 设置选项...");
+    LOG_VERBOSE("设置选项");
     curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
     curl_easy_setopt(*curl, CURLOPT_URL, get_url);
-    curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
-    curl_easy_setopt(*curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
+    // curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
+    // curl_easy_setopt(*curl, CURLOPT_WRITEFUNCTION, write_cb);
+    // curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
 
-    LOG_VERBOSE("create_get_client: g_use_cus_ip=%d", g_use_cus_ip);
+    LOG_VERBOSE("g_use_cus_ip=%d", g_use_cus_ip);
     if (g_use_cus_ip) {
-        LOG_VERBOSE("create_get_client: 设置网络接口 %s", g_prog_status[thread_idx].login_cfg.ip);
+        LOG_VERBOSE("设置网络接口 %s", g_prog_status[thread_idx].login_cfg.ip);
         curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
     }
 
-    LOG_VERBOSE("create_get_client: 完成");
     return CURL_INIT_SUCCESS;
 }
 
@@ -294,7 +292,7 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
         return resp;
     }
     LOG_VERBOSE("执行 CURL");
-    const CURLcode curl_code = curl_easy_perform(curl);
+    CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
         curl_easy_cleanup(curl);
