@@ -87,6 +87,7 @@ elseif(UNIX AND NOT WIN32)
             OpenSSL::Crypto
             pthread
             dl
+            atomic
     )
 endif()
 
@@ -99,11 +100,3 @@ endif()
 set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
 
 install(TARGETS ESurfingClient RUNTIME DESTINATION bin)
-
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "mipsel|mips")
-    target_link_options(ESurfingClient PRIVATE
-            "-Wl,--whole-archive"
-            "atomic"
-            "-Wl,--no-whole-archive"
-    )
-endif()
