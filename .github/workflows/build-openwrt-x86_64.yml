@@ -1,4 +1,4 @@
-name: Build OpenWrt 23.05.0 to 24.10.6 x86 64 Package with Dependencies
+name: Build OpenWrt x86_64 Package
 
 permissions:
   actions: write

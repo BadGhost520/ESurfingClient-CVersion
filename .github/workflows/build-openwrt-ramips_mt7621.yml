@@ -1,4 +1,4 @@
-name: Build OpenWrt 23.05.0 to 24.10.6 ramips mt7621 Package with Dependencies
+name: Build OpenWrt ramips_mt7621 Package
 
 permissions:
   actions: write

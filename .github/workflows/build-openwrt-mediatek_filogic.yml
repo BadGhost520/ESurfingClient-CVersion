@@ -1,4 +1,4 @@
-name: Build OpenWrt 23.05.0 to 24.10.6 mediatek filogic Package with Dependencies
+name: Build OpenWrt mediatek_filogic Package
 
 permissions:
   actions: write
