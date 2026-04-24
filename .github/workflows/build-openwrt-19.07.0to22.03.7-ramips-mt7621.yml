@@ -52,11 +52,18 @@ jobs:
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
 
+          # 关键：禁用 mbedTLS，使用 OpenSSL
+          echo "CONFIG_LIBCURL_MBEDTLS=n" >> .config
+          echo "CONFIG_LIBCURL_OPENSSL=y" >> .config
+          echo "CONFIG_LIBCURL_WOLFSSL=n" >> .config
+          echo "CONFIG_LIBCURL_GNUTLS=n" >> .config
+          
+          # 确保 OpenSSL 被选中
+          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
+
           # 关键：禁用 HTTP/2
           echo "CONFIG_LIBCURL_HTTP2=n" >> .config
           echo "CONFIG_LIBCURL_NGHTTP2=n" >> .config
-          
-          # 确保 nghttp2 不被编译
           echo "CONFIG_PACKAGE_libnghttp2=n" >> .config
 
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
@@ -64,7 +71,12 @@ jobs:
 
           make defconfig
 
-      - name: Compile libcurl
+      - name: Compile openssl
+        run: |
+          cd openwrt-sdk
+          make package/openssl/compile V=sc -j$(nproc)
+
+      - name: Compile curl
         run: |
           cd openwrt-sdk
           make package/curl/compile V=sc -j$(nproc)
