@@ -51,6 +51,7 @@ jobs:
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+          echo "CONFIG_PACKAGE_libnghttp=y" >> .config
           
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
           echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
