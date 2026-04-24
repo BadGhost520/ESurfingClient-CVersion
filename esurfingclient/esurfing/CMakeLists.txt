@@ -85,7 +85,6 @@ elseif(UNIX AND NOT WIN32)
             CURL::libcurl
             OpenSSL::SSL
             OpenSSL::Crypto
-            nghttp2
             pthread
             dl
     )
