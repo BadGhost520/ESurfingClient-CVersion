@@ -50,7 +50,7 @@ define Package/esurfingclient/install
 	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
+	$(INSTALL_CONF) $(CURDIR)/files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
 
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(CURDIR)/files/usr/bin/dialer.json $(1)/usr/bin/
