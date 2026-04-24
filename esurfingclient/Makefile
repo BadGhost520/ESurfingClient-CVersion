@@ -6,7 +6,7 @@ PKG_RELEASE:=1
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
-PKG_BUILD_DEPENDS:=libcurl libopenssl libnghttp2
+PKG_BUILD_DEPENDS:=libcurl libopenssl
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
@@ -22,7 +22,7 @@ CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF \
-	-DCMAKE_EXE_LINKER_FLAGS="-lnghttp2 -lpthread -latomic" \
+	-DCMAKE_EXE_LINKER_FLAGS="-lpthread -latomic" \
 	-DCMAKE_C_FLAGS="-DCURL_STATICLIB" \
 	-DCMAKE_THREAD_LIBS_INIT="-lpthread" \
 	-DCMAKE_USE_PTHREADS_INIT=ON
@@ -31,7 +31,7 @@ define Package/esurfingclient
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=ESurfingClient
-	DEPENDS:=+libcurl +libopenssl +ca-bundle +libnghttp2
+	DEPENDS:=+libcurl +libopenssl +ca-bundle
 endef
 
 define Package/esurfingclient/description

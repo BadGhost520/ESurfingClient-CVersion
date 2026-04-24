@@ -62,13 +62,7 @@ jobs:
       - name: Compile nghttp2
         run: |
           cd openwrt-sdk
-          if make package/libnghttp2/compile V=sc -j$(nproc) 2>/dev/null; then
-            echo "✅ libnghttp2 compiled"
-          elif make package/nghttp2/compile V=sc -j$(nproc) 2>/dev/null; then
-            echo "✅ nghttp2 compiled"
-          else
-            echo "⚠️ nghttp2 not found, will use system package"
-          fi
+          make package/nghttp2/compile V=sc -j$(nproc)
 
       - name: Compile esurfingclient
         run: |
