@@ -190,9 +190,9 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
     LOG_VERBOSE("设置选项");
     curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
     curl_easy_setopt(*curl, CURLOPT_URL, get_url);
-    // curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
-    // curl_easy_setopt(*curl, CURLOPT_WRITEFUNCTION, write_cb);
-    // curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
+    curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
+    curl_easy_setopt(*curl, CURLOPT_WRITEFUNCTION, write_cb);
+    curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);

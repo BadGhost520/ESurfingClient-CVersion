@@ -23,13 +23,13 @@ int main()
     if (load_cfg() == false) shut(0);
 
     init_shutdown_hook();
-    LOG_VERBOSE("999");
+
     while (check_network_status() == REQUEST_SUCCESS)
     {
         LOG_INFO("已连接到互联网");
         sleep_ms(5000);
     }
-    LOG_VERBOSE("888");
+
     get_last_location();
 
     LOG_DEBUG("开始创建认证线程");

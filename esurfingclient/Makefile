@@ -23,12 +23,22 @@ CMAKE_OPTIONS += \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF \
 	-DCMAKE_EXE_LINKER_FLAGS="-static -lpthread -latomic" \
-	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread"
+	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -g -O0"
 
 define Package/esurfingclient
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=ESurfingClient
+endef
+
+define Package/esurfingclient/prerm
+#!/bin/sh
+if [ -f "/usr/bin" ]; then
+    cp /usr/bin/ESurfingClient.json /usr/bin/ESurfingClient.json.bak
+    echo "配置文件已备份到 /usr/bin/ESurfingClient.json.bak"
+    echo "使用 cp /usr/bin/ESurfingClient.json.bak /usr/bin/ESurfingClient.json 恢复"
+fi
+exit 0
 endef
 
 define Package/esurfingclient/description
