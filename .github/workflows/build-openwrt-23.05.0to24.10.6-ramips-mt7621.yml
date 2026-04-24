@@ -52,15 +52,19 @@ jobs:
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
 
-          echo "CONFIG_LIBCURL_HTTP2=n" >> .config
-          echo "CONFIG_PACKAGE_libnghttp2=n" >> .config
+          echo "CONFIG_PACKAGE_libnghttp2=y" >> .config
 
           echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
           echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
 
           make defconfig
 
-      - name: Compile all packages
+      - name: Compile nghttp2
+        run: |
+          cd openwrt-sdk
+          make package/libnghttp2/compile V=sc -j$(nproc)
+
+      - name: Compile esurfingclient
         run: |
           cd openwrt-sdk
           make package/esurfingclient/compile V=sc -j$(nproc)
