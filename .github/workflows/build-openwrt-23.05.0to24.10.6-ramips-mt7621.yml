@@ -28,9 +28,7 @@ jobs:
           wget "$SDK_URL"
           tar -I zstd -xf openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
-
-      - name: Copy package source to SDK
-        run: |
+          
           cp -r esurfingclient openwrt-sdk/package/
           
           if [ -f esurfingclient.tar.gz ]; then
