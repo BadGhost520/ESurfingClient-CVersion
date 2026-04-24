@@ -32,7 +32,9 @@ define Package/esurfingclient
 endef
 
 define Package/esurfingclient/description
-A lightweight esurfing authentication client
+轻量第三方电信校园网客户端
+支持多平台运行
+Powerby: BadGhost
 endef
 
 define Build/Compile
@@ -41,11 +43,14 @@ define Build/Compile
 endef
 
 define Package/esurfingclient/install
-	$(INSTALL_DIR) $(1)/usr/esurfingclient
-	$(CP) $(PKG_BUILD_DIR)/ESurfingClient $(1)/usr/esurfingclient/
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) ./files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
 
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(CURDIR)/files/usr/bin/dialer.json $(1)/usr/bin/
