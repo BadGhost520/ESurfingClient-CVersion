@@ -23,7 +23,7 @@ CMAKE_OPTIONS += \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF \
 	-DCMAKE_EXE_LINKER_FLAGS="-static -lpthread -latomic" \
-	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -g -O0"
+	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread"
 
 define Package/esurfingclient
 	SECTION:=net
@@ -49,9 +49,8 @@ endef
 
 define Build/Compile
 	$(call Build/Compile/Default)
-
 endef
-#	$(TARGET_CROSS)strip --strip-all $(PKG_BUILD_DIR)/ESurfingClient 2>/dev/null || true
+
 define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/

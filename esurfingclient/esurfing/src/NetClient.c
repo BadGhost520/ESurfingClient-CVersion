@@ -42,6 +42,7 @@ char* extract_url_param(const char* url, const char* search_str_start)
 
 static size_t header_cb(const void *contents, const size_t size, const size_t nmemb, void* userdata)
 {
+    (void)userdata;
     const size_t real_size = size * nmemb;
     const char* header = contents;
 
@@ -191,6 +192,7 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
     curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
     curl_easy_setopt(*curl, CURLOPT_URL, get_url);
     curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
+    curl_easy_setopt(*curl, CURLOPT_HEADERDATA, response);
     curl_easy_setopt(*curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
     curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
