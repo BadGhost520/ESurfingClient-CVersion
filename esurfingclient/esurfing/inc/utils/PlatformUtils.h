@@ -26,7 +26,7 @@
 #endif
 
 #define XML_BUFFER_SIZE 1024
-#define DIALER_CONFIG_FILE "dialer.json"
+#define DIALER_CONFIG_FILE "ESurfingClient.json"
 #define NAME_LENGTH 128
 
 typedef enum

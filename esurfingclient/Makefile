@@ -53,7 +53,7 @@ define Package/esurfingclient/install
 	$(INSTALL_CONF) $(CURDIR)/files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
 
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(CP) $(CURDIR)/files/usr/bin/dialer.json $(1)/usr/bin/
+	$(CP) $(CURDIR)/files/usr/bin/ESurfingClient.json $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,esurfingclient))

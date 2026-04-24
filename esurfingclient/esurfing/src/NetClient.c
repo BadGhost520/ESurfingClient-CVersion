@@ -89,6 +89,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
             snprintf(g_prog_status[thread_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
+            LOG_VERBOSE("现在的 last_location: %s", g_prog_status[thread_idx].last_location);
         }
     }
 
@@ -272,28 +273,41 @@ static HTTPResponse post(const char* url, const char* data, struct curl_slist* h
 
 static HTTPResponse get(const char* url, struct curl_slist* headers)
 {
+    LOG_VERBOSE("1");
     CURL* curl;
+    LOG_VERBOSE("2");
     HTTPResponse resp = {0};
-
+    LOG_VERBOSE("3");
     if (create_get_client(&curl, &headers, &resp, url) == CURL_INIT_FAILURE)
     {
+        LOG_VERBOSE("4");
         resp.status = INIT_ERROR;
         return resp;
     }
-
+    LOG_VERBOSE("5");
     const CURLcode curl_code = curl_easy_perform(curl);
+    LOG_VERBOSE("6");
     if (curl_code != CURLE_OK)
     {
+        LOG_VERBOSE("7");
         curl_easy_cleanup(curl);
         resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
+    LOG_VERBOSE("8");
     long resp_code;
+    LOG_VERBOSE("9");
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
+    LOG_VERBOSE("10");
     curl_easy_cleanup(curl);
+    LOG_VERBOSE("11");
     if (resp_code == 302)
     {
-        LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
+        if (g_prog_status[thread_idx].last_location[0] != '\0') {
+            LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
+        } else {
+            LOG_VERBOSE("重定向，但 last_location 未初始化");
+        }
         resp.status = REQUEST_REDIRECT;
         return resp;
     }

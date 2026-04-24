@@ -23,13 +23,13 @@ int main()
     if (load_cfg() == false) shut(0);
 
     init_shutdown_hook();
-
+    LOG_VERBOSE("999");
     while (check_network_status() == REQUEST_SUCCESS)
     {
         LOG_INFO("已连接到互联网");
         sleep_ms(5000);
     }
-
+    LOG_VERBOSE("888");
     get_last_location();
 
     LOG_DEBUG("开始创建认证线程");
@@ -50,9 +50,8 @@ int main()
     {
         for (uint8_t i = 0; i < g_prog_cnt; i++)
         {
-            if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 60000 && g_prog_status[i].auth_cfg.auth_time != 0)
+            if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 172200000 && g_prog_status[i].auth_cfg.auth_time != 0)
             {
-                //  172200000
                 // if (g_prog_status[thread_idx].runtime_status.is_settings_changed)
                 // {
                 //     LOG_INFO("设置已更改, 正在重启认证");
