@@ -50,6 +50,19 @@ jobs:
 
           scripts/feeds update -a
           scripts/feeds install -a
+          
+          # 找到并修改 curl Makefile
+          CURL_MK=$(find feeds -name "Makefile" -path "*/curl/*" | xargs grep -l "PKG_NAME:=curl" | head -1)
+          
+          if [ -z "$CURL_MK" ]; then
+          CURL_MK=$(find package -name "Makefile" -path "*/curl/*" | xargs grep -l "PKG_NAME:=curl" | head -1)
+          fi
+          
+          echo "修改: $CURL_MK"
+          
+          # 添加软浮点标志
+          sed -i 's/TARGET_CFLAGS += \$(FPIC)/TARGET_CFLAGS += \$(FPIC) -msoft-float/' "$CURL_MK"
+          sed -i 's/TARGET_LDFLAGS += -Wl,--gc-sections/TARGET_LDFLAGS += -Wl,--gc-sections -msoft-float/' "$CURL_MK"
 
           echo "CONFIG_TARGET_ramips_mt7621=y" >> .config
           echo "CONFIG_TARGET_ramips_mt7621_DEVICE_generic=y" >> .config
