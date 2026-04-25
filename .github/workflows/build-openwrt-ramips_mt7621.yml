@@ -51,19 +51,6 @@ jobs:
           scripts/feeds update -a
           scripts/feeds install -a
           
-          # 找到并修改 curl Makefile
-          CURL_MK=$(find feeds -name "Makefile" -path "*/curl/*" | xargs grep -l "PKG_NAME:=curl" | head -1)
-          
-          if [ -z "$CURL_MK" ]; then
-          CURL_MK=$(find package -name "Makefile" -path "*/curl/*" | xargs grep -l "PKG_NAME:=curl" | head -1)
-          fi
-          
-          echo "修改: $CURL_MK"
-          
-          # 添加软浮点标志
-          sed -i 's/TARGET_CFLAGS += \$(FPIC)/TARGET_CFLAGS += \$(FPIC) -msoft-float/' "$CURL_MK"
-          sed -i 's/TARGET_LDFLAGS += -Wl,--gc-sections/TARGET_LDFLAGS += -Wl,--gc-sections -msoft-float/' "$CURL_MK"
-
           echo "CONFIG_TARGET_ramips_mt7621=y" >> .config
           echo "CONFIG_TARGET_ramips_mt7621_DEVICE_generic=y" >> .config
 
@@ -71,8 +58,6 @@ jobs:
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
-          
-          echo "CONFIG_SOFT_FLOAT=y" >> .config
 
           # 关键：禁用 mbedTLS，使用 OpenSSL
           echo "CONFIG_LIBCURL_MBEDTLS=n" >> .config
@@ -116,8 +101,8 @@ jobs:
       - name: Copy unstripped binary
         run: |
           cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-unstripped \;
-          file ../ESurfingClient-unstripped
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-ramips_mt7621-debug \;
+          file ../ESurfingClient-openwrt-ramips_mt7621-debug
 
       - name: Collect required packages
         run: |
@@ -125,35 +110,16 @@ jobs:
 
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-ramips_mt7621.ipk \;
 
-      - name: Find and copy libcurl Makefile
-        run: |
-          cd openwrt-sdk
-
-          # 查找 libcurl 的 Makefile
-          CURL_MAKEFILE=$(find . -name "Makefile" -path "*/curl/*" | grep -v "feeds/luci" | head -1)
-
-          if [ -n "$CURL_MAKEFILE" ]; then
-            echo "找到 libcurl Makefile: $CURL_MAKEFILE"
-            # 复制到上级目录
-            cp "$CURL_MAKEFILE" ../curl-Makefile.backup
-            echo "✅ 已复制到 ../curl-Makefile.backup"
-          else
-            echo "未找到 libcurl Makefile"
-            # 尝试更宽泛的搜索
-            find . -name "Makefile" | xargs grep -l "PKG_NAME:=curl" | head -1
-          fi
-
       - name: zip
         run: |
           mkdir test
-          cp curl-Makefile.backup test/
-          cp ESurfingClient-unstripped test/
+          cp ESurfingClient-openwrt-ramips_mt7621-debug test/
           cp esurfingclient-openwrt-ramips_mt7621.ipk test/
-          tar -czf test.tar.gz test
+          tar -czf esurfingclient-openwrt-ramips_mt7621.tar.gz test
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: test
-          path: test.tar.gz
+          name: esurfingclient-openwrt-ramips_mt7621
+          path: esurfingclient-openwrt-ramips_mt7621.tar.gz
           retention-days: 30

@@ -93,6 +93,6 @@ if(UNIX AND NOT WIN32)
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 
-#set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
+set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
 
 install(TARGETS ESurfingClient RUNTIME DESTINATION bin)
