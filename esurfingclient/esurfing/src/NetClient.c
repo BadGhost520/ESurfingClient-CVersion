@@ -344,6 +344,15 @@ HTTPResponse post_with_header(const char* url, const char* data)
     snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", s_domain);
     snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", s_area);
 
+    LOG_VERBOSE("POST 添加头 %s", s_req_content_type);
+    LOG_VERBOSE("POST 添加头 %s", ua);
+    LOG_VERBOSE("POST 添加头 %s", s_req_accept);
+    LOG_VERBOSE("POST 添加头 %s", c_id);
+    LOG_VERBOSE("POST 添加头 %s", a_id);
+    LOG_VERBOSE("POST 添加头 %s", cdc_sid);
+    LOG_VERBOSE("POST 添加头 %s", cdc_d);
+    LOG_VERBOSE("POST 添加头 %s", cdc_a);
+
     headers = curl_slist_append(headers, s_req_content_type);
     headers = curl_slist_append(headers, ua);
     headers = curl_slist_append(headers, s_req_accept);
@@ -364,6 +373,10 @@ HTTPResponse get_with_header(const char* url)
     char c_id[MAX_LEN] = {0};
     snprintf(ua, MAX_LEN, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
     snprintf(c_id, MAX_LEN, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
+
+    LOG_VERBOSE("GET 添加头 %s", ua);
+    LOG_VERBOSE("GET 添加头 %s", s_req_accept);
+    LOG_VERBOSE("GET 添加头 %s", c_id);
 
     headers = curl_slist_append(headers, ua);
     headers = curl_slist_append(headers, s_req_accept);
