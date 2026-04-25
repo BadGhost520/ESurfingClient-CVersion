@@ -58,6 +58,9 @@ jobs:
           echo "CONFIG_PACKAGE_libcurl=y" >> .config
           echo "CONFIG_PACKAGE_libopenssl=y" >> .config
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+          
+          echo "CONFIG_SOFT_FLOAT=y" >> .config
+          echo "CONFIG_HARD_FLOAT=n" >> .config
 
           # 关键：禁用 mbedTLS，使用 OpenSSL
           echo "CONFIG_LIBCURL_MBEDTLS=n" >> .config
