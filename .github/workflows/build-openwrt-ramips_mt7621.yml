@@ -60,7 +60,6 @@ jobs:
           echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
           
           echo "CONFIG_SOFT_FLOAT=y" >> .config
-          echo "CONFIG_HARD_FLOAT=n" >> .config
 
           # 关键：禁用 mbedTLS，使用 OpenSSL
           echo "CONFIG_LIBCURL_MBEDTLS=n" >> .config
@@ -113,11 +112,30 @@ jobs:
 
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-ramips_mt7621.ipk \;
 
+      - name: Find and copy libcurl Makefile
+        run: |
+          cd openwrt-sdk
+
+          # 查找 libcurl 的 Makefile
+          CURL_MAKEFILE=$(find . -name "Makefile" -path "*/curl/*" | grep -v "feeds/luci" | head -1)
+
+          if [ -n "$CURL_MAKEFILE" ]; then
+            echo "找到 libcurl Makefile: $CURL_MAKEFILE"
+            # 复制到上级目录
+            cp "$CURL_MAKEFILE" ../curl-Makefile.backup
+            echo "✅ 已复制到 ../curl-Makefile.backup"
+          else
+            echo "未找到 libcurl Makefile"
+            # 尝试更宽泛的搜索
+            find . -name "Makefile" | xargs grep -l "PKG_NAME:=curl" | head -1
+          fi
+
       - name: zip
         run: |
           mkdir test
-          cp ESurfingClient-unstripped test/ESurfingClient-unstripped
-          cp esurfingclient-openwrt-ramips_mt7621.ipk test/esurfingclient-openwrt-ramips_mt7621.ipk
+          cp curl-Makefile.backup test/
+          cp ESurfingClient-unstripped test/
+          cp esurfingclient-openwrt-ramips_mt7621.ipk test/
           tar -czf test.tar.gz test
 
       - name: Upload artifact
