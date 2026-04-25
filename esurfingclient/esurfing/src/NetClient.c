@@ -8,12 +8,14 @@
 #include <string.h>
 #include <stdio.h>
 
+#define MAX_LEN 128
+
 #define SCHOOL_ID_LENGTH 8
 #define DOMAIN_LENGTH 16
 #define AREA_LENGTH 8
 
-static const char s_req_content_type[] = "application/x-www-form-urlencoded";
-static const char s_req_accept[] = "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
+static const char s_req_content_type[] = "Content-Type: application/x-www-form-urlencoded";
+static const char s_req_accept[] = "Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
 static const char s_generate_url[] = "http://connect.rom.miui.com/generate_204";
 
 static char s_school_id[SCHOOL_ID_LENGTH];
@@ -42,7 +44,6 @@ char* extract_url_param(const char* url, const char* search_str_start)
 
 static size_t header_cb(const void *contents, const size_t size, const size_t nmemb, void* userdata)
 {
-    (void)userdata;
     const size_t real_size = size * nmemb;
     const char* header = contents;
 
@@ -208,18 +209,6 @@ static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HT
     return CURL_INIT_SUCCESS;
 }
 
-static void add_header(struct curl_slist** headers, const char* fmt, ...)
-{
-    va_list local_args;
-    char header_buf[128];
-
-    va_start(local_args, fmt);
-    vsnprintf(header_buf, sizeof(header_buf), fmt, local_args);
-    va_end(local_args);
-
-    *headers = curl_slist_append(*headers, header_buf);
-}
-
 static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
 {
     switch (curl_code)
@@ -332,6 +321,13 @@ HTTPResponse post_with_header(const char* url, const char* data)
 {
     struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
+    char md5_hash_str[MAX_LEN] = {0};
+    char ua[MAX_LEN] = {0};
+    char c_id[MAX_LEN] = {0};
+    char a_id[MAX_LEN] = {0};
+    char cdc_sid[MAX_LEN] = {0};
+    char cdc_d[MAX_LEN] = {0};
+    char cdc_a[MAX_LEN] = {0};
     char* md5_hash = calc_md5(data);
     if (!md5_hash)
     {
@@ -339,16 +335,23 @@ HTTPResponse post_with_header(const char* url, const char* data)
         resp.status = REQUEST_ERROR;
         return resp;
     }
-    add_header(&headers, "CDC-Checksum: %s", md5_hash);
+    snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", md5_hash);
     free(md5_hash);
-    add_header(&headers, "Content-Type: %s", s_req_content_type);
-    add_header(&headers, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
-    add_header(&headers, "Accept: %s", s_req_accept);
-    add_header(&headers, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
-    add_header(&headers, "Algo-ID: %s", g_prog_status[thread_idx].auth_cfg.algo_id);
-    add_header(&headers, "CDC-SchoolId: %s", s_school_id);
-    add_header(&headers, "CDC-Domain: %s", s_domain);
-    add_header(&headers, "CDC-Area: %s", s_area);
+    snprintf(ua, MAX_LEN, "User-Agent: %s", ua);
+    snprintf(c_id, MAX_LEN, "Client-ID: %s", c_id);
+    snprintf(a_id, MAX_LEN, "Algo-ID: %s", g_prog_status[thread_idx].auth_cfg.algo_id);
+    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", s_school_id);
+    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", s_domain);
+    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", s_area);
+
+    headers = curl_slist_append(headers, s_req_content_type);
+    headers = curl_slist_append(headers, ua);
+    headers = curl_slist_append(headers, s_req_accept);
+    headers = curl_slist_append(headers, c_id);
+    headers = curl_slist_append(headers, a_id);
+    headers = curl_slist_append(headers, cdc_sid);
+    headers = curl_slist_append(headers, cdc_d);
+    headers = curl_slist_append(headers, cdc_a);
     resp = post(url, data, headers);
     return resp;
 }
@@ -357,9 +360,14 @@ HTTPResponse get_with_header(const char* url)
 {
     struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
-    add_header(&headers, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
-    add_header(&headers, "Accept: %s", s_req_accept);
-    add_header(&headers, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
+    char ua[MAX_LEN] = {0};
+    char c_id[MAX_LEN] = {0};
+    snprintf(ua, MAX_LEN, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
+    snprintf(c_id, MAX_LEN, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
+
+    headers = curl_slist_append(headers, ua);
+    headers = curl_slist_append(headers, s_req_accept);
+    headers = curl_slist_append(headers, c_id);
     resp = get(url, headers);
     return resp;
 }

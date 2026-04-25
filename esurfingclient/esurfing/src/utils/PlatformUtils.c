@@ -530,10 +530,12 @@ bool load_cfg()
                 if (strcmp(chn->valuestring, "pc") == 0)
                 {
                     snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
+                    LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
                 }
                 else
                 {
                     snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+                    LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
                 }
                 g_prog_status[valid_i].login_cfg.idx = i + 1;
                 LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
