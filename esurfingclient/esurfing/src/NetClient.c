@@ -85,13 +85,16 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
 
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
     {
-        if (!g_prog_status[thread_idx].runtime_status.last_location_lock)
+        if (thread_idx != -1)
         {
-            const char* value = header + 9;
-            while (*value == ' ') value++;
-            const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(g_prog_status[thread_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
-            LOG_VERBOSE("现在的 last_location: %s", g_prog_status[thread_idx].last_location);
+            if (!g_prog_status[thread_idx].runtime_status.last_location_lock)
+            {
+                const char* value = header + 9;
+                while (*value == ' ') value++;
+                const size_t valid_len = strcspn(value, "\r\n");
+                snprintf(g_prog_status[thread_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
+                LOG_VERBOSE("现在的 last_location: %s", g_prog_status[thread_idx].last_location);
+            }
         }
     }
 
@@ -161,54 +164,6 @@ static char* calc_md5(const char* data)
     return md5_str;
 }
 
-static CurlStatus create_post_client(CURL** curl, struct curl_slist** headers, HTTPResponse* response, const char* post_url, const char* post_data)
-{
-    *curl = curl_easy_init();
-    if (!*curl) return CURL_INIT_FAILURE;
-
-    curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
-    curl_easy_setopt(*curl, CURLOPT_URL, post_url);
-    curl_easy_setopt(*curl, CURLOPT_POSTFIELDS, post_data);
-    curl_easy_setopt(*curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
-    curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
-    curl_easy_setopt(*curl, CURLOPT_CONNECTTIMEOUT, 5L);
-
-    if (g_use_cus_ip) curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
-
-    return CURL_INIT_SUCCESS;
-}
-
-static CurlStatus create_get_client(CURL** curl, struct curl_slist** headers, HTTPResponse* response, const char* get_url)
-{
-    *curl = curl_easy_init();
-    LOG_VERBOSE("curl_easy_init 完成, curl=%p", *curl);
-
-    if (!*curl) {
-        LOG_ERROR("curl 初始化失败");
-        return CURL_INIT_FAILURE;
-    }
-
-    LOG_VERBOSE("设置选项");
-    curl_easy_setopt(*curl, CURLOPT_HTTPHEADER, *headers);
-    curl_easy_setopt(*curl, CURLOPT_URL, get_url);
-    curl_easy_setopt(*curl, CURLOPT_HEADERFUNCTION, header_cb);
-    curl_easy_setopt(*curl, CURLOPT_HEADERDATA, response);
-    curl_easy_setopt(*curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(*curl, CURLOPT_WRITEDATA, response);
-    curl_easy_setopt(*curl, CURLOPT_TIMEOUT, 5L);
-    curl_easy_setopt(*curl, CURLOPT_FOLLOWLOCATION, 0L);
-    curl_easy_setopt(*curl, CURLOPT_MAXREDIRS, 5L);
-
-    LOG_VERBOSE("g_use_cus_ip=%d", g_use_cus_ip);
-    if (g_use_cus_ip) {
-        LOG_VERBOSE("设置网络接口 %s", g_prog_status[thread_idx].login_cfg.ip);
-        curl_easy_setopt(*curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
-    }
-
-    return CURL_INIT_SUCCESS;
-}
-
 static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
 {
     switch (curl_code)
@@ -243,20 +198,76 @@ static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
     }
 }
 
-static HTTPResponse post(const char* url, const char* data, struct curl_slist* headers)
+HTTPResponse post(const char* url, const char* data)
 {
     LOG_VERBOSE("POST 地址: %s", url);
     LOG_VERBOSE("POST 数据: %s", data);
 
-    CURL* curl;
+    struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
 
-    if (create_post_client(&curl, &headers, &resp, url, data) == CURL_INIT_FAILURE)
+    char md5_hash_str[MAX_LEN] = {0};
+    char ua[MAX_LEN] = {0};
+    char c_id[MAX_LEN] = {0};
+    char a_id[MAX_LEN] = {0};
+    char cdc_sid[MAX_LEN] = {0};
+    char cdc_d[MAX_LEN] = {0};
+    char cdc_a[MAX_LEN] = {0};
+    char* md5_hash = calc_md5(data);
+    if (!md5_hash)
     {
-        resp.status = INIT_ERROR;
+        LOG_ERROR("计算 MD5 失败");
+        resp.status = REQUEST_ERROR;
         return resp;
     }
 
+    snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", md5_hash);
+    free(md5_hash);
+    snprintf(ua, MAX_LEN, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
+    snprintf(c_id, MAX_LEN, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
+    snprintf(a_id, MAX_LEN, "Algo-ID: %s", g_prog_status[thread_idx].auth_cfg.algo_id);
+    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", s_school_id);
+    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", s_domain);
+    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", s_area);
+
+    LOG_VERBOSE("POST 添加头 %s", s_req_content_type);
+    LOG_VERBOSE("POST 添加头 %s", ua);
+    LOG_VERBOSE("POST 添加头 %s", s_req_accept);
+    LOG_VERBOSE("POST 添加头 %s", c_id);
+    LOG_VERBOSE("POST 添加头 %s", a_id);
+    LOG_VERBOSE("POST 添加头 %s", cdc_sid);
+    LOG_VERBOSE("POST 添加头 %s", cdc_d);
+    LOG_VERBOSE("POST 添加头 %s", cdc_a);
+    LOG_VERBOSE("下标: %" PRId8, thread_idx);
+
+    headers = curl_slist_append(headers, s_req_content_type);
+    headers = curl_slist_append(headers, ua);
+    headers = curl_slist_append(headers, s_req_accept);
+    headers = curl_slist_append(headers, c_id);
+    headers = curl_slist_append(headers, a_id);
+    headers = curl_slist_append(headers, cdc_sid);
+    headers = curl_slist_append(headers, cdc_d);
+    headers = curl_slist_append(headers, cdc_a);
+
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        LOG_ERROR("curl 初始化失败");
+        resp.status = INIT_ERROR;
+    }
+    LOG_VERBOSE("curl 初始化完成, curl=%p", curl);
+
+    LOG_VERBOSE("设置 curl 选项");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+
+    if (g_use_cus_ip) curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
+
+    LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
@@ -272,31 +283,78 @@ static HTTPResponse post(const char* url, const char* data, struct curl_slist* h
     return resp;
 }
 
-static HTTPResponse get(const char* url, struct curl_slist* headers)
+HTTPResponse get(const char* url)
 {
-    CURL* curl;
+    LOG_VERBOSE("GET 地址: %s", url);
+
+    struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
-    if (create_get_client(&curl, &headers, &resp, url) == CURL_INIT_FAILURE)
+
+    char ua[MAX_LEN] = {0};
+    char c_id[MAX_LEN] = {0};
+
+    if (thread_idx != -1)
     {
-        LOG_ERROR("初始化错误");
-        resp.status = INIT_ERROR;
-        return resp;
+        snprintf(ua, MAX_LEN, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
+        snprintf(c_id, MAX_LEN, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
+
+        LOG_VERBOSE("GET 添加头 %s", ua);
+        LOG_VERBOSE("GET 添加头 %s", s_req_accept);
+        LOG_VERBOSE("GET 添加头 %s", c_id);
+        LOG_VERBOSE("线程下标: %" PRId8, thread_idx);
+
+        headers = curl_slist_append(headers, ua);
+        headers = curl_slist_append(headers, s_req_accept);
+        headers = curl_slist_append(headers, c_id);
     }
+    else
+    {
+        LOG_VERBOSE("不添加 GET 头");
+    }
+
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        LOG_ERROR("curl 初始化失败");
+        resp.status = INIT_ERROR;
+    }
+    LOG_VERBOSE("curl 初始化完成, curl=%p", curl);
+
+    LOG_VERBOSE("设置 curl 选项");
+    if (thread_idx != -1) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+
+    if (g_use_cus_ip) {
+        if (thread_idx != -1)
+        {
+            LOG_VERBOSE("设置网络接口 %s", g_prog_status[thread_idx].login_cfg.ip);
+            curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
+        }
+    }
+
     LOG_VERBOSE("执行 CURL");
-    CURLcode curl_code = curl_easy_perform(curl);
+    const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
         curl_easy_cleanup(curl);
         resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
+
     LOG_VERBOSE("获取响应码");
     long resp_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
     curl_easy_cleanup(curl);
+
     if (resp_code == 302)
     {
-        LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
+        LOG_DEBUG("重定向, 响应码: 302");
+        if (thread_idx != -1) LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
         resp.status = REQUEST_REDIRECT;
         return resp;
     }
@@ -308,80 +366,13 @@ static HTTPResponse get(const char* url, struct curl_slist* headers)
     }
     if (resp_code == 204)
     {
-        LOG_VERBOSE("响应码: 204");
+        LOG_VERBOSE("无响应体, 响应码: 204");
         resp.status = REQUEST_SUCCESS;
         return resp;
     }
+
     LOG_ERROR("HTTP 响应错误, 响应码: %d", resp_code);
     resp.status = REQUEST_ERROR;
-    return resp;
-}
-
-HTTPResponse post_with_header(const char* url, const char* data)
-{
-    struct curl_slist* headers = NULL;
-    HTTPResponse resp = {0};
-    char md5_hash_str[MAX_LEN] = {0};
-    char ua[MAX_LEN] = {0};
-    char c_id[MAX_LEN] = {0};
-    char a_id[MAX_LEN] = {0};
-    char cdc_sid[MAX_LEN] = {0};
-    char cdc_d[MAX_LEN] = {0};
-    char cdc_a[MAX_LEN] = {0};
-    char* md5_hash = calc_md5(data);
-    if (!md5_hash)
-    {
-        LOG_ERROR("计算 MD5 失败");
-        resp.status = REQUEST_ERROR;
-        return resp;
-    }
-    snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", md5_hash);
-    free(md5_hash);
-    snprintf(ua, MAX_LEN, "User-Agent: %s", ua);
-    snprintf(c_id, MAX_LEN, "Client-ID: %s", c_id);
-    snprintf(a_id, MAX_LEN, "Algo-ID: %s", g_prog_status[thread_idx].auth_cfg.algo_id);
-    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", s_school_id);
-    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", s_domain);
-    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", s_area);
-
-    LOG_VERBOSE("POST 添加头 %s", s_req_content_type);
-    LOG_VERBOSE("POST 添加头 %s", ua);
-    LOG_VERBOSE("POST 添加头 %s", s_req_accept);
-    LOG_VERBOSE("POST 添加头 %s", c_id);
-    LOG_VERBOSE("POST 添加头 %s", a_id);
-    LOG_VERBOSE("POST 添加头 %s", cdc_sid);
-    LOG_VERBOSE("POST 添加头 %s", cdc_d);
-    LOG_VERBOSE("POST 添加头 %s", cdc_a);
-
-    headers = curl_slist_append(headers, s_req_content_type);
-    headers = curl_slist_append(headers, ua);
-    headers = curl_slist_append(headers, s_req_accept);
-    headers = curl_slist_append(headers, c_id);
-    headers = curl_slist_append(headers, a_id);
-    headers = curl_slist_append(headers, cdc_sid);
-    headers = curl_slist_append(headers, cdc_d);
-    headers = curl_slist_append(headers, cdc_a);
-    resp = post(url, data, headers);
-    return resp;
-}
-
-HTTPResponse get_with_header(const char* url)
-{
-    struct curl_slist* headers = NULL;
-    HTTPResponse resp = {0};
-    char ua[MAX_LEN] = {0};
-    char c_id[MAX_LEN] = {0};
-    snprintf(ua, MAX_LEN, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
-    snprintf(c_id, MAX_LEN, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
-
-    LOG_VERBOSE("GET 添加头 %s", ua);
-    LOG_VERBOSE("GET 添加头 %s", s_req_accept);
-    LOG_VERBOSE("GET 添加头 %s", c_id);
-
-    headers = curl_slist_append(headers, ua);
-    headers = curl_slist_append(headers, s_req_accept);
-    headers = curl_slist_append(headers, c_id);
-    resp = get(url, headers);
     return resp;
 }
 
@@ -398,17 +389,18 @@ void get_last_location()
     {
         refresh_states();
         HTTPResponse resp = {0};
-        resp = get_with_header(s_generate_url);
-        while (resp.status == REQUEST_REDIRECT) resp = get_with_header(g_prog_status[thread_idx].last_location);
+        resp = get(s_generate_url);
+        while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[thread_idx].last_location);
         g_prog_status[thread_idx].runtime_status.last_location_lock = true;
         LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
     }
+    thread_idx = -1;
     get_school_ip_symbol();
 }
 
 NetworkStatus check_network_status()
 {
-    const HTTPResponse resp = get_with_header(s_generate_url);
+    const HTTPResponse resp = get(s_generate_url);
     return resp.status;
 }
 

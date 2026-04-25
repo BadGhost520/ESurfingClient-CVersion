@@ -39,14 +39,14 @@ char* extract_url_param(const char* url, const char* search_str_start);
  * @param data 数据
  * @return 响应数据
  */
-HTTPResponse post_with_header(const char* url, const char* data);
+HTTPResponse post(const char* url, const char* data);
 
 /**
  * @brief 带默认头的 GET
  * @param url 地址
  * @return 响应数据
  */
-HTTPResponse get_with_header(const char* url);
+HTTPResponse get(const char* url);
 
 /**
  * @brief 获取所有 ip 的 last_location

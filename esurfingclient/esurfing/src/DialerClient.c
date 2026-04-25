@@ -23,7 +23,7 @@ static RunningStatus term()
         return RUNNING_FAILURE;
     }
     LOG_VERBOSE("发送加密登出内容: %s", encrypt);
-    const HTTPResponse result = post_with_header(g_prog_status[thread_idx].auth_cfg.term_url, encrypt);
+    const HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt);
     free(encrypt);
     if (result.status != REQUEST_SUCCESS)
     {
@@ -51,7 +51,7 @@ static RunningStatus heartbeat()
         return RUNNING_FAILURE;
     }
     LOG_VERBOSE("发送加密心跳内容: %s", encrypt);
-    const HTTPResponse result = post_with_header(g_prog_status[thread_idx].auth_cfg.keep_url, encrypt);
+    const HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.keep_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -94,7 +94,7 @@ static AuthStatus login()
         return AUTH_FAILURE;
     }
     LOG_VERBOSE("发送加密登录内容: %s", encrypt);
-    const HTTPResponse result = post_with_header(g_prog_status[thread_idx].auth_cfg.auth_url, encrypt);
+    const HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.auth_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -171,7 +171,7 @@ static AuthStatus get_ticket()
         return AUTH_FAILURE;
     }
     LOG_VERBOSE("发送加密获取 ticket 内容: %s", encrypt);
-    const HTTPResponse result = post_with_header(g_prog_status[thread_idx].auth_cfg.ticket_url, encrypt);
+    const HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.ticket_url, encrypt);
     free(encrypt);
     if (result.status == REQUEST_ERROR)
     {
@@ -242,7 +242,7 @@ static void clean_session()
 static AuthStatus init_session()
 {
     LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
-    const HTTPResponse result = post_with_header(g_prog_status[thread_idx].auth_cfg.ticket_url, g_prog_status[thread_idx].auth_cfg.algo_id);
+    const HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.ticket_url, g_prog_status[thread_idx].auth_cfg.algo_id);
     if (result.status == REQUEST_ERROR)
     {
         LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
@@ -276,7 +276,7 @@ static RunningStatus auth()
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
 
-    const HTTPResponse resp = get_with_header(g_prog_status[thread_idx].last_location);
+    const HTTPResponse resp = get(g_prog_status[thread_idx].last_location);
     if (resp.status != REQUEST_HAVE_RES)
     {
         LOG_ERROR("响应体为空, 无法提取认证配置");
@@ -455,7 +455,7 @@ int dialer_app(void* arg)
 {
     thread_idx = (int8_t)(intptr_t)arg;
     g_prog_status[thread_idx].thread_id = sim_thread_cur_id();
-    LOG_DEBUG("线程 %" PRIu8 " 创建成功, ID: %" PRIu64, thread_idx, g_prog_status[thread_idx].thread_id);
+    LOG_DEBUG("线程 %" PRId8 " 创建成功, ID: %" PRIu64, thread_idx, g_prog_status[thread_idx].thread_id);
     g_prog_status[thread_idx].runtime_status.is_running = true;
     while (g_prog_status[thread_idx].runtime_status.is_running)
     {
@@ -464,7 +464,7 @@ int dialer_app(void* arg)
     }
     if (g_prog_status[thread_idx].runtime_status.is_authed)
     {
-        LOG_DEBUG("配置 %" PRIu8 " 登出, 下标: %" PRIu8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
+        LOG_DEBUG("配置 %" PRIu8 " 登出, 下标: %" PRId8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
         term();
         clean_session();
     }

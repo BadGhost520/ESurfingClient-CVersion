@@ -531,11 +531,13 @@ bool load_cfg()
                 {
                     snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN,  "CCTP/Linux64/1003");
                     LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
+                    LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
                 }
                 else
                 {
                     snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
                     LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
+                    LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
                 }
                 g_prog_status[valid_i].login_cfg.idx = i + 1;
                 LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
@@ -568,7 +570,7 @@ bool load_cfg()
 
     g_prog_cnt = valid_cnt;
 
-    LOG_INFO("可用配置数: %" PRIu8, g_prog_cnt);
+    LOG_INFO("可用配置数: %" PRId8, g_prog_cnt);
 
     return true;
 }
