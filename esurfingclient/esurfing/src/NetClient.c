@@ -103,6 +103,10 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
 
 static size_t write_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
+    if (userdata == NULL) {
+        LOG_ERROR("write_cb: userdata 为 NULL");
+        return 0;
+    }
     HTTPResponse* resp = userdata;
     const size_t real_size = size * nmemb;
     char* ptr = realloc(resp->body_data, resp->body_size + real_size + 1);
