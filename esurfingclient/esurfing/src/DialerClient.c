@@ -258,20 +258,18 @@ static AuthStatus init_session()
     {
         LOG_DEBUG("初始化会话成功");
         g_prog_status[thread_idx].runtime_status.is_initialized = 1;
+        free(zsm.data);
+        return AUTH_SUCCESS;
     }
-    else
-    {
-        LOG_DEBUG("初始化会话失败");
-        g_prog_status[thread_idx].runtime_status.is_initialized = 0;
-    }
-
+    LOG_DEBUG("初始化会话失败");
+    g_prog_status[thread_idx].runtime_status.is_initialized = 0;
     free(zsm.data);
-    return AUTH_SUCCESS;
+    return AUTH_FAILURE;
 }
 
 static RunningStatus auth()
 {
-    LOG_DEBUG("auth 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
+    LOG_DEBUG("auth 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRId8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
 
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
@@ -425,6 +423,7 @@ static RunningStatus run()
         if (auth() == RUNNING_FAILURE)
         {
             LOG_FATAL("认证失败");
+            sleep_ms(5000);
             return RUNNING_FAILURE;
         }
         sleep_ms(1000);
@@ -459,7 +458,7 @@ int dialer_app(void* arg)
     g_prog_status[thread_idx].runtime_status.is_running = true;
     while (g_prog_status[thread_idx].runtime_status.is_running)
     {
-        run();
+        if (run() == RUNNING_FAILURE) g_prog_status[thread_idx].runtime_status.is_running = false;
         if (g_prog_status[thread_idx].runtime_status.is_need_reset) reset();
     }
     if (g_prog_status[thread_idx].runtime_status.is_authed)

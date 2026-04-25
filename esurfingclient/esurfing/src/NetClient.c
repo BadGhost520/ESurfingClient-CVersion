@@ -103,10 +103,6 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
 
 static size_t write_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
-    if (userdata == NULL) {
-        LOG_ERROR("write_cb: userdata 为 NULL");
-        return 0;
-    }
     HTTPResponse* resp = userdata;
     const size_t real_size = size * nmemb;
     char* ptr = realloc(resp->body_data, resp->body_size + real_size + 1);
@@ -207,7 +203,6 @@ HTTPResponse post(const char* url, const char* data)
     LOG_VERBOSE("POST 地址: %s", url);
     LOG_VERBOSE("POST 数据: %s", data);
 
-    struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
 
     char md5_hash_str[MAX_LEN] = {0};
@@ -234,6 +229,7 @@ HTTPResponse post(const char* url, const char* data)
     snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", s_domain);
     snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", s_area);
 
+    LOG_VERBOSE("POST 添加头 %s", md5_hash_str);
     LOG_VERBOSE("POST 添加头 %s", s_req_content_type);
     LOG_VERBOSE("POST 添加头 %s", ua);
     LOG_VERBOSE("POST 添加头 %s", s_req_accept);
@@ -244,6 +240,9 @@ HTTPResponse post(const char* url, const char* data)
     LOG_VERBOSE("POST 添加头 %s", cdc_a);
     LOG_VERBOSE("下标: %" PRId8, thread_idx);
 
+    struct curl_slist* headers = NULL;
+
+    headers = curl_slist_append(headers, md5_hash_str);
     headers = curl_slist_append(headers, s_req_content_type);
     headers = curl_slist_append(headers, ua);
     headers = curl_slist_append(headers, s_req_accept);
@@ -265,7 +264,7 @@ HTTPResponse post(const char* url, const char* data)
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
 
@@ -273,15 +272,15 @@ HTTPResponse post(const char* url, const char* data)
 
     LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(curl);
+
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+
     if (curl_code != CURLE_OK)
     {
-        curl_easy_cleanup(curl);
         resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
-
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
 
     resp.status = REQUEST_SUCCESS;
     return resp;
@@ -291,11 +290,12 @@ HTTPResponse get(const char* url)
 {
     LOG_VERBOSE("GET 地址: %s", url);
 
-    struct curl_slist* headers = NULL;
     HTTPResponse resp = {0};
 
     char ua[MAX_LEN] = {0};
     char c_id[MAX_LEN] = {0};
+
+    struct curl_slist* headers = NULL;
 
     if (thread_idx != -1)
     {
@@ -328,7 +328,7 @@ HTTPResponse get(const char* url)
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
@@ -353,7 +353,9 @@ HTTPResponse get(const char* url)
     LOG_VERBOSE("获取响应码");
     long resp_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
+
     curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
 
     if (resp_code == 302)
     {
