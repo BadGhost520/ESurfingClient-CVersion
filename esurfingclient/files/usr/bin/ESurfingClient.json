@@ -7,6 +7,12 @@
       "password": "",
       "channel": "phone",
       "bind_if": ""
+    },
+    {
+      "username": "",
+      "password": "",
+      "channel": "phone",
+      "bind_if": ""
     }
   ]
 }

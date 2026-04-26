@@ -44,6 +44,7 @@ static bool term()
     free(encrypt);
     free(result.body_data);
     g_prog_status[thread_idx].runtime_status.is_authed = false;
+    g_prog_status[thread_idx].auth_cfg.auth_time = 0;
     return true;
 }
 
@@ -413,16 +414,15 @@ static bool auth()
 
 static bool run()
 {
+    bool have_auth = false;
+    for (uint8_t i = 0; i < g_prog_cnt; i++)
+    {
+        if (g_prog_status[thread_idx].runtime_status.is_authed) have_auth = true;
+    }
     static uint8_t retry_timeout = 1;
     switch (check_network_status())
     {
     case REQUEST_SUCCESS:
-        ;
-        bool have_auth = false;
-        for (uint8_t i = 0; i < g_prog_cnt; i++)
-        {
-            if (g_prog_status[thread_idx].runtime_status.is_authed) have_auth = true;
-        }
         if (have_auth)
         {
             if (!g_prog_status[thread_idx].runtime_status.is_authed) auth();
@@ -498,9 +498,7 @@ static void reset()
 {
     memset(&g_prog_status[thread_idx].auth_cfg, 0, sizeof(AuthConfig));
     g_prog_status[thread_idx].runtime_status.is_running = false;
-    g_prog_status[thread_idx].runtime_status.last_location_lock = false;
     refresh_states();
-    get_last_location();
 }
 
 int dialer_app(void* arg)
@@ -509,7 +507,7 @@ int dialer_app(void* arg)
     g_prog_status[thread_idx].thread_id = sim_thread_cur_id();
     LOG_DEBUG("线程 %" PRId8 " 创建成功, ID: %" PRIu64 ", 使用配置: %" PRIu8, thread_idx, g_prog_status[thread_idx].thread_id, g_prog_status[thread_idx].login_cfg.idx);
     g_prog_status[thread_idx].runtime_status.is_running = true;
-    while (g_prog_status[thread_idx].runtime_status.is_running)
+    while (g_prog_status[thread_idx].runtime_status.is_running && g_prog_status[thread_idx].runtime_status.is_need_reset == false)
     {
         if (run() == false) g_prog_status[thread_idx].runtime_status.is_running = false;
     }
@@ -522,6 +520,6 @@ int dialer_app(void* arg)
         }
         clean_session();
     }
-    if (g_prog_status[thread_idx].runtime_status.is_need_reset) reset();
+    reset();
     return 0;
 }

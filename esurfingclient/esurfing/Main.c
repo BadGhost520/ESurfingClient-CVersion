@@ -95,8 +95,6 @@ int main()
                 for (uint8_t j = 0; j < g_prog_cnt; j++)
                 {
                     g_prog_status[j].runtime_status.is_need_reset = true;
-                    g_prog_status[j].runtime_status.is_running = false;
-                    g_prog_status[j].auth_cfg.auth_time = 0;
                     while (g_prog_status[j].runtime_status.is_authed)
                     {
                         if (retry > 5)
