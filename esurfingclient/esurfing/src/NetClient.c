@@ -1,4 +1,5 @@
 #include "utils/PlatformUtils.h"
+#include "utils/Shutdown.h"
 #include "utils/Logger.h"
 #include "NetClient.h"
 #include "States.h"
@@ -54,7 +55,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             const char* value = header + 9;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(s_school_id, SCHOOL_ID_LENGTH, "%.*s", (uint8_t)valid_len, value);
+            snprintf(s_school_id, SCHOOL_ID_LENGTH, "%.*s", (uint8_t)valid_len, safe_str(value));
             LOG_INFO("School Id: %s", s_school_id);
         }
     }
@@ -66,7 +67,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             const char* value = header + 7;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(s_domain, DOMAIN_LENGTH, "%.*s", (uint8_t)valid_len, value);
+            snprintf(s_domain, DOMAIN_LENGTH, "%.*s", (uint8_t)valid_len, safe_str(value));
             LOG_INFO("Domain: %s", s_domain);
         }
     }
@@ -78,7 +79,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
             const char* value = header + 5;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(s_area, AREA_LENGTH, "%.*s", (uint8_t)valid_len, value);
+            snprintf(s_area, AREA_LENGTH, "%.*s", (uint8_t)valid_len, safe_str(value));
             LOG_INFO("Area: %s", s_area);
         }
     }
@@ -92,7 +93,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
                 const char* value = header + 9;
                 while (*value == ' ') value++;
                 const size_t valid_len = strcspn(value, "\r\n");
-                snprintf(g_prog_status[thread_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, value);
+                snprintf(g_prog_status[thread_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, safe_str(value));
                 LOG_VERBOSE("现在的 last_location: %s", g_prog_status[thread_idx].last_location);
             }
         }
@@ -176,7 +177,7 @@ static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
         return REQUEST_ERROR;
     case CURLE_OPERATION_TIMEDOUT:
         LOG_ERROR("curl 错误码: 28, 错误原因: 操作超时");
-        return REQUEST_WARNING;
+        return REQUEST_ERROR;
     case CURLE_HTTP_RETURNED_ERROR:
         LOG_ERROR("curl 错误码: 22, 错误原因: HTTP 状态码 ≥ 400");
         return REQUEST_ERROR;
@@ -220,14 +221,14 @@ HTTPResponse post(const char* url, const char* data)
         return resp;
     }
 
-    snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", md5_hash);
+    snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", safe_str(md5_hash));
     free(md5_hash);
-    snprintf(ua, MAX_LEN, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
-    snprintf(c_id, MAX_LEN, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
-    snprintf(a_id, MAX_LEN, "Algo-ID: %s", g_prog_status[thread_idx].auth_cfg.algo_id);
-    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", s_school_id);
-    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", s_domain);
-    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", s_area);
+    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
+    snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
+    snprintf(a_id, MAX_LEN, "Algo-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.algo_id));
+    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", safe_str(s_school_id));
+    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", safe_str(s_domain));
+    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", safe_str(s_area));
 
     LOG_VERBOSE("POST 添加头 %s", md5_hash_str);
     LOG_VERBOSE("POST 添加头 %s", s_req_content_type);
@@ -255,7 +256,9 @@ HTTPResponse post(const char* url, const char* data)
     CURL* curl = curl_easy_init();
     if (!curl) {
         LOG_ERROR("curl 初始化失败");
-        resp.status = INIT_ERROR;
+        resp.status = REQUEST_INIT_ERROR;
+        curl_slist_free_all(headers);
+        return resp;
     }
     LOG_VERBOSE("curl 初始化完成, curl=%p", curl);
 
@@ -268,7 +271,9 @@ HTTPResponse post(const char* url, const char* data)
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
 
-    if (g_use_cus_ip) curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
+#ifdef __OPENWRT__
+    if (g_use_cus_if) curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.i_f);
+#endif
 
     LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(curl);
@@ -299,8 +304,8 @@ HTTPResponse get(const char* url)
 
     if (thread_idx != -1)
     {
-        snprintf(ua, MAX_LEN, "User-Agent: %s", g_prog_status[thread_idx].login_cfg.user_agent);
-        snprintf(c_id, MAX_LEN, "Client-ID: %s", g_prog_status[thread_idx].auth_cfg.client_id);
+        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
+        snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
 
         LOG_VERBOSE("GET 添加头 %s", ua);
         LOG_VERBOSE("GET 添加头 %s", s_req_accept);
@@ -319,7 +324,9 @@ HTTPResponse get(const char* url)
     CURL* curl = curl_easy_init();
     if (!curl) {
         LOG_ERROR("curl 初始化失败");
-        resp.status = INIT_ERROR;
+        resp.status = REQUEST_INIT_ERROR;
+        curl_slist_free_all(headers);
+        return resp;
     }
     LOG_VERBOSE("curl 初始化完成, curl=%p", curl);
 
@@ -333,19 +340,22 @@ HTTPResponse get(const char* url)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
 
-    if (g_use_cus_ip) {
+#ifdef __OPENWRT__
+    if (g_use_cus_if) {
         if (thread_idx != -1)
         {
-            LOG_VERBOSE("设置网络接口 %s", g_prog_status[thread_idx].login_cfg.ip);
-            curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.ip);
+            LOG_VERBOSE("设置网络接口 %s", g_prog_status[thread_idx].login_cfg.i_f);
+            curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.i_f);
         }
     }
+#endif
 
     LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
         curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
         resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
@@ -385,7 +395,7 @@ HTTPResponse get(const char* url)
 static void get_school_ip_symbol()
 {
     const char* school_ip = extract_url_param(g_prog_status[0].last_location, "wlanuserip");
-    snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.')));
+    snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", safe_str(extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.'))));
     LOG_DEBUG("校园网标志: %s", school_network_symbol);
 }
 
@@ -395,7 +405,25 @@ void get_last_location()
     {
         refresh_states();
         HTTPResponse resp = {0};
-        resp = get(s_generate_url);
+        uint8_t retry = 0;
+        do
+        {
+            resp = get(s_generate_url);
+            switch (resp.status)
+            {
+            case REQUEST_REDIRECT:
+                break;
+            default:
+                if (retry > 5)
+                {
+                    LOG_FATAL("超过重试次数, 退出程序");
+                    shut(1);
+                }
+                retry++;
+                LOG_WARN("网络不可重定向, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
+                break;
+            }
+        } while (resp.status != REQUEST_REDIRECT);
         while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[thread_idx].last_location);
         g_prog_status[thread_idx].runtime_status.last_location_lock = true;
         LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
@@ -408,18 +436,4 @@ NetworkStatus check_network_status()
 {
     const HTTPResponse resp = get(s_generate_url);
     return resp.status;
-}
-
-bool check_ip_validity(const char* ip)
-{
-    if (!g_use_cus_ip) return false;
-    LOG_DEBUG("传入的 IP 地址: %s", ip);
-    char cmd[256];
-#ifdef _WIN32
-    snprintf(cmd, sizeof(cmd), "ping -n 1 -w 1000 %s > nul 2>&1", ip);
-#else
-    snprintf(cmd, sizeof(cmd), "ping -c 1 -W 1 %s > /dev/null 2>&1", ip);
-#endif
-    LOG_DEBUG("组成的指令: %s", cmd);
-    return system(cmd) == 0;
 }

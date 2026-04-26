@@ -4,14 +4,13 @@
 typedef enum
 {
     RUNNING_FAILURE = 0,
-    RUNNING_SUCCESS = 1,
-    RUNNING_WARNING = 2,
+    RUNNING_SUCCESS = 1
 } RunningStatus;
 
 typedef enum
 {
     AUTH_FAILURE = 0,
-    AUTH_SUCCESS = 1,
+    AUTH_SUCCESS = 1
 } AuthStatus;
 
 typedef enum
@@ -19,11 +18,6 @@ typedef enum
     INIT_FAILURE = 0,
     INIT_SUCCESS = 1
 } InitStatus;
-
-/**
- * @brief 重置数据
- */
-void reset();
 
 /**
  * @brief 认证线程

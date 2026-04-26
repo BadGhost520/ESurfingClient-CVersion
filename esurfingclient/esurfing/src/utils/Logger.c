@@ -48,60 +48,60 @@ static void rotate()
     s_logger_cfg.file_handle = NULL;
     char cur_tm[32];
     get_fmt_time(cur_tm, FILE_FORMAT);
-    char rotatedFilename[PATH_MAX];
-    const uint16_t result = snprintf(rotatedFilename, sizeof(rotatedFilename), "%s%c%s%s", s_logger_cfg.log_dir, sep, cur_tm, s_rotate_file_name);
-    if (result >= (uint16_t)sizeof(rotatedFilename))
+    char rotate_file_name[PATH_MAX];
+    const uint16_t result = snprintf(rotate_file_name, sizeof(rotate_file_name), "%s%c%s%s", safe_str(s_logger_cfg.log_dir), sep, safe_str(cur_tm), s_rotate_file_name);
+    if (result >= (uint16_t)sizeof(rotate_file_name))
     {
-        fprintf(stderr, "错误: 轮转的文件名过长 (最大 %zu)\n", sizeof(rotatedFilename) - 1);
+        fprintf(stderr, "ERROR: 轮转的文件名过长 (最大 %zu)\n", sizeof(rotate_file_name) - 1);
         s_logger_cfg.file_handle = fopen(s_logger_cfg.log_file, "a");
         return;
     }
-    rename(s_logger_cfg.log_file, rotatedFilename);
+    rename(s_logger_cfg.log_file, rotate_file_name);
     s_logger_cfg.cur_lines = 0;
     s_logger_cfg.file_handle = fopen(s_logger_cfg.log_file, "a");
-    if (s_logger_cfg.file_handle == NULL) fprintf(stderr, "错误: 无法在轮转后重新打开日志文件 %s\n", s_logger_cfg.log_file);
+    if (s_logger_cfg.file_handle == NULL) fprintf(stderr, "ERROR: 无法在轮转后重新打开日志文件 %s\n", s_logger_cfg.log_file);
 }
 
 #ifdef _WIN32
-static uint8_t get_exec_dir(char* out)
+static bool get_exec_dir(char* out)
 {
     char path[MAX_PATH];
-    const DWORD len = GetModuleFileNameA(NULL, path, MAX_PATH);
-    if (len == 0 || len >= MAX_PATH) return -1;
+    const DWORD len_d = GetModuleFileNameA(NULL, path, MAX_PATH);
+    if (len_d == 0 || len_d >= MAX_PATH) return false;
     char* last = strrchr(path, sep);
-    if (!last) return -1;
+    if (!last) return false;
     *last = '\0';
-    const uint16_t n = snprintf(out, PATH_MAX, "%s", path);
-    if (n < 0 || (size_t)n >= PATH_MAX) return -1;
-    return 0;
+    const uint16_t len = snprintf(out, PATH_MAX, "%s", safe_str(path));
+    if (len < 0 || (size_t)len >= PATH_MAX) return false;
+    return true;
 }
 #endif
 
-static uint8_t ensure_log_dir(char* out)
+static bool get_log_dir(char* out)
 {
 #ifdef _WIN32
     char dir[PATH_MAX];
-    if (get_exec_dir(dir) != 0) return -1;
-    const uint16_t n = snprintf(out, PATH_MAX, "%s%clogs", dir, sep);
-    if (n < 0 || (size_t)n >= PATH_MAX) return -1;
+    if (get_exec_dir(dir) == false) return false;
+    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", safe_str(dir), sep);
+    if (len < 0 || (size_t)len >= PATH_MAX) return false;
     if (!CreateDirectoryA(out, NULL))
     {
         const DWORD err = GetLastError();
-        if (err != ERROR_ALREADY_EXISTS) return -1;
+        if (err != ERROR_ALREADY_EXISTS) return false;
     }
 #else
     char dir[PATH_MAX] = "/var/log/esurfing";
-    const uint16_t n = snprintf(out, PATH_MAX, "%s%clogs", dir, sep);
-    if (n < 0 || (size_t)n >= PATH_MAX) return -1;
+    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", safe_str(dir), sep);
+    if (len < 0 || (size_t)len >= PATH_MAX) return false;
     struct stat st;
     if (stat(out, &st) != 0)
     {
-        if (mkdir(dir, 0755) != 0 && errno != EEXIST) return -1;
-        if (mkdir(out, 0755) != 0 && errno != EEXIST) return -1;
+        if (mkdir(dir, 0755) != 0 && errno != EEXIST) return false;
+        if (mkdir(out, 0755) != 0 && errno != EEXIST) return false;
     }
-    else if (!S_ISDIR(st.st_mode)) return -1;
+    else if (!S_ISDIR(st.st_mode)) return false;
 #endif
-    return 0;
+    return true;
 }
 
 static void write_2_console(const char* msg)
@@ -136,6 +136,11 @@ static char* get_thread_str()
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
 {
     if (level > s_logger_cfg.lv) return;
+    if (!s_logger_cfg.file_handle)
+    {
+        fprintf(stderr, "ERROR: 日志系统未打开, 无法输出日志\n");
+        return;
+    }
     va_list local_args;
     char ts[32];
     char msg[2048];
@@ -146,16 +151,16 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
     va_end(local_args);
     snprintf(final_msg, sizeof(final_msg),
         "[%s] [TID %" PRIu64 "] [T-%s] [%s] [%s:%d] %s\n",
-        ts,
+        safe_str(ts),
         sim_thread_cur_id(),
         get_thread_str(),
         get_level_str(level),
         strrchr(file, '/') ? strrchr(file, '/') + 1 : strrchr(file, '\\') ? strrchr(file, '\\') + 1 : file,
         line,
-        msg);
+        safe_str(msg));
     write_2_console(final_msg);
     write_2_file(final_msg);
-    if (s_logger_cfg.file_handle) s_logger_cfg.cur_lines++;
+    s_logger_cfg.cur_lines++;
     rotate();
 }
 
@@ -170,28 +175,28 @@ void set_logger_level(const LogLevel lv)
     LOG_INFO("设置日志等级为 [%s]", get_level_str(lv));
 }
 
-LoggerInitStatus init_logger()
+bool init_logger()
 {
-    if (ensure_log_dir(s_logger_cfg.log_dir) != 0)
+    if (get_log_dir(s_logger_cfg.log_dir) == false)
     {
-        fprintf(stderr, "错误: 无法准备日志目录\n");
-        return INIT_LOGGER_FAILURE;
+        fprintf(stderr, "ERROR: 无法准备日志目录\n");
+        return false;
     }
-    const uint16_t ln = snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s%c%s", s_logger_cfg.log_dir, sep, s_file_name);
-    if (ln < 0 || (size_t)ln >= sizeof(s_logger_cfg.log_file))
+    const uint16_t len = snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s%c%s", safe_str(s_logger_cfg.log_dir), sep, s_file_name);
+    if (len < 0 || (size_t)len >= sizeof(s_logger_cfg.log_file))
     {
-        fprintf(stderr, "错误: 日志文件路径太长 (最大 %zu)\n", sizeof(s_logger_cfg.log_file));
-        return INIT_LOGGER_FAILURE;
+        fprintf(stderr, "ERROR: 日志文件路径太长 (最大 %zu)\n", sizeof(s_logger_cfg.log_file));
+        return false;
     }
     s_logger_cfg.file_handle = fopen(s_logger_cfg.log_file, "a");
     if (!s_logger_cfg.file_handle)
     {
-        fprintf(stderr, "错误: 无法打开日志文件 %s\n", s_logger_cfg.log_file);
-        return INIT_LOGGER_FAILURE;
+        fprintf(stderr, "ERROR: 无法打开日志文件 %s\n", s_logger_cfg.log_file);
+        return false;
     }
     LOG_DEBUG("日志系统初始化完成");
     LOG_DEBUG("日志等级: %s", get_level_str(s_logger_cfg.lv));
-    return INIT_LOGGER_SUCCESS;
+    return true;
 }
 
 void clean_logger()
@@ -199,19 +204,19 @@ void clean_logger()
     LOG_DEBUG("关闭日志系统");
     if (!s_logger_cfg.file_handle)
     {
-        fprintf(stderr, "错误: 日志系统未启动\n");
+        fprintf(stderr, "ERROR: 日志系统未启动\n");
         return;
     }
     fclose(s_logger_cfg.file_handle);
     s_logger_cfg.file_handle = NULL;
     if (strlen(s_logger_cfg.log_file) == 0)
     {
-        fprintf(stderr, "错误: 日志路径为空\n");
+        fprintf(stderr, "ERROR: 日志路径为空\n");
         return;
     }
     char cur_tm[32];
     get_fmt_time(cur_tm, FILE_FORMAT);
     char new_file_name[PATH_MAX];
-    snprintf(new_file_name, sizeof(new_file_name), "%s%c%s.log", s_logger_cfg.log_dir, sep, cur_tm);
+    snprintf(new_file_name, sizeof(new_file_name), "%s%c%s.log", safe_str(s_logger_cfg.log_dir), sep, safe_str(cur_tm));
     rename(s_logger_cfg.log_file, new_file_name);
 }

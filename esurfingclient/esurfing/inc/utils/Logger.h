@@ -29,8 +29,8 @@ typedef enum {
 
 typedef enum
 {
-    INIT_LOGGER_FAILURE = 0,
-    INIT_LOGGER_SUCCESS = 1,
+    INIT_LOGGER_SUCCESS = 0,
+    INIT_LOGGER_FAILURE = 1
 } LoggerInitStatus;
 
 typedef struct {
@@ -41,12 +41,6 @@ typedef struct {
     size_t      max_lines;
     size_t      cur_lines;
 } LoggerConfig;
-
-typedef struct {
-    char* data;
-    size_t size;
-    bool is_new;
-} LogContent;
 
 #define LOG_VERBOSE(fmt, ...) \
 log_out(LOG_LEVEL_VERBOSE, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
@@ -101,7 +95,7 @@ void set_logger_level(LogLevel lv);
  * @brief 初始化日志系统
  * @return 初始化状态
  */
-LoggerInitStatus init_logger();
+bool init_logger();
 
 /**
  * @brief 清理日志系统

@@ -5,19 +5,11 @@
 
 typedef enum {
     REQUEST_ERROR = 0,
-    REQUEST_SUCCESS = 204,
-    REQUEST_AUTHORIZATION = 2,
-    REQUEST_REDIRECT = 302,
-    REQUEST_WARNING = 4,
+    REQUEST_INIT_ERROR = 1,
     REQUEST_HAVE_RES = 200,
-    INIT_ERROR = 6
+    REQUEST_SUCCESS = 204,
+    REQUEST_REDIRECT = 302
 } NetworkStatus;
-
-typedef enum
-{
-    CURL_INIT_SUCCESS = 0,
-    CURL_INIT_FAILURE = 1,
-} CurlStatus;
 
 typedef struct {
     NetworkStatus status;
@@ -45,6 +37,7 @@ HTTPResponse post(const char* url, const char* data);
  * @brief 带默认头的 GET
  * @param url 地址
  * @return 响应数据
+ *
  */
 HTTPResponse get(const char* url);
 
@@ -58,12 +51,5 @@ void get_last_location();
  * @return 网络状态
  */
 NetworkStatus check_network_status();
-
-/**
- * @brief 检查 IP 是否有效
- * @param ip 要检查的 IP
- * @return 有效性
- */
-bool check_ip_validity(const char* ip);
 
 #endif //ESURFINGCLIENT_NETCLIENT_H

@@ -4,6 +4,17 @@ project(ESurfingClient C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+if(NOT DEFINED __OPENWRT__)
+    set(__OPENWRT__ 0)
+endif()
+
+if(__OPENWRT__)
+    add_definitions(-D__OPENWRT__=1)
+    message(STATUS "OpenWrt mode: ENABLED")
+else()
+    message(STATUS "OpenWrt mode: DISABLED")
+endif()
+
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
 add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
 
@@ -17,7 +28,6 @@ if(WIN32)
 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
-
 elseif(UNIX AND NOT WIN32)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -pthread")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})

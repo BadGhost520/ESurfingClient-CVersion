@@ -43,6 +43,12 @@ typedef enum
     FILE_FORMAT = 2
 } TimeFormat;
 
+typedef enum
+{
+    LOAD_SUCCESS = 0,
+    LOAD_FAILURE = 1
+} CfgLoadStatus;
+
 typedef struct
 {
     unsigned char* data;
@@ -58,20 +64,13 @@ typedef struct
 /**
  * @brief 获取适配器数据
  */
-void get_adapters();
+// void get_adapters();
 
 /**
  * @brief 打包适配器数据
  * @return JSON 文本
  */
-char* get_adapters_json();
-
-/**
- * @brief 文本转字节
- * @param str 文本数据
- * @return 字节数据
- */
-ByteArray str_2_bytes(const char* str);
+// char* get_adapters_json();
 
 /**
  * @brief XML 解析
@@ -80,6 +79,13 @@ ByteArray str_2_bytes(const char* str);
  * @return 解析后的数据
  */
 char* xml_parser(const char* xml_data, const char* tag);
+
+/**
+ * @brief 文本转字节
+ * @param str 文本数据
+ * @return 字节数据
+ */
+ByteArray str_2_bytes(const char* str);
 
 /**
  * @brief 字符串转换为 64 位长整型
@@ -122,6 +128,13 @@ void sleep_ms(uint64_t ms);
 void get_fmt_time(char* buf, TimeFormat fmt);
 
 /**
+ * @brief 安全字符串
+ * @param str 字符串
+ * @return 过滤后的字符串
+ */
+const char* safe_str(const char* str);
+
+/**
  * @brief 创建 XML 字符串
  * @param choose 格式化选择
  * @return XML 字符串
@@ -147,7 +160,7 @@ char* clean_CDATA(const char* text);
 /**
  * @brief 保存配置文件
  */
-bool save_cfg();
+// bool save_cfg();
 
 /**
  * @brief 加载配置文件
