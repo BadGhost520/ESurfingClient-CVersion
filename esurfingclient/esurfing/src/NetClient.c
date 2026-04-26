@@ -177,7 +177,7 @@ static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
         return REQUEST_ERROR;
     case CURLE_OPERATION_TIMEDOUT:
         LOG_ERROR("curl 错误码: 28, 错误原因: 操作超时");
-        return REQUEST_ERROR;
+        return REQUEST_WARN;
     case CURLE_HTTP_RETURNED_ERROR:
         LOG_ERROR("curl 错误码: 22, 错误原因: HTTP 状态码 ≥ 400");
         return REQUEST_ERROR;
@@ -341,10 +341,11 @@ HTTPResponse get(const char* url)
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
 
 #ifdef __OPENWRT__
-    if (g_use_cus_if) {
+    if (g_use_cus_if)
+    {
         if (thread_idx != -1)
         {
-            LOG_VERBOSE("设置网络接口 %s", g_prog_status[thread_idx].login_cfg.i_f);
+            LOG_VERBOSE("设置网络接口: %s", g_prog_status[thread_idx].login_cfg.i_f);
             curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.i_f);
         }
     }
@@ -405,7 +406,7 @@ void get_last_location()
     {
         refresh_states();
         HTTPResponse resp = {0};
-        uint8_t retry = 0;
+        uint8_t retry = 1;
         do
         {
             resp = get(s_generate_url);
@@ -419,8 +420,8 @@ void get_last_location()
                     LOG_FATAL("超过重试次数, 退出程序");
                     shut(1);
                 }
-                retry++;
                 LOG_WARN("网络不可重定向, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
+                retry++;
                 break;
             }
         } while (resp.status != REQUEST_REDIRECT);

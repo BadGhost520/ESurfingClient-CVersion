@@ -33,9 +33,9 @@ endef
 
 define Package/esurfingclient/prerm
 #!/bin/sh
-if [ -f "/usr/bin" ]; then
+if [ -f "/usr/bin/ESurfingClient.json" ]; then
     cp /usr/bin/ESurfingClient.json /usr/bin/ESurfingClient.json.bak
-    echo "配置文件已备份到 /usr/bin/ESurfingClient.json.bak"
+    echo "检测到旧配置文件, 已备份到 /usr/bin/ESurfingClient.json.bak"
     echo "使用 cp /usr/bin/ESurfingClient.json.bak /usr/bin/ESurfingClient.json 恢复"
 fi
 exit 0

@@ -25,7 +25,7 @@ int main()
     if (load_cfg() == false) shut(1);
 
     NetworkStatus status;
-    uint8_t retry = 0;
+    uint8_t retry = 1;
     do
     {
         status = check_network_status();
@@ -42,8 +42,8 @@ int main()
                 LOG_FATAL("超过最多重试次数, 退出程序");
                 shut(1);
             }
-            retry++;
             LOG_ERROR("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
+            retry++;
             sleep_ms(5000);
             break;
         default:
@@ -63,7 +63,7 @@ int main()
         }
         g_prog_status[i].runtime_status.is_running = true;
 
-        retry = 0;
+        retry = 1;
         while (g_prog_status[i].runtime_status.is_authed == false)
         {
             if (retry > 5)
@@ -71,8 +71,8 @@ int main()
                 LOG_FATAL("超过最多重试次数, 退出程序");
                 shut(1);
             }
-            retry++;
             LOG_DEBUG("等待配置 %" PRIu8 " 认证完成, 下标 %" PRIu8 ", 等待次数: %" PRIu8 ", 最多 5 次", g_prog_status[i].login_cfg.idx, i, retry);
+            retry++;
             sleep_ms(2000);
         }
     }
@@ -104,8 +104,8 @@ int main()
                             LOG_FATAL("超过重试次数, 退出程序");
                             shut(1);
                         }
-                        retry++;
                         LOG_DEBUG("等待配置 %" PRIu8 " 登出完成, 下标 %" PRIu8 ", 等待次数: %" PRIu8 ", 最多 5 次", g_prog_status[j].login_cfg.idx, j, retry);
+                        retry++;
                         sleep_ms(2000);
                     }
                 }

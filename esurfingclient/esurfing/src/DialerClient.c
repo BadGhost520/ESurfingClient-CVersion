@@ -26,7 +26,7 @@ static bool term()
     LOG_VERBOSE("发送加密登出内容: %s", encrypt);
 
     HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt);
-    uint8_t retry = 0;
+    uint8_t retry = 1;
     while (result.status != REQUEST_SUCCESS)
     {
         if (retry > 5)
@@ -36,8 +36,8 @@ static bool term()
             free(result.body_data);
             return false;
         }
-        retry++;
         LOG_ERROR("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, result.status, retry);
+        retry++;
         sleep_ms(1000);
         result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt);
     }
@@ -405,7 +405,7 @@ static bool auth()
     LOG_DEBUG("完成登录");
     g_prog_status[thread_idx].auth_cfg.tick = get_cur_tm_ms();
     g_prog_status[thread_idx].auth_cfg.auth_time = get_cur_tm_ms();
-    LOG_DEBUG("登录时间戳 (毫秒): %" PRIu64, g_prog_status[thread_idx].auth_cfg.auth_time);
+    LOG_DEBUG("登录时间戳: %" PRIu64, g_prog_status[thread_idx].auth_cfg.auth_time);
     g_prog_status[thread_idx].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
     return true;
@@ -413,6 +413,7 @@ static bool auth()
 
 static bool run()
 {
+    static uint8_t retry_timeout = 1;
     switch (check_network_status())
     {
     case REQUEST_SUCCESS:
@@ -434,7 +435,7 @@ static bool run()
                 if (get_cur_tm_ms() - g_prog_status[thread_idx].auth_cfg.tick >= g_prog_status[thread_idx].auth_cfg.keep_retry * 1000)
                 {
                     LOG_INFO("发送心跳包");
-                    uint8_t retry = 0;
+                    uint8_t retry = 1;
                     while (heartbeat() == false)
                     {
                         if (retry > 5)
@@ -442,8 +443,8 @@ static bool run()
                             LOG_FATAL("超过最多重试次数");
                             return false;
                         }
-                        retry++;
                         LOG_ERROR("配置 %" PRIu8 " 心跳包发送失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, retry);
+                        retry++;
                         sleep_ms(1000);
                     }
                     LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[thread_idx].auth_cfg.keep_retry);
@@ -455,26 +456,39 @@ static bool run()
         {
             LOG_INFO("已连接到互联网");
         }
+        retry_timeout = 1;
         sleep_ms(1000);
         return true;
     case REQUEST_REDIRECT:
         LOG_INFO("需要认证");
-        uint8_t retry = 0;
+        uint8_t retry_auth = 1;
         while (auth() == false)
         {
-            if (retry > 5)
+            if (retry_auth > 5)
             {
                 LOG_FATAL("超过最多重试次数");
                 return false;
             }
-            retry++;
-            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, retry);
+            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, retry_auth);
+            retry_auth++;
             sleep_ms(1000);
         }
+        retry_timeout = 1;
         sleep_ms(1000);
+        return true;
+    case REQUEST_WARN:
+        if (retry_timeout > 5)
+        {
+            LOG_FATAL("超过最多重试次数");
+            return false;
+        }
+        LOG_WARN("网络响应超时, 等待 10 秒后重试, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry_timeout);
+        retry_timeout++;
+        sleep_ms(10000);
         return true;
     default:
         LOG_ERROR("其它错误");
+        retry_timeout = 1;
         sleep_ms(5000);
         return false;
     }
