@@ -27,12 +27,6 @@ typedef enum {
     LOG_LEVEL_VERBOSE = 6
 } LogLevel;
 
-typedef enum
-{
-    INIT_LOGGER_SUCCESS = 0,
-    INIT_LOGGER_FAILURE = 1
-} LoggerInitStatus;
-
 typedef struct {
     LogLevel    lv;
     char        log_dir[PATH_MAX];

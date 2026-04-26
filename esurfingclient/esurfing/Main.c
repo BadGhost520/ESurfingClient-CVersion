@@ -39,7 +39,7 @@ int main()
         case REQUEST_INIT_ERROR:
             if (retry > 5)
             {
-                LOG_FATAL("超过重试次数, 退出程序");
+                LOG_FATAL("超过最多重试次数, 退出程序");
                 shut(1);
             }
             retry++;
@@ -68,7 +68,7 @@ int main()
         {
             if (retry > 5)
             {
-                LOG_FATAL("超过重试次数, 退出程序");
+                LOG_FATAL("超过最多重试次数, 退出程序");
                 shut(1);
             }
             retry++;

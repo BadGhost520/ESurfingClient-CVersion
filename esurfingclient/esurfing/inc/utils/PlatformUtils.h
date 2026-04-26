@@ -43,12 +43,6 @@ typedef enum
     FILE_FORMAT = 2
 } TimeFormat;
 
-typedef enum
-{
-    LOAD_SUCCESS = 0,
-    LOAD_FAILURE = 1
-} CfgLoadStatus;
-
 typedef struct
 {
     unsigned char* data;

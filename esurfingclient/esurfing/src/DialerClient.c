@@ -8,50 +8,59 @@
 #include <stdlib.h>
 #include <string.h>
 
-static RunningStatus term()
+static bool term()
 {
     char* payload = create_xml_payload(TERM);
     if (!payload)
     {
         LOG_ERROR("登出 XML 创建失败");
-        return RUNNING_FAILURE;
+        return false;
     }
 
     char* encrypt = session_encrypt(payload);
     if (!encrypt)
     {
         LOG_ERROR("登出 XML 加密失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     LOG_VERBOSE("发送加密登出内容: %s", encrypt);
 
-    const HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt);
-    free(encrypt);
-    if (result.status != REQUEST_SUCCESS)
+    HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt);
+    uint8_t retry = 0;
+    while (result.status != REQUEST_SUCCESS)
     {
-        LOG_ERROR("登出错误，错误代码: %d", result.status);
-        free(result.body_data);
-        return RUNNING_FAILURE;
+        if (retry > 5)
+        {
+            LOG_FATAL("超过最多重试次数, 返回");
+            free(encrypt);
+            free(result.body_data);
+            return false;
+        }
+        retry++;
+        LOG_ERROR("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, result.status, retry);
+        sleep_ms(1000);
+        result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt);
     }
+    free(encrypt);
     free(result.body_data);
     g_prog_status[thread_idx].runtime_status.is_authed = false;
-    return RUNNING_SUCCESS;
+    return true;
 }
 
-static RunningStatus heartbeat()
+static bool heartbeat()
 {
     char* payload = create_xml_payload(HEART_BEAT);
     if (!payload)
     {
         LOG_ERROR("心跳 XML 创建失败");
-        return RUNNING_FAILURE;
+        return false;
     }
 
     char* encrypt = session_encrypt(payload);
     if (!encrypt)
     {
         LOG_ERROR("加密心跳 XML 失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     LOG_VERBOSE("发送加密心跳内容: %s", encrypt);
 
@@ -61,7 +70,7 @@ static RunningStatus heartbeat()
     {
         LOG_ERROR("心跳响应失败，错误代码: %d", result.status);
         free(result.body_data);
-        return RUNNING_FAILURE;
+        return false;
     }
 
     char* decrypted_data = session_decrypt(result.body_data);
@@ -69,7 +78,7 @@ static RunningStatus heartbeat()
     if (!decrypted_data)
     {
         LOG_ERROR("解密心跳内容失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     LOG_VERBOSE("心跳响应内容: %s", decrypted_data);
 
@@ -78,27 +87,27 @@ static RunningStatus heartbeat()
     if (!parsed_interval)
     {
         LOG_ERROR("心跳内容解析失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     g_prog_status[thread_idx].auth_cfg.keep_retry = str_2_uint64(parsed_interval);
     free(parsed_interval);
-    return RUNNING_SUCCESS;
+    return true;
 }
 
-static AuthStatus login()
+static bool login()
 {
     char* payload = create_xml_payload(LOGIN);
     if (!payload)
     {
         LOG_ERROR("登录 XML 创建失败");
-        return AUTH_FAILURE;
+        return false;
     }
 
     char* encrypt = session_encrypt(payload);
     if (!encrypt)
     {
         LOG_ERROR("加密登录 XML 失败");
-        return AUTH_FAILURE;
+        return false;
     }
     LOG_VERBOSE("发送加密登录内容: %s", encrypt);
 
@@ -108,7 +117,7 @@ static AuthStatus login()
     {
         LOG_ERROR("登录响应失败，错误代码: %d", result.status);
         free(result.body_data);
-        return AUTH_FAILURE;
+        return false;
     }
     LOG_VERBOSE("登录响应内容: %s", result.body_data);
 
@@ -117,14 +126,15 @@ static AuthStatus login()
     if (!decrypted_data)
     {
         LOG_ERROR("解密登录响应内容失败");
-        return AUTH_FAILURE;
+        return false;
     }
 
     char* parsed_keep_url = xml_parser(decrypted_data, "keep-url");
     if (!parsed_keep_url)
     {
         LOG_ERROR("解析 KeepURL 失败");
-        return AUTH_FAILURE;
+        free(decrypted_data);
+        return false;
     }
 
     char* cleaned_keep_url = clean_CDATA(parsed_keep_url);
@@ -132,7 +142,8 @@ static AuthStatus login()
     if (!cleaned_keep_url)
     {
         LOG_ERROR("清除 KeepURL CDATA 失败");
-        return AUTH_FAILURE;
+        free(decrypted_data);
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.keep_url, KEEP_URL_LEN, "%s", safe_str(cleaned_keep_url));
     LOG_INFO("Keep-Url: %s", g_prog_status[thread_idx].auth_cfg.keep_url);
@@ -142,7 +153,8 @@ static AuthStatus login()
     if (!parsed_term_url)
     {
         LOG_ERROR("解析 TermURL 失败");
-        return AUTH_FAILURE;
+        free(decrypted_data);
+        return false;
     }
 
     char* cleaned_term_url = clean_CDATA(parsed_term_url);
@@ -150,7 +162,8 @@ static AuthStatus login()
     if (!cleaned_term_url)
     {
         LOG_ERROR("清除 TermURL CDATA 失败");
-        return AUTH_FAILURE;
+        free(decrypted_data);
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.term_url, TERM_URL_LEN, "%s", safe_str(cleaned_term_url));
     LOG_INFO("Term-Url: %s", g_prog_status[thread_idx].auth_cfg.term_url);
@@ -161,15 +174,15 @@ static AuthStatus login()
     if (!parsed_interval)
     {
         LOG_ERROR("解析 KeepRetry 失败");
-        return AUTH_FAILURE;
+        return false;
     }
     g_prog_status[thread_idx].auth_cfg.keep_retry = str_2_uint64(parsed_interval);
     free(parsed_interval);
     LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[thread_idx].auth_cfg.keep_retry);
-    return AUTH_SUCCESS;
+    return true;
 }
 
-static AuthStatus get_ticket()
+static bool get_ticket()
 {
     LOG_DEBUG("get_ticket 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
 
@@ -177,14 +190,14 @@ static AuthStatus get_ticket()
     if (!payload)
     {
         LOG_ERROR("创建获取 Ticket XML 失败");
-        return AUTH_FAILURE;
+        return false;
     }
 
     char* encrypt = session_encrypt(payload);
     if (!encrypt)
     {
         LOG_ERROR("加密获取 Ticket XML 失败");
-        return AUTH_FAILURE;
+        return false;
     }
     LOG_VERBOSE("发送加密获取 ticket 内容: %s", encrypt);
 
@@ -194,7 +207,7 @@ static AuthStatus get_ticket()
     {
         LOG_ERROR("获取 Ticket 响应失败，错误代码: %d", result.status);
         free(result.body_data);
-        return AUTH_FAILURE;
+        return false;
     }
     LOG_VERBOSE("获取 Ticket 响应内容: %s", result.body_data);
 
@@ -203,7 +216,7 @@ static AuthStatus get_ticket()
     if (!decrypt)
     {
         LOG_ERROR("解密 Ticket 内容失败");
-        return AUTH_FAILURE;
+        return false;
     }
 
     char* parsed_ticket = xml_parser(decrypt, "ticket");
@@ -211,21 +224,21 @@ static AuthStatus get_ticket()
     if (!parsed_ticket)
     {
         LOG_ERROR("解析 Ticket 失败");
-        return AUTH_FAILURE;
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.ticket, TICKET_LEN, "%s", safe_str(parsed_ticket));
     LOG_INFO("Ticket: %s", g_prog_status[thread_idx].auth_cfg.ticket);
-    return AUTH_SUCCESS;
+    return true;
 }
 
-static InitStatus load(const ByteArray zsm)
+static bool load(const ByteArray zsm)
 {
     LOG_DEBUG("load 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
     LOG_DEBUG("接收到的 zsm 数据长度: %zu", zsm.length);
     if (!zsm.data || zsm.length == 0)
     {
         LOG_ERROR("无效的 zsm 数据");
-        return INIT_FAILURE;
+        return false;
     }
     char str[zsm.length + 1];
     memcpy(str, zsm.data, zsm.length);
@@ -236,7 +249,7 @@ static InitStatus load(const ByteArray zsm)
     if (length < 4 + 38)
     {
         LOG_ERROR("字符串长度不足");
-        return INIT_FAILURE;
+        return false;
     }
     char algo_id[ALGO_ID_LEN];
     memcpy(algo_id, str + length - 37, ALGO_ID_LEN - 1);
@@ -245,11 +258,11 @@ static InitStatus load(const ByteArray zsm)
     if (!init_cipher(algo_id))
     {
         LOG_ERROR("初始化加解密工厂失败");
-        return INIT_FAILURE;
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id));
     LOG_DEBUG("全局 AlgoID 已更新: %s", g_prog_status[thread_idx].auth_cfg.algo_id);
-    return INIT_SUCCESS;
+    return true;
 }
 
 static void clean_session()
@@ -259,7 +272,7 @@ static void clean_session()
     g_prog_status[thread_idx].runtime_status.is_initialized = 0;
 }
 
-static AuthStatus init_session()
+static bool init_session()
 {
     LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
     const HTTPResponse result = post(g_prog_status[thread_idx].auth_cfg.ticket_url, g_prog_status[thread_idx].auth_cfg.algo_id);
@@ -267,27 +280,27 @@ static AuthStatus init_session()
     {
         LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
         free(result.body_data);
-        return AUTH_FAILURE;
+        return false;
     }
     LOG_VERBOSE("会话响应内容: %s", result.body_data);
     const ByteArray zsm = str_2_bytes(result.body_data);
     free(result.body_data);
 
     LOG_DEBUG("开始初始化会话");
-    if (load(zsm) == INIT_SUCCESS)
+    if (load(zsm))
     {
         LOG_DEBUG("初始化会话成功");
         g_prog_status[thread_idx].runtime_status.is_initialized = 1;
         free(zsm.data);
-        return AUTH_SUCCESS;
+        return true;
     }
     LOG_DEBUG("初始化会话失败");
     g_prog_status[thread_idx].runtime_status.is_initialized = 0;
     free(zsm.data);
-    return AUTH_FAILURE;
+    return false;
 }
 
-static RunningStatus auth()
+static bool auth()
 {
     LOG_DEBUG("auth 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRId8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
 
@@ -298,7 +311,7 @@ static RunningStatus auth()
     if (resp.status != REQUEST_HAVE_RES)
     {
         LOG_ERROR("响应体为空, 无法提取认证配置");
-        return RUNNING_FAILURE;
+        return false;
     }
 
     char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag);
@@ -306,14 +319,14 @@ static RunningStatus auth()
     if (!portal_config)
     {
         LOG_ERROR("提取门户配置失败");
-        return RUNNING_FAILURE;
+        return false;
     }
 
     char* auth_url = xml_parser(portal_config, "auth-url");
     if (!auth_url)
     {
         LOG_ERROR("提取 Auth URL 失败");
-        return RUNNING_FAILURE;
+        return false;
     }
 
     char* cleaned_auth_url = clean_CDATA(auth_url);
@@ -321,7 +334,7 @@ static RunningStatus auth()
     if (!cleaned_auth_url)
     {
         LOG_ERROR("清除 Auth URL 失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.auth_url, AUTH_URL_LEN, "%s", safe_str(cleaned_auth_url));
     LOG_INFO("Auth URL: %s", g_prog_status[thread_idx].auth_cfg.auth_url);
@@ -332,7 +345,7 @@ static RunningStatus auth()
     if (!ticket_url)
     {
         LOG_ERROR("提取 Ticket URL 失败");
-        return RUNNING_FAILURE;
+        return false;
     }
 
     char* cleaned_ticket_url = clean_CDATA(ticket_url);
@@ -340,7 +353,7 @@ static RunningStatus auth()
     if (!cleaned_ticket_url)
     {
         LOG_ERROR("清除 Ticket URL CDATA 失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.ticket_url, TICKET_URL_LEN, "%s", safe_str(cleaned_ticket_url));
     LOG_INFO("Ticket URL: %s", g_prog_status[thread_idx].auth_cfg.ticket_url);
@@ -349,7 +362,7 @@ static RunningStatus auth()
     if (!client_ip)
     {
         LOG_ERROR("提取 Client IP 失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.client_ip, IP_LEN, "%s", safe_str(client_ip));
     LOG_INFO("Client IP: %s", g_prog_status[thread_idx].auth_cfg.client_ip);
@@ -360,34 +373,34 @@ static RunningStatus auth()
     if (!ac_ip)
     {
         LOG_ERROR("提取 AC IP 失败");
-        return RUNNING_FAILURE;
+        return false;
     }
     snprintf(g_prog_status[thread_idx].auth_cfg.ac_ip, IP_LEN, "%s", safe_str(ac_ip));
     LOG_INFO("AC IP: %s", g_prog_status[thread_idx].auth_cfg.ac_ip);
     free(ac_ip);
 
-    if (init_session() == AUTH_FAILURE)
+    if (init_session() == false)
     {
         LOG_FATAL("初始化会话失败");
         clean_session();
         g_prog_status[thread_idx].runtime_status.is_running = false;
-        return RUNNING_FAILURE;
+        return false;
     }
     LOG_DEBUG("初始化会话完成");
-    if (get_ticket() == AUTH_FAILURE)
+    if (get_ticket() == false)
     {
         LOG_FATAL("获取 Ticket 失败");
         clean_session();
         g_prog_status[thread_idx].runtime_status.is_running = false;
-        return RUNNING_FAILURE;
+        return false;
     }
     LOG_DEBUG("完成获取 Ticket");
-    if (login() == AUTH_FAILURE)
+    if (login() == false)
     {
         LOG_FATAL("登录失败");
         clean_session();
         g_prog_status[thread_idx].runtime_status.is_running = false;
-        return RUNNING_FAILURE;
+        return false;
     }
     LOG_DEBUG("完成登录");
     g_prog_status[thread_idx].auth_cfg.tick = get_cur_tm_ms();
@@ -395,10 +408,10 @@ static RunningStatus auth()
     LOG_DEBUG("登录时间戳 (毫秒): %" PRIu64, g_prog_status[thread_idx].auth_cfg.auth_time);
     g_prog_status[thread_idx].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
-    return RUNNING_SUCCESS;
+    return true;
 }
 
-static RunningStatus run()
+static bool run()
 {
     switch (check_network_status())
     {
@@ -421,10 +434,17 @@ static RunningStatus run()
                 if (get_cur_tm_ms() - g_prog_status[thread_idx].auth_cfg.tick >= g_prog_status[thread_idx].auth_cfg.keep_retry * 1000)
                 {
                     LOG_INFO("发送心跳包");
-                    if (heartbeat() == RUNNING_FAILURE)
+                    uint8_t retry = 0;
+                    while (heartbeat() == false)
                     {
-                        LOG_ERROR("心跳包发送失败");
-                        return RUNNING_FAILURE;
+                        if (retry > 5)
+                        {
+                            LOG_FATAL("超过最多重试次数");
+                            return false;
+                        }
+                        retry++;
+                        LOG_ERROR("配置 %" PRIu8 " 心跳包发送失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, retry);
+                        sleep_ms(1000);
                     }
                     LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[thread_idx].auth_cfg.keep_retry);
                     g_prog_status[thread_idx].auth_cfg.tick = get_cur_tm_ms();
@@ -436,21 +456,27 @@ static RunningStatus run()
             LOG_INFO("已连接到互联网");
         }
         sleep_ms(1000);
-        return RUNNING_SUCCESS;
+        return true;
     case REQUEST_REDIRECT:
         LOG_INFO("需要认证");
-        while (auth() == RUNNING_FAILURE)
+        uint8_t retry = 0;
+        while (auth() == false)
         {
-            LOG_DEBUG("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8 , g_prog_status[thread_idx].login_cfg.idx, thread_idx);
-            sleep_ms(5000);
-            return RUNNING_FAILURE;
+            if (retry > 5)
+            {
+                LOG_FATAL("超过最多重试次数");
+                return false;
+            }
+            retry++;
+            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, retry);
+            sleep_ms(1000);
         }
         sleep_ms(1000);
-        return RUNNING_SUCCESS;
+        return true;
     default:
         LOG_ERROR("其它错误");
         sleep_ms(5000);
-        return RUNNING_FAILURE;
+        return false;
     }
 }
 
@@ -471,7 +497,7 @@ int dialer_app(void* arg)
     g_prog_status[thread_idx].runtime_status.is_running = true;
     while (g_prog_status[thread_idx].runtime_status.is_running)
     {
-        if (run() == RUNNING_FAILURE) g_prog_status[thread_idx].runtime_status.is_running = false;
+        if (run() == false) g_prog_status[thread_idx].runtime_status.is_running = false;
     }
     if (g_prog_status[thread_idx].runtime_status.is_initialized)
     {
