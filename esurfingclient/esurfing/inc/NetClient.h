@@ -1,12 +1,6 @@
 #ifndef ESURFINGCLIENT_NETCLIENT_H
 #define ESURFINGCLIENT_NETCLIENT_H
 
-#ifdef __mips__
-    #define NO_MIPS16 __attribute__((nomips16))
-#else
-    #define NO_MIPS16
-#endif
-
 #include <stddef.h>
 
 typedef enum {
@@ -57,7 +51,6 @@ bool init_check_curl();
 /**
  * @brief 清理网络状态检查 CURL
  */
-NO_MIPS16
 void clean_check_curl();
 
 /**

@@ -406,7 +406,6 @@ bool init_check_curl()
     return true;
 }
 
-NO_MIPS16
 void clean_check_curl()
 {
     if (check_curl) curl_easy_cleanup(check_curl);
