@@ -6,6 +6,8 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#include "NetClient.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -17,6 +19,7 @@ void shut(const uint8_t exitCode)
     LOG_INFO("关闭线程守护");
     thread_keep_alive = false;
     LOG_INFO("清理资源中");
+    clean_check_curl();
     LOG_DEBUG("关闭线程");
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {

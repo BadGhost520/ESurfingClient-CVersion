@@ -23,6 +23,8 @@ static char s_school_id[SCHOOL_ID_LENGTH];
 static char s_domain[DOMAIN_LENGTH];
 static char s_area[AREA_LENGTH];
 
+static CURL* check_curl = NULL;
+
 char* extract_url_param(const char* url, const char* search_str_start)
 {
     if (!url)
@@ -254,7 +256,8 @@ HTTPResponse post(const char* url, const char* data)
     headers = curl_slist_append(headers, cdc_a);
 
     CURL* curl = curl_easy_init();
-    if (!curl) {
+    if (!curl)
+    {
         LOG_ERROR("curl 初始化失败");
         resp.status = REQUEST_INIT_ERROR;
         curl_slist_free_all(headers);
@@ -302,27 +305,21 @@ HTTPResponse get(const char* url)
 
     struct curl_slist* headers = NULL;
 
-    if (thread_idx != -1)
-    {
-        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
-        snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
+    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
+    snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
 
-        LOG_VERBOSE("GET 添加头 %s", ua);
-        LOG_VERBOSE("GET 添加头 %s", s_req_accept);
-        LOG_VERBOSE("GET 添加头 %s", c_id);
-        LOG_VERBOSE("线程下标: %" PRId8, thread_idx);
+    LOG_VERBOSE("GET 添加头 %s", ua);
+    LOG_VERBOSE("GET 添加头 %s", s_req_accept);
+    LOG_VERBOSE("GET 添加头 %s", c_id);
+    LOG_VERBOSE("线程下标: %" PRId8, thread_idx);
 
-        headers = curl_slist_append(headers, ua);
-        headers = curl_slist_append(headers, s_req_accept);
-        headers = curl_slist_append(headers, c_id);
-    }
-    else
-    {
-        LOG_VERBOSE("不添加 GET 头");
-    }
+    headers = curl_slist_append(headers, ua);
+    headers = curl_slist_append(headers, s_req_accept);
+    headers = curl_slist_append(headers, c_id);
 
     CURL* curl = curl_easy_init();
-    if (!curl) {
+    if (!curl)
+    {
         LOG_ERROR("curl 初始化失败");
         resp.status = REQUEST_INIT_ERROR;
         curl_slist_free_all(headers);
@@ -343,11 +340,8 @@ HTTPResponse get(const char* url)
 #ifdef __OPENWRT__
     if (g_use_cus_if)
     {
-        if (thread_idx != -1)
-        {
-            LOG_VERBOSE("设置网络接口: %s", g_prog_status[thread_idx].login_cfg.i_f);
-            curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.i_f);
-        }
+        LOG_VERBOSE("设置网络接口: %s", g_prog_status[thread_idx].login_cfg.i_f);
+        curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.i_f);
     }
 #endif
 
@@ -393,6 +387,65 @@ HTTPResponse get(const char* url)
     return resp;
 }
 
+bool init_check_curl()
+{
+    char check_url[] = "http://connect.rom.miui.com/generate_204";
+
+    check_curl = curl_easy_init();
+    if (!check_curl)
+    {
+        HTTPResponse resp = {0};
+        LOG_ERROR("curl 初始化失败");
+        resp.status = REQUEST_INIT_ERROR;
+        return false;
+    }
+    LOG_VERBOSE("curl 初始化完成, curl=%p", check_curl);
+
+    LOG_VERBOSE("设置 curl 选项");
+    curl_easy_setopt(check_curl, CURLOPT_URL, check_url);
+    curl_easy_setopt(check_curl, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(check_curl, CURLOPT_FOLLOWLOCATION, 0L);
+    return true;
+}
+
+void clean_check_curl()
+{
+    if (check_curl) curl_easy_cleanup(check_curl);
+}
+
+NetworkStatus check_network_status()
+{
+    LOG_VERBOSE("执行 CURL");
+    const CURLcode curl_code = curl_easy_perform(check_curl);
+    if (curl_code != CURLE_OK)
+    {
+        return curl_err_msg_out(curl_code);
+    }
+
+    LOG_VERBOSE("获取响应码");
+    long resp_code;
+    curl_easy_getinfo(check_curl, CURLINFO_RESPONSE_CODE, &resp_code);
+
+    if (resp_code == 302)
+    {
+        LOG_DEBUG("重定向, 响应码: 302");
+        return REQUEST_REDIRECT;
+    }
+    if (resp_code == 200)
+    {
+        LOG_DEBUG("有响应体, 响应码: 200");
+        return REQUEST_HAVE_RES;
+    }
+    if (resp_code == 204)
+    {
+        LOG_VERBOSE("无响应体, 响应码: 204");
+        return REQUEST_SUCCESS;
+    }
+
+    LOG_ERROR("HTTP 响应错误, 响应码: %d", resp_code);
+    return REQUEST_ERROR;
+}
+
 static void get_school_ip_symbol()
 {
     const char* school_ip = extract_url_param(g_prog_status[0].last_location, "wlanuserip");
@@ -431,10 +484,4 @@ void get_last_location()
     }
     thread_idx = -1;
     get_school_ip_symbol();
-}
-
-NetworkStatus check_network_status()
-{
-    const HTTPResponse resp = get(s_generate_url);
-    return resp.status;
 }

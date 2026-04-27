@@ -43,14 +43,25 @@ HTTPResponse post(const char* url, const char* data);
 HTTPResponse get(const char* url);
 
 /**
- * @brief 获取所有 ip 的 last_location
+ * @brief 初始化网络状态检查 CURL
+ * @return 初始化状态
  */
-void get_last_location();
+bool init_check_curl();
+
+/**
+ * @brief 清理网络状态检查 CURL
+ */
+void clean_check_curl();
 
 /**
  * @brief 检测网络状态
  * @return 网络状态
  */
 NetworkStatus check_network_status();
+
+/**
+ * @brief 获取所有 ip 的 last_location
+ */
+void get_last_location();
 
 #endif //ESURFINGCLIENT_NETCLIENT_H

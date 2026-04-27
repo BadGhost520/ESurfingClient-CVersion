@@ -24,6 +24,8 @@ int main()
 
     if (load_cfg() == false) shut(1);
 
+    if (init_check_curl() == false) shut(1);
+
     NetworkStatus status;
     uint8_t retry = 1;
     do
