@@ -129,7 +129,8 @@
     }
     
     uint64_t sim_thread_cur_id(void) {
-        return (uint64_t)pthread_self();
+        pthread_t tid = pthread_self();
+        return (uint64_t)((uintptr_t)tid);
     }
     
     void sim_thread_destroy(sim_thread_t* thread) {

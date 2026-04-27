@@ -19,6 +19,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <ifaddrs.h>
+#include <net/if.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>

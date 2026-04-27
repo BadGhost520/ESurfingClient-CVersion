@@ -9,6 +9,12 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifdef __mips__
+    #define NO_MIPS16 __attribute__((nomips16))
+#else
+    #define NO_MIPS16
+#endif
+
 #define MAX_LEN 128
 
 #define SCHOOL_ID_LENGTH 8
@@ -394,9 +400,7 @@ bool init_check_curl()
     check_curl = curl_easy_init();
     if (!check_curl)
     {
-        HTTPResponse resp = {0};
         LOG_ERROR("curl 初始化失败");
-        resp.status = REQUEST_INIT_ERROR;
         return false;
     }
     LOG_VERBOSE("curl 初始化完成, curl=%p", check_curl);
@@ -408,6 +412,7 @@ bool init_check_curl()
     return true;
 }
 
+NO_MIPS16
 void clean_check_curl()
 {
     if (check_curl) curl_easy_cleanup(check_curl);

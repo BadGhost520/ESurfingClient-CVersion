@@ -169,7 +169,7 @@ char* uint64_2_str(const uint64_t num)
 {
     char* result = malloc(22);
     if (!result) return NULL;
-    snprintf(result, sizeof(result), "%" PRIu64, num);
+    snprintf(result, 22, "%" PRIu64, num);
     return result;
 }
 

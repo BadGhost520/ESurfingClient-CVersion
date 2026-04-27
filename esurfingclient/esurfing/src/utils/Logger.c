@@ -83,7 +83,7 @@ static bool get_log_dir(char* out)
     char dir[PATH_MAX];
     if (get_exec_dir(dir) == false) return false;
     const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", safe_str(dir), sep);
-    if (len < 0 || (size_t)len >= PATH_MAX) return false;
+    if ((size_t)len >= PATH_MAX) return false;
     if (!CreateDirectoryA(out, NULL))
     {
         const DWORD err = GetLastError();
@@ -92,7 +92,7 @@ static bool get_log_dir(char* out)
 #else
     char dir[PATH_MAX] = "/var/log/esurfing";
     const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", safe_str(dir), sep);
-    if (len < 0 || (size_t)len >= PATH_MAX) return false;
+    if ((size_t)len >= PATH_MAX) return false;
     struct stat st;
     if (stat(out, &st) != 0)
     {
@@ -183,7 +183,7 @@ bool init_logger()
         return false;
     }
     const uint16_t len = snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s%c%s", safe_str(s_logger_cfg.log_dir), sep, s_file_name);
-    if (len < 0 || (size_t)len >= sizeof(s_logger_cfg.log_file))
+    if ((size_t)len >= sizeof(s_logger_cfg.log_file))
     {
         fprintf(stderr, "ERROR: 日志文件路径太长 (最大 %zu)\n", sizeof(s_logger_cfg.log_file));
         return false;
