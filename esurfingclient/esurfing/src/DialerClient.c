@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static uint8_t retry_timeout = 1;
+
 static bool term()
 {
     char* payload = create_xml_payload(TERM);
@@ -417,15 +419,18 @@ static bool run()
     bool have_auth = false;
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        if (g_prog_status[thread_idx].runtime_status.is_authed) have_auth = true;
+        if (g_prog_status[i].runtime_status.is_authed)
+        {
+            LOG_DEBUG("配置 %" PRIu8 "已认证, 下标: %" PRIu8, g_prog_status[i].login_cfg.idx, i);
+            have_auth = true;
+        }
     }
-    static uint8_t retry_timeout = 1;
     switch (check_network_status())
     {
     case REQUEST_SUCCESS:
         if (have_auth)
         {
-            if (!g_prog_status[thread_idx].runtime_status.is_authed) auth();
+            if (g_prog_status[thread_idx].runtime_status.is_authed == false) auth();
         }
 
         if (g_prog_status[thread_idx].runtime_status.is_initialized && g_prog_status[thread_idx].runtime_status.is_authed)
