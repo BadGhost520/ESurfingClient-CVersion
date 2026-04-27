@@ -103,6 +103,10 @@ if(UNIX AND NOT WIN32)
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "mips|mipsel")
+    add_compile_options(-mno-mips16)
+endif()
+
 set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
 
 install(TARGETS ESurfingClient RUNTIME DESTINATION bin)
