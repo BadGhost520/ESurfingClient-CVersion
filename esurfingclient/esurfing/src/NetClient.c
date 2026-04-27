@@ -408,7 +408,7 @@ bool init_check_curl()
     if (g_use_cus_if)
     {
         LOG_VERBOSE("设置网络接口: %s", g_prog_status[0].login_cfg.i_f);
-        curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[0].login_cfg.i_f);
+        curl_easy_setopt(check_curl, CURLOPT_INTERFACE, g_prog_status[0].login_cfg.i_f);
     }
 #endif
 
