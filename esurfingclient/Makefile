@@ -22,8 +22,8 @@ CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF \
-	-DCMAKE_EXE_LINKER_FLAGS="-static -lpthread -latomic -mno-mips16" \
-	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -D__OPENWRT__=1 -mno-mips16"
+	-DCMAKE_EXE_LINKER_FLAGS="-static -lpthread -latomic" \
+	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -D__OPENWRT__=1"
 
 define Package/esurfingclient
 	SECTION:=net
