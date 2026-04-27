@@ -9,12 +9,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef __mips__
-    #define NO_MIPS16 __attribute__((nomips16))
-#else
-    #define NO_MIPS16
-#endif
-
 #define MAX_LEN 128
 
 #define SCHOOL_ID_LENGTH 8
