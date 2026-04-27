@@ -413,6 +413,7 @@ void clean_check_curl()
 
 NetworkStatus check_network_status()
 {
+    if (check_net_lock) return REQUEST_WAIT_EXIT;
     LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(check_curl);
     if (curl_code != CURLE_OK)
@@ -422,6 +423,7 @@ NetworkStatus check_network_status()
 
     LOG_VERBOSE("获取响应码");
     long resp_code;
+    if (check_net_lock) return REQUEST_WAIT_EXIT;
     curl_easy_getinfo(check_curl, CURLINFO_RESPONSE_CODE, &resp_code);
 
     if (resp_code == 302)

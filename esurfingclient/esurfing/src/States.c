@@ -10,6 +10,8 @@ int8_t g_prog_cnt = 0;
 
 _Thread_local int8_t thread_idx = -1;
 
+bool check_net_lock = false;
+
 bool thread_keep_alive = false;
 
 ProgStatus* g_prog_status;

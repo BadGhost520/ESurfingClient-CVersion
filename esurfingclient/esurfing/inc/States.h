@@ -124,6 +124,9 @@ extern int8_t g_prog_cnt;
 /** @brief 线程独立下标 */
 extern _Thread_local int8_t thread_idx;
 
+/** @brief 网络检测锁 */
+extern bool check_net_lock;
+
 #ifdef __OPENWRT__
 /** @brief 是否使用自定义 IP */
 extern bool g_use_cus_if;

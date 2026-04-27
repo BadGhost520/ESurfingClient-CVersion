@@ -421,7 +421,7 @@ static bool run()
     {
         if (g_prog_status[i].runtime_status.is_authed)
         {
-            LOG_DEBUG("配置 %" PRIu8 "已认证, 下标: %" PRIu8, g_prog_status[i].login_cfg.idx, i);
+            LOG_DEBUG("配置 %" PRIu8 " 已认证, 下标: %" PRIu8, g_prog_status[i].login_cfg.idx, i);
             have_auth = true;
         }
     }
@@ -490,6 +490,10 @@ static bool run()
         LOG_WARN("网络响应超时, 等待 10 秒后重试, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry_timeout);
         retry_timeout++;
         sleep_ms(10000);
+        return true;
+    case REQUEST_WAIT_EXIT:
+        LOG_DEBUG("程序进入退出流程");
+        sleep_ms(1000);
         return true;
     default:
         LOG_ERROR("其它错误");

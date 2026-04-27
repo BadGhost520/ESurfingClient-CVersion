@@ -9,7 +9,8 @@ typedef enum {
     REQUEST_WARN = 3,
     REQUEST_HAVE_RES = 200,
     REQUEST_SUCCESS = 204,
-    REQUEST_REDIRECT = 302
+    REQUEST_REDIRECT = 302,
+    REQUEST_WAIT_EXIT = 999
 } NetworkStatus;
 
 typedef struct {
