@@ -11,6 +11,11 @@ PKG_BUILD_DEPENDS:=libcurl libopenssl
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
+ifneq ($(filter mips%,$(ARCH)),)
+  TARGET_CFLAGS += -minterlink-mips16
+  TARGET_CXXFLAGS += -minterlink-mips16
+endif
+
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) $(CURDIR)/esurfing/* $(PKG_BUILD_DIR)/
