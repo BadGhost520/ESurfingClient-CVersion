@@ -14,13 +14,9 @@ include $(INCLUDE_DIR)/cmake.mk
 $(warning DEBUG: ARCH is $(ARCH))
 
 ifneq ($(filter mips%,$(ARCH)),)
-  TARGET_CFLAGS += -minterlink-mips16
-  TARGET_CXXFLAGS += -minterlink-mips16
-endif
-
-ifneq ($(filter mips%,$(CONFIG_ARCH)),)
-  TARGET_CFLAGS += -minterlink-mips16
-  TARGET_CXXFLAGS += -minterlink-mips16
+  EXTRA_MIPS_FLAGS := -minterlink-mips16
+else
+  EXTRA_MIPS_FLAGS :=
 endif
 
 define Build/Prepare
@@ -35,7 +31,8 @@ CMAKE_OPTIONS += \
 	-DCMAKE_INSTALL_PREFIX=/usr \
 	-DBUILD_SHARED_LIBS=OFF \
 	-DCMAKE_EXE_LINKER_FLAGS="-static -lpthread -latomic" \
-	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -D__OPENWRT__=1"
+	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -D__OPENWRT__=1 $(EXTRA_MIPS_FLAGS)" \
+	-DCMAKE_CXX_FLAGS="-DCURL_STATICLIB -pthread -D__OPENWRT__=1 $(EXTRA_MIPS_FLAGS)"
 
 define Package/esurfingclient
 	SECTION:=net
