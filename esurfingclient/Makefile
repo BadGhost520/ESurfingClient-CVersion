@@ -11,7 +11,14 @@ PKG_BUILD_DEPENDS:=libcurl libopenssl
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
+$(warning DEBUG: ARCH is $(ARCH))
+
 ifneq ($(filter mips%,$(ARCH)),)
+  TARGET_CFLAGS += -minterlink-mips16
+  TARGET_CXXFLAGS += -minterlink-mips16
+endif
+
+ifneq ($(filter mips%,$(CONFIG_ARCH)),)
   TARGET_CFLAGS += -minterlink-mips16
   TARGET_CXXFLAGS += -minterlink-mips16
 endif
