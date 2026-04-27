@@ -21,7 +21,7 @@
 
 static const char s_default_cfg[] = "{\n"
                                     "   \"log_lv\": 4,\n"
-                                    "   \"use_cus_if\": false,\n"
+                                    // "   \"use_cus_if\": false,\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
@@ -442,6 +442,11 @@ static bool load_cfg_openwrt(cJSON* cfg_json)
     {
         g_use_cus_if = cJSON_IsTrue(use_cus_if);
     }
+    else
+    {
+        LOG_FATAL("加载 use_cus_if 数据失败, 请检查");
+        return false;
+    }
 
     cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
@@ -644,7 +649,7 @@ bool load_cfg()
     }
     else
     {
-        LOG_WARN("日志等级加载失败, 使用默认等级 (INFO)");
+        LOG_WARN("日志等级读取失败, 使用默认等级 (INFO)");
     }
 
 #ifdef __OPENWRT__
