@@ -21,13 +21,11 @@
 
 static const char s_default_cfg[] = "{\n"
                                     "   \"log_lv\": 4,\n"
-                                    // "   \"use_cus_if\": false,\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
                                     "           \"password\": \"\",\n"
-                                    "           \"channel\": \"phone\",\n"
-                                    "           \"bind_if\": \"\"\n"
+                                    "           \"channel\": \"phone\"\n"
                                     // "           \"auto_start\": false\n"
                                     "       }\n"
                                     "   ]\n"
@@ -358,17 +356,6 @@ static bool load_cfg_openwrt(cJSON* cfg_json)
 {
     LOG_INFO("当前环境为 OpenWRT 或其衍生系统, 将会使用独有配置加载方式");
 
-    const cJSON* use_cus_if = cJSON_GetObjectItem(cfg_json, "use_cus_if");
-    if (use_cus_if && cJSON_IsBool(use_cus_if))
-    {
-        g_use_cus_if = cJSON_IsTrue(use_cus_if);
-    }
-    else
-    {
-        LOG_FATAL("加载 use_cus_if 数据失败, 请检查");
-        return false;
-    }
-
     cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
     {
@@ -395,45 +382,31 @@ static bool load_cfg_openwrt(cJSON* cfg_json)
         const cJSON* usr = cJSON_GetObjectItem(account, "username");
         const cJSON* pwd = cJSON_GetObjectItem(account, "password");
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
-        const cJSON* i_f = cJSON_GetObjectItem(account, "bind_if");
         // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
 
         if (usr->valuestring[0] != '\0' && pwd->valuestring[0] != '\0' && chn->valuestring[0] != '\0')
         {
-            if (if_nametoindex(i_f->valuestring) != 0 || g_use_cus_if == false)
+            snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
+            snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
+            snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", safe_str(chn->valuestring));
+            // g_prog_status[valid_i].login_cfg.auto_start = auto_start->valueint;
+            if (strcmp(chn->valuestring, "pc") == 0)
             {
-                snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
-                snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
-                snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", safe_str(chn->valuestring));
-                if (g_use_cus_if) snprintf(g_prog_status[valid_i].login_cfg.i_f, IF_LEN, "%s", i_f->valuestring);
-                // g_prog_status[valid_i].login_cfg.auto_start = auto_start->valueint;
-                if (strcmp(chn->valuestring, "pc") == 0)
-                {
-                    snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/Linux64/1003");
-                    LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
-                    LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
-                }
-                else
-                {
-                    snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
-                    LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
-                    LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
-                }
-                g_prog_status[valid_i].login_cfg.idx = i + 1;
-                g_prog_status[valid_i].mark = 0x100 + valid_i * 0x100;
-                LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
-                valid_cnt++;
-                valid_i++;
-                if (!g_use_cus_if)
-                {
-                    LOG_INFO("网卡自定义已关闭, 仅会使用第一个账户配置");
-                    break;
-                }
+                snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/Linux64/1003");
+                LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
+                LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
             }
             else
             {
-                LOG_WARN("网卡不可用, 跳过当前配置");
+                snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+                LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
+                LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
             }
+            g_prog_status[valid_i].login_cfg.idx = i + 1;
+            g_prog_status[valid_i].mark = 0x100 + valid_i * 0x100;
+            LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
+            valid_cnt++;
+            valid_i++;
         }
         else
         {

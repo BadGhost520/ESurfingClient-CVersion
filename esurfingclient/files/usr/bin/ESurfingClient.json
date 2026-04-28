@@ -1,12 +1,10 @@
 {
   "log_lv": 4,
-  "use_cus_if": false,
   "accounts": [
     {
       "username": "",
       "password": "",
-      "channel": "phone",
-      "bind_if": ""
+      "channel": "phone"
     }
   ]
 }

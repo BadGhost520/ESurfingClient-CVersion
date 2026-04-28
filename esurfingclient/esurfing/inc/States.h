@@ -74,10 +74,8 @@ typedef struct
     char chn[CHN_LEN];
     /** @brief 设备 UA */
     char user_agent[USER_AGENT_LEN];
-    /** @brief 认证使用的网卡 */
-    char i_f[IF_LEN];
-    /** @brief 自启状态 */
-    bool auto_start;
+    // /** @brief 自启状态 */
+    // bool auto_start;
     /** @brief 配置序号 */
     uint8_t idx;
 } login_cfg_t;
@@ -126,14 +124,6 @@ extern int8_t g_prog_cnt;
 
 /** @brief 线程独立下标 */
 extern _Thread_local int8_t thread_idx;
-
-/** @brief 网络检测锁 */
-extern bool check_net_lock;
-
-#ifdef __OPENWRT__
-/** @brief 是否使用自定义 IP */
-extern bool g_use_cus_if;
-#endif
 
 /** @brief 线程保活 */
 extern bool thread_keep_alive;

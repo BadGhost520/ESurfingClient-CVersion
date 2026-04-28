@@ -10,17 +10,11 @@ int8_t g_prog_cnt = 0;
 
 _Thread_local int8_t thread_idx = -1;
 
-bool check_net_lock = false;
-
 bool thread_keep_alive = false;
 
 prog_status_t* g_prog_status;
 
 char school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
-
-#ifdef __OPENWRT__
-bool g_use_cus_if = false;
-#endif
 
 static void reset_host_name()
 {
