@@ -18,7 +18,7 @@ static const char sep = '/';
 static const char s_file_name[] = "run.log";
 static const char s_rotate_file_name[] = ".rotate.log";
 
-static LoggerConfig s_logger_cfg = {
+static log_cfg_t s_logger_cfg = {
     .lv = LOG_LEVEL_INFO,
     .log_dir = "",
     .log_file = "",

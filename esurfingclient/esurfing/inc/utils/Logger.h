@@ -34,7 +34,7 @@ typedef struct {
     FILE*       file_handle;
     size_t      max_lines;
     size_t      cur_lines;
-} LoggerConfig;
+} log_cfg_t;
 
 #define LOG_VERBOSE(fmt, ...) \
 log_out(LOG_LEVEL_VERBOSE, __FILE__, __LINE__, fmt, ##__VA_ARGS__)

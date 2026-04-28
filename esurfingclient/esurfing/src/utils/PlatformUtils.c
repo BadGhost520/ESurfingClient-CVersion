@@ -33,90 +33,10 @@ static const char s_default_cfg[] = "{\n"
                                     "   ]\n"
                                     "}\n";
 
-// static Adapter* s_adaptor = NULL;
-
-// void get_adapters()
-// {
-// #ifdef _WIN32
-//     PIP_ADAPTER_INFO p_adapter_info = NULL;
-//     ULONG ul_out_buf_len = 0;
-//     if (GetAdaptersInfo(p_adapter_info, &ul_out_buf_len) == ERROR_BUFFER_OVERFLOW)
-//     {
-//         p_adapter_info = (PIP_ADAPTER_INFO)malloc(ul_out_buf_len);
-//         if (p_adapter_info && GetAdaptersInfo(p_adapter_info, &ul_out_buf_len) == NO_ERROR)
-//         {
-//             PIP_ADAPTER_INFO p_adapter = p_adapter_info;
-//             uint8_t cnt = 0;
-//             while (p_adapter)
-//             {
-//                 Adapter* new_adaptor = realloc(s_adaptor, sizeof(Adapter) * (cnt + 1));
-//                 if (!new_adaptor)
-//                 {
-//                     LOG_ERROR("分配内存失败");
-//                     break;
-//                 }
-//                 s_adaptor = new_adaptor;
-//                 snprintf(s_adaptor[cnt].name, NAME_LENGTH, "%s", p_adapter->Description);
-//                 snprintf(s_adaptor[cnt].ip, IP_LEN, "%s", p_adapter->IpAddressList.IpAddress.String);
-//                 LOG_VERBOSE("IP: %s", p_adapter->IpAddressList.IpAddress.String);
-//                 p_adapter = p_adapter->Next;
-//                 cnt++;
-//             }
-//         }
-//     }
-//     if (p_adapter_info) free(p_adapter_info);
-// #else
-//     struct ifaddrs* ifaddrs_ptr, *ifa;
-//     if (getifaddrs(&ifaddrs_ptr) == 0)
-//     {
-//         uint8_t count = 0;
-//         for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next)
-//         {
-//             if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
-//             if (strcmp(ifa->ifa_name, "lo") == 0) continue;
-//             char ip[INET_ADDRSTRLEN];
-//             struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
-//             if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)))
-//             {
-//                 Adapter* new_adaptor = realloc(s_adaptor, sizeof(Adapter) * (count + 1));
-//                 if (!new_adaptor)
-//                 {
-//                     LOG_ERROR("分配内存失败");
-//                     break;
-//                 }
-//                 s_adaptor = new_adaptor;
-//                 snprintf(s_adaptor[count].name, NAME_LENGTH, "%s", ifa->ifa_name);
-//                 snprintf(s_adaptor[count].ip, IP_LEN, "%s", ip);
-//                 count++;
-//             }
-//         }
-//         freeifaddrs(ifaddrs_ptr);
-//     }
-// #endif
-// }
-//
-// char* get_adapters_json()
-// {
-//     cJSON* root = cJSON_CreateObject();
-//     cJSON* adapters = cJSON_CreateArray();
-//     for (uint8_t i = 0; i < 16; i++)
-//     {
-//         if (strlen(s_adaptor[i].name) == 0) break;
-//         cJSON* adapter = cJSON_CreateObject();
-//         cJSON_AddStringToObject(adapter, "name", s_adaptor[i].name);
-//         cJSON_AddStringToObject(adapter, "ip", s_adaptor[i].ip);
-//         cJSON_AddItemToArray(adapters, adapter);
-//     }
-//     cJSON_AddItemToObject(root, "adapters", adapters);
-//     cJSON_AddStringToObject(root, "school_network_symbol", school_network_symbol);
-//     char* json = cJSON_Print(root);
-//     cJSON_Delete(root);
-//     return json;
-// }
-
 char* xml_parser(const char* xml_data, const char* tag)
 {
-    if (!xml_data || !tag) return NULL;
+    if (xml_data == NULL || tag == NULL) return NULL;
+
     char start_tag[256];
     snprintf(start_tag, sizeof(start_tag), "<%s>", tag);
 
@@ -135,17 +55,18 @@ char* xml_parser(const char* xml_data, const char* tag)
 
     char* content = malloc(content_length + 1);
     if (!content) return NULL;
+
     strncpy(content, start_pos, content_length);
     content[content_length] = '\0';
     return content;
 }
 
-ByteArray str_2_bytes(const char* str)
+bytes_t str_2_bytes(const char* str)
 {
-    ByteArray ba = {0};
+    bytes_t ba = {0};
     if (!str) return ba;
     ba.length = strlen(str);
-    ba.data = (unsigned char*)malloc(ba.length);
+    ba.data = (uint8_t*)malloc(ba.length);
     if (ba.data) memcpy(ba.data, str, ba.length);
     return ba;
 }
@@ -189,7 +110,7 @@ uint64_t get_cur_tm_ms()
 #endif
 }
 
-void get_rand_bytes(unsigned char* buf, const size_t len)
+void get_rand_bytes(uint8_t* buf, const size_t len)
 {
 #ifdef _WIN32
     HCRYPTPROV h_crypt_prov;
@@ -286,7 +207,7 @@ char* create_xml_payload(const XmlChoose choose)
             safe_str(cur_tm),
             safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
             safe_str(g_prog_status[thread_idx].auth_cfg.client_ip),
-            safe_str(g_prog_status[thread_idx].auth_cfg.mac_address),
+            safe_str(g_prog_status[thread_idx].auth_cfg.mac_addr),
             safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
             safe_str(g_prog_status[thread_idx].auth_cfg.ac_ip)
         );
@@ -331,7 +252,7 @@ char* create_xml_payload(const XmlChoose choose)
             safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
             safe_str(g_prog_status[thread_idx].auth_cfg.client_ip),
             safe_str(g_prog_status[thread_idx].auth_cfg.ticket),
-            safe_str(g_prog_status[thread_idx].auth_cfg.mac_address),
+            safe_str(g_prog_status[thread_idx].auth_cfg.mac_addr),
             safe_str(g_prog_status[thread_idx].auth_cfg.host_name)
         );
         break;
@@ -458,11 +379,11 @@ static bool load_cfg_openwrt(cJSON* cfg_json)
 
     const uint8_t cnt = cJSON_GetArraySize(accounts);
 
-    ProgStatus* new_prog_status = realloc(g_prog_status, sizeof(ProgStatus) * cnt);
+    prog_status_t* new_prog_status = realloc(g_prog_status, sizeof(prog_status_t) * cnt);
     if (new_prog_status)
     {
         g_prog_status = new_prog_status;
-        memset(g_prog_status, 0, sizeof(ProgStatus) * cnt);
+        memset(g_prog_status, 0, sizeof(prog_status_t) * cnt);
     }
 
     int8_t valid_cnt = 0;
@@ -499,6 +420,7 @@ static bool load_cfg_openwrt(cJSON* cfg_json)
                     LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
                 }
                 g_prog_status[valid_i].login_cfg.idx = i + 1;
+                g_prog_status[valid_i].mark = 0x100 + valid_i * 0x100;
                 LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
                 valid_cnt++;
                 valid_i++;

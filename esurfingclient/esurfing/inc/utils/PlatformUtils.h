@@ -46,26 +46,9 @@ typedef enum
 
 typedef struct
 {
-    unsigned char* data;
+    uint8_t* data;
     size_t length;
-} ByteArray;
-
-typedef struct
-{
-    char ip[IP_LEN];
-    char name[NAME_LENGTH];
-} Adapter;
-
-/**
- * @brief 获取适配器数据
- */
-// void get_adapters();
-
-/**
- * @brief 打包适配器数据
- * @return JSON 文本
- */
-// char* get_adapters_json();
+} bytes_t;
 
 /**
  * @brief XML 解析
@@ -80,7 +63,7 @@ char* xml_parser(const char* xml_data, const char* tag);
  * @param str 文本数据
  * @return 字节数据
  */
-ByteArray str_2_bytes(const char* str);
+bytes_t str_2_bytes(const char* str);
 
 /**
  * @brief 字符串转换为 64 位长整型
@@ -107,7 +90,7 @@ uint64_t get_cur_tm_ms();
  * @param buf 缓冲
  * @param len 长度
  */
-void get_rand_bytes(unsigned char* buf, size_t len);
+void get_rand_bytes(uint8_t* buf, size_t len);
 
 /**
  * @brief 睡眠

@@ -1,7 +1,7 @@
 #ifndef ESURFINGCLIENT_NETCLIENT_H
 #define ESURFINGCLIENT_NETCLIENT_H
 
-#include <stddef.h>
+#include <curl/curl.h>
 
 typedef enum {
     REQUEST_ERROR = 0,
@@ -9,15 +9,14 @@ typedef enum {
     REQUEST_WARN = 3,
     REQUEST_HAVE_RES = 200,
     REQUEST_SUCCESS = 204,
-    REQUEST_REDIRECT = 302,
-    REQUEST_WAIT_EXIT = 999
+    REQUEST_REDIRECT = 302
 } NetworkStatus;
 
 typedef struct {
     NetworkStatus status;
     char* body_data;
     size_t body_size;
-} HTTPResponse;
+} http_resp_t;
 
 /**
  * @brief 截取 URL 中指定参数
@@ -33,7 +32,7 @@ char* extract_url_param(const char* url, const char* search_str_start);
  * @param data 数据
  * @return 响应数据
  */
-HTTPResponse post(const char* url, const char* data);
+http_resp_t post(const char* url, const char* data);
 
 /**
  * @brief 带默认头的 GET
@@ -41,18 +40,7 @@ HTTPResponse post(const char* url, const char* data);
  * @return 响应数据
  *
  */
-HTTPResponse get(const char* url);
-
-/**
- * @brief 初始化网络状态检查 CURL
- * @return 初始化状态
- */
-bool init_check_curl();
-
-/**
- * @brief 清理网络状态检查 CURL
- */
-void clean_check_curl();
+http_resp_t get(const char* url);
 
 /**
  * @brief 检测网络状态
@@ -64,5 +52,11 @@ NetworkStatus check_network_status();
  * @brief 获取所有 ip 的 last_location
  */
 void get_last_location();
+
+/**
+ * 主线程用的网络检查函数
+ * @return 网络状态
+ */
+NetworkStatus check_net();
 
 #endif //ESURFINGCLIENT_NETCLIENT_H

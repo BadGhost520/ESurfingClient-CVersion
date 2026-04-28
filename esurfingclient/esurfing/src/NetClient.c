@@ -5,9 +5,18 @@
 #include "States.h"
 
 #include <openssl/evp.h>
-#include <curl/curl.h>
 #include <string.h>
 #include <stdio.h>
+
+#ifdef __OPENWRT__
+#ifndef SOL_SOCKET
+    #define SOL_SOCKET 1
+#endif
+
+#ifndef SO_MARK
+    #define SO_MARK 36
+#endif
+#endif
 
 #define MAX_LEN 128
 
@@ -22,8 +31,6 @@ static const char s_generate_url[] = "http://connect.rom.miui.com/generate_204";
 static char s_school_id[SCHOOL_ID_LENGTH];
 static char s_domain[DOMAIN_LENGTH];
 static char s_area[AREA_LENGTH];
-
-static CURL* check_curl = NULL;
 
 char* extract_url_param(const char* url, const char* search_str_start)
 {
@@ -44,6 +51,32 @@ char* extract_url_param(const char* url, const char* search_str_start)
     free(search_pattern);
     return result;
 }
+
+#ifdef __OPENWRT__
+static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct curl_sockaddr* addr)
+{
+    curl_socket_t sock_fd = socket(addr->family, addr->socktype, addr->protocol);
+    if (sock_fd == CURL_SOCKET_BAD)
+    {
+        LOG_ERROR("创建 socket 失败: %s", strerror(errno));
+        return CURL_SOCKET_BAD;
+    }
+
+    if (g_prog_status[thread_idx].mark != 0)
+    {
+        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[thread_idx].mark, sizeof(g_prog_status[thread_idx].mark)) == -1)
+        {
+            LOG_ERROR("设置 SO_MARK 失败 (mark = %d): %s", g_prog_status[thread_idx].mark, strerror(errno));
+        }
+        else
+        {
+            LOG_VERBOSE("为 socket 设置 SO_MARK = %d (0x%x)", g_prog_status[thread_idx].mark, g_prog_status[thread_idx].mark);
+        }
+    }
+
+    return sock_fd;
+}
+#endif
 
 static size_t header_cb(const void *contents, const size_t size, const size_t nmemb, void* userdata)
 {
@@ -106,7 +139,7 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
 
 static size_t write_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
-    HTTPResponse* resp = userdata;
+    http_resp_t* resp = userdata;
     const size_t real_size = size * nmemb;
     char* ptr = realloc(resp->body_data, resp->body_size + real_size + 1);
 
@@ -201,12 +234,12 @@ static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
     }
 }
 
-HTTPResponse post(const char* url, const char* data)
+http_resp_t post(const char* url, const char* data)
 {
     LOG_VERBOSE("POST 地址: %s", url);
     LOG_VERBOSE("POST 数据: %s", data);
 
-    HTTPResponse resp = {0};
+    http_resp_t resp = {0};
 
     char md5_hash_str[MAX_LEN] = {0};
     char ua[MAX_LEN] = {0};
@@ -271,11 +304,16 @@ HTTPResponse post(const char* url, const char* data)
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
 
 #ifdef __OPENWRT__
-    if (g_use_cus_if) curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.i_f);
+    curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
+    if (g_use_cus_if)
+    {
+        LOG_VERBOSE("设置网络接口: %s", g_prog_status[thread_idx].login_cfg.i_f);
+        curl_easy_setopt(curl, CURLOPT_INTERFACE, g_prog_status[thread_idx].login_cfg.i_f);
+    }
 #endif
 
     LOG_VERBOSE("执行 CURL");
@@ -294,11 +332,11 @@ HTTPResponse post(const char* url, const char* data)
     return resp;
 }
 
-HTTPResponse get(const char* url)
+http_resp_t get(const char* url)
 {
     LOG_VERBOSE("GET 地址: %s", url);
 
-    HTTPResponse resp = {0};
+    http_resp_t resp = {0};
 
     char ua[MAX_LEN] = {0};
     char c_id[MAX_LEN] = {0};
@@ -333,11 +371,12 @@ HTTPResponse get(const char* url)
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
 
 #ifdef __OPENWRT__
+    curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
     if (g_use_cus_if)
     {
         LOG_VERBOSE("设置网络接口: %s", g_prog_status[thread_idx].login_cfg.i_f);
@@ -387,53 +426,82 @@ HTTPResponse get(const char* url)
     return resp;
 }
 
-bool init_check_curl()
+NetworkStatus check_network_status()
+{
+    const http_resp_t resp = get(s_generate_url);
+    return resp.status;
+}
+
+static void get_school_ip_symbol()
+{
+    const char* school_ip = extract_url_param(g_prog_status[0].last_location, "wlanuserip");
+    snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", safe_str(extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.'))));
+    LOG_DEBUG("校园网标志: %s", school_network_symbol);
+}
+
+void get_last_location()
+{
+    http_resp_t resp = {0};
+
+    uint8_t retry = 1;
+    do
+    {
+        resp = get(s_generate_url);
+        switch (resp.status)
+        {
+        case REQUEST_REDIRECT:
+            break;
+        default:
+            if (retry > 5)
+            {
+                LOG_FATAL("超过重试次数, 退出程序");
+                shut(1);
+            }
+            LOG_WARN("网络不可重定向, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
+            retry++;
+            sleep_ms(1000);
+            break;
+        }
+    } while (resp.status != REQUEST_REDIRECT);
+
+    while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[thread_idx].last_location);
+
+    g_prog_status[thread_idx].runtime_status.last_location_lock = true;
+    LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
+
+    get_school_ip_symbol(); // 获取校园网特征
+}
+
+
+NetworkStatus check_net()
 {
     char check_url[] = "http://connect.rom.miui.com/generate_204";
 
-    check_curl = curl_easy_init();
-    if (!check_curl)
+    CURL* curl = curl_easy_init();
+    if (!curl)
     {
         LOG_ERROR("curl 初始化失败");
-        return false;
+        return REQUEST_INIT_ERROR;
     }
-    LOG_VERBOSE("curl 初始化完成, curl=%p", check_curl);
+    LOG_VERBOSE("curl 初始化完成, curl: %p", curl);
 
     LOG_VERBOSE("设置 curl 选项");
-    curl_easy_setopt(check_curl, CURLOPT_URL, check_url);
-    curl_easy_setopt(check_curl, CURLOPT_TIMEOUT, 10L);
-    curl_easy_setopt(check_curl, CURLOPT_FOLLOWLOCATION, 0L);
+    curl_easy_setopt(curl, CURLOPT_URL, check_url);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
 
-#ifdef __OPENWRT__
-    if (g_use_cus_if)
-    {
-        LOG_VERBOSE("设置网络接口: %s", g_prog_status[0].login_cfg.i_f);
-        curl_easy_setopt(check_curl, CURLOPT_INTERFACE, g_prog_status[0].login_cfg.i_f);
-    }
-#endif
-
-    return true;
-}
-
-void clean_check_curl()
-{
-    if (check_curl) curl_easy_cleanup(check_curl);
-}
-
-NetworkStatus check_network_status()
-{
-    if (check_net_lock) return REQUEST_WAIT_EXIT;
     LOG_VERBOSE("执行 CURL");
-    const CURLcode curl_code = curl_easy_perform(check_curl);
+    const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
+        curl_easy_cleanup(curl);
         return curl_err_msg_out(curl_code);
     }
 
     LOG_VERBOSE("获取响应码");
     long resp_code;
-    if (check_net_lock) return REQUEST_WAIT_EXIT;
-    curl_easy_getinfo(check_curl, CURLINFO_RESPONSE_CODE, &resp_code);
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
+    curl_easy_cleanup(curl);
 
     if (resp_code == 302)
     {
@@ -453,44 +521,4 @@ NetworkStatus check_network_status()
 
     LOG_ERROR("HTTP 响应错误, 响应码: %d", resp_code);
     return REQUEST_ERROR;
-}
-
-static void get_school_ip_symbol()
-{
-    const char* school_ip = extract_url_param(g_prog_status[0].last_location, "wlanuserip");
-    snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", safe_str(extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.'))));
-    LOG_DEBUG("校园网标志: %s", school_network_symbol);
-}
-
-void get_last_location()
-{
-    for (thread_idx = 0; thread_idx < g_prog_cnt; thread_idx++)
-    {
-        refresh_states();
-        HTTPResponse resp = {0};
-        uint8_t retry = 1;
-        do
-        {
-            resp = get(s_generate_url);
-            switch (resp.status)
-            {
-            case REQUEST_REDIRECT:
-                break;
-            default:
-                if (retry > 5)
-                {
-                    LOG_FATAL("超过重试次数, 退出程序");
-                    shut(1);
-                }
-                LOG_WARN("网络不可重定向, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
-                retry++;
-                break;
-            }
-        } while (resp.status != REQUEST_REDIRECT);
-        while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[thread_idx].last_location);
-        g_prog_status[thread_idx].runtime_status.last_location_lock = true;
-        LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
-    }
-    thread_idx = -1;
-    get_school_ip_symbol();
 }

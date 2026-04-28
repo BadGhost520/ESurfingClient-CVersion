@@ -20,13 +20,13 @@ void shut(const uint8_t exitCode)
     thread_keep_alive = false;
     LOG_INFO("清理资源中");
     check_net_lock = true;
-    clean_check_curl();
     LOG_DEBUG("关闭线程");
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
         int result_code = 0;
         g_prog_status[i].runtime_status.is_running = false;
         sim_thread_join(g_prog_status[i].thread, &result_code);
+        LOG_DEBUG("线程退出, 退出码: %d", result_code);
     }
     LOG_INFO("退出程序");
     clean_logger();

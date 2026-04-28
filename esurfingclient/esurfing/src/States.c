@@ -4,7 +4,7 @@
 
 #include <ctype.h>
 
-uint64_t g_start_run_tm = 0;
+// uint64_t g_start_run_tm = 0;
 
 int8_t g_prog_cnt = 0;
 
@@ -14,7 +14,7 @@ bool check_net_lock = false;
 
 bool thread_keep_alive = false;
 
-ProgStatus* g_prog_status;
+prog_status_t* g_prog_status;
 
 char school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
 
@@ -22,7 +22,7 @@ char school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
 bool g_use_cus_if = false;
 #endif
 
-static void set_hostname()
+static void reset_host_name()
 {
     char host_name[16];
     unsigned char host_bytes[10];
@@ -36,7 +36,7 @@ static void set_hostname()
     snprintf(g_prog_status[thread_idx].auth_cfg.host_name, HOST_NAME_LEN, "%s", safe_str(host_name));
 }
 
-static void set_client_id()
+static void reset_client_id()
 {
     char client_id[40];
     unsigned char client_bytes[16];
@@ -57,24 +57,24 @@ static void set_client_id()
     snprintf(g_prog_status[thread_idx].auth_cfg.client_id, CLIENT_ID_LEN, "%s", safe_str(client_id));
 }
 
-static void set_mac_address()
+static void reset_mac_addr()
 {
-    char mac_address[20];
+    char mac_addr[20];
     unsigned char mac_bytes[6];
     get_rand_bytes(mac_bytes, 6);
     mac_bytes[0] = mac_bytes[0] & 0xFEU;
-    sprintf(mac_address, "%02x:%02x:%02x:%02x:%02x:%02x",
+    sprintf(mac_addr, "%02x:%02x:%02x:%02x:%02x:%02x",
     mac_bytes[0], mac_bytes[1],
     mac_bytes[2], mac_bytes[3],
     mac_bytes[4], mac_bytes[5]);
-    LOG_DEBUG("新的 MAC 地址: %s", mac_address);
-    snprintf(g_prog_status[thread_idx].auth_cfg.mac_address, MAC_ADDRESS_LEN, "%s", safe_str(mac_address));
+    LOG_DEBUG("新的 MAC 地址: %s", mac_addr);
+    snprintf(g_prog_status[thread_idx].auth_cfg.mac_addr, MAC_ADDR_LEN, "%s", safe_str(mac_addr));
 }
 
 void refresh_states()
 {
-    snprintf(g_prog_status[thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000");
-    set_hostname();
-    set_client_id();
-    set_mac_address();
+    snprintf(g_prog_status[thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000"); // 初始化 algo_id
+    reset_host_name(); // 重置 hostname
+    reset_client_id(); // 重置 client_id
+    reset_mac_addr(); // 重置 mac_address
 }

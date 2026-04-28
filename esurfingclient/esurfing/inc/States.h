@@ -8,8 +8,6 @@
 
 #define SCHOOL_NETWORK_SYMBOL 8
 
-#define LAST_LOCATION_LEN 256
-#define MAC_ADDRESS_LEN 20
 #define TICKET_URL_LEN 256
 #define USER_AGENT_LEN 32
 #define CLIENT_ID_LEN 40
@@ -17,6 +15,7 @@
 #define KEEP_URL_LEN 80
 #define TERM_URL_LEN 80
 #define AUTH_URL_LEN 80
+#define MAC_ADDR_LEN 20
 #define ALGO_ID_LEN 37
 #define TICKET_LEN 40
 
@@ -27,23 +26,25 @@
 #define IP_LEN 16
 #define IF_LEN 16
 
+#define LAST_LOCATION_LEN 256
+
 /** @brief 认证配置 */
 typedef struct
 {
-    /** @brief MAC 地址 */
-    char mac_address[MAC_ADDRESS_LEN];
     /** @brief 票据 URL */
     char ticket_url[TICKET_URL_LEN];
     /** @brief 客户端 ID */
     char client_id[CLIENT_ID_LEN];
     /** @brief 主机名 */
     char host_name[HOST_NAME_LEN];
-    /** @brief 认证 URL */
-    char auth_url[AUTH_URL_LEN];
     /** @brief 心跳 URL */
     char keep_url[KEEP_URL_LEN];
     /** @brief 登出 URL */
     char term_url[TERM_URL_LEN];
+    /** @brief 认证 URL */
+    char auth_url[AUTH_URL_LEN];
+    /** @brief MAC 地址 */
+    char mac_addr[MAC_ADDR_LEN];
     /** @brief 加解密 ID */
     char algo_id[ALGO_ID_LEN];
     /** @brief 票据 */
@@ -60,7 +61,7 @@ typedef struct
     uint64_t auth_time;
     /** @brief 当前时间 (用于检测认证时间) */
     uint64_t tick;
-} AuthConfig;
+} auth_cfg_t;
 
 /** @brief 登录配置 */
 typedef struct
@@ -79,7 +80,7 @@ typedef struct
     bool auto_start;
     /** @brief 配置序号 */
     uint8_t idx;
-} LoginConfig;
+} login_cfg_t;
 
 /** @brief 运行状态 */
 typedef struct
@@ -96,27 +97,29 @@ typedef struct
     bool is_need_reset;
     /** @brief last_location 数据锁 */
     bool last_location_lock;
-} RuntimeStatus;
+} runtime_status_t;
 
 /** @brief 认证线程状态 */
 typedef struct
 {
     /** @brief 认证配置 */
-    AuthConfig auth_cfg;
+    auth_cfg_t auth_cfg;
     /** @brief 登录配置 */
-    LoginConfig login_cfg;
+    login_cfg_t login_cfg;
     /** @brief 运行状态 */
-    RuntimeStatus runtime_status;
+    runtime_status_t runtime_status;
     /** @brief 获取认证配置地址 */
     char last_location[LAST_LOCATION_LEN];
+    /** @brief 标记值 */
+    uint32_t mark;
     /** @brief 线程 ID */
     uint64_t thread_id;
     /** @brief 线程 */
     sim_thread_t* thread;
-} ProgStatus;
+} prog_status_t;
 
-/** @brief 全局运行时间 */
-extern uint64_t g_start_run_tm;
+/** @brief 程序开始运行时间 */
+// extern uint64_t g_start_run_tm;
 
 /** @brief 适配器数 */
 extern int8_t g_prog_cnt;
@@ -136,7 +139,7 @@ extern bool g_use_cus_if;
 extern bool thread_keep_alive;
 
 /** @brief 认证线程状态 */
-extern ProgStatus* g_prog_status;
+extern prog_status_t* g_prog_status;
 
 /** @brief 校园网标志 */
 extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
