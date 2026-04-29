@@ -89,7 +89,7 @@ int main()
             /**
              * 认证时间超过 172200000 毫秒 (1 天 23 时 50 分) 自动重启认证
              */
-            if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 172200000 && g_prog_status[i].auth_cfg.auth_time != 0)
+            if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 120000 && g_prog_status[i].auth_cfg.auth_time != 0)
             {
                 // if (g_prog_status[thread_idx].runtime_status.is_settings_changed)
                 // {

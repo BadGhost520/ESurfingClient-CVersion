@@ -453,12 +453,6 @@ static bool load_cfg_other(cJSON* cfg_json)
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
         // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
 
-        if (!usr || !pwd || !chn)
-        {
-            LOG_INFO("");
-            return false;
-        }
-
         if (usr->valuestring[0] != '\0' && pwd->valuestring[0] != '\0' && chn->valuestring[0] != '\0')
         {
             // if_nametoindex(i_f->valuestring) != 0
