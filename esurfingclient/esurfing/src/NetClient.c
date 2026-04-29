@@ -70,7 +70,7 @@ static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, 
         }
         else
         {
-            LOG_DEBUG("设置 SO_MARK = %d (0x%x)", g_prog_status[thread_idx].mark, g_prog_status[thread_idx].mark);
+            LOG_VERBOSE("设置 SO_MARK = %d (0x%x)", g_prog_status[thread_idx].mark, g_prog_status[thread_idx].mark);
         }
     }
 
