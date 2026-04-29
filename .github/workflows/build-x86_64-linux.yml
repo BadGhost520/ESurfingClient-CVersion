@@ -77,7 +77,7 @@ jobs:
         run: |
           echo "🏗️ Starting x64 Linux build process"
           echo "📁 Go to esurfing dir"
-          cd esurfing
+          cd esurfingclient/esurfing
           
           echo "⚙️ CMake configuring"
           cmake -DBUILD_STATIC=ON .
@@ -85,14 +85,20 @@ jobs:
           echo "🔨 Making Programme"
           make -j$(nproc)
           
-          echo "📦 Moved ESurfingClient to root dir"
-          mv bin/ESurfingClient ../ESurfingClient-x86_64-linux
+          EXECUTABLE=$(find . -name "ESurfingClient" -type f -executable | head -1)
+          if [ -n "$EXECUTABLE" ]; then
+            mv "$EXECUTABLE" ../../ESurfingClient-x86_64-linux
+            echo "✅ 从 $EXECUTABLE 移动成功"
+          else
+            echo "❌ 找不到可执行文件"
+            exit 1
+          fi
           
           echo "🛡️ Protect1 - Strip binary"
-          strip --strip-all ../ESurfingClient-x86_64-linux
+          strip --strip-all ../../ESurfingClient-x86_64-linux
           
           echo "📦 Protect2 - Compress with UPX"
-          upx --best ../ESurfingClient-x86_64-linux
+          upx --best ../../ESurfingClient-x86_64-linux
           
           echo "✅ Build completed successfully"
 
@@ -123,6 +129,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: esurfingclient-x64-linux
-          path: |
-            esurfingclient-x64-linux.tar.gz
+          path: esurfingclient-x64-linux.tar.gz
           retention-days: 30

@@ -1,0 +1,106 @@
+.card:hover {
+  transform: scale(1.01);
+}
+
+#content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    "network software"
+    "thread1 thread2"
+    "adapters adapters";
+  gap: 20px;
+  align-content: start;
+}
+
+.card.network {
+  grid-area: network;
+  height: 190px;
+}
+
+.card.software {
+  grid-area: software;
+  height: 190px;
+}
+
+.card.thread1 {
+  grid-area: thread1;
+  height: 190px;
+}
+
+.card.thread2 {
+  grid-area: thread2;
+  height: 190px;
+}
+
+.card.adapters {
+  grid-area: adapters;
+  height: auto;
+}
+
+.switch {
+  display: flex;
+  div {
+    margin-left: 10px;
+  }
+}
+
+#adapter-info {
+  div {
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - 40px);
+    margin-bottom: 5px;
+    span {
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
+  }
+}
+
+@media (max-width: 991px) {
+  #content {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto auto;
+    grid-template-areas:
+      "network"
+      "software"
+      "thread1"
+      "thread2"
+      "adapters";
+    gap: 20px;
+    align-content: start;
+  }
+}
+
+@media (max-width: 768px) {
+  .card.network {
+    grid-area: network;
+    height: 165px;
+  }
+
+  .card.software {
+    grid-area: software;
+    height: 165px;
+  }
+
+  .card.thread1 {
+    grid-area: thread1;
+    height: 165px;
+  }
+
+  .card.thread2 {
+    grid-area: thread2;
+    height: 165px;
+  }
+
+  .card-title {
+    font-size: 16px;
+  }
+
+  .card-content {
+    font-size: 14px;
+  }
+}

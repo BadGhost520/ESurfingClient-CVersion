@@ -11,7 +11,7 @@ on:
 jobs:
   build-x64-windows:
     runs-on: windows-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -27,7 +27,6 @@ jobs:
           mingw-w64-x86_64-make
           mingw-w64-x86_64-curl-winssl
           mingw-w64-x86_64-openssl
-          mingw-w64-x86_64-libxml2
           mingw-w64-x86_64-zlib
           mingw-w64-x86_64-nghttp2
           mingw-w64-x86_64-libssh2
@@ -65,7 +64,7 @@ jobs:
         echo "🏗️ Starting Windows x64 build process"
         
         echo "📁 Go to esurfing dir"
-        cd esurfing
+        cd esurfingclient/esurfing
         
         echo "🔍 Checking available static libraries"
         echo "Checking /mingw64/lib directory..."
@@ -75,7 +74,6 @@ jobs:
           ls /mingw64/lib/libcurl* 2>/dev/null || echo "❌ No libcurl found"
           ls /mingw64/lib/libssl* 2>/dev/null || echo "❌ No libssl found"
           ls /mingw64/lib/libcrypto* 2>/dev/null || echo "❌ No libcrypto found"
-          ls /mingw64/lib/libxml2* 2>/dev/null || echo "❌ No libxml2 found"
           ls /mingw64/lib/libz* 2>/dev/null || echo "❌ No libz found"
           ls /mingw64/lib/libnghttp2* 2>/dev/null || echo "❌ No libnghttp2 found"
           ls /mingw64/lib/libssh2* 2>/dev/null || echo "❌ No libssh2 found"
@@ -131,7 +129,6 @@ jobs:
           /mingw64/lib/libnghttp2.a \
           /mingw64/lib/libssl.a \
           /mingw64/lib/libcrypto.a \
-          /mingw64/lib/libxml2.a \
           /mingw64/lib/libz.a \
           /mingw64/lib/libzstd.a \
           /mingw64/lib/libidn2.a \
@@ -158,7 +155,7 @@ jobs:
     - name: Verify build output
       shell: msys2 {0}
       run: |
-        cd esurfing
+        cd esurfingclient/esurfing
         if [ ! -f "ESurfingClient-x86_64-windows.exe" ]; then
           echo "❌ Build failed: ESurfingClient-x86_64-windows.exe not found"
           exit 1
@@ -178,12 +175,11 @@ jobs:
         echo "📦 Creating Windows x64 package"
         
         # Copy executable to root directory for packaging
-        cp esurfing/ESurfingClient-x86_64-windows.exe ./
+        cp esurfingclient/esurfing/ESurfingClient-x86_64-windows.exe ./
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: esurfingclient-windows-x64
-        path: |
-          ESurfingClient-x86_64-windows.exe
+        path: ESurfingClient-x86_64-windows.exe
         retention-days: 30

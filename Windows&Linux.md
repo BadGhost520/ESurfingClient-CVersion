@@ -1,59 +1,65 @@
 # Windows & Linux 环境使用教程
 
-**1. 从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest) 中下载相应的程序**
-
-**2. 将程序放在自己想要的位置**
-
-**3. 运行如下命令以启动程序**
-
-### Linux
-```bash
-./ESurfingClient-x86_64-linux -u <用户名> -p <密码>
-```
-
-### Windows
-```shell
-.\ESurfingClient-x86_64-windows.exe -u <用户名> -p <密码>
-```
-
-# 示例
-
-### Linux
-```bash
-./ESurfingClient-x86_64-linux -u 233333333 -p A1234567
-```
-
-### Windows
-```shell
-.\ESurfingClient-x86_64-windows.exe -u 233333333 -p A1234567
-```
-
-> [!TIP]
-> 目前有两个认证通道: pc 和 phone
-> 
-> **两者并没有什么太大的区别**
+> [!WARNING]
+> 更新 v2 版本后此教程仅提供 v2 版本的教程
 >
-> 个人感觉 phone 通道稳定些
-> 
-> 如果需要切换认证通道，可以在命令最后添加 -cpc (PC 通道)或者 -cphone (Phone 通道)来切换
-> 
-> 默认为 Phone 通道
+> 如若需要 v1 版本的教程, 可自行前往 v1 分支查看
 
-# 示例
+## v2 版本的使用十分简单, 跟着一步一步即可
 
-### Linux
-```bash
-./ESurfingClient-x86_64-linux -u 233333333 -p A1234567 -cpc
-./ESurfingClient-x86_64-linux -u 233333333 -p A1234567 -cphone
-```
+### 1. 从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest) 中下载相应的程序
 
-### Windows
+### 2. 将程序放在自己想要的位置
+
+### 3. Windows 双击直接运行, Linux 也是直接无参数直接执行
+
 ```shell
-.\ESurfingClient-x86_64-windows.exe -u 233333333 -p A1234567 -cpc
-.\ESurfingClient-x86_64-windows.exe -u 233333333 -p A1234567 -cphone
+# Windows
+.\ESurfingClient-x86_64-windows.exe
+```
+```shell
+# Linux
+./ESurfingClient-x86_64-linux
 ```
 
-> [!TIP]
-> 调试模式参数为 `-d`
+> [!NOTE]
+> 运行之后会在用户所在目录生成一个 ESurfingClient.json 配置文件
 > 
-> 小容量设备模式参数为 `-s`
+> 何为用户所在目录, 如下所示
+
+```shell
+# Windows CMD
+C:\Users\bad_g>
+```
+```shell
+# Linux Shell
+badghost@BadGhost:~$
+```
+
+> [!NOTE]
+> 所以 Windows 用双击执行是最方便的
+
+### 4. 修改生成的 ESurfingClient.json
+
+```json
+{
+  "log_lv": 4,
+  "accounts": [
+    {
+      "username": "在这填账号",
+      "password": "在这填密码",
+      "channel": "phone"
+    }
+  ]
+}
+```
+
+### 5. 填完保存再次运行即可
+
+## JSON 参数解释
+
+- log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
+- accounts: 账号数组
+- username: 账号
+- password: 密码
+- channel: 认证通道 (暂时没找到具体作用)

@@ -1,0 +1,214 @@
+#content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "thread1 thread2"
+    "log-settings log-settings";
+  gap: 20px;
+  align-content: start;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card.thread1 {
+  grid-area: thread1;
+  height: 260px;
+}
+
+.card.thread2 {
+  grid-area: thread2;
+  height: 260px;
+}
+
+.card.log-settings {
+  grid-area: log-settings;
+  height: 120px;
+}
+
+.change-btn {
+  margin-top: 15px;
+  margin-left: 15px;
+  width: 85px;
+  height: 30px;
+  text-align: center;
+  line-height: 30px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: solid 1px #374eff;
+  transition: all 0.2s ease;
+}
+
+.change-btn:hover {
+  background-color: #3a50fe;
+  color: white;
+  cursor: pointer;
+}
+
+.form-group {
+  display: flex;
+  margin-top: 15px;
+  label {
+    width: 135px;
+    font-size: 16px;
+    text-align: right;
+    margin: auto 15px;
+  }
+  input {
+    height: 30px;
+    width: 160px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: solid 1px #e4e4e4;
+  }
+  input:focus {
+    outline: none;
+  }
+}
+
+.readonly-group {
+  input {
+    background-color: rgba(150, 150, 150, 0.1);
+    cursor: default;
+  }
+}
+
+#modal {
+  left: 250px;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  position: absolute;
+  visibility: hidden;
+  opacity: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+#modal.modalact {
+  z-index: 5000;
+  visibility: visible;
+  opacity: 1;
+  backdrop-filter: blur(5px);
+}
+
+#modal-container {
+  width: 500px;
+  height: 350px;
+  margin: auto;
+  margin-top: 15%;
+  border-radius: 20px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+#modal-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 15px 25px 5px 25px;
+}
+
+.modal-btns {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 10px;
+}
+
+.choose-btn.static {
+  border: solid 1px #e4e4e4;
+  cursor: default;
+}
+
+.choose-btn.static.btnon {
+  border: solid 1px #374eff;
+  background-color: #3a50fe;
+  cursor: default;
+  color: white;
+}
+
+@media (max-width: 991px) {
+  #content {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "thread1"
+      "thread2"
+      "log-settings";
+    gap: 20px;
+    align-content: start;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-change-btn {
+    margin-left: 25px;
+    font-size: 14px;
+  }
+
+  .settings-change-btn:hover {
+    background-color: white;
+    color: black;
+    cursor: default;
+  }
+
+  .settings-change-btn:active {
+    background-color: #3a50fe;
+    color: white;
+  }
+
+  .form-group {
+    label {
+      width: 110px;
+    }
+  }
+
+  .card.thread1 {
+    height: 240px;
+  }
+
+  .card.thread2 {
+    height: 240px;
+  }
+
+  .card.log-settings {
+    height: 180px;
+  }
+
+  #change-btn {
+    margin-top: 15px;
+    margin-left: 50px;
+    width: 85px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: solid 1px #374eff;
+    transition: all 0.2s ease;
+  }
+
+  .modal {
+    left: 0;
+    top: 50px;
+  }
+
+  .settings-modal-container {
+    width: 350px;
+  }
+
+  .modal-title {
+    font-size: 20px;
+  }
+
+  .modal-btns {
+    margin: 20px 5px;
+  }
+}

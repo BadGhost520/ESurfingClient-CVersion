@@ -1,0 +1,134 @@
+#sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 250px;
+  height: calc(100vh - 2px);
+  background-color: white;
+  border: solid 1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  hr {
+    width: 180px;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+  ul {
+    list-style: none;
+    margin-top: 0;
+    padding-left: 0;
+    margin-left: 0;
+    li {
+      width: 230px;
+      height: 60px;
+      margin: 0 auto;
+      transition: background-color 0.5s ease;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      img {
+        width: 30px;
+        height: 30px;
+        margin-left: 30px;
+      }
+      span {
+        margin-left: 10px;
+        font-size: 20px;
+        text-align: left;
+        flex: 1;
+      }
+    }
+    li:hover {
+      background-color: #dbdbdb;
+      cursor: pointer;
+    }
+  }
+}
+
+#sidebar-header {
+  display: flex;
+  align-items: center;
+  span:first-child {
+    margin: auto;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    font-size: 30px;
+    font-weight: bold;
+  }
+  div {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  #sidebar {
+    width: 100vw;
+    height: 50px;
+    background-color: white;
+    display: flex;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    hr {
+      display: none;
+    }
+    ul {
+      position: absolute;
+      top: 50px;
+      right: 0;
+      height: 0;
+      width: 150px;
+      z-index: 1000;
+      overflow: hidden;
+      background-color: white;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s ease;
+      li {
+        width: 150px;
+        height: 50px;
+        margin: 0 auto;
+        transition: background-color 0.5s ease;
+        border-radius: 0;
+        span {
+          font-size: 14px;
+          text-align: left;
+        }
+        img {
+          width: 20px;
+          height: 20px;
+          margin: auto 10px auto 15px;
+        }
+      }
+      li:active {
+        background-color: #dbdbdb;
+      }
+      li:hover {
+        background-color: #dbdbdb;
+        cursor: default;
+      }
+    }
+    ul.navs-active {
+      height: 200px;
+    }
+  }
+
+  #sidebar-header {
+    span:first-child {
+      margin: 12px 15px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    div {
+      display: block;
+      margin-left: auto;
+      width: 50px;
+      height: 50px;
+      border-left: 2px solid rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+      img {
+        width: 35px;
+        height: 35px;
+        margin: 8px;
+      }
+    }
+    div:active {
+      background-color: #dbdbdb;
+    }
+  }
+}

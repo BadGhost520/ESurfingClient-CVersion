@@ -1,95 +1,67 @@
 # OpenWRT 环境使用教程
 
-**1. 从软件包列表查看自己系统支持的 libopenssl 包版本，也可以在镜像站找**
-
-> [!TIP]
-> 这里提供一个好用的镜像站地址: [南方科技大学镜像站](https://mirrors.sustech.edu.cn/openwrt/releases/)
-
-**2. 根据相应 libopenssl 版本从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest) 中下载自己需要的 ipk 包**
-
-**3. 使用 opkg install 安装下载的 ipk 包，注意 opkg 提示需要的依赖软件包**
-
-**4. 在镜像站上下载 opkg 提示需要的依赖软件包**
-
-**5. 重复步骤 3 & 4 直到安装成功**
-
-**6. `按顺序` 运行下面 `必要` 的命令以设置服务配置文件和运行服务**
-
 > [!WARNING]
-> **一定要按顺序！**
-
-### 必要指令
-
-```bash
-# 1. 设置用户名
-uci set esurfingclient.main.username='<用户名>'
-# 示例
-uci set esurfingclient.main.username='23333333'
-```
-```bash
-# 2. 设置密码
-uci set esurfingclient.main.password='<密码>'
-# 示例
-uci set esurfingclient.main.password='A1234567'
-```
-```bash
-# 3. 设置程序是否能被启动
-uci set esurfingclient.main.enabled='1'
-```
-```bash
-# 4. 提交更改
-uci commit esurfingclient
-```
-```bash
-# 5. 重载配置文件
-/etc/init.d/esurfingclient reload
-```
-
-### 可选指令
-
-```bash
-# 设置认证通道(默认为`phone`)
-uci set esurfingclient.main.channel='<认证通道>'
-# 示例
-uci set esurfingclient.main.channel='phone'
-```
-
-> [!TIP]
-> 目前有两个认证通道: pc 和 phone
+> 更新 v2 版本后此教程仅提供 v2 版本的教程
 > 
-> **两者并没有什么太大的区别**
-> 
-> 个人感觉 phone 通道稳定些
+> 如若需要 v1 版本的教程, 可自行前往 v1 分支查看
 
-```bash
-# 设置调试模式(默认关闭)
-uci set esurfingclient.main.debug='1 or 0'
-# 示例
-uci set esurfingclient.main.debug='0'
+## v2 版本的安装和使用都十分简单, 跟着一步一步即可
+
+### 1. 从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest) 下载对应架构的 ipk 包
+
+### 2. 上传到 OpenWRT 系统安装
+
+### 3. 修改位于 /usr/bin/ESurfingClient.json 的配置文件
+
+```json
+{
+  "log_lv": 4,
+  "accounts": [
+    {
+      "username": "在这填账号",
+      "password": "在这填密码",
+      "channel": "phone"
+    }
+  ]
+}
 ```
 
-```bash
-# 设置小容量设备模式(默认开启)
-uci set esurfingclient.main.smallDevice='1 or 0'
-# 示例
-uci set esurfingclient.main.smallDevice='1'
+> [!NOTE]
+> 将 username 和 password 两栏填入然后保存即可
+
+### 4. 修改位于 /etc/config/esurfingclient 的配置文件
+
+```config
+config esurfingclient 'main'
+	option enabled '0' # <- 这个 '0' 要改成 '1' 程序才能被允许运行
 ```
 
-### 程序服务类指令
+### 5. 确保前面步骤无误之后输入如下指令即可运行程序
 
-```bash
-# 设置开机自启
-/etc/init.d/esurfingclient enable
+```shell
+/etc/init.d/esurfingclient reload # 重载配置文件
+/etc/init.d/esurfingclient enable # 设置开机自启
 ```
-```bash
-# 重启服务
-/etc/init.d/esurfingclient restart
-```
-```bash
-# 停止服务
-/etc/init.d/esurfingclient stop
-```
-```bash
+
+## 其它程序服务类指令
+
+```shell
 # 启动服务
 /etc/init.d/esurfingclient start
 ```
+```shell
+# 停止服务
+/etc/init.d/esurfingclient stop
+```
+```shell
+# 重启服务
+/etc/init.d/esurfingclient restart
+```
+
+## JSON 参数解释
+
+- log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
+- accounts: 账号数组
+- username: 账号
+- password: 密码
+- channel: 认证通道 (暂时没找到具体作用)

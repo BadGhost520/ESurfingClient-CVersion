@@ -1,0 +1,62 @@
+#content {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  align-content: start;
+}
+
+.card {
+  display: flex;
+  max-height: calc(100vh - 60px);
+  flex-direction: column;
+  p {
+    font-size: 16px;
+    white-space: nowrap;
+    overflow-x: hidden;
+    margin-top: 0;
+    margin-bottom: 10px;
+    margin-left: 15px;
+    a {
+      text-decoration: none;
+    }
+  }
+}
+
+#about-scrollbox {
+  flex: 1;
+  margin-top: 10px;
+  padding: 20px;
+  color: white;
+  overflow-y: auto;
+  overflow-wrap: break-word;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background-color: black;
+}
+
+#license {
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .card {
+    max-height: calc(100vh - 110px);
+    p {
+      font-size: 14px;
+    }
+  }
+
+  #about-scrollbox {
+    padding-left: 15px;
+    padding-top: 14px;
+  }
+
+  #license {
+    font-size: 12px;
+  }
+}

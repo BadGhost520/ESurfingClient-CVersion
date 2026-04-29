@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/vector/about.svg">
+    <link rel="stylesheet" href="/css/basic.css" />
+    <link rel="stylesheet" href="/css/sidebar.css" />
+    <link rel="stylesheet" href="/css/about.css" />
+    <title>关于</title>
+  </head>
+  <body>
+    <div id="main">
+      <!-- 侧栏 -->
+      <aside id="sidebar">
+        <div id="sidebar-header">
+          <span>ESurfingClient</span>
+          <div id="short-switch">
+            <img src="/vector/more.svg" alt="更多列表" />
+          </div>
+        </div>
+        <hr />
+        <ul id="sidebar-navs">
+          <li id="dashboard">
+            <img src="/vector/dashboard.svg" alt="仪表板" /><span>仪表板</span>
+          </li>
+          <li id="logs">
+            <img src="/vector/logs.svg" alt="日志" /><span>日志</span>
+          </li>
+          <li id="settings">
+            <img src="/vector/settings.svg" alt="设置" /><span>设置</span>
+          </li>
+          <li id="about" class="on">
+            <img src="/vector/about.svg" alt="关于" /><span>关于</span>
+          </li>
+        </ul>
+      </aside>
+      <!-- 内容 -->
+      <div id="content">
+        <div class="card">
+          <div class="card-title">关于 ESurfingClient</div>
+          <p>Copyright © 2025 BadGhost</p>
+          <p>
+            GitHub 项目地址:
+            <a href="https://github.com/BadGhost520/ESurfingClient-CVersion"
+            >[传送门]</a
+            >
+          </p>
+          <div id="about-scrollbox">
+            <span id="license">无法加载</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="/js/basic.js"></script>
+    <script src="/import-js/axios.min.js"></script>
+    <script src="/js/about.js"></script>
+  </body>
+</html>

@@ -1,0 +1,125 @@
+name: Build OpenWrt ramips_mt7621 Package
+
+permissions:
+  actions: write
+  contents: read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-openwrt-offline-repo:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install build dependencies
+        run: |
+          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync wget ca-certificates unzip file zstd python3-setuptools swig"
+          
+          for i in 1 2 3; do
+            echo "Attempt $i: Installing $PACKAGES"
+            if apt-get update && apt-get install -y $PACKAGES; then
+              echo "✅ All packages installed"
+              break
+            fi
+            echo "❌ Attempt $i failed"
+            sleep 3
+          done
+
+      - name: Download and extract SDK
+        run: |
+          SDK_URL="https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          wget "$SDK_URL"
+          tar -I zstd -xf openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
+          
+          cp -r esurfingclient openwrt-sdk/package/
+          
+          if [ -f esurfingclient.tar.gz ]; then
+            cp esurfingclient.tar.gz openwrt-sdk/dl/
+          fi
+
+      - name: Configure build
+        run: |
+          cd openwrt-sdk
+
+          scripts/feeds update -a
+          scripts/feeds install -a
+          
+          echo "CONFIG_TARGET_ramips_mt7621=y" >> .config
+          echo "CONFIG_TARGET_ramips_mt7621_DEVICE_generic=y" >> .config
+
+          echo "CONFIG_PACKAGE_esurfingclient=y" >> .config
+          echo "CONFIG_PACKAGE_libcurl=y" >> .config
+          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
+          echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
+
+          # 关键：禁用 mbedTLS，使用 OpenSSL
+          echo "CONFIG_LIBCURL_MBEDTLS=n" >> .config
+          echo "CONFIG_LIBCURL_OPENSSL=y" >> .config
+          echo "CONFIG_LIBCURL_WOLFSSL=n" >> .config
+          echo "CONFIG_LIBCURL_GNUTLS=n" >> .config
+          
+          # 确保 OpenSSL 被选中
+          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
+
+          # 关键：禁用 HTTP/2
+          echo "CONFIG_LIBCURL_HTTP2=n" >> .config
+          echo "CONFIG_LIBCURL_NGHTTP2=n" >> .config
+          echo "CONFIG_PACKAGE_libnghttp2=n" >> .config
+
+          echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
+          echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
+
+          make defconfig
+
+      - name: Compile openssl
+        run: |
+          cd openwrt-sdk
+          make package/openssl/compile V=sc -j$(nproc)
+
+      - name: Compile curl
+        run: |
+          cd openwrt-sdk
+          make package/curl/compile V=sc -j$(nproc)
+
+      - name: Compile nghttp2
+        run: |
+          cd openwrt-sdk
+          make package/nghttp2/compile V=sc -j$(nproc)
+
+      - name: Compile esurfingclient
+        run: |
+          cd openwrt-sdk
+          make package/esurfingclient/compile V=sc -j$(nproc)
+
+      - name: Copy unstripped binary
+        run: |
+          cd openwrt-sdk
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-ramips_mt7621-debug \;
+          file ../ESurfingClient-openwrt-ramips_mt7621-debug
+
+      - name: Collect required packages
+        run: |
+          cd openwrt-sdk
+
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-ramips_mt7621.ipk \;
+
+      - name: zip
+        run: |
+          mkdir test
+          cp ESurfingClient-openwrt-ramips_mt7621-debug test/
+          cp esurfingclient-openwrt-ramips_mt7621.ipk test/
+          tar -czf esurfingclient-openwrt-ramips_mt7621.tar.gz test
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esurfingclient-openwrt-ramips_mt7621
+          path: esurfingclient-openwrt-ramips_mt7621.tar.gz
+          retention-days: 30

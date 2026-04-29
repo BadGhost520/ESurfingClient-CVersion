@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/vector/dashboard.svg" />
+    <link rel="stylesheet" href="/css/basic.css" />
+    <link rel="stylesheet" href="/css/sidebar.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <title>仪表板</title>
+  </head>
+  <body>
+    <div id="main">
+      <!-- 侧栏 -->
+      <aside id="sidebar">
+        <div id="sidebar-header">
+          <span>ESurfingClient</span>
+          <div id="short-switch">
+            <img src="/vector/more.svg" alt="更多列表" />
+          </div>
+        </div>
+        <hr />
+        <ul id="sidebar-navs">
+          <li id="dashboard" class="on">
+            <img src="/vector/dashboard.svg" alt="仪表板" /><span>仪表板</span>
+          </li>
+          <li id="logs">
+            <img src="/vector/logs.svg" alt="日志" /><span>日志</span>
+          </li>
+          <li id="settings">
+            <img src="/vector/settings.svg" alt="设置" /><span>设置</span>
+          </li>
+          <li id="about">
+            <img src="/vector/about.svg" alt="关于" /><span>关于</span>
+          </li>
+        </ul>
+      </aside>
+      <!-- 内容 -->
+      <div id="content">
+        <div class="card network">
+          <div class="card-title">网络状态</div>
+          <div class="card-content">
+            <div>
+              <span>联网状态: </span>
+              <span id="network-status">未知</span>
+            </div>
+            <div>
+              <span>联网时长: </span>
+              <span id="connect-time">未知</span>
+            </div>
+            <div>
+              <span>当前时间: </span>
+              <span id="current-time">未知</span>
+            </div>
+          </div>
+        </div>
+        <div class="card software">
+          <div class="card-title">软件状态</div>
+          <div class="card-content">
+            <div>
+              <span>认证程序 1 运行状态: </span>
+              <span class="thread-running-status">未知</span>
+            </div>
+            <div>
+              <span>认证程序 2 运行状态: </span>
+              <span class="thread-running-status">未知</span>
+            </div>
+            <div>
+              <span>软件运行时长: </span>
+              <span id="running-time">未知</span>
+            </div>
+            <div>
+              <span>软件版本: </span>
+              <span id="version">未知</span>
+            </div>
+          </div>
+        </div>
+        <div class="card thread1">
+          <div class="card-title">线程 1 状态</div>
+          <div class="card-content">
+            <div>
+              <span>认证状态: </span>
+              <span class="thread-auth-status">未知</span>
+            </div>
+            <div>
+              <span>认证时长: </span>
+              <span class="thread-auth-time">未知</span>
+            </div>
+            <div>
+              <span>使用的适配器: </span>
+              <span class="thread-adapter">未知</span>
+            </div>
+            <div class="switch">
+              <div class="choose-btn thread-switch">开启</div>
+            </div>
+          </div>
+        </div>
+        <div class="card thread2">
+          <div class="card-title">线程 2 状态</div>
+          <div class="card-content">
+            <div>
+              <span>认证状态: </span>
+              <span class="thread-auth-status">未知</span>
+            </div>
+            <div>
+              <span>认证时长: </span>
+              <span class="thread-auth-time">未知</span>
+            </div>
+            <div>
+              <span>使用的适配器: </span>
+              <span class="thread-adapter">未知</span>
+            </div>
+            <div class="switch">
+              <div class="choose-btn thread-switch">开启</div>
+            </div>
+          </div>
+        </div>
+        <div class="card adapters">
+          <div class="card-title">网络适配器状态</div>
+          <div id="adapter-info" class="card-content">
+            <div>
+              <span>未知</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="loading-modal">
+      <div id="loading-container">
+        <img src="/vector/loading.svg" alt="加载中">
+        <span id="loading-modal-text">正在等待配置应用, 剩余时间: 30 秒</span>
+      </div>
+    </div>
+    <script src="/js/basic.js"></script>
+    <script src="/import-js/axios.min.js"></script>
+    <script src="/js/dashboard.js"></script>
+  </body>
+</html>

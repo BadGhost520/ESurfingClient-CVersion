@@ -1,43 +1,63 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
-PKG_VERSION:=1.1.1
-PKG_RELEASE:=3
+PKG_VERSION:=2.0.0
+PKG_RELEASE:=6
 
-PKG_SOURCE:=esurfingclient.tar.gz
-PKG_SOURCE_URL:=file://$(TOPDIR)/dl
-PKG_SOURCE_SUBDIR:=esurfing
-PKG_BUILD_DIR:=$(BUILD_DIR)/esurfing
-PKG_HASH:=skip
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
-PKG_BUILD_DEPENDS:=curl openssl
+PKG_BUILD_DEPENDS:=libcurl libopenssl
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
-CMAKE_SOURCE_SUBDIR:=
+$(warning DEBUG: ARCH is $(ARCH))
 
+ifneq ($(filter mips%,$(ARCH)),)
+  EXTRA_MIPS_FLAGS := -minterlink-mips16
+else
+  EXTRA_MIPS_FLAGS :=
+endif
+
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) $(CURDIR)/esurfing/* $(PKG_BUILD_DIR)/
+endef
+
+CMAKE_SOURCE_SUBDIR:=.
 CMAKE_INSTALL:=1
 CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_INSTALL_PREFIX=/usr \
-	-DBUILD_SHARED_LIBS=OFF
+	-DBUILD_SHARED_LIBS=OFF \
+	-DCMAKE_EXE_LINKER_FLAGS="-static -lpthread -latomic" \
+	-DCMAKE_C_FLAGS="-DCURL_STATICLIB -pthread -D__OPENWRT__=1 $(EXTRA_MIPS_FLAGS)" \
+	-DCMAKE_CXX_FLAGS="-DCURL_STATICLIB -pthread -D__OPENWRT__=1 $(EXTRA_MIPS_FLAGS)"
 
 define Package/esurfingclient
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=ESurfingClient
-	DEPENDS:=+libcurl +libopenssl +ca-bundle
+endef
+
+define Package/esurfingclient/prerm
+#!/bin/sh
+if [ -f "/usr/bin/ESurfingClient.json" ]; then
+    cp /usr/bin/ESurfingClient.json /usr/bin/ESurfingClient.json.bak
+    echo "检测到旧配置文件, 已备份"
+    echo "恢复命令: cp /usr/bin/ESurfingClient.json.bak /usr/bin/ESurfingClient.json"
+fi
+exit 0
 endef
 
 define Package/esurfingclient/description
-A lightweight esurfing authentication client
+轻量第三方电信校园网客户端
+支持多平台运行
+Powerby: BadGhost
 endef
 
 define Build/Compile
 	$(call Build/Compile/Default)
-
-	$(TARGET_CROSS)strip --strip-all $(PKG_BUILD_DIR)/ESurfingClient 2>/dev/null || true
 endef
 
 define Package/esurfingclient/install
@@ -45,10 +65,13 @@ define Package/esurfingclient/install
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) ./files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
+	$(INSTALL_CONF) $(CURDIR)/files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
+
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(CP) $(CURDIR)/files/usr/bin/ESurfingClient.json $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,esurfingclient))
