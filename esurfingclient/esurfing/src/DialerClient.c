@@ -27,13 +27,13 @@ static bool term()
 
     http_resp_t result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据
     uint8_t retry = 1;
-    while (result.status != REQUEST_SUCCESS)
+    while (result.status != REQUEST_SUCCESS && result.status != REQUEST_HAVE_RES)
     {
         if (retry > 5)
         {
             LOG_FATAL("超过最多重试次数, 返回");
             free(encrypt);
-            free(result.body_data);
+            if (result.body_data) free(result.body_data);
             return false;
         }
         LOG_ERROR("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, result.status, retry);
@@ -42,7 +42,7 @@ static bool term()
         result = post(g_prog_status[thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据 (重试)
     }
     free(encrypt);
-    free(result.body_data);
+    if (result.body_data) free(result.body_data);
 
     g_prog_status[thread_idx].runtime_status.is_authed = false;
     g_prog_status[thread_idx].auth_cfg.auth_time = 0;
