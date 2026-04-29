@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
 PKG_VERSION:=2.0.0
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
@@ -44,8 +44,8 @@ define Package/esurfingclient/prerm
 #!/bin/sh
 if [ -f "/usr/bin/ESurfingClient.json" ]; then
     cp /usr/bin/ESurfingClient.json /usr/bin/ESurfingClient.json.bak
-    echo "检测到旧配置文件, 已备份到 /usr/bin/ESurfingClient.json.bak"
-    echo "使用 cp /usr/bin/ESurfingClient.json.bak /usr/bin/ESurfingClient.json 恢复"
+    echo "检测到旧配置文件, 已备份"
+    echo "恢复命令: cp /usr/bin/ESurfingClient.json.bak /usr/bin/ESurfingClient.json"
 fi
 exit 0
 endef

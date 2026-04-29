@@ -82,8 +82,14 @@ int main()
      */
     LOG_INFO("线程守护开启");
     thread_keep_alive = true;
+    uint64_t tick = get_cur_tm_ms();
     while (thread_keep_alive)
     {
+        if (get_cur_tm_ms() - tick >= 30000)
+        {
+            tick = get_cur_tm_ms();
+            LOG_DEBUG("线程守护中");
+        }
         for (uint8_t i = 0; i < g_prog_cnt; i++)
         {
             /**
@@ -125,7 +131,7 @@ int main()
             /**
              * 线程守护
              */
-            if (!g_prog_status[i].runtime_status.is_running)
+            if (g_prog_status[i].runtime_status.is_running == false)
             {
                 int result_code = 0;
                 sim_thread_join(g_prog_status[i].thread, &result_code);
@@ -147,6 +153,7 @@ int main()
         }
         sleep_ms(10);
     }
+    LOG_INFO("线程守护已关闭");
 
     // get_adapters();
 

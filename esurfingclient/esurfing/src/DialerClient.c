@@ -576,10 +576,9 @@ int dialer_app(void* arg)
      * 如果不运行, 或者需要重置时退出循环
      */
     g_prog_status[thread_idx].runtime_status.is_running = true;
-    while (g_prog_status[thread_idx].runtime_status.is_running && g_prog_status[thread_idx].runtime_status.is_need_reset == false)
+    while (g_prog_status[thread_idx].runtime_status.is_running)
     {
-
-        if (run() == false) // 如果 run 函数返回假, 则退出循环
+        if (run() == false || g_prog_status[thread_idx].runtime_status.is_need_reset) // 如果 run 函数返回 false 或需要重置, 则退出循环
         {
             g_prog_status[thread_idx].runtime_status.is_running = false;
             break;
