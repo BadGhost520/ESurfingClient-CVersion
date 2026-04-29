@@ -451,6 +451,21 @@ static bool auth()
     return true;
 }
 
+static void reset()
+{
+    if (g_prog_status[thread_idx].runtime_status.is_initialized) // 如果已经初始化会话, 则进入
+    {
+        if (g_prog_status[thread_idx].runtime_status.is_authed) // 如果已经认证, 则进入
+        {
+            LOG_DEBUG("配置 %" PRIu8 " 登出, 下标: %" PRId8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
+            term(); // 登出
+        }
+        clean_session(); // 清理会话
+    }
+    memset(&g_prog_status[thread_idx].auth_cfg, 0, sizeof(auth_cfg_t)); // 清除 auth_cfg 的内容, 并置零
+    memset(&g_prog_status[thread_idx].runtime_status, 0, sizeof(runtime_status_t)); // 清除 runtime_status 的内容, 并置零
+}
+
 static bool run()
 {
     static uint8_t retry_timeout = 1;
@@ -499,6 +514,10 @@ static bool run()
         return true;
     case REQUEST_REDIRECT: // 返回重定向 (302 响应码)
         LOG_INFO("需要认证");
+        if (g_prog_status[thread_idx].runtime_status.is_initialized) // 进入认证流程的时候如果会话已经初始化, 重置认证配置参数
+        {
+            reset();
+        }
         uint8_t retry_auth = 1;
         while (auth() == false) // 进入认证函数, 可以重试 5 次
         {
@@ -532,12 +551,6 @@ static bool run()
     }
 }
 
-static void reset()
-{
-    memset(&g_prog_status[thread_idx].auth_cfg, 0, sizeof(auth_cfg_t)); // 清除 auth_cfg 的内容, 并置零
-    memset(&g_prog_status[thread_idx].runtime_status, 0, sizeof(runtime_status_t)); // 清除 runtime_status 的内容, 并置零
-}
-
 int dialer_app(void* arg)
 {
     thread_idx = (int8_t)(intptr_t)arg; // 领取线程下标参数
@@ -567,15 +580,6 @@ int dialer_app(void* arg)
     /**
      * 线程退出时的操作
      */
-    if (g_prog_status[thread_idx].runtime_status.is_initialized) // 如果已经初始化会话, 则进入
-    {
-        if (g_prog_status[thread_idx].runtime_status.is_authed) // 如果已经认证, 则进入
-        {
-            LOG_DEBUG("配置 %" PRIu8 " 登出, 下标: %" PRId8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
-            term(); // 登出
-        }
-        clean_session(); // 清理会话
-    }
     reset(); // 重置参数
     return 0;
 }

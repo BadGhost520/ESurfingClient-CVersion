@@ -34,14 +34,14 @@ static char s_area[AREA_LENGTH];
 
 char* extract_url_param(const char* url, const char* search_str_start)
 {
-    if (!url)
+    if (url == NULL)
     {
         LOG_ERROR("URL 为空");
         return NULL;
     }
     const size_t len = strlen(search_str_start);
     char* search_pattern = malloc(len + 2);
-    if (!search_pattern)
+    if (search_pattern == NULL)
     {
         LOG_ERROR("分配内存失败");
         return NULL;
@@ -289,7 +289,7 @@ http_resp_t post(const char* url, const char* data)
     headers = curl_slist_append(headers, cdc_a);
 
     CURL* curl = curl_easy_init();
-    if (!curl)
+    if (curl == NULL)
     {
         LOG_ERROR("curl 初始化失败");
         resp.status = REQUEST_INIT_ERROR;
@@ -338,41 +338,46 @@ http_resp_t get(const char* url)
 
     struct curl_slist* headers = NULL;
 
-    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
-    snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
+    if (thread_idx != -1)
+    {
+        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
+        snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
 
-    LOG_VERBOSE("GET 添加头 %s", ua);
-    LOG_VERBOSE("GET 添加头 %s", s_req_accept);
-    LOG_VERBOSE("GET 添加头 %s", c_id);
-    LOG_VERBOSE("线程下标: %" PRId8, thread_idx);
+        LOG_VERBOSE("GET 添加头 %s", ua);
+        LOG_VERBOSE("GET 添加头 %s", s_req_accept);
+        LOG_VERBOSE("GET 添加头 %s", c_id);
+        LOG_VERBOSE("线程下标: %" PRId8, thread_idx);
 
-    headers = curl_slist_append(headers, ua);
-    headers = curl_slist_append(headers, s_req_accept);
-    headers = curl_slist_append(headers, c_id);
+        headers = curl_slist_append(headers, ua);
+        headers = curl_slist_append(headers, s_req_accept);
+        headers = curl_slist_append(headers, c_id);
+    }
 
     CURL* curl = curl_easy_init();
-    if (!curl)
+    if (curl == NULL)
     {
         LOG_ERROR("curl 初始化失败");
         resp.status = REQUEST_INIT_ERROR;
         curl_slist_free_all(headers);
         return resp;
     }
-    LOG_VERBOSE("curl 初始化完成, curl=%p", curl);
+    LOG_VERBOSE("curl 初始化完成, curl = %p", curl);
 
     LOG_VERBOSE("设置 curl 选项");
-    if (thread_idx != -1) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
-
-#ifdef __OPENWRT__
-    curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
-#endif
+    if (thread_idx != -1)
+    {
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
+        curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+    #ifdef __OPENWRT__
+        curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
+    #endif
+    }
 
     LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(curl);
@@ -460,55 +465,4 @@ void get_last_location()
     LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
 
     get_school_ip_symbol(); // 获取校园网特征
-}
-
-
-NetworkStatus check_net()
-{
-    char check_url[] = "http://connect.rom.miui.com/generate_204";
-
-    CURL* curl = curl_easy_init();
-    if (!curl)
-    {
-        LOG_ERROR("curl 初始化失败");
-        return REQUEST_INIT_ERROR;
-    }
-    LOG_VERBOSE("curl 初始化完成, curl: %p", curl);
-
-    LOG_VERBOSE("设置 curl 选项");
-    curl_easy_setopt(curl, CURLOPT_URL, check_url);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
-
-    LOG_VERBOSE("执行 CURL");
-    const CURLcode curl_code = curl_easy_perform(curl);
-    if (curl_code != CURLE_OK)
-    {
-        curl_easy_cleanup(curl);
-        return curl_err_msg_out(curl_code);
-    }
-
-    LOG_VERBOSE("获取响应码");
-    long resp_code;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
-    curl_easy_cleanup(curl);
-
-    if (resp_code == 302)
-    {
-        LOG_DEBUG("重定向, 响应码: 302");
-        return REQUEST_REDIRECT;
-    }
-    if (resp_code == 200)
-    {
-        LOG_DEBUG("有响应体, 响应码: 200");
-        return REQUEST_HAVE_RES;
-    }
-    if (resp_code == 204)
-    {
-        LOG_VERBOSE("无响应体, 响应码: 204");
-        return REQUEST_SUCCESS;
-    }
-
-    LOG_ERROR("HTTP 响应错误, 响应码: %d", resp_code);
-    return REQUEST_ERROR;
 }

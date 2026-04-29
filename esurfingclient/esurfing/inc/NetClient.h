@@ -53,10 +53,4 @@ NetworkStatus check_network_status();
  */
 void get_last_location();
 
-/**
- * 主线程用的网络检查函数
- * @return 网络状态
- */
-NetworkStatus check_net();
-
 #endif //ESURFINGCLIENT_NETCLIENT_H

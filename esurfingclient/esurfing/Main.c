@@ -32,7 +32,7 @@ int main()
     uint8_t retry = 1;
     do
     {
-        status = check_net();
+        status = check_network_status();
         switch (status)
         {
         case REQUEST_SUCCESS:
