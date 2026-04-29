@@ -23,11 +23,11 @@ int main()
     if (init_logger() == false) shut(1); // 初始化日志系统
 
     if (load_cfg() == false) shut(1); // 加载配置文件
-
-    /**
-     * 检测网络状态
-     * 非重定向响应都会持续循环
-     */
+    //
+    // /**
+    //  * 检测网络状态
+    //  * 非重定向响应都会持续循环
+    //  */
     NetworkStatus status;
     uint8_t retry = 1;
     do
@@ -80,21 +80,33 @@ int main()
      * 线程守护
      * 登录时间检测
      */
-    LOG_INFO("线程守护开启");
+    LOG_INFO("线程守护开启, 当前时间戳: %" PRIu64, get_cur_tm_ms());
     thread_keep_alive = true;
-    uint64_t tick = get_cur_tm_ms();
+    bool thread_keep_alive_check = false;
+    uint64_t tick_out = get_cur_tm_ms();
+    uint64_t tick_in = get_cur_tm_ms();
     while (thread_keep_alive)
     {
-        if (get_cur_tm_ms() - tick >= 30000)
+        if (thread_keep_alive_check == false)
         {
-            tick = get_cur_tm_ms();
-            LOG_DEBUG("线程守护中");
+            thread_keep_alive_check = true;
+            LOG_DEBUG("进入线程守护循环");
+        }
+        if (get_cur_tm_ms() - tick_out >= 30000)
+        {
+            tick_out = get_cur_tm_ms();
+            LOG_DEBUG("线程外层循环 (本日志 30 秒打印一次), 当前时间戳: %" PRIu64, get_cur_tm_ms());
         }
         for (uint8_t i = 0; i < g_prog_cnt; i++)
         {
             /**
              * 认证时间超过 172200000 毫秒 (1 天 23 时 50 分) 自动重启认证
              */
+            if (get_cur_tm_ms() - tick_in >= 30000)
+            {
+                tick_in = get_cur_tm_ms();
+                LOG_DEBUG("线程内层 i 循环 (本日志 30 秒打印一次), 当前时间戳: %" PRIu64 ", 认证时间戳: %" PRIu64, get_cur_tm_ms(), g_prog_status[i].auth_cfg.auth_time);
+            }
             if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 120000 && g_prog_status[i].auth_cfg.auth_time != 0)
             {
                 // if (g_prog_status[thread_idx].runtime_status.is_settings_changed)
@@ -106,6 +118,7 @@ int main()
                 LOG_WARN("认证时间超过 172200000 毫秒 (1 天 23 时 50 分), 为避免被远程服务器踢下线, 正在重新进行认证");
                 for (uint8_t j = 0; j < g_prog_cnt; j++)
                 {
+                    g_prog_status[j].auth_cfg.auth_time = 0;
                     g_prog_status[j].runtime_status.is_need_reset = true;
                     retry = 1;
                     while (g_prog_status[j].runtime_status.is_authed)
