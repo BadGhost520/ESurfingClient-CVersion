@@ -184,12 +184,12 @@ void destroy_cipher_factory()
     cipher_interface_t* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
     if (cipher == NULL)
     {
-        LOG_DEBUG("cipher 已经是 NULL，无需销毁");
+        LOG_DEBUG("cipher 已经是 NULL, 无需销毁");
         return;
     }
     if (cipher->destroy == NULL)
     {
-        LOG_ERROR("cipher->destroy 为 NULL，无法销毁");
+        LOG_ERROR("cipher->destroy 为 NULL, 无法销毁");
         return;
     }
     LOG_DEBUG("销毁加解密工厂");

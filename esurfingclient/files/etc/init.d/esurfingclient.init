@@ -31,6 +31,16 @@ start_service() {
 	procd_close_instance
 }
 
+stop_service() {
+	procd_kill "$PROG"
+}
+
+restart() {
+	stop
+	sleep 3
+	start
+}
+
 service_triggers() {
 	procd_add_reload_trigger "esurfingclient"
 }
