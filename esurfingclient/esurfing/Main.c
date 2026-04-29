@@ -143,6 +143,7 @@ int main()
                     g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
                     retry++;
                 }
+                sleep_ms(5000);
             }
         }
         sleep_ms(10);

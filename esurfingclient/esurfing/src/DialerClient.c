@@ -563,6 +563,7 @@ static bool run()
 int dialer_app(void* arg)
 {
     thread_idx = (int8_t)(intptr_t)arg; // 领取线程下标参数
+    g_prog_status[thread_idx].runtime_status.is_running = true;
     g_prog_status[thread_idx].thread_id = sim_thread_cur_id(); // 获取当前线程 TID
     LOG_DEBUG("认证线程 %" PRId8 " 创建成功, ID: %" PRIu64 ", 使用配置: %" PRIu8, thread_idx, g_prog_status[thread_idx].thread_id, g_prog_status[thread_idx].login_cfg.idx);
 
@@ -575,7 +576,6 @@ int dialer_app(void* arg)
      * 正在运行且不需要重置时保持循环
      * 如果不运行, 或者需要重置时退出循环
      */
-    g_prog_status[thread_idx].runtime_status.is_running = true;
     while (g_prog_status[thread_idx].runtime_status.is_running)
     {
         if (run() == false || g_prog_status[thread_idx].runtime_status.is_need_reset) // 如果 run 函数返回 false 或需要重置, 则退出循环
