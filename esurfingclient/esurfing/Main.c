@@ -82,31 +82,19 @@ int main()
      */
     LOG_INFO("线程守护开启, 当前时间戳: %" PRIu64, get_cur_tm_ms());
     thread_keep_alive = true;
-    bool thread_keep_alive_check = false;
-    uint64_t tick_out = get_cur_tm_ms();
-    uint64_t tick_in = get_cur_tm_ms();
     while (thread_keep_alive)
     {
-        if (thread_keep_alive_check == false)
-        {
-            thread_keep_alive_check = true;
-            LOG_DEBUG("进入线程守护循环");
-        }
-        if (get_cur_tm_ms() - tick_out >= 30000)
-        {
-            tick_out = get_cur_tm_ms();
-            LOG_DEBUG("线程外层循环 (本日志 30 秒打印一次), 当前时间戳: %" PRIu64, get_cur_tm_ms());
-        }
+        LOG_DEBUG("进入线程守护循环");
+        LOG_DEBUG("线程外层循环, 当前时间戳: %" PRIu64, get_cur_tm_ms());
+        LOG_DEBUG("准备 for 循环");
         for (uint8_t i = 0; i < g_prog_cnt; i++)
         {
             /**
              * 认证时间超过 172200000 毫秒 (1 天 23 时 50 分) 自动重启认证
              */
-            if (get_cur_tm_ms() - tick_in >= 30000)
-            {
-                tick_in = get_cur_tm_ms();
-                LOG_DEBUG("线程内层 i 循环 (本日志 30 秒打印一次), 当前时间戳: %" PRIu64 ", 认证时间戳: %" PRIu64, get_cur_tm_ms(), g_prog_status[i].auth_cfg.auth_time);
-            }
+            LOG_DEBUG("进入 for 循环");
+            LOG_DEBUG("线程内层 i 循环, 当前时间戳: %" PRIu64 ", 认证时间戳: %" PRIu64, get_cur_tm_ms(), g_prog_status[i].auth_cfg.auth_time);
+            LOG_DEBUG("for 循环检查时间, 当前时间戳: %" PRIu64 ", 认证时间 %" PRIu64, get_cur_tm_ms(), g_prog_status[i].auth_cfg.auth_time);
             if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 120000 && g_prog_status[i].auth_cfg.auth_time != 0)
             {
                 // if (g_prog_status[thread_idx].runtime_status.is_settings_changed)
@@ -118,7 +106,6 @@ int main()
                 LOG_WARN("认证时间超过 172200000 毫秒 (1 天 23 时 50 分), 为避免被远程服务器踢下线, 正在重新进行认证");
                 for (uint8_t j = 0; j < g_prog_cnt; j++)
                 {
-                    g_prog_status[j].auth_cfg.auth_time = 0;
                     g_prog_status[j].runtime_status.is_need_reset = true;
                     retry = 1;
                     while (g_prog_status[j].runtime_status.is_authed)
@@ -133,7 +120,6 @@ int main()
                         sleep_ms(2000);
                     }
                 }
-                break;
             }
             // else if (g_prog_status[thread_idx].runtime_status.is_settings_changed)
             // {
@@ -144,6 +130,7 @@ int main()
             /**
              * 线程守护
              */
+            LOG_DEBUG("is_running: %d", g_prog_status[i].runtime_status.is_running);
             if (g_prog_status[i].runtime_status.is_running == false)
             {
                 int result_code = 0;
@@ -163,8 +150,10 @@ int main()
                     retry++;
                 }
             }
+            LOG_DEBUG("for 检查一轮结束");
         }
-        sleep_ms(10);
+        LOG_DEBUG("外侧检查一轮结束");
+        sleep_ms(1000);
     }
     LOG_INFO("线程守护已关闭");
 

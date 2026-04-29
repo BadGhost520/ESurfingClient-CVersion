@@ -305,7 +305,6 @@ http_resp_t post(const char* url, const char* data)
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
 
 #ifdef __OPENWRT__
     curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
