@@ -20,8 +20,8 @@
 | Windows | x86_64             | All          |
 | Linux   | x86_64             | All          |
 | OpenWrt | x86_64             | All          |
-| OpenWrt | Mipsel_24kc-MT7621 | All          |
-| OpenWrt | Arrch64-MTFilogic  | All          |
+| OpenWrt | mipsel_24kc-MT7621 | All          |
+| OpenWrt | aarch64-MTFilogic  | All          |
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
