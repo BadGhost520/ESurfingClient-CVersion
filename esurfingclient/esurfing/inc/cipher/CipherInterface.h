@@ -8,7 +8,7 @@ typedef struct cipherInterface {
     char* (*decrypt)(struct cipherInterface* self, const char* hex);
     void (*destroy)(struct cipherInterface* self);
     void* private_data;
-} cipherInterfaceT;
+} cipher_interface_t;
 
 /**
  * 销毁加解密工厂

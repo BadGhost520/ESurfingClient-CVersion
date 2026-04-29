@@ -68,9 +68,9 @@ static bool heartbeat()
 
     const http_resp_t result = post(g_prog_status[thread_idx].auth_cfg.keep_url, encrypt); // 向 keep_url 发送加密数据
     free(encrypt);
-    if (result.status == REQUEST_ERROR)
+    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
     {
-        LOG_ERROR("心跳响应失败，错误代码: %d", result.status);
+        LOG_ERROR("心跳响应失败");
         free(result.body_data);
         return false;
     }
@@ -115,9 +115,9 @@ static bool login()
 
     const http_resp_t result = post(g_prog_status[thread_idx].auth_cfg.auth_url, encrypt); // 向 auth_url 发送加密数据
     free(encrypt);
-    if (result.status == REQUEST_ERROR)
+    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
     {
-        LOG_ERROR("登录响应失败，错误代码: %d", result.status);
+        LOG_ERROR("登录响应失败");
         free(result.body_data);
         return false;
     }
@@ -205,9 +205,9 @@ static bool get_ticket()
 
     const http_resp_t result = post(g_prog_status[thread_idx].auth_cfg.ticket_url, encrypt); // 向 ticket_url 发送加密内容
     free(encrypt);
-    if (result.status == REQUEST_ERROR || result.body_size == 0 || result.body_data == NULL)
+    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
     {
-        LOG_ERROR("获取 Ticket 响应失败，错误代码: %d", result.status);
+        LOG_ERROR("获取 Ticket 响应失败");
         free(result.body_data);
         return false;
     }
@@ -271,7 +271,7 @@ static bool load_cipher(const bytes_t zsm)
 
     /**
      * 初始化加解密工厂
-     * 如果失败, 清除加解密工厂并返回 false
+     * 如果失败, 返回 false
      */
     if (init_cipher(algo_id) == false)
     {
@@ -298,9 +298,9 @@ static bool init_session()
      * 使用初始 algo_id 向 ticket_url POST 获取数据
      */
     const http_resp_t result = post(g_prog_status[thread_idx].auth_cfg.ticket_url, g_prog_status[thread_idx].auth_cfg.algo_id);
-    if (result.status == REQUEST_ERROR || result.body_size == 0 || result.body_data == NULL) // 响应错误或无响应数据, 则返回 false
+    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL) // 响应错误或无响应数据, 则返回 false
     {
-        LOG_ERROR("初始化会话失败，错误代码: %d", result.status);
+        LOG_ERROR("初始化会话失败");
         free(result.body_data);
         return false;
     }
@@ -464,6 +464,22 @@ static void reset()
     }
     memset(&g_prog_status[thread_idx].auth_cfg, 0, sizeof(auth_cfg_t)); // 清除 auth_cfg 的内容, 并置零
     memset(&g_prog_status[thread_idx].runtime_status, 0, sizeof(runtime_status_t)); // 清除 runtime_status 的内容, 并置零
+    refresh_states();
+}
+
+static void clean()
+{
+    if (g_prog_status[thread_idx].runtime_status.is_initialized) // 如果已经初始化会话, 则进入
+    {
+        if (g_prog_status[thread_idx].runtime_status.is_authed) // 如果已经认证, 则进入
+        {
+            LOG_DEBUG("配置 %" PRIu8 " 登出, 下标: %" PRId8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
+            term(); // 登出
+        }
+        clean_session(); // 清理会话
+    }
+    memset(&g_prog_status[thread_idx].auth_cfg, 0, sizeof(auth_cfg_t)); // 清除 auth_cfg 的内容, 并置零
+    memset(&g_prog_status[thread_idx].runtime_status, 0, sizeof(runtime_status_t)); // 清除 runtime_status 的内容, 并置零
 }
 
 static bool run()
@@ -518,17 +534,10 @@ static bool run()
         {
             reset();
         }
-        uint8_t retry_auth = 1;
-        while (auth() == false) // 进入认证函数, 可以重试 5 次
+        if (auth() == false) // 进入认证函数, 可以重试 5 次
         {
-            if (retry_auth > 5)
-            {
-                LOG_FATAL("超过最多重试次数");
-                return false;
-            }
-            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[thread_idx].login_cfg.idx, thread_idx, retry_auth);
-            retry_auth++;
-            sleep_ms(1000);
+            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8, g_prog_status[thread_idx].login_cfg.idx, thread_idx);
+            return false;
         }
         retry_timeout = 1;
         sleep_ms(1000);
@@ -580,6 +589,6 @@ int dialer_app(void* arg)
     /**
      * 线程退出时的操作
      */
-    reset(); // 重置参数
+    clean(); // 清除参数
     return 0;
 }

@@ -313,17 +313,43 @@ http_resp_t post(const char* url, const char* data)
 
     LOG_VERBOSE("执行 CURL");
     const CURLcode curl_code = curl_easy_perform(curl);
-
-    curl_easy_cleanup(curl);
-    curl_slist_free_all(headers);
-
     if (curl_code != CURLE_OK)
     {
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
         resp.status = curl_err_msg_out(curl_code);
         return resp;
     }
 
-    resp.status = REQUEST_SUCCESS;
+    LOG_VERBOSE("获取响应码");
+    long resp_code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
+
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+
+    if (resp_code == 302)
+    {
+        LOG_DEBUG("重定向, 响应码: 302");
+        if (thread_idx != -1) LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
+        resp.status = REQUEST_REDIRECT;
+        return resp;
+    }
+    if (resp_code == 200)
+    {
+        LOG_DEBUG("有响应体, 响应码: 200");
+        resp.status = REQUEST_HAVE_RES;
+        return resp;
+    }
+    if (resp_code == 204)
+    {
+        LOG_VERBOSE("无响应体, 响应码: 204");
+        resp.status = REQUEST_SUCCESS;
+        return resp;
+    }
+
+    LOG_ERROR("HTTP 响应错误, 响应码: %d", resp_code);
+    resp.status = REQUEST_ERROR;
     return resp;
 }
 

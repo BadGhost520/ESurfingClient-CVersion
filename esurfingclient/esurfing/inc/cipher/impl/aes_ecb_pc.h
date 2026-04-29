@@ -11,6 +11,6 @@
  * @param key2 第二个AES密钥 (16字节)
  * @return 加解密接口实例，失败返回NULL
  */
-cipherInterfaceT* create_aes_ecb_pc_cipher(const uint8_t* key1, const uint8_t* key2);
+cipher_interface_t* create_aes_ecb_pc_cipher(const uint8_t* key1, const uint8_t* key2);
 
 #endif // AES_ECB_PC_H

@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static cipherInterfaceT* create_cipher_factory(const char* algo_id)
+static cipher_interface_t* create_cipher_factory(const char* algo_id)
 {
     if (!algo_id) return NULL;
     // AES-CBC
@@ -181,22 +181,31 @@ static cipherInterfaceT* create_cipher_factory(const char* algo_id)
 
 void destroy_cipher_factory()
 {
-    cipherInterfaceT* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
-    if (cipher && cipher->destroy)
+    cipher_interface_t* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
+    if (cipher == NULL)
     {
-        cipher->destroy(cipher);
+        LOG_DEBUG("cipher 已经是 NULL，无需销毁");
+        return;
     }
-    cipher = NULL;
+    if (cipher->destroy == NULL)
+    {
+        LOG_ERROR("cipher->destroy 为 NULL，无法销毁");
+        return;
+    }
     LOG_DEBUG("销毁加解密工厂");
+    cipher->destroy(cipher);
+    g_prog_status[thread_idx].auth_cfg.cipher = NULL;
+    cipher = NULL;
+    LOG_DEBUG("销毁完成");
 }
 
 bool init_cipher(const char* algo_id)
 {
     LOG_DEBUG("开始初始化加解密工厂");
-    cipherInterfaceT* cipher = NULL;
+    cipher_interface_t* cipher = NULL;
     LOG_VERBOSE("创建加解密工厂, 使用 algo_id: %s", algo_id);
     cipher = create_cipher_factory(algo_id);
-    if (!cipher)
+    if (cipher == NULL)
     {
         LOG_ERROR("初始化加密工厂失败");
         return false;
@@ -209,13 +218,13 @@ bool init_cipher(const char* algo_id)
 char* session_encrypt(const char* text)
 {
     LOG_VERBOSE("要加密的文本:\n%s", text);
-    cipherInterfaceT* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
+    cipher_interface_t* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
     return cipher->encrypt(cipher, text);
 }
 
 char* session_decrypt(const char* text)
 {
     LOG_VERBOSE("要解密的文本:\n%s", text);
-    cipherInterfaceT* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
+    cipher_interface_t* cipher = g_prog_status[thread_idx].auth_cfg.cipher;
     return cipher->decrypt(cipher, text);
 }

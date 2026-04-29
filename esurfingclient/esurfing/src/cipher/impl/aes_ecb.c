@@ -86,7 +86,7 @@ static uint8_t* aes_decrypt_ecb(const uint8_t* data, const size_t data_len,
     return output;
 }
 
-static char* aes_ecb_encrypt(cipherInterfaceT* self, const char* text)
+static char* aes_ecb_encrypt(cipher_interface_t* self, const char* text)
 {
     if (!self || !text) return NULL;
     aes_ecb_data_t* data = self->private_data;
@@ -105,7 +105,7 @@ static char* aes_ecb_encrypt(cipherInterfaceT* self, const char* text)
     return hex_result;
 }
 
-static char* aes_ecb_decrypt(cipherInterfaceT* self, const char* hex)
+static char* aes_ecb_decrypt(cipher_interface_t* self, const char* hex)
 {
     if (!self || !hex) return NULL;
     aes_ecb_data_t* data = self->private_data;
@@ -132,7 +132,7 @@ static char* aes_ecb_decrypt(cipherInterfaceT* self, const char* hex)
     return result;
 }
 
-static void aes_ecb_destroy(cipherInterfaceT* self)
+static void aes_ecb_destroy(cipher_interface_t* self)
 {
     if (self)
     {
@@ -141,10 +141,10 @@ static void aes_ecb_destroy(cipherInterfaceT* self)
     }
 }
 
-cipherInterfaceT* create_aes_ecb_cipher(const uint8_t* key1, const uint8_t* key2)
+cipher_interface_t* create_aes_ecb_cipher(const uint8_t* key1, const uint8_t* key2)
 {
     if (!key1 || !key2) return NULL;
-    cipherInterfaceT* cipher = s_malloc(sizeof(cipherInterfaceT));
+    cipher_interface_t* cipher = s_malloc(sizeof(cipher_interface_t));
     aes_ecb_data_t* data = s_malloc(sizeof(aes_ecb_data_t));
     memcpy(data->key1, key1, 16);
     memcpy(data->key2, key2, 16);

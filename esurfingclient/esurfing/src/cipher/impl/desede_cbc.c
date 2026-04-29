@@ -91,7 +91,7 @@ static uint8_t* desede_decrypt_cbc(const uint8_t* data, size_t data_len,
     return output;
 }
 
-static char* desede_cbc_encrypt(cipherInterfaceT* self, const char* text)
+static char* desede_cbc_encrypt(cipher_interface_t* self, const char* text)
 {
     if (!self || !text) return NULL;
     desede_cbc_data_t* data = self->private_data;
@@ -110,7 +110,7 @@ static char* desede_cbc_encrypt(cipherInterfaceT* self, const char* text)
     return hex_result;
 }
 
-static char* desede_cbc_decrypt(cipherInterfaceT* self, const char* hex)
+static char* desede_cbc_decrypt(cipher_interface_t* self, const char* hex)
 {
     if (!self || !hex) return NULL;
     desede_cbc_data_t* data = self->private_data;
@@ -137,7 +137,7 @@ static char* desede_cbc_decrypt(cipherInterfaceT* self, const char* hex)
     return result;
 }
 
-static void desede_cbc_destroy(cipherInterfaceT* self)
+static void desede_cbc_destroy(cipher_interface_t* self)
 {
     if (self)
     {
@@ -146,11 +146,11 @@ static void desede_cbc_destroy(cipherInterfaceT* self)
     }
 }
 
-cipherInterfaceT* create_desede_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
+cipher_interface_t* create_desede_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
                                              const uint8_t* iv1, const uint8_t* iv2)
 {
     if (!key1 || !key2 || !iv1 || !iv2) return NULL;
-    cipherInterfaceT* cipher = s_malloc(sizeof(cipherInterfaceT));
+    cipher_interface_t* cipher = s_malloc(sizeof(cipher_interface_t));
     desede_cbc_data_t* data = s_malloc(sizeof(desede_cbc_data_t));
     memcpy(data->key1, key1, 24);
     memcpy(data->key2, key2, 24);

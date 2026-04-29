@@ -57,7 +57,7 @@ static void xtea_decrypt_block(uint32_t* v0, uint32_t* v1, const uint32_t* key)
     }
 }
 
-static char* mod_xtea_iv_encrypt(cipherInterfaceT* self, const char* text)
+static char* mod_xtea_iv_encrypt(cipher_interface_t* self, const char* text)
 {
     if (!self || !text) return NULL;
     mod_xtea_iv_data_t* data = self->private_data;
@@ -90,7 +90,7 @@ static char* mod_xtea_iv_encrypt(cipherInterfaceT* self, const char* text)
     return hex_result;
 }
 
-static char* mod_xtea_iv_decrypt(cipherInterfaceT* self, const char* hex)
+static char* mod_xtea_iv_decrypt(cipher_interface_t* self, const char* hex)
 {
     if (!self || !hex) return NULL;
     mod_xtea_iv_data_t* data = self->private_data;
@@ -129,7 +129,7 @@ static char* mod_xtea_iv_decrypt(cipherInterfaceT* self, const char* hex)
     return result;
 }
 
-static void mod_xtea_iv_destroy(cipherInterfaceT* self)
+static void mod_xtea_iv_destroy(cipher_interface_t* self)
 {
     if (self)
     {
@@ -138,11 +138,11 @@ static void mod_xtea_iv_destroy(cipherInterfaceT* self)
     }
 }
 
-cipherInterfaceT* create_mod_xtea_iv_cipher(const uint32_t* key1, const uint32_t* key2,
+cipher_interface_t* create_mod_xtea_iv_cipher(const uint32_t* key1, const uint32_t* key2,
                                               const uint32_t* key3, const uint32_t* iv)
 {
     if (!key1 || !key2 || !key3 || !iv) return NULL;
-    cipherInterfaceT* cipher = s_malloc(sizeof(cipherInterfaceT));
+    cipher_interface_t* cipher = s_malloc(sizeof(cipher_interface_t));
     mod_xtea_iv_data_t* data = s_malloc(sizeof(mod_xtea_iv_data_t));
     memcpy(data->key1, key1, 4 * sizeof(uint32_t));
     memcpy(data->key2, key2, 4 * sizeof(uint32_t));

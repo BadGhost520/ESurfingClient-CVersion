@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-cipherInterfaceT* create_des_ecb_six_pc_cipher(
+cipher_interface_t* create_des_ecb_six_pc_cipher(
     const uint8_t* key0,
     const uint8_t* key1,
     const uint8_t* key2,

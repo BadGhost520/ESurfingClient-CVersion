@@ -54,7 +54,7 @@ typedef struct
     /** @brief 服务端 IP */
     char ac_ip[IP_LEN];
     /** @brief 加解密工厂 */
-    cipherInterfaceT* cipher;
+    cipher_interface_t* cipher;
     /** @brief 重试时间 */
     uint64_t keep_retry;
     /** @brief 认证时间 */

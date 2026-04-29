@@ -217,7 +217,7 @@ static size_t trim_trailing_zeros_len(const uint8_t* data, size_t len)
     return len;
 }
 
-static char* zuc_encrypt(cipherInterfaceT* self, const char* text)
+static char* zuc_encrypt(cipher_interface_t* self, const char* text)
 {
     if(!self || !text) return NULL;
     const zuc_cipher_data_t* d = self->private_data;
@@ -234,7 +234,7 @@ static char* zuc_encrypt(cipherInterfaceT* self, const char* text)
     return hex;
 }
 
-static char* zuc_decrypt(cipherInterfaceT* self, const char* hex)
+static char* zuc_decrypt(cipher_interface_t* self, const char* hex)
 {
     if(!self || !hex) return NULL;
     const zuc_cipher_data_t* d = self->private_data;
@@ -253,7 +253,7 @@ static char* zuc_decrypt(cipherInterfaceT* self, const char* hex)
     return result;
 }
 
-static void zuc_destroy(cipherInterfaceT* self)
+static void zuc_destroy(cipher_interface_t* self)
 {
     if(self)
     {
@@ -261,10 +261,10 @@ static void zuc_destroy(cipherInterfaceT* self)
     }
 }
 
-cipherInterfaceT* create_zuc_cipher(const uint8_t* key, const uint8_t* iv)
+cipher_interface_t* create_zuc_cipher(const uint8_t* key, const uint8_t* iv)
 {
     if(!key || !iv) return NULL;
-    cipherInterfaceT* ci = s_malloc(sizeof(cipherInterfaceT));
+    cipher_interface_t* ci = s_malloc(sizeof(cipher_interface_t));
     zuc_cipher_data_t* d = s_malloc(sizeof(zuc_cipher_data_t));
     memcpy(d->key, key, 16);
     memcpy(d->iv, iv, 16);

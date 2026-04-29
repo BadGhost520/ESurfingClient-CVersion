@@ -87,7 +87,7 @@ static uint8_t* desede_decrypt_ecb(const uint8_t* data, const size_t data_len,
     return output;
 }
 
-static char* desede_ecb_encrypt(cipherInterfaceT* self, const char* text)
+static char* desede_ecb_encrypt(cipher_interface_t* self, const char* text)
 {
     if (!self || !text) return NULL;
     desede_ecb_data_t* data = self->private_data;
@@ -106,7 +106,7 @@ static char* desede_ecb_encrypt(cipherInterfaceT* self, const char* text)
     return hex_result;
 }
 
-static char* desede_ecb_decrypt(cipherInterfaceT* self, const char* hex)
+static char* desede_ecb_decrypt(cipher_interface_t* self, const char* hex)
 {
     if (!self || !hex) return NULL;
     desede_ecb_data_t* data = self->private_data;
@@ -134,7 +134,7 @@ static char* desede_ecb_decrypt(cipherInterfaceT* self, const char* hex)
 }
 
 // 销毁函数
-static void desede_ecb_destroy(cipherInterfaceT* self)
+static void desede_ecb_destroy(cipher_interface_t* self)
 {
     if (self)
     {
@@ -143,10 +143,10 @@ static void desede_ecb_destroy(cipherInterfaceT* self)
     }
 }
 
-cipherInterfaceT* create_desede_ecb_cipher(const uint8_t* key1, const uint8_t* key2)
+cipher_interface_t* create_desede_ecb_cipher(const uint8_t* key1, const uint8_t* key2)
 {
     if (!key1 || !key2) return NULL;
-    cipherInterfaceT* cipher = s_malloc(sizeof(cipherInterfaceT));
+    cipher_interface_t* cipher = s_malloc(sizeof(cipher_interface_t));
     desede_ecb_data_t* data = s_malloc(sizeof(desede_ecb_data_t));
     memcpy(data->key1, key1, 24);
     memcpy(data->key2, key2, 24);
