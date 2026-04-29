@@ -63,7 +63,7 @@ int main()
     {
         g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
         retry = 1;
-        while (!g_prog_status[i].thread)
+        while (g_prog_status[i].thread == NULL)
         {
             if (retry > 5)
             {
@@ -132,7 +132,7 @@ int main()
                 LOG_INFO("认证线程 %" PRIu8 " 已结束, 由于线程守护已开启, 将会重新启动此线程", i);
                 g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
                 retry = 1;
-                while (!g_prog_status[i].thread)
+                while (g_prog_status[i].thread == NULL)
                 {
                     if (retry > 5)
                     {
@@ -143,7 +143,10 @@ int main()
                     g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
                     retry++;
                 }
-                sleep_ms(5000);
+                while (g_prog_status[i].runtime_status.is_running == false)
+                {
+                    sleep_ms(100);
+                }
             }
         }
         sleep_ms(10);
