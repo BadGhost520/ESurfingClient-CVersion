@@ -21,7 +21,7 @@ jobs:
       - name: Install packages with retry
         run: |
           # 安装多个包，最多重试3次
-          PACKAGES="cmake ninja-build gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 mingw-w64-tools upx-ucl wget file zip"
+          PACKAGES="cmake ninja-build mingw-w64-x86-64-openssl gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 mingw-w64-tools upx-ucl wget file zip"
 
           for i in 1 2 3; do
             echo "Attempt $i: Installing $PACKAGES"
