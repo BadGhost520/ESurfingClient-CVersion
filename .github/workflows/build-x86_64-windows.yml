@@ -47,11 +47,10 @@ jobs:
 
           # 配置一个最小化的 libcurl（禁用几乎所有可选功能）
           ./configure --prefix=/mingw64 \
-                      --host=x86_64-w64-mingw32 \
-                      --build=x86_64-w64-mingw32 \
                       --enable-static \
                       --disable-shared \
-                      --with-openssl \
+                      --disable-dependency-tracking \
+                      --with-schannel \
                       --without-librtmp \
                       --without-ldap \
                       --without-ldaps \
@@ -60,8 +59,6 @@ jobs:
                       --without-libpsl \
                       --without-libssh2 \
                       --without-nghttp2 \
-                      --without-nghttp3 \
-                      --without-ngtcp2 \
                       --without-libidn2 \
                       --disable-rtmp \
                       --disable-ldap \
