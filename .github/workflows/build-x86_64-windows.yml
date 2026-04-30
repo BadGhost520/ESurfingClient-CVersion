@@ -61,8 +61,16 @@ jobs:
             -B build \
             -S . \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake \
-            -DVCPKG_TARGET_TRIPLET=x64-mingw-static
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
+            -DCURL_STATICLIB=ON \
+            -DOPENSSL_NO_DYNAMIC_ENGINE=ON \
+            -DCURL_LIBRARY=/mingw64/lib/libcurl.a \
+            -DCURL_INCLUDE_DIR=/mingw64/include \
+            -DOPENSSL_SSL_LIBRARY=/mingw64/lib/libssl.a \
+            -DOPENSSL_CRYPTO_LIBRARY=/mingw64/lib/libcrypto.a
           
           echo "🔨 Building with Ninja"
           cmake --build build --target ESurfingClient -j
