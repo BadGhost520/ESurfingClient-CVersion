@@ -47,37 +47,38 @@ jobs:
 
           # 配置一个最小化的 libcurl（禁用几乎所有可选功能）
           ./configure --prefix=/mingw64 \
-            --host=x86_64-w64-mingw32 \
-            --build=x86_64-w64-mingw32 \
-            --enable-static \
-            --disable-shared \
-            --with-openssl \
-            --without-brotli \
-            --without-zstd \
-            --without-libpsl \
-            --without-libssh2 \
-            --without-nghttp2 \
-            --without-nghttp3 \
-            --without-ngtcp2 \
-            --without-libidn2 \
-            --without-librtmp \
-            --without-ldap \
-            --without-libgsasl \
-            --disable-ftp \
-            --disable-file \
-            --disable-ldap \
-            --disable-ldaps \
-            --disable-rtsp \
-            --disable-dict \
-            --disable-telnet \
-            --disable-tftp \
-            --disable-pop3 \
-            --disable-imap \
-            --disable-smb \
-            --disable-smtp \
-            --disable-gopher \
-            --disable-mqtt \
-            --disable-unix-sockets
+                      --host=x86_64-w64-mingw32 \
+                      --build=x86_64-w64-mingw32 \
+                      --enable-static \
+                      --disable-shared \
+                      --disable-dependency-tracking \
+                      --with-openssl \
+                      --without-brotli \
+                      --without-zstd \
+                      --without-libpsl \
+                      --without-libssh2 \
+                      --without-nghttp2 \
+                      --without-nghttp3 \
+                      --without-ngtcp2 \
+                      --without-libidn2 \
+                      --without-librtmp \
+                      --without-ldap \
+                      --without-libgsasl \
+                      --disable-ftp \
+                      --disable-file \
+                      --disable-ldap \
+                      --disable-ldaps \
+                      --disable-rtsp \
+                      --disable-dict \
+                      --disable-telnet \
+                      --disable-tftp \
+                      --disable-pop3 \
+                      --disable-imap \
+                      --disable-smb \
+                      --disable-smtp \
+                      --disable-gopher \
+                      --disable-mqtt \
+                      --disable-unix-sockets
 
           make -j$(nproc)
           make install
