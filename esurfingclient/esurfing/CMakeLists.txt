@@ -8,11 +8,22 @@ if(NOT DEFINED __OPENWRT__)
     set(__OPENWRT__ 0)
 endif()
 
+if(NOT DEFINED __ACTION__)
+    set(__ACTION__ 0)
+endif()
+
 if(__OPENWRT__)
     add_definitions(-D__OPENWRT__=1)
-    message(STATUS "OpenWrt mode: ENABLED")
+    message(STATUS "OpenWRT: yes")
 else()
-    message(STATUS "OpenWrt mode: DISABLED")
+    message(STATUS "OpenWRT: no")
+endif()
+
+if(__ACTION__)
+    add_definitions(-D__ACTION__=1)
+    message(STATUS "github action: yes")
+else()
+    message(STATUS "github action: no")
 endif()
 
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
@@ -33,8 +44,10 @@ elseif(UNIX AND NOT WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-find_package(CURL REQUIRED)
-find_package(OpenSSL REQUIRED)
+if(NOT __ACTION__)
+    find_package(CURL REQUIRED)
+    find_package(OpenSSL REQUIRED)
+endif()
 
 add_executable(ESurfingClient
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
@@ -73,19 +86,41 @@ target_include_directories(ESurfingClient PRIVATE
 )
 
 if(WIN32)
-    target_link_libraries(ESurfingClient PRIVATE
-            CURL::libcurl
-            OpenSSL::SSL
-            OpenSSL::Crypto
-            ws2_32
-            wldap32
-            winmm
-            crypt32
-            normaliz
-            secur32
-            bcrypt
-            iphlpapi
-    )
+    if(__ACTION__)
+        message(STATUS "GitHub Actions mode: using hardcoded static library paths")
+        target_link_libraries(ESurfingClient PRIVATE
+                /mingw64/lib/libcurl.a
+                /mingw64/lib/libssl.a
+                /mingw64/lib/libcrypto.a
+                ws2_32
+                wldap32
+                winmm
+                crypt32
+                normaliz
+                secur32
+                bcrypt
+                iphlpapi
+        )
+        target_include_directories(ESurfingClient PRIVATE
+                /mingw64/include
+        )
+    else()
+        # 本地开发模式：使用 find_package 找到的库
+        message(STATUS "Local mode: using find_package libraries")
+        target_link_libraries(ESurfingClient PRIVATE
+                CURL::libcurl
+                OpenSSL::SSL
+                OpenSSL::Crypto
+                ws2_32
+                wldap32
+                winmm
+                crypt32
+                normaliz
+                secur32
+                bcrypt
+                iphlpapi
+        )
+    endif()
 elseif(UNIX AND NOT WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
