@@ -80,7 +80,10 @@ jobs:
           cd esurfingclient/esurfing
           
           echo "⚙️ CMake configuring"
-          cmake -DBUILD_STATIC=ON .
+          cmake -DBUILD_STATIC=ON \
+                -DCMAKE_VERBOSE_MAKEFILE=ON \
+                -DCMAKE_BUILD_TYPE=Release \
+                .
           
           echo "🔨 Making Programme"
           make -j$(nproc)
@@ -94,10 +97,7 @@ jobs:
             exit 1
           fi
           
-          echo "🛡️ Protect1 - Strip binary"
-          strip --strip-all ../../ESurfingClient-x86_64-linux
-          
-          echo "📦 Protect2 - Compress with UPX"
+          echo "📦 Protect - Compress with UPX"
           upx --best ../../ESurfingClient-x86_64-linux
           
           echo "✅ Build completed successfully"

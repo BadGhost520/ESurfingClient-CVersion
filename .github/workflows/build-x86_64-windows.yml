@@ -25,9 +25,9 @@ jobs:
           mingw-w64-x86_64-gcc
           mingw-w64-x86_64-cmake
           mingw-w64-x86_64-make
-          mingw-w64-x86_64-curl-winssl
-          mingw-w64-x86_64-openssl
-          mingw-w64-x86_64-zlib
+          mingw-w64-x86_64-curl-static
+          mingw-w64-x86_64-openssl-static
+          mingw-w64-x86_64-zlib-static
           mingw-w64-x86_64-nghttp2
           mingw-w64-x86_64-libssh2
           mingw-w64-x86_64-zstd
@@ -36,7 +36,6 @@ jobs:
           mingw-w64-x86_64-brotli
           mingw-w64-x86_64-libunistring
           mingw-w64-x86_64-libiconv
-          mingw-w64-x86_64-pkg-config
           mingw-w64-x86_64-upx
           p7zip
 
@@ -54,7 +53,6 @@ jobs:
     - name: Build ESurfingClient
       shell: msys2 {0}
       env:
-        PKG_CONFIG: "pkg-config --static"
         LDFLAGS: "-static -static-libgcc -static-libstdc++"
         CFLAGS: "-static -DCURL_STATICLIB"
         CXXFLAGS: "-static -DCURL_STATICLIB"
