@@ -50,11 +50,79 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          
-          set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++" CACHE STRING "" FORCE)
           EOF
           
           cat toolchain-mingw64.cmake
+
+      - name: Build libopenssl
+        run: |
+          cd /tmp
+          wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
+          tar -xzf openssl-4.0.0.tar.gz
+          cd openssl-4.0.0
+          
+          ./Configure mingw64 \
+            --cross-compile-prefix=x86_64-w64-mingw32- \
+            --prefix=/usr/x86_64-w64-mingw32 \
+            --libdir=lib \
+            no-shared \
+            no-tests \
+            no-docs \
+            \
+            no-bf \
+            no-cast \
+            no-idea \
+            no-rc2 \
+            no-rc4 \
+            no-rc5 \
+            no-seed \
+            no-aria \
+            no-camellia \
+            no-sm2 \
+            no-sm3 \
+            no-mdc2 \
+            no-rmd160 \
+            no-whirlpool \
+            no-blake2 \
+            no-md4 \
+            no-dtls \
+            no-quic \
+            no-sctp \
+            no-srp \
+            no-zlib \
+            no-zstd \
+            no-brotli \
+            no-ktls \
+            no-rdrand \
+            no-asan \
+            no-msan \
+            no-ubsan \
+            no-trace \
+            no-egd \
+            no-krb5kdf \
+            no-scrypt \
+            no-ssh-kdf \
+            no-x942kdf \
+            no-x963kdf \
+            no-srtp \
+            no-ocsp \
+            no-cms \
+            no-ts \
+            no-tls \
+            no-ssl
+          
+          make -j$(nproc)
+          make install
+          
+          # 验证 OpenSSL 静态库
+          if [ -f "/usr/x86_64-w64-mingw32/lib/libcrypto.a" ] && [ -f "/usr/x86_64-w64-mingw32/lib/libssl.a" ]; then
+            echo "✅ OpenSSL static libraries installed"
+            ls -la /usr/x86_64-w64-mingw32/lib/libcrypto.a
+            ls -la /usr/x86_64-w64-mingw32/lib/libssl.a
+          else
+            echo "❌ OpenSSL libraries not found!"
+            exit 1
+          fi
 
       - name: Build libcurl
         run: |
