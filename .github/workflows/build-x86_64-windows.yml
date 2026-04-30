@@ -1,4 +1,4 @@
-name: Build x86_64 Windows Binary (Ninja + vcpkg)
+name: Build x86_64 Windows Binary
 
 permissions:
   contents: write
@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies via vcpkg
         shell: pwsh
         run: |
-          C:/vcpkg/vcpkg install curl:x64-windows-static
+          C:/vcpkg/vcpkg install
 
       - name: Build ESurfingClient
         shell: pwsh
