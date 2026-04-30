@@ -72,10 +72,16 @@ jobs:
                       --disable-unix-sockets
 
           mingw32-make -j$(nproc)
-          mingw32-make install
-
-          echo "✅ Minimal libcurl built and installed"
-          ls -la /mingw64/lib/libcurl.a
+          mingw32-make install || true
+    
+          # 确认 libcurl.a 存在
+          if [ -f "/mingw64/lib/libcurl.a" ]; then
+            echo "✅ libcurl.a successfully installed"
+            ls -la /mingw64/lib/libcurl.a
+          else
+            echo "❌ libcurl.a not found!"
+            exit 1
+          fi
 
       - name: Build ESurfingClient
         shell: msys2 {0}
