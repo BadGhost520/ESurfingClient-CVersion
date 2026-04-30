@@ -8,22 +8,11 @@ if(NOT DEFINED __OPENWRT__)
     set(__OPENWRT__ 0)
 endif()
 
-if(NOT DEFINED __ACTION__)
-    set(__ACTION__ 0)
-endif()
-
 if(__OPENWRT__)
     add_definitions(-D__OPENWRT__=1)
     message(STATUS "OpenWRT: yes")
 else()
     message(STATUS "OpenWRT: no")
-endif()
-
-if(__ACTION__)
-    add_definitions(-D__ACTION__=1)
-    message(STATUS "github action: yes")
-else()
-    message(STATUS "github action: no")
 endif()
 
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
@@ -44,10 +33,8 @@ elseif(UNIX AND NOT WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-if(NOT __ACTION__)
-    find_package(CURL REQUIRED)
-    find_package(OpenSSL REQUIRED)
-endif()
+find_package(CURL REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 add_executable(ESurfingClient
         src/cipher/impl/mod_xtea_cbc_triple_pc.c
@@ -86,56 +73,19 @@ target_include_directories(ESurfingClient PRIVATE
 )
 
 if(WIN32)
-    if(__ACTION__)
-        message(STATUS "GitHub Actions mode: using hardcoded static library paths")
-
-        set(MINGW64_DIR "D:/a/_temp/msys64/mingw64")
-        if(EXISTS "${MINGW64_DIR}/lib/libcurl.a")
-            set(CURL_LIB_PATH "${MINGW64_DIR}/lib/libcurl.a")
-            set(SSL_LIB_PATH "${MINGW64_DIR}/lib/libssl.a")
-            set(CRYPTO_LIB_PATH "${MINGW64_DIR}/lib/libcrypto.a")
-            set(INCLUDE_PATH "${MINGW64_DIR}/include")
-        else()
-            set(CURL_LIB_PATH "/mingw64/lib/libcurl.a")
-            set(SSL_LIB_PATH "/mingw64/lib/libssl.a")
-            set(CRYPTO_LIB_PATH "/mingw64/lib/libcrypto.a")
-            set(INCLUDE_PATH "/mingw64/include")
-        endif()
-
-        message(STATUS "CURL path: ${CURL_LIB_PATH}")
-        target_link_libraries(ESurfingClient PRIVATE
-                ${CURL_LIB_PATH}
-                ${SSL_LIB_PATH}
-                ${CRYPTO_LIB_PATH}
-                ws2_32
-                wldap32
-                winmm
-                crypt32
-                normaliz
-                secur32
-                bcrypt
-                iphlpapi
-        )
-        target_include_directories(ESurfingClient PRIVATE
-                ${INCLUDE_PATH}
-        )
-    else()
-        # 本地开发模式：使用 find_package 找到的库
-        message(STATUS "Local mode: using find_package libraries")
-        target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                ws2_32
-                wldap32
-                winmm
-                crypt32
-                normaliz
-                secur32
-                bcrypt
-                iphlpapi
-        )
-    endif()
+    target_link_libraries(ESurfingClient PRIVATE
+            CURL::libcurl
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            ws2_32
+            wldap32
+            winmm
+            crypt32
+            normaliz
+            secur32
+            bcrypt
+            iphlpapi
+    )
 elseif(UNIX AND NOT WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
