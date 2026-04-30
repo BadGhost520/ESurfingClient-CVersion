@@ -57,9 +57,9 @@ jobs:
       - name: Build libopenssl
         run: |
           cd /tmp
-          wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
-          tar -xzf openssl-4.0.0.tar.gz
-          cd openssl-4.0.0
+          wget https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz
+          tar -xzf openssl-3.5.6.tar.gz
+          cd openssl-3.5.6
           
           ./Configure mingw64 \
             --cross-compile-prefix=x86_64-w64-mingw32- \
