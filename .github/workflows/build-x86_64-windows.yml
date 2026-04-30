@@ -28,24 +28,37 @@ jobs:
             C:/vcpkg/installed
             C:/vcpkg/buildtrees
             C:/vcpkg/packages
-          key: vcpkg-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-${{ hashFiles('esurfingclient/esurfing/vcpkg.json') }}-${{ runner.os }}
           restore-keys: |
-            vcpkg-
+            vcpkg-${{ runner.os }}
+
+      - name: Install dependencies via vcpkg
+        shell: pwsh
+        run: |
+          cd esurfingclient/esurfing
+          C:/vcpkg/vcpkg install --triplet x64-windows-static
 
       - name: Build ESurfingClient
         shell: pwsh
         run: |
           cd esurfingclient/esurfing
           
-          echo "⚙️ CMake configuring with vcpkg"
+          $env:VCPKG_ROOT = "C:/vcpkg"
+          
           cmake -B build -S . `
             -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DVCPKG_MANIFEST_MODE=OFF `
             -DCMAKE_BUILD_TYPE=Release `
             -DCURL_STATICLIB=ON `
-            -DOPENSSL_NO_DYNAMIC_ENGINE=ON
+            -DOPENSSL_NO_DYNAMIC_ENGINE=ON `
+            -DCURL_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libcurl.lib `
+            -DCURL_INCLUDE_DIR=C:/vcpkg/installed/x64-windows-static/include `
+            -DOPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows-static `
+            -DOPENSSL_INCLUDE_DIR=C:/vcpkg/installed/x64-windows-static/include `
+            -DOPENSSL_CRYPTO_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libcrypto.lib `
+            -DOPENSSL_SSL_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libssl.lib
           
-          echo "🔨 Building"
           cmake --build build --config Release --target ESurfingClient -j
           
           echo "📦 Copying executable"
