@@ -1,0 +1,20 @@
+{
+  "name": "esurfingclient",
+  "version": "1.0.0",
+  "description": "ESurfingClient - 校园网拨号客户端",
+  "dependencies": [
+    "curl",
+    "openssl",
+    "zlib",
+    "libssh2",
+    "nghttp2",
+    "zstd",
+    "libidn2",
+    "libpsl",
+    "brotli",
+    "libunistring",
+    "libiconv"
+  ],
+  "builtin-baseline": "latest",
+  "triplet": "x64-windows-static"
+}

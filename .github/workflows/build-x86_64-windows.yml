@@ -21,19 +21,15 @@ jobs:
           vcpkgDirectory: 'C:/vcpkg'
           vcpkgGitCommit: 'latest'
 
-      - name: Install dependencies with vcpkg
-        run: |
-          vcpkg install curl:x64-windows-static
-          vcpkg install openssl:x64-windows-static
-          vcpkg install zlib:x64-windows-static
-          vcpkg install libssh2:x64-windows-static
-          vcpkg install nghttp2:x64-windows-static
-          vcpkg install zstd:x64-windows-static
-          vcpkg install libidn2:x64-windows-static
-          vcpkg install libpsl:x64-windows-static
-          vcpkg install brotli:x64-windows-static
-          vcpkg install libunistring:x64-windows-static
-          vcpkg install libiconv:x64-windows-static
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:/vcpkg/downloads
+            C:/vcpkg/installed
+            C:/vcpkg/buildtrees
+          key: vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-
 
       - name: Build ESurfingClient
         shell: msys2 {0}
@@ -46,12 +42,10 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCURL_STATICLIB=ON `
-            -DOPENSSL_NO_DYNAMIC_ENGINE=ON `
-            -DCMAKE_EXE_LINKER_FLAGS="/STATIC"
+            -DCURL_STATICLIB=ON
           
           echo "🔨 Building"
-          cmake --build build --config Release --target ESurfingClient
+          cmake --build build --config Release
           
           echo "📦 Renaming executable"
           copy build\Release\ESurfingClient.exe ESurfingClient-x86_64-windows.exe
