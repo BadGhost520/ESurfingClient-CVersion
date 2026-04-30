@@ -37,6 +37,56 @@ jobs:
             mingw-w64-x86_64-libiconv
             mingw-w64-x86_64-upx
 
+      - name: Build libcurl (static, minimal)
+        shell: msys2 {0}
+        run: |
+          cd $GITHUB_WORKSPACE
+          wget https://curl.se/download/curl-8.8.0.tar.gz
+          tar -xzf curl-8.8.0.tar.gz
+          cd curl-8.8.0
+
+          # 配置一个最小化的 libcurl（禁用几乎所有可选功能）
+          ./configure --prefix=/mingw64 \
+            --host=x86_64-w64-mingw32 \
+            --build=x86_64-w64-mingw32 \
+            --enable-static \
+            --disable-shared \
+            --with-openssl \
+            --without-brotli \
+            --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-nghttp2 \
+            --without-nghttp3 \
+            --without-ngtcp2 \
+            --without-libidn2 \
+            --without-librtmp \
+            --without-ldap \
+            --without-libgsasl \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-unix-sockets
+
+          make -j$(nproc)
+          make install
+
+          # 备份原来的 libcurl.a，用新编译的替换
+          mv /mingw64/lib/libcurl.a /mingw64/lib/libcurl.a.bak || true
+          cp lib/.libs/libcurl.a /mingw64/lib/libcurl.a
+          echo "✅ Minimal libcurl built and installed"
+
       - name: Build ESurfingClient
         shell: msys2 {0}
         run: |
@@ -46,10 +96,8 @@ jobs:
           echo "⚙️ CMake configuring"
           cmake -G "MinGW Makefiles" \
                 -DCMAKE_BUILD_TYPE=Release \
-                -DCURL_NO_CURL_CMAKE=ON \
                 -DCURL_LIBRARY=/mingw64/lib/libcurl.a \
                 -DCURL_INCLUDE_DIR=/mingw64/include \
-                -DOPENSSL_INCLUDE_DIR=/mingw64/include \
                 -DOPENSSL_SSL_LIBRARY=/mingw64/lib/libssl.a \
                 -DOPENSSL_CRYPTO_LIBRARY=/mingw64/lib/libcrypto.a \
                 -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++" \
