@@ -32,53 +32,63 @@ jobs:
           restore-keys: vcpkg-
 
       - name: Build ESurfingClient
-        shell: msys2 {0}
+        shell: pwsh
         run: |
-          echo "🏗️ Starting Windows x64 build process"
           cd esurfingclient/esurfing
           
-          echo "⚙️ CMake configuring"
+          echo "⚙️ CMake configuring with vcpkg"
           cmake -B build -S . `
             -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCURL_STATICLIB=ON
+            -DCURL_STATICLIB=ON `
+            -DOPENSSL_NO_DYNAMIC_ENGINE=ON
           
           echo "🔨 Building"
-          cmake --build build --config Release
+          cmake --build build --config Release --target ESurfingClient -j
           
-          echo "📦 Renaming executable"
+          echo "📦 Copying executable"
           copy build\Release\ESurfingClient.exe ESurfingClient-x86_64-windows.exe
           
           echo "🔍 Verifying static linking"
           echo "Dependencies (should show only system DLLs):"
-          objdump -p ESurfingClient-x86_64-windows.exe | grep "DLL Name" || echo "No DLL dependencies found"
-          dumpbin /dependents ESurfingClient-x86_64-windows.exe || echo "dumpbin not available"
+          dumpbin /dependents ESurfingClient-x86_64-windows.exe | Select-String "DLL" | Select-Object -First 20
           
-          echo "🗜️ Compressing with UPX"
-          upx --best --lzma ESurfingClient-x86_64-windows.exe
+          echo "🗜️ Compressing with UPX (if available)"
+          where upx > $null 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            upx --best --lzma ESurfingClient-x86_64-windows.exe
+          } else {
+            echo "UPX not found, skipping compression"
+          }
           
           echo "✅ Build completed"
+          ls -lh ESurfingClient-x86_64-windows.exe
 
       - name: Verify build output
-        shell: msys2 {0}
+        shell: pwsh
         run: |
           cd esurfingclient/esurfing
-          if [ ! -f "ESurfingClient-x86_64-windows.exe" ]; then
-            echo "❌ Executable not found"
-            exit 1
-          fi
           
-          echo "✅ Build successful!"
-          echo "📏 File size: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
+          if (Test-Path "ESurfingClient-x86_64-windows.exe") {
+            echo "✅ Build successful!"
+            echo "📏 File size: $(Get-Item ESurfingClient-x86_64-windows.exe).Length bytes"
           
-          # 验证没有第三方 DLL 依赖
-          if objdump -p ESurfingClient-x86_64-windows.exe | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
-            echo "❌ ERROR: Found third-party DLL dependencies!"
+            # 验证没有第三方 DLL 依赖
+            $deps = dumpbin /dependents ESurfingClient-x86_64-windows.exe | Select-String "DLL"
+            $badDlls = $deps | Select-String -Pattern "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
+          
+            if ($badDlls) {
+              echo "❌ ERROR: Found third-party DLL dependencies!"
+              echo $badDlls
+              exit 1
+            } else {
+              echo "✅ Fully static binary - no third-party DLLs"
+            }
+          } else {
+            echo "❌ Executable not found!"
             exit 1
-          else
-            echo "✅ Fully static binary - no third-party DLLs"
-          fi
+          }
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
