@@ -1,4 +1,4 @@
-name: Build x86_64 Windows Binary
+name: Build x86_64 Windows Binary (Ninja + vcpkg)
 
 permissions:
   contents: write
@@ -28,47 +28,33 @@ jobs:
             C:/vcpkg/installed
             C:/vcpkg/buildtrees
             C:/vcpkg/packages
-          key: vcpkg-${{ hashFiles('esurfingclient/esurfing/vcpkg.json') }}-${{ runner.os }}
+          key: vcpkg-${{ hashFiles('vcpkg.json') }}-${{ runner.os }}
           restore-keys: |
             vcpkg-${{ runner.os }}
 
       - name: Install dependencies via vcpkg
         shell: pwsh
         run: |
-          cd esurfingclient/esurfing
-          C:/vcpkg/vcpkg install --triplet x64-windows-static
+          C:/vcpkg/vcpkg install curl:x64-windows-static
 
       - name: Build ESurfingClient
         shell: pwsh
         run: |
           cd esurfingclient/esurfing
           
-          $env:VCPKG_ROOT = "C:/vcpkg"
-          
-          echo "🔍 Checking vcpkg installed libraries"
-          Get-ChildItem C:/vcpkg/installed/x64-windows-static/lib -Filter "*crypto*" | Select-Object Name
-          Get-ChildItem C:/vcpkg/installed/x64-windows-static/lib -Filter "*ssl*" | Select-Object Name
-          
-          echo "⚙️ CMake configuring"
-          cmake -B build -S . `
-            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
-            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
-            -DVCPKG_MANIFEST_MODE=OFF `
+          echo "⚙️ CMake configuring with Ninja"
+          cmake -G Ninja `
+            -B build `
+            -S . `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCURL_STATICLIB=ON `
-            -DOPENSSL_NO_DYNAMIC_ENGINE=ON `
-            -DCURL_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libcurl.lib `
-            -DCURL_INCLUDE_DIR=C:/vcpkg/installed/x64-windows-static/include `
-            -DOPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows-static `
-            -DOPENSSL_INCLUDE_DIR=C:/vcpkg/installed/x64-windows-static/include `
-            -DOPENSSL_CRYPTO_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libcrypto.lib `
-            -DOPENSSL_SSL_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libssl.lib `
-            -DOPENSSL_LIBRARIES="C:/vcpkg/installed/x64-windows-static/lib/libcrypto.lib;C:/vcpkg/installed/x64-windows-static/lib/libssl.lib"
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static
           
+          echo "🔨 Building with Ninja"
           cmake --build build --config Release --target ESurfingClient -j
           
           echo "📦 Copying executable"
-          copy build\Release\ESurfingClient.exe ESurfingClient-x86_64-windows.exe
+          copy build\ESurfingClient.exe ESurfingClient-x86_64-windows.exe
           
           echo "🔍 Verifying static linking"
           dumpbin /dependents ESurfingClient-x86_64-windows.exe | Select-String "DLL" | Select-Object -First 20
