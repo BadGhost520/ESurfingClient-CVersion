@@ -7,6 +7,7 @@ permissions:
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build-x64-linux:
