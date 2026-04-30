@@ -37,55 +37,55 @@ jobs:
             mingw-w64-x86_64-libiconv
             mingw-w64-x86_64-upx
 
-      - name: Build libcurl (static, minimal)
-        shell: msys2 {0}
-        run: |
-          cd $GITHUB_WORKSPACE
-          wget https://curl.se/download/curl-8.8.0.tar.gz
-          tar -xzf curl-8.8.0.tar.gz
-          cd curl-8.8.0
-          
-          export MAKE=mingw32-make
-
-          # 配置一个最小化的 libcurl（禁用几乎所有可选功能）
-          ./configure --prefix=/mingw64 \
-                      --enable-static \
-                      --disable-shared \
-                      --disable-dependency-tracking \
-                      --with-schannel \
-                      --without-librtmp \
-                      --without-ldap \
-                      --without-ldaps \
-                      --without-brotli \
-                      --without-zstd \
-                      --without-libpsl \
-                      --without-libssh2 \
-                      --without-nghttp2 \
-                      --without-libidn2 \
-                      --disable-rtmp \
-                      --disable-ldap \
-                      --disable-ldaps \
-                      --disable-rtsp \
-                      --disable-dict \
-                      --disable-telnet \
-                      --disable-tftp \
-                      --disable-pop3 \
-                      --disable-imap \
-                      --disable-smb \
-                      --disable-smtp \
-                      --disable-gopher \
-                      --disable-mqtt \
-                      --disable-ftp \
-                      --disable-file \
-                      --disable-unix-sockets
-
-          mingw32-make -j$(nproc)
-          mingw32-make install
-
-          # 备份原来的 libcurl.a，用新编译的替换
-          mv /mingw64/lib/libcurl.a /mingw64/lib/libcurl.a.bak || true
-          cp lib/.libs/libcurl.a /mingw64/lib/libcurl.a
-          echo "✅ Minimal libcurl built and installed"
+#      - name: Build libcurl (static, minimal)
+#        shell: msys2 {0}
+#        run: |
+#          cd $GITHUB_WORKSPACE
+#          wget https://curl.se/download/curl-8.8.0.tar.gz
+#          tar -xzf curl-8.8.0.tar.gz
+#          cd curl-8.8.0
+#
+#          export MAKE=mingw32-make
+#
+#          # 配置一个最小化的 libcurl（禁用几乎所有可选功能）
+#          ./configure --prefix=/mingw64 \
+#                      --enable-static \
+#                      --disable-shared \
+#                      --disable-dependency-tracking \
+#                      --with-schannel \
+#                      --without-librtmp \
+#                      --without-ldap \
+#                      --without-ldaps \
+#                      --without-brotli \
+#                      --without-zstd \
+#                      --without-libpsl \
+#                      --without-libssh2 \
+#                      --without-nghttp2 \
+#                      --without-libidn2 \
+#                      --disable-rtmp \
+#                      --disable-ldap \
+#                      --disable-ldaps \
+#                      --disable-rtsp \
+#                      --disable-dict \
+#                      --disable-telnet \
+#                      --disable-tftp \
+#                      --disable-pop3 \
+#                      --disable-imap \
+#                      --disable-smb \
+#                      --disable-smtp \
+#                      --disable-gopher \
+#                      --disable-mqtt \
+#                      --disable-ftp \
+#                      --disable-file \
+#                      --disable-unix-sockets
+#
+#          mingw32-make -j$(nproc)
+#          mingw32-make install
+#
+#          # 备份原来的 libcurl.a，用新编译的替换
+#          mv /mingw64/lib/libcurl.a /mingw64/lib/libcurl.a.bak || true
+#          cp lib/.libs/libcurl.a /mingw64/lib/libcurl.a
+#          echo "✅ Minimal libcurl built and installed"
 
       - name: Build ESurfingClient
         shell: msys2 {0}
