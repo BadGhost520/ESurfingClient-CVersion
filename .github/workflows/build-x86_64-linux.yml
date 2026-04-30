@@ -39,32 +39,37 @@ jobs:
           tar -xzf curl-8.8.0.tar.gz
           cd curl-8.8.0
           
-          ./configure \
-            --disable-shared \
-            --enable-static \
-            --without-gssapi \
-            --without-libpsl \
-            --without-libssh2 \
-            --without-nghttp2 \
-            --without-brotli \
-            --without-zstd \
-            --without-libidn2 \
-            --without-ldap \
-            --without-ldaps \
-            --without-rtsp \
-            --without-dict \
-            --without-telnet \
-            --without-tftp \
-            --without-pop3 \
-            --without-imap \
-            --without-smb \
-            --without-smtp \
-            --without-gopher \
-            --without-mqtt \
-            --without-ftp \
-            --without-zlib \
-            --with-ssl \
-            --prefix=/usr/local
+          ./configure --prefix=/usr/local \
+                      --enable-static \
+                      --disable-shared \
+                      --with-openssl \
+                      --without-librtmp \
+                      --without-ldap \
+                      --without-ldaps \
+                      --without-brotli \
+                      --without-zstd \
+                      --without-libpsl \
+                      --without-libssh2 \
+                      --without-nghttp2 \
+                      --without-nghttp3 \
+                      --without-ngtcp2 \
+                      --without-libidn2 \
+                      --disable-rtmp \
+                      --disable-ldap \
+                      --disable-ldaps \
+                      --disable-rtsp \
+                      --disable-dict \
+                      --disable-telnet \
+                      --disable-tftp \
+                      --disable-pop3 \
+                      --disable-imap \
+                      --disable-smb \
+                      --disable-smtp \
+                      --disable-gopher \
+                      --disable-mqtt \
+                      --disable-ftp \
+                      --disable-file \
+                      --disable-unix-sockets
           
           make -j$(nproc)
           make install
@@ -80,8 +85,7 @@ jobs:
           cd esurfingclient/esurfing
           
           echo "⚙️ CMake configuring"
-          cmake -DBUILD_STATIC=ON \
-                -DCMAKE_VERBOSE_MAKEFILE=ON \
+          cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
                 -DCMAKE_BUILD_TYPE=Release \
                 .
           

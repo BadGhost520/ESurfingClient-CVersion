@@ -91,6 +91,8 @@ elseif(UNIX AND NOT WIN32)
             CURL::libcurl
             OpenSSL::SSL
             OpenSSL::Crypto
+            z
+            zstd
             pthread
             dl
             atomic
