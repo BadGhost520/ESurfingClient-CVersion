@@ -51,6 +51,18 @@ jobs:
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-upx
 
+      - name: Find libcurl.a location
+        shell: msys2 {0}
+        run: |
+          echo "Searching for libcurl.a..."
+          find / -name "libcurl.a" 2>/dev/null | head -10
+          echo ""
+          echo "Checking /mingw64/lib directory:"
+          ls -la /mingw64/lib/libcurl* 2>/dev/null || echo "Not found in /mingw64/lib"
+          echo ""
+          echo "Checking MSYS2 package files:"
+          pacman -Ql mingw-w64-x86_64-curl | grep "\.a" | head -10
+
       - name: Build ESurfingClient
         shell: msys2 {0}
         run: |
