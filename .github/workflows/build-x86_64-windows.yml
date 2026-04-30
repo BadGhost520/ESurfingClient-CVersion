@@ -45,6 +45,11 @@ jobs:
           
           $env:VCPKG_ROOT = "C:/vcpkg"
           
+          echo "🔍 Checking vcpkg installed libraries"
+          Get-ChildItem C:/vcpkg/installed/x64-windows-static/lib -Filter "*crypto*" | Select-Object Name
+          Get-ChildItem C:/vcpkg/installed/x64-windows-static/lib -Filter "*ssl*" | Select-Object Name
+          
+          echo "⚙️ CMake configuring"
           cmake -B build -S . `
             -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
@@ -57,7 +62,8 @@ jobs:
             -DOPENSSL_ROOT_DIR=C:/vcpkg/installed/x64-windows-static `
             -DOPENSSL_INCLUDE_DIR=C:/vcpkg/installed/x64-windows-static/include `
             -DOPENSSL_CRYPTO_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libcrypto.lib `
-            -DOPENSSL_SSL_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libssl.lib
+            -DOPENSSL_SSL_LIBRARY=C:/vcpkg/installed/x64-windows-static/lib/libssl.lib `
+            -DOPENSSL_LIBRARIES="C:/vcpkg/installed/x64-windows-static/lib/libcrypto.lib;C:/vcpkg/installed/x64-windows-static/lib/libssl.lib"
           
           cmake --build build --config Release --target ESurfingClient -j
           
