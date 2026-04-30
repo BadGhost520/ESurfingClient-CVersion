@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies via vcpkg
         shell: pwsh
         run: |
-          C:/vcpkg/vcpkg install
+          C:/vcpkg/vcpkg install --triplet x64-windows-static
 
       - name: Build ESurfingClient
         shell: pwsh
