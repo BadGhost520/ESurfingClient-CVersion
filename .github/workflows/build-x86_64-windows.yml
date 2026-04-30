@@ -101,15 +101,13 @@ jobs:
             no-egd \
             no-krb5kdf \
             no-scrypt \
-            no-ssh-kdf \
             no-x942kdf \
             no-x963kdf \
             no-srtp \
             no-ocsp \
             no-cms \
             no-ts \
-            no-tls \
-            no-ssl
+            no-tls
           
           make -j$(nproc)
           make install
