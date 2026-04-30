@@ -48,6 +48,7 @@ jobs:
                       --with-openssl \
                       --without-librtmp \
                       --without-brotli \
+                      --without-zlib \
                       --without-zstd \
                       --without-libpsl \
                       --without-libssh2 \
