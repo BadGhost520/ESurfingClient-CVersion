@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -113,7 +113,7 @@ jobs:
           tar -czf esurfingclient-ramips_mt7621-openwrt.tar.gz test
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esurfingclient-ramips_mt7621-openwrt
           path: esurfingclient-ramips_mt7621-openwrt.tar.gz

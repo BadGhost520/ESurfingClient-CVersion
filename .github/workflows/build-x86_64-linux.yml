@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install packages with retry
         run: |
@@ -131,7 +131,7 @@ jobs:
           ls -la esurfingclient-x86_64-linux.tar.gz
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esurfingclient-x86_64-linux
           path: esurfingclient-x86_64-linux.tar.gz

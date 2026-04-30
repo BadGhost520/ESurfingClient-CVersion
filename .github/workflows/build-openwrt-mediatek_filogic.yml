@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -51,47 +51,42 @@ jobs:
           scripts/feeds update -a
           scripts/feeds install -a
 
-          echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
-          echo "CONFIG_TARGET_mediatek_filogic_DEVICE_generic=y" >> .config
-
-          echo "CONFIG_PACKAGE_esurfingclient=y" >> .config
-          echo "CONFIG_PACKAGE_libcurl=y" >> .config
-          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
-          echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
-
-          # 关键：禁用 mbedTLS，使用 OpenSSL
-          echo "CONFIG_LIBCURL_MBEDTLS=n" >> .config
-          echo "CONFIG_LIBCURL_OPENSSL=y" >> .config
-          echo "CONFIG_LIBCURL_WOLFSSL=n" >> .config
-          echo "CONFIG_LIBCURL_GNUTLS=n" >> .config
+          make defconfig
           
-          # 确保 OpenSSL 被选中
-          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
-
-          # 关键：禁用 HTTP/2
-          echo "CONFIG_LIBCURL_HTTP2=n" >> .config
-          echo "CONFIG_LIBCURL_NGHTTP2=n" >> .config
-          echo "CONFIG_PACKAGE_libnghttp2=n" >> .config
-
-          echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
-          echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
+          cat > .config << 'EOF'
+          CONFIG_TARGET_mediatek=y
+          CONFIG_TARGET_mediatek_filogic=y
+          # CONFIG_LIBCURL_FTP is not set
+          # CONFIG_LIBCURL_MBEDTLS is not set
+          # CONFIG_LIBCURL_NGHTTP2 is not set
+          CONFIG_LIBCURL_OPENSSL=y
+          # CONFIG_OPENSSL_WITH_CHACHA_POLY1305 is not set
+          # CONFIG_OPENSSL_WITH_CMS is not set
+          # CONFIG_OPENSSL_WITH_IDEA is not set
+          # CONFIG_OPENSSL_WITH_MDC2 is not set
+          # CONFIG_OPENSSL_WITH_PSK is not set
+          # CONFIG_OPENSSL_WITH_SEED is not set
+          # CONFIG_OPENSSL_WITH_SRP is not set
+          # CONFIG_OPENSSL_WITH_TLS13 is not set
+          # CONFIG_OPENSSL_WITH_WHIRLPOOL is not set
+          CONFIG_PACKAGE_libcurl=y
+          CONFIG_PACKAGE_libopenssl=y
+          # CONFIG_PACKAGE_libopenssl-afalg is not set
+          # CONFIG_PACKAGE_libopenssl-afalg_sync is not set
+          # CONFIG_PACKAGE_libopenssl-devcrypto is not set
+          EOF
 
           make defconfig
 
-      - name: Compile openssl
+      - name: Compile libopenssl
         run: |
           cd openwrt-sdk
           make package/openssl/compile V=sc -j$(nproc)
 
-      - name: Compile curl
+      - name: Compile libcurl
         run: |
           cd openwrt-sdk
           make package/curl/compile V=sc -j$(nproc)
-
-      - name: Compile nghttp2
-        run: |
-          cd openwrt-sdk
-          make package/nghttp2/compile V=sc -j$(nproc)
 
       - name: Compile esurfingclient
         run: |
@@ -118,7 +113,7 @@ jobs:
           tar -czf esurfingclient-mediatek_filogic-openwrt.tar.gz test
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esurfingclient-mediatek_filogic-openwrt
           path: esurfingclient-mediatek_filogic-openwrt.tar.gz
