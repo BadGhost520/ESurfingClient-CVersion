@@ -34,6 +34,10 @@ jobs:
         run: |
           cd esurfingclient/esurfing
           
+          rm -f /mingw64/lib/cmake/CURL/CURLConfig.cmake
+          rm -f /mingw64/lib/cmake/CURL/CURLTargets.cmake
+          rm -f /mingw64/lib/cmake/CURL/CURLTargets-release.cmake
+          
           rm -f /mingw64/lib/libcurl.dll.a
           
           echo "⚙️ CMake configuring with Ninja"
