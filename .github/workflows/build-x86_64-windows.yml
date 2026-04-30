@@ -117,8 +117,6 @@ jobs:
       - name: Verify build output
         shell: msys2 {0}
         run: |
-          cd esurfingclient/esurfing
-
           if [ -f "ESurfingClient-x86_64-windows.exe" ]; then
               echo "✅ Build successful!"
               echo "📏 File size: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
