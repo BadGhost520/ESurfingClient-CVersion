@@ -74,7 +74,6 @@ jobs:
           objdump -p ../../ESurfingClient-x86_64-windows.exe | grep "DLL Name" | head -20
           
           echo "🗜️ Compressing with UPX"
-          choco install upx -y
           upx --best --lzma ../../ESurfingClient-x86_64-windows.exe
           
           echo "✅ Build completed"
@@ -83,24 +82,27 @@ jobs:
       - name: Verify build output
         shell: msys2 {0}
         run: |
-          if (Test-Path "ESurfingClient-x86_64-windows.exe") {
-            echo "✅ Build successful!"
-            echo "📏 File size: $(Get-Item ESurfingClient-x86_64-windows.exe).Length bytes"
-          
-            $deps = dumpbin /dependents ESurfingClient-x86_64-windows.exe | Select-String "DLL"
-            $badDlls = $deps | Select-String -Pattern "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
-          
-            if ($badDlls) {
-              echo "❌ ERROR: Found third-party DLL dependencies!"
-              echo $badDlls
+          cd esurfingclient/esurfing
+
+          if [ -f "ESurfingClient-x86_64-windows.exe" ]; then
+              echo "✅ Build successful!"
+              echo "📏 File size: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
+
+              echo "🔍 Checking dependencies:"
+              deps=$(objdump -p ESurfingClient-x86_64-windows.exe | grep "DLL Name")
+              echo "$deps" | head -20
+
+              if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
+                  echo "❌ ERROR: Found third-party DLL dependencies!"
+                  echo "$deps" | grep -E "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
+                  exit 1
+              else
+                  echo "✅ Fully static binary - no third-party DLLs"
+              fi
+          else
+              echo "❌ Executable not found!"
               exit 1
-            } else {
-              echo "✅ Fully static binary - no third-party DLLs"
-            }
-          } else {
-            echo "❌ Executable not found!"
-            exit 1
-          }
+          fi
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
