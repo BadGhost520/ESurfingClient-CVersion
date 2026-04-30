@@ -56,7 +56,7 @@ jobs:
 
           make defconfig
           
-          cat > .config << 'EOF'
+          cat >> .config << 'EOF'
           CONFIG_TARGET_x86=y
           CONFIG_TARGET_x86_64=y
           # CONFIG_LIBCURL_FTP is not set

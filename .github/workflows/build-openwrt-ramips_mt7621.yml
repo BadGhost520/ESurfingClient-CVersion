@@ -57,7 +57,7 @@ jobs:
           
           make defconfig
           
-          cat > .config << 'EOF'
+          cat >> .config << 'EOF'
           CONFIG_TARGET_ramips=y
           CONFIG_TARGET_ramips_mt7621=y
           # CONFIG_LIBCURL_FTP is not set
