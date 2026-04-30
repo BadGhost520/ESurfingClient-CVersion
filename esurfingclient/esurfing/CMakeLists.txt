@@ -88,10 +88,25 @@ target_include_directories(ESurfingClient PRIVATE
 if(WIN32)
     if(__ACTION__)
         message(STATUS "GitHub Actions mode: using hardcoded static library paths")
+
+        set(MINGW64_DIR "D:/a/_temp/msys64/mingw64")
+        if(EXISTS "${MINGW64_DIR}/lib/libcurl.a")
+            set(CURL_LIB_PATH "${MINGW64_DIR}/lib/libcurl.a")
+            set(SSL_LIB_PATH "${MINGW64_DIR}/lib/libssl.a")
+            set(CRYPTO_LIB_PATH "${MINGW64_DIR}/lib/libcrypto.a")
+            set(INCLUDE_PATH "${MINGW64_DIR}/include")
+        else()
+            set(CURL_LIB_PATH "/mingw64/lib/libcurl.a")
+            set(SSL_LIB_PATH "/mingw64/lib/libssl.a")
+            set(CRYPTO_LIB_PATH "/mingw64/lib/libcrypto.a")
+            set(INCLUDE_PATH "/mingw64/include")
+        endif()
+
+        message(STATUS "CURL path: ${CURL_LIB_PATH}")
         target_link_libraries(ESurfingClient PRIVATE
-                /mingw64/lib/libcurl.a
-                /mingw64/lib/libssl.a
-                /mingw64/lib/libcrypto.a
+                ${CURL_LIB_PATH}
+                ${SSL_LIB_PATH}
+                ${CRYPTO_LIB_PATH}
                 ws2_32
                 wldap32
                 winmm
@@ -102,7 +117,7 @@ if(WIN32)
                 iphlpapi
         )
         target_include_directories(ESurfingClient PRIVATE
-                /mingw64/include
+                ${INCLUDE_PATH}
         )
     else()
         # 本地开发模式：使用 find_package 找到的库
