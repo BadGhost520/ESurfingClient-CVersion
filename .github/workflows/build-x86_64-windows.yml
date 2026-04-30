@@ -44,6 +44,8 @@ jobs:
           wget https://curl.se/download/curl-8.8.0.tar.gz
           tar -xzf curl-8.8.0.tar.gz
           cd curl-8.8.0
+          
+          export MAKE=mingw32-make
 
           # 配置一个最小化的 libcurl（禁用几乎所有可选功能）
           ./configure --prefix=/mingw64 \
