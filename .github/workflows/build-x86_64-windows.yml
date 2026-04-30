@@ -68,10 +68,10 @@ jobs:
           cmake --build build --target ESurfingClient -j
           
           echo "📦 Copying executable"
-          cp build\ESurfingClient.exe ../../ESurfingClient-x86_64-windows.exe
+          cp build/ESurfingClient.exe ../../ESurfingClient-x86_64-windows.exe
           
           echo "🔍 Verifying static linking"
-          dumpbin /dependents ../../ESurfingClient-x86_64-windows.exe | Select-String "DLL" | Select-Object -First 20
+          objdump -p ../../ESurfingClient-x86_64-windows.exe | grep "DLL Name" | head -20
           
           echo "🗜️ Compressing with UPX"
           choco install upx -y
