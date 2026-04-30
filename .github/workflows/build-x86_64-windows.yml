@@ -23,6 +23,7 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-make
             mingw-w64-x86_64-ninja
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-zlib
@@ -56,9 +57,6 @@ jobs:
                       --without-nghttp3 \
                       --without-ngtcp2 \
                       --without-libidn2 \
-                      --disable-rtmp \
-                      --disable-ldap \
-                      --disable-ldaps \
                       --disable-rtsp \
                       --disable-dict \
                       --disable-telnet \
