@@ -29,6 +29,7 @@ jobs:
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-upx
+            zip
             make
             tar
             wget
@@ -138,9 +139,19 @@ jobs:
               exit 1
           fi
 
+      - name: Create package
+        run: |
+          echo "📦 Creating package"
+          
+          # Create compressed package with executable in root
+          zip esurfingclient-x86_64-windows.zip ESurfingClient-x86_64-windows.exe
+          
+          echo "📦 Package created: esurfingclient-x86_64-windows.zip"
+          ls -la esurfingclient-x86_64-windows.zip
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
           name: esurfingclient-x86_64-windows
-          path: ESurfingClient-x86_64-windows.exe
+          path: esurfingclient-x86_64-windows.zip
           retention-days: 30
