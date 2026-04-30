@@ -38,39 +38,73 @@ jobs:
         shell: msys2 {0}
         run: |
           cd $GITHUB_WORKSPACE
-          wget https://curl.se/download/curl-8.8.0.tar.gz
-          tar -xzf curl-8.8.0.tar.gz
-          cd curl-8.8.0
+          wget https://curl.se/download/curl-8.20.0.tar.gz
+          tar -xzf curl-8.20.0.tar.gz
+          cd curl-8.20.0
 
           ./configure --prefix=/mingw64 \
-                      --host=x86_64-w64-mingw32 \
-                      --build=x86_64-w64-mingw32 \
-                      --enable-static \
-                      --disable-shared \
-                      --with-openssl \
-                      --without-librtmp \
-                      --without-brotli \
-                      --without-zlib \
-                      --without-zstd \
-                      --without-libpsl \
-                      --without-libssh2 \
-                      --without-nghttp2 \
-                      --without-nghttp3 \
-                      --without-ngtcp2 \
-                      --without-libidn2 \
-                      --disable-rtsp \
-                      --disable-dict \
-                      --disable-telnet \
-                      --disable-tftp \
-                      --disable-pop3 \
-                      --disable-imap \
-                      --disable-smb \
-                      --disable-smtp \
-                      --disable-gopher \
-                      --disable-mqtt \
-                      --disable-ftp \
-                      --disable-file \
-                      --disable-unix-sockets
+            --host=x86_64-w64-mingw32 \
+            --build=x86_64-w64-mingw32 \
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            \
+            --enable-http \
+            --enable-proxy \
+            --enable-cookies \
+            --enable-basic-auth \
+            --enable-digest-auth \
+            \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-websockets \
+            \
+            --disable-bearer-auth \
+            --disable-kerberos-auth \
+            --disable-negotiate-auth \
+            --disable-ntlm \
+            --disable-tls-srp \
+            --disable-aws \
+            --disable-rtmp \
+            \
+            --without-brotli \
+            --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-librtmp \
+            --without-libidn2 \
+            --without-nghttp2 \
+            --without-ngtcp2 \
+            --without-nghttp3 \
+            --without-quiche \
+            --without-msh3 \
+            --without-libgsasl \
+            --without-libssh \
+            --without-wolfssh \
+            --without-hyper \
+            --without-zlib \
+            \
+            --disable-ares \
+            --disable-rt \
+            --disable-threaded-resolver \
+            --disable-ipv6 \
+            --disable-manual \
+            --disable-docs \
+            --disable-verbose \
+            --disable-versioned-symbols \
+            --disable-sspi
 
           mingw32-make -j$(nproc)
           mingw32-make install || true
@@ -139,15 +173,10 @@ jobs:
               exit 1
           fi
 
-      - name: Create package
+      - name: Package with PowerShell
+        shell: pwsh
         run: |
-          echo "📦 Creating package"
-          
-          # Create compressed package with executable in root
-          zip esurfingclient-x86_64-windows.zip ESurfingClient-x86_64-windows.exe
-          
-          echo "📦 Package created: esurfingclient-x86_64-windows.zip"
-          ls -la esurfingclient-x86_64-windows.zip
+          Compress-Archive -Path ESurfingClient-x86_64-windows.exe -DestinationPath esurfingclient-x86_64-windows.zip
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7

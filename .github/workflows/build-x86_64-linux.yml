@@ -36,42 +36,71 @@ jobs:
 
       - name: Build libcurl
         run: |
-          wget https://curl.se/download/curl-8.8.0.tar.gz
-          tar -xzf curl-8.8.0.tar.gz
-          cd curl-8.8.0
+          wget https://curl.se/download/curl-8.20.0.tar.gz
+          tar -xzf curl-8.20.0.tar.gz
+          cd curl-8.20.0
           
           ./configure --prefix=/usr/local \
-                      --enable-static \
-                      --disable-shared \
-                      --with-openssl \
-                      --without-librtmp \
-                      --without-ldap \
-                      --without-ldaps \
-                      --without-brotli \
-                      --without-zlib \
-                      --without-zstd \
-                      --without-libpsl \
-                      --without-libssh2 \
-                      --without-nghttp2 \
-                      --without-nghttp3 \
-                      --without-ngtcp2 \
-                      --without-libidn2 \
-                      --disable-rtmp \
-                      --disable-ldap \
-                      --disable-ldaps \
-                      --disable-rtsp \
-                      --disable-dict \
-                      --disable-telnet \
-                      --disable-tftp \
-                      --disable-pop3 \
-                      --disable-imap \
-                      --disable-smb \
-                      --disable-smtp \
-                      --disable-gopher \
-                      --disable-mqtt \
-                      --disable-ftp \
-                      --disable-file \
-                      --disable-unix-sockets
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            \
+            --enable-http \
+            --enable-proxy \
+            --enable-cookies \
+            --enable-basic-auth \
+            --enable-digest-auth \
+            \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-websockets \
+            \
+            --disable-bearer-auth \
+            --disable-kerberos-auth \
+            --disable-negotiate-auth \
+            --disable-ntlm \
+            --disable-tls-srp \
+            --disable-aws \
+            --disable-rtmp \
+            \
+            --without-brotli \
+            --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-librtmp \
+            --without-libidn2 \
+            --without-nghttp2 \
+            --without-ngtcp2 \
+            --without-nghttp3 \
+            --without-quiche \
+            --without-msh3 \
+            --without-libgsasl \
+            --without-libssh \
+            --without-wolfssh \
+            --without-hyper \
+            --without-zlib \
+            \
+            --disable-ares \
+            --disable-rt \
+            --disable-threaded-resolver \
+            --disable-ipv6 \
+            --disable-unix-sockets \
+            --disable-manual \
+            --disable-docs \
+            --disable-verbose \
+            --disable-versioned-symbols
           
           make -j$(nproc)
           make install
