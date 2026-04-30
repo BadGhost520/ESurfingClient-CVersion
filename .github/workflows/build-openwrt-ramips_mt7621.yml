@@ -101,25 +101,25 @@ jobs:
       - name: Copy unstripped binary
         run: |
           cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-ramips_mt7621-debug \;
-          file ../ESurfingClient-openwrt-ramips_mt7621-debug
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-ramips_mt7621-openwrt-debug \;
+          file ../ESurfingClient-ramips_mt7621-openwrt-debug
 
       - name: Collect required packages
         run: |
           cd openwrt-sdk
 
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-ramips_mt7621.ipk \;
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-ramips_mt7621-openwrt.ipk \;
 
       - name: zip
         run: |
           mkdir test
-          cp ESurfingClient-openwrt-ramips_mt7621-debug test/
-          cp esurfingclient-openwrt-ramips_mt7621.ipk test/
-          tar -czf esurfingclient-openwrt-ramips_mt7621.tar.gz test
+          cp ESurfingClient-ramips_mt7621-openwrt-debug test/
+          cp esurfingclient-ramips_mt7621-openwrt.ipk test/
+          tar -czf esurfingclient-ramips_mt7621-openwrt.tar.gz test
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-openwrt-ramips_mt7621
-          path: esurfingclient-openwrt-ramips_mt7621.tar.gz
+          name: esurfingclient-ramips_mt7621-openwrt
+          path: esurfingclient-ramips_mt7621-openwrt.tar.gz
           retention-days: 30

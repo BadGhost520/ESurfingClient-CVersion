@@ -101,25 +101,25 @@ jobs:
       - name: Copy unstripped binary
         run: |
           cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-mediatek_filogic-debug \;
-          file ../ESurfingClient-openwrt-mediatek_filogic-debug
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-mediatek_filogic-openwrt-debug \;
+          file ../ESurfingClient-mediatek_filogic-openwrt-debug
 
       - name: Collect required packages
         run: |
           cd openwrt-sdk
 
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-mediatek_filogic.ipk \;
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-mediatek_filogic-openwrt.ipk \;
 
       - name: zip
         run: |
           mkdir test
-          cp ESurfingClient-openwrt-mediatek_filogic-debug test/
-          cp esurfingclient-openwrt-mediatek_filogic.ipk test/
-          tar -czf esurfingclient-openwrt-mediatek_filogic.tar.gz test
+          cp ESurfingClient-mediatek_filogic-openwrt-debug test/
+          cp esurfingclient-mediatek_filogic-openwrt.ipk test/
+          tar -czf esurfingclient-mediatek_filogic-openwrt.tar.gz test
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-openwrt-mediatek_filogic
-          path: esurfingclient-openwrt-mediatek_filogic.tar.gz
+          name: esurfingclient-mediatek_filogic-openwrt
+          path: esurfingclient-mediatek_filogic-openwrt.tar.gz
           retention-days: 30

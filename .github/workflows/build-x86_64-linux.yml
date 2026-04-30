@@ -124,14 +124,14 @@ jobs:
           echo "📦 Creating package"
           
           # Create compressed package with executable in root
-          tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux
+          tar -czf esurfingclient-x86_64-linux.tar.gz ESurfingClient-x86_64-linux
           
-          echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
-          ls -la esurfingclient-x64-linux.tar.gz
+          echo "📦 Package created: esurfingclient-x86_64-linux.tar.gz"
+          ls -la esurfingclient-x86_64-linux.tar.gz
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esurfingclient-x64-linux
-          path: esurfingclient-x64-linux.tar.gz
+          name: esurfingclient-x86_64-linux
+          path: esurfingclient-x86_64-linux.tar.gz
           retention-days: 30

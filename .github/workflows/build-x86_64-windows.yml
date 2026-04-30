@@ -15,62 +15,74 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install vcpkg
-        run: |
-          git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
-          C:/vcpkg/bootstrap-vcpkg.bat
+#      - name: Install vcpkg
+#        run: |
+#          git clone https://github.com/Microsoft/vcpkg.git C:/vcpkg
+#          C:/vcpkg/bootstrap-vcpkg.bat
+#
+#      - name: Cache vcpkg
+#        uses: actions/cache@v4
+#        with:
+#          path: |
+#            C:/vcpkg/downloads
+#            C:/vcpkg/installed
+#            C:/vcpkg/buildtrees
+#            C:/vcpkg/packages
+#          key: vcpkg-${{ hashFiles('vcpkg.json') }}-${{ runner.os }}
+#          restore-keys: |
+#            vcpkg-${{ runner.os }}
+#
+#      - name: Install dependencies via vcpkg
+#        shell: pwsh
+#        run: |
+#          C:/vcpkg/vcpkg install --triplet x64-mingw-static
 
-      - name: Cache vcpkg
-        uses: actions/cache@v4
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
         with:
-          path: |
-            C:/vcpkg/downloads
-            C:/vcpkg/installed
-            C:/vcpkg/buildtrees
-            C:/vcpkg/packages
-          key: vcpkg-${{ hashFiles('vcpkg.json') }}-${{ runner.os }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}
-
-      - name: Install dependencies via vcpkg
-        shell: pwsh
-        run: |
-          C:/vcpkg/vcpkg install --triplet x64-windows-static
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-upx
 
       - name: Build ESurfingClient
-        shell: pwsh
+        shell: msys2 {0}
         run: |
           cd esurfingclient/esurfing
           
           echo "⚙️ CMake configuring with Ninja"
-          cmake -G Ninja `
-            -B build `
-            -S . `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
-            -DVCPKG_TARGET_TRIPLET=x64-windows-static
+          cmake -G Ninja \
+            -B build \
+            -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=x64-mingw-static
           
           echo "🔨 Building with Ninja"
-          cmake --build build --config Release --target ESurfingClient -j
+          cmake --build build --target ESurfingClient -j
           
           echo "📦 Copying executable"
-          copy build\ESurfingClient.exe ESurfingClient-x86_64-windows.exe
+          cp build\ESurfingClient.exe ../../ESurfingClient-x86_64-windows.exe
           
           echo "🔍 Verifying static linking"
-          dumpbin /dependents ESurfingClient-x86_64-windows.exe | Select-String "DLL" | Select-Object -First 20
+          dumpbin /dependents ../../ESurfingClient-x86_64-windows.exe | Select-String "DLL" | Select-Object -First 20
           
           echo "🗜️ Compressing with UPX"
           choco install upx -y
-          upx --best --lzma ESurfingClient-x86_64-windows.exe
+          upx --best --lzma ../../ESurfingClient-x86_64-windows.exe
           
           echo "✅ Build completed"
-          ls -lh ESurfingClient-x86_64-windows.exe
+          ls -lh ../../ESurfingClient-x86_64-windows.exe
 
       - name: Verify build output
-        shell: pwsh
+        shell: msys2 {0}
         run: |
-          cd esurfingclient/esurfing
-          
           if (Test-Path "ESurfingClient-x86_64-windows.exe") {
             echo "✅ Build successful!"
             echo "📏 File size: $(Get-Item ESurfingClient-x86_64-windows.exe).Length bytes"
