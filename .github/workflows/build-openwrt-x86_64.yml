@@ -49,8 +49,10 @@ jobs:
         run: |
           cd openwrt-sdk
 
-          scripts/feeds update -a
-          scripts/feeds install -a
+          scripts/feeds update packages
+          
+          scripts/feeds install libopenssl
+          scripts/feeds install libcurl
 
           make defconfig
           

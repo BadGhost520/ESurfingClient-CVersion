@@ -66,26 +66,40 @@ jobs:
       - name: List downloaded files
         run: |
           echo "📦 Downloaded artifacts:"
-          find artifacts -type f -name "*.zip" -o -name "*.ipk" -o -name "*.tar.gz" | sort
+          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.tar.gz" \) | sort
 
       - name: Create release package
         run: |
           export TZ='Asia/Shanghai'
-          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
           RELEASE_TAG="build-${TIMESTAMP}"
           RELEASE_NAME="ESurfing Client Build - $(date +'%Y-%m-%d %H:%M:%S CST')"
           echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
           echo "RELEASE_NAME=${RELEASE_NAME}" >> $GITHUB_ENV
-
+          
           echo "🏷️ Release tag: ${RELEASE_TAG}"
           echo "📝 Release name: ${RELEASE_NAME}"
+          
+          # 创建发布目录
+          mkdir -p release_package
+          
+          # 将所有产物复制到发布目录
+          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.tar.gz" \) -exec cp {} release_package/ \;
+          
+          # 打包成一个 zip 文件
+          cd release_package
+          zip -r "../${RELEASE_TAG}.zip" .
+          cd ..
+          
+          echo "✅ 已创建压缩包: ${RELEASE_TAG}.zip"
+          ls -lh "${RELEASE_TAG}.zip"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_NAME }}
-          files: artifacts/**/*
+          files: ${{ env.RELEASE_TAG }}.zip
           draft: false
           prerelease: true
         env:
