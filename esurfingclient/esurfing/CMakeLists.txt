@@ -4,34 +4,38 @@ project(ESurfingClient C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-if(NOT DEFINED __OPENWRT__)
+message(STATUS "__OPENWRT__ value before check: ${__OPENWRT__}")
+if (NOT DEFINED __OPENWRT__)
+    message(STATUS "__OPENWRT__ is NOT DEFINED, setting to 0")
     set(__OPENWRT__ 0)
-endif()
+else ()
+    message(STATUS "__OPENWRT__ is DEFINED with value: ${__OPENWRT__}")
+endif ()
 
-if(__OPENWRT__)
+if (__OPENWRT__)
     add_definitions(-D__OPENWRT__=1)
-    message(STATUS "OpenWrt mode: ENABLED")
-else()
-    message(STATUS "OpenWrt mode: DISABLED")
-endif()
+    message(STATUS "OpenWRT: yes")
+else ()
+    message(STATUS "OpenWRT: no")
+endif ()
 
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
 add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
 
-if(NOT CMAKE_BUILD_TYPE)
+if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif()
+endif ()
 
-if(WIN32)
+if (WIN32)
     add_definitions(-DCURL_STATICLIB)
     add_definitions(-DOPENSSL_NO_DYNAMIC_ENGINE)
 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
-elseif(UNIX AND NOT WIN32)
+else ()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -pthread")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
-endif()
+endif ()
 
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -72,7 +76,7 @@ target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
 )
 
-if(WIN32)
+if (WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
             OpenSSL::SSL
@@ -86,22 +90,35 @@ if(WIN32)
             bcrypt
             iphlpapi
     )
-elseif(UNIX AND NOT WIN32)
-    target_link_libraries(ESurfingClient PRIVATE
-            CURL::libcurl
-            OpenSSL::SSL
-            OpenSSL::Crypto
-            pthread
-            dl
-            atomic
-    )
-endif()
+else ()
+    if(__OPENWRT__)
+        target_link_libraries(ESurfingClient PRIVATE
+                CURL::libcurl
+                OpenSSL::SSL
+                OpenSSL::Crypto
+                pthread
+                dl
+                atomic
+        )
+    else ()
+        target_link_libraries(ESurfingClient PRIVATE
+                CURL::libcurl
+                OpenSSL::SSL
+                OpenSSL::Crypto
+                z
+                zstd
+                pthread
+                dl
+                atomic
+        )
+    endif ()
+endif ()
 
 target_compile_options(ESurfingClient PRIVATE -Os)
 
-if(UNIX AND NOT WIN32)
+if (UNIX AND NOT WIN32)
     target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
-endif()
+endif ()
 
 set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
 

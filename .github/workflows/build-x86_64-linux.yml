@@ -7,21 +7,22 @@ permissions:
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build-x64-linux:
     runs-on: ubuntu-latest
     container:
-      image: debian:11
+      image: debian:13
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install packages with retry
         run: |
           # 安装多个包，最多重试3次
-          PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file"
+          PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file libzstd-dev"
 
           for i in 1 2 3; do
             echo "Attempt $i: Installing $PACKAGES"
@@ -35,36 +36,71 @@ jobs:
 
       - name: Build libcurl
         run: |
-          wget https://curl.se/download/curl-8.8.0.tar.gz
-          tar -xzf curl-8.8.0.tar.gz
-          cd curl-8.8.0
+          wget https://curl.se/download/curl-8.20.0.tar.gz
+          tar -xzf curl-8.20.0.tar.gz
+          cd curl-8.20.0
           
-          ./configure \
-            --disable-shared \
+          ./configure --prefix=/usr/local \
             --enable-static \
-            --without-gssapi \
-            --without-libpsl \
-            --without-libssh2 \
-            --without-nghttp2 \
+            --disable-shared \
+            --without-ssl \
+            \
+            --enable-http \
+            --enable-proxy \
+            --enable-cookies \
+            --enable-basic-auth \
+            --enable-digest-auth \
+            \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-websockets \
+            \
+            --disable-bearer-auth \
+            --disable-kerberos-auth \
+            --disable-negotiate-auth \
+            --disable-ntlm \
+            --disable-tls-srp \
+            --disable-aws \
+            --disable-rtmp \
+            \
             --without-brotli \
             --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-librtmp \
             --without-libidn2 \
-            --without-ldap \
-            --without-ldaps \
-            --without-rtsp \
-            --without-dict \
-            --without-telnet \
-            --without-tftp \
-            --without-pop3 \
-            --without-imap \
-            --without-smb \
-            --without-smtp \
-            --without-gopher \
-            --without-mqtt \
-            --without-ftp \
+            --without-nghttp2 \
+            --without-ngtcp2 \
+            --without-nghttp3 \
+            --without-quiche \
+            --without-msh3 \
+            --without-libgsasl \
+            --without-libssh \
+            --without-wolfssh \
+            --without-hyper \
             --without-zlib \
-            --with-ssl \
-            --prefix=/usr/local
+            \
+            --disable-ares \
+            --disable-rt \
+            --disable-threaded-resolver \
+            --disable-ipv6 \
+            --disable-unix-sockets \
+            --disable-manual \
+            --disable-docs \
+            --disable-verbose \
+            --disable-versioned-symbols
           
           make -j$(nproc)
           make install
@@ -80,7 +116,9 @@ jobs:
           cd esurfingclient/esurfing
           
           echo "⚙️ CMake configuring"
-          cmake -DBUILD_STATIC=ON .
+          cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
+                -DCMAKE_BUILD_TYPE=Release \
+                .
           
           echo "🔨 Making Programme"
           make -j$(nproc)
@@ -94,10 +132,7 @@ jobs:
             exit 1
           fi
           
-          echo "🛡️ Protect1 - Strip binary"
-          strip --strip-all ../../ESurfingClient-x86_64-linux
-          
-          echo "📦 Protect2 - Compress with UPX"
+          echo "📦 Protect - Compress with UPX"
           upx --best ../../ESurfingClient-x86_64-linux
           
           echo "✅ Build completed successfully"
@@ -120,14 +155,14 @@ jobs:
           echo "📦 Creating package"
           
           # Create compressed package with executable in root
-          tar -czf esurfingclient-x64-linux.tar.gz ESurfingClient-x86_64-linux
+          tar -czf esurfingclient-x86_64-linux.tar.gz ESurfingClient-x86_64-linux
           
-          echo "📦 Package created: esurfingclient-x64-linux.tar.gz"
-          ls -la esurfingclient-x64-linux.tar.gz
+          echo "📦 Package created: esurfingclient-x86_64-linux.tar.gz"
+          ls -la esurfingclient-x86_64-linux.tar.gz
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-x64-linux
-          path: esurfingclient-x64-linux.tar.gz
+          name: esurfingclient-x86_64-linux
+          path: esurfingclient-x86_64-linux.tar.gz
           retention-days: 30

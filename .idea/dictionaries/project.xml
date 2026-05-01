@@ -22,8 +22,10 @@
       <w>gwip</w>
       <w>hhmmss</w>
       <w>idn</w>
+      <w>ifaddrs</w>
       <w>iphlpapi</w>
       <w>lfsr</w>
+      <w>logpage</w>
       <w>makeu</w>
       <w>mdctx</w>
       <w>netclient</w>
@@ -39,9 +41,11 @@
       <w>rawtime</w>
       <w>rcon</w>
       <w>sbox</w>
+      <w>scrollbox</w>
       <w>secur</w>
       <w>sede</w>
       <w>staticlib</w>
+      <w>topmain</w>
       <w>unistring</w>
       <w>winmm</w>
       <w>wlanacip</w>

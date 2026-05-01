@@ -6,6 +6,7 @@ permissions:
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build-openwrt-offline-repo:
@@ -15,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -48,50 +49,48 @@ jobs:
         run: |
           cd openwrt-sdk
 
-          scripts/feeds update -a
-          scripts/feeds install -a
+          scripts/feeds update base
+          scripts/feeds update packages
           
-          echo "CONFIG_TARGET_ramips_mt7621=y" >> .config
-          echo "CONFIG_TARGET_ramips_mt7621_DEVICE_generic=y" >> .config
-
-          echo "CONFIG_PACKAGE_esurfingclient=y" >> .config
-          echo "CONFIG_PACKAGE_libcurl=y" >> .config
-          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
-          echo "CONFIG_PACKAGE_ca-bundle=y" >> .config
-
-          # 关键：禁用 mbedTLS，使用 OpenSSL
-          echo "CONFIG_LIBCURL_MBEDTLS=n" >> .config
-          echo "CONFIG_LIBCURL_OPENSSL=y" >> .config
-          echo "CONFIG_LIBCURL_WOLFSSL=n" >> .config
-          echo "CONFIG_LIBCURL_GNUTLS=n" >> .config
+          scripts/feeds install openssl
+          scripts/feeds install curl
           
-          # 确保 OpenSSL 被选中
-          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
-
-          # 关键：禁用 HTTP/2
-          echo "CONFIG_LIBCURL_HTTP2=n" >> .config
-          echo "CONFIG_LIBCURL_NGHTTP2=n" >> .config
-          echo "CONFIG_PACKAGE_libnghttp2=n" >> .config
-
-          echo "CONFIG_KERNEL_KALLSYMS=n" >> .config
-          echo "CONFIG_KERNEL_DEBUG_KERNEL=n" >> .config
+          make defconfig
+          
+          cat >> .config << 'EOF'
+          CONFIG_TARGET_ramips=y
+          CONFIG_TARGET_ramips_mt7621=y
+          # CONFIG_LIBCURL_FTP is not set
+          # CONFIG_LIBCURL_MBEDTLS is not set
+          # CONFIG_LIBCURL_NGHTTP2 is not set
+          CONFIG_LIBCURL_OPENSSL=y
+          # CONFIG_OPENSSL_WITH_CHACHA_POLY1305 is not set
+          # CONFIG_OPENSSL_WITH_CMS is not set
+          # CONFIG_OPENSSL_WITH_IDEA is not set
+          # CONFIG_OPENSSL_WITH_MDC2 is not set
+          # CONFIG_OPENSSL_WITH_PSK is not set
+          # CONFIG_OPENSSL_WITH_SEED is not set
+          # CONFIG_OPENSSL_WITH_SRP is not set
+          # CONFIG_OPENSSL_WITH_WHIRLPOOL is not set
+          CONFIG_PACKAGE_libatomic=y
+          CONFIG_PACKAGE_libcurl=y
+          CONFIG_PACKAGE_libopenssl=y
+          # CONFIG_PACKAGE_libopenssl-afalg is not set
+          # CONFIG_PACKAGE_libopenssl-afalg_sync is not set
+          # CONFIG_PACKAGE_libopenssl-devcrypto is not set
+          EOF
 
           make defconfig
 
-      - name: Compile openssl
+      - name: Compile libopenssl
         run: |
           cd openwrt-sdk
           make package/openssl/compile V=sc -j$(nproc)
 
-      - name: Compile curl
+      - name: Compile libcurl
         run: |
           cd openwrt-sdk
           make package/curl/compile V=sc -j$(nproc)
-
-      - name: Compile nghttp2
-        run: |
-          cd openwrt-sdk
-          make package/nghttp2/compile V=sc -j$(nproc)
 
       - name: Compile esurfingclient
         run: |
@@ -101,25 +100,25 @@ jobs:
       - name: Copy unstripped binary
         run: |
           cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-ramips_mt7621-debug \;
-          file ../ESurfingClient-openwrt-ramips_mt7621-debug
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-ramips_mt7621-openwrt-debug \;
+          file ../ESurfingClient-ramips_mt7621-openwrt-debug
 
       - name: Collect required packages
         run: |
           cd openwrt-sdk
 
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-openwrt-ramips_mt7621.ipk \;
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-ramips_mt7621-openwrt.ipk \;
 
       - name: zip
         run: |
           mkdir test
-          cp ESurfingClient-openwrt-ramips_mt7621-debug test/
-          cp esurfingclient-openwrt-ramips_mt7621.ipk test/
-          tar -czf esurfingclient-openwrt-ramips_mt7621.tar.gz test
+          cp ESurfingClient-ramips_mt7621-openwrt-debug test/
+          cp esurfingclient-ramips_mt7621-openwrt.ipk test/
+          tar -czf esurfingclient-ramips_mt7621-openwrt.tar.gz test
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-ramips_mt7621
-          path: esurfingclient-openwrt-ramips_mt7621.tar.gz
+          name: esurfingclient-ramips_mt7621-openwrt
+          path: esurfingclient-ramips_mt7621-openwrt.tar.gz
           retention-days: 30
