@@ -15,13 +15,13 @@
 
 # 目前支持的环境
 
-| 系统      | 架构                 | (OpenWrt) 版本 |
-|---------|--------------------|--------------|
-| Windows | x86_64             | All          |
-| Linux   | x86_64             | All          |
-| OpenWrt | x86_64             | All          |
-| OpenWrt | mipsel_24kc-MT7621 | All          |
-| OpenWrt | aarch64-MTFilogic  | All          |
+| 系统      | 架构                 | 理论最低支持版本       | 最低推荐版本          |
+|---------|--------------------|----------------|-----------------|
+| Windows | x86_64             | Windows XP SP3 | Windows 7	      |
+| Linux   | x86_64             | Linux 内核 2.6.0 | Linux 内核 4.14   |
+| OpenWrt | x86_64             | OpenWrt 15.05  | OpenWrt 18.06.0 |
+| OpenWrt | mipsel_24kc-mt7621 | OpenWrt 15.05  | OpenWrt 18.06.0 |
+| OpenWrt | aarch64-mt-filogic | OpenWrt 15.05  | OpenWrt 18.06.0 |
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
