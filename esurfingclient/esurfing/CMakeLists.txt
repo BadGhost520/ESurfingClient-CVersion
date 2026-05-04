@@ -87,25 +87,19 @@ if (WIN32)
             iphlpapi
     )
 else ()
-    if(__OPENWRT__)
+    target_link_libraries(ESurfingClient PRIVATE
+            CURL::libcurl
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            pthread
+            dl
+            atomic
+    )
+    if (NOT __OPENWRT__)
         target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                pthread
-                dl
-                atomic
-        )
-    else ()
-        target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                OpenSSL::SSL
-                OpenSSL::Crypto
                 z
+                m
                 zstd
-                pthread
-                dl
-                atomic
         )
     endif ()
 endif ()
