@@ -8,6 +8,8 @@
 
 #include <stdlib.h>
 
+#define VERSION "v2.0.0-r7"
+
 int main()
 {
 #ifdef _WIN32
@@ -21,6 +23,8 @@ int main()
     init_shutdown_hook(); // 初始化关闭钩子
 
     if (init_logger() == false) shut(1); // 初始化日志系统
+
+    LOG_INFO("程序版本: " VERSION);
 
     if (load_cfg() == false) shut(1); // 加载配置文件
     //
@@ -83,8 +87,14 @@ int main()
     sleep_ms(5000);
     LOG_INFO("线程守护开启");
     thread_keep_alive = true;
+    uint64_t check_time = 0;
     while (thread_keep_alive)
     {
+        if (check_time > 299999)
+        {
+            check_time = 0;
+            LOG_INFO("线程守护持续运行中");
+        }
         for (uint8_t i = 0; i < g_prog_cnt; i++)
         {
             /**
@@ -122,6 +132,7 @@ int main()
             //     reset();
             //     g_prog_status[thread_idx].runtime_status.is_settings_changed = false;
             // }
+
             /**
              * 线程守护
              */
@@ -150,6 +161,7 @@ int main()
             }
         }
         sleep_ms(10);
+        check_time += 10;
     }
     LOG_INFO("线程守护已关闭");
 
