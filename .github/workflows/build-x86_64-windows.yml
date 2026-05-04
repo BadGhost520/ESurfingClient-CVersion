@@ -68,7 +68,6 @@ jobs:
             no-shared \
             no-tests \
             no-docs \
-            \
             no-bf \
             no-cast \
             no-idea \

@@ -4,19 +4,15 @@ project(ESurfingClient C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-message(STATUS "__OPENWRT__ value before check: ${__OPENWRT__}")
 if (NOT DEFINED __OPENWRT__)
-    message(STATUS "__OPENWRT__ is NOT DEFINED, setting to 0")
     set(__OPENWRT__ 0)
-else ()
-    message(STATUS "__OPENWRT__ is DEFINED with value: ${__OPENWRT__}")
 endif ()
 
 if (__OPENWRT__)
     add_definitions(-D__OPENWRT__=1)
-    message(STATUS "OpenWRT: yes")
+    message(STATUS "OpenWRT - yes")
 else ()
-    message(STATUS "OpenWRT: no")
+    message(STATUS "OpenWRT - no")
 endif ()
 
 set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
@@ -91,25 +87,19 @@ if (WIN32)
             iphlpapi
     )
 else ()
-    if(__OPENWRT__)
+    target_link_libraries(ESurfingClient PRIVATE
+            CURL::libcurl
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            pthread
+            dl
+            atomic
+    )
+    if (NOT __OPENWRT__)
         target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                pthread
-                dl
-                atomic
-        )
-    else ()
-        target_link_libraries(ESurfingClient PRIVATE
-                CURL::libcurl
-                OpenSSL::SSL
-                OpenSSL::Crypto
                 z
+                m
                 zstd
-                pthread
-                dl
-                atomic
         )
     endif ()
 endif ()
