@@ -19,7 +19,7 @@ on:
         type: string
 
 env:
-  SDK_URL: "https://downloads.openwrt.org/releases/25.12.0/targets/ramips/mt7621"
+  SDK_URL: "https://mirrors.sustech.edu.cn/openwrt/releases/25.12.0/targets/ramips/mt7621"
   SDK_NAME: "openwrt-sdk-25.12.0-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64"
 
 jobs:
