@@ -67,7 +67,7 @@ jobs:
           path: |
             openwrt-sdk/staging_dir/
             openwrt-sdk/dl/
-          key: openwrt-x86_64-sdk-${{ inputs.sdk_version }}
+          key: openwrt-x86_64-sdk-${{ inputs.sdk_version }}-${{ hashFiles('.configs/x86_64-apk.config') }}
 
       - name: 准备构建配置
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
