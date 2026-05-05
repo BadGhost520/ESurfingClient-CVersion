@@ -77,8 +77,6 @@ jobs:
           scripts/feeds install openssl
           scripts/feeds install curl
           
-          make defconfig
-          
           cat >> .config << 'EOF'
           CONFIG_TARGET_ramips=y
           CONFIG_TARGET_ramips_mt7621=y

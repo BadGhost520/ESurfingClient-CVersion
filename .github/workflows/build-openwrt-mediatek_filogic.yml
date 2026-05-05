@@ -76,8 +76,6 @@ jobs:
           
           scripts/feeds install openssl
           scripts/feeds install curl
-
-          make defconfig
           
           cat >> .config << 'EOF'
           CONFIG_TARGET_mediatek=y
