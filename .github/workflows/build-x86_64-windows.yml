@@ -60,7 +60,7 @@ jobs:
         run: |
           cd /tmp
           wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
-          tar -xzf openssl-4.0.0-mingw64.tar.gz -C /usr/x86_64-w64-mingw32
+          tar -xzf openssl-4.0.0.tar.gz -C /usr/x86_64-w64-mingw32
 #          wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
 #          tar -xzf openssl-4.0.0.tar.gz
 #          cd openssl-4.0.0
