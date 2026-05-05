@@ -7,6 +7,13 @@ permissions:
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      release:
+        required: true
+        type: string
 
 jobs:
   build-openwrt-x86_64:
@@ -16,6 +23,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+
+      - name: 更新 Makefile 版本号
+        run: |
+          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" package/esurfingclient/Makefile
+          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" package/esurfingclient/Makefile
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
@@ -97,24 +109,24 @@ jobs:
           cd openwrt-sdk
           make package/esurfingclient/compile V=sc -j$(nproc)
           
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-x86_64-openwrt.ipk \;
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.ipk \;
 
       - name: 复制可调试的二进制文件
         run: |
           cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-x86_64-openwrt-debug \;
-          file ../ESurfingClient-x86_64-openwrt-debug
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-x86_64-debug \;
+          file ../ESurfingClient-openwrt-x86_64-debug
 
       - name: 打包成 tar.gz 压缩包
         run: |
           mkdir test
-          cp ESurfingClient-x86_64-openwrt-debug test/
-          cp esurfingclient-x86_64-openwrt.ipk test/
-          tar -czf esurfingclient-x86_64-openwrt.tar.gz test
+          cp ESurfingClient-openwrt-x86_64-debug test/
+          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.ipk test/
+          tar -czf esurfingclient-openwrt-x86_64.tar.gz test
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-x86_64-openwrt
-          path: esurfingclient-x86_64-openwrt.tar.gz
+          name: esurfingclient-openwrt-x86_64
+          path: esurfingclient-openwrt-x86_64.tar.gz
           retention-days: 30

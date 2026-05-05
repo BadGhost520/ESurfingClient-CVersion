@@ -7,15 +7,27 @@ permissions:
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      release:
+        required: true
+        type: string
 
 jobs:
-  build-openwrt-offline-repo:
+  build-openwrt-mediatek_filogic:
     runs-on: ubuntu-latest
     container:
       image: debian:13
 
     steps:
       - uses: actions/checkout@v6
+
+      - name: 更新 Makefile 版本号
+        run: |
+          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" package/esurfingclient/Makefile
+          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" package/esurfingclient/Makefile
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
@@ -96,24 +108,24 @@ jobs:
           cd openwrt-sdk
           make package/esurfingclient/compile V=sc -j$(nproc)
 
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient-mediatek_filogic-openwrt.ipk \;
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk \;
 
       - name: 复制可调试的二进制文件
         run: |
           cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-mediatek_filogic-openwrt-debug \;
-          file ../ESurfingClient-mediatek_filogic-openwrt-debug
+          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-mediatek_filogic-debug \;
+          file ../ESurfingClient-openwrt-mediatek_filogic-debug
 
       - name: 打包成 tar.gz 压缩包
         run: |
           mkdir test
-          cp ESurfingClient-mediatek_filogic-openwrt-debug test/
-          cp esurfingclient-mediatek_filogic-openwrt.ipk test/
-          tar -czf esurfingclient-mediatek_filogic-openwrt.tar.gz test
+          cp ESurfingClient-openwrt-mediatek_filogic-debug test/
+          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk test/
+          tar -czf esurfingclient-openwrt-mediatek_filogic.tar.gz test
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-mediatek_filogic-openwrt
-          path: esurfingclient-mediatek_filogic-openwrt.tar.gz
+          name: esurfingclient-openwrt-mediatek_filogic
+          path: esurfingclient-openwrt-mediatek_filogic.tar.gz
           retention-days: 30

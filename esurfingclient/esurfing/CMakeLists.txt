@@ -17,9 +17,6 @@ add_definitions(-DPROGRAM_FULL_VERSION="${PROGRAM_FULL_VERSION}")
 
 message(STATUS "Building version: ${PROGRAM_FULL_VERSION}")
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/version.cmake @ONLY)
-
 if (NOT DEFINED __OPENWRT__)
     set(__OPENWRT__ 0)
 endif ()

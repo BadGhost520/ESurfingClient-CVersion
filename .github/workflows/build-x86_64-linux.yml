@@ -7,6 +7,10 @@ permissions:
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
 
 jobs:
   build-linux-x86_64:
@@ -114,18 +118,18 @@ jobs:
           
           make -j$(nproc)
           
-          cp ESurfingClient ../../ESurfingClient-x86_64-linux
+          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           
-          upx --best --lzma ../../ESurfingClient-x86_64-linux
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           
-          ls -lh ../../ESurfingClient-x86_64-linux
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
 
       - name: 验证
         run: |
-          if [ -f "ESurfingClient-x86_64-linux" ]; then
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-linux-x86_64" ]; then
             echo "✅ 构建成功"
-            echo "📏 文件大小: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
-            file ESurfingClient-x86_64-linux
+            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-linux-x86_64 | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           else
             echo "❌ 未找到二进制文件"
             exit 1
@@ -133,11 +137,11 @@ jobs:
 
       - name: 打包成 tar.gz 压缩包
         run: |
-          tar -czf esurfingclient-x86_64-linux.tar.gz ESurfingClient-x86_64-linux
+          tar -czf esurfingclient-${{ inputs.full_version }}-linux-x86_64.tar.gz ESurfingClient-${{ inputs.full_version }}-linux-x86_64
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-x86_64-linux
-          path: esurfingclient-x86_64-linux.tar.gz
+          name: esurfingclient-${{ inputs.full_version }}-linux-x86_64
+          path: esurfingclient-${{ inputs.full_version }}-linux-x86_64.tar.gz
           retention-days: 30

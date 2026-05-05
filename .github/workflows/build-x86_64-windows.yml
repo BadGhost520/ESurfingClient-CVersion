@@ -7,6 +7,10 @@ permissions:
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
 
 jobs:
   build-windows-x86_64:
@@ -195,22 +199,22 @@ jobs:
           
           cmake --build build --target ESurfingClient -j$(nproc)
           
-          cp build/ESurfingClient.exe ../../ESurfingClient-x86_64-windows.exe
+          cp build/ESurfingClient.exe ../../ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe
           
-          x86_64-w64-mingw32-objdump -p ../../ESurfingClient-x86_64-windows.exe | grep "DLL Name" | head -20
+          x86_64-w64-mingw32-objdump -p ../../ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe | grep "DLL Name" | head -20
           
-          upx --best --lzma ../../ESurfingClient-x86_64-windows.exe || true
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe || true
           
-          ls -lh ../../ESurfingClient-x86_64-windows.exe
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe
 
       - name: 验证
         run: |
-          if [ -f "ESurfingClient-x86_64-windows.exe" ]; then
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe" ]; then
               echo "✅ 构建成功"
-              echo "📏 文件大小: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
+              echo "📏 文件大小: $(stat -c%s ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe) bytes"
 
               echo "🔍 检查依赖:"
-              deps=$(x86_64-w64-mingw32-objdump -p ESurfingClient-x86_64-windows.exe | grep "DLL Name" || true)
+              deps=$(x86_64-w64-mingw32-objdump -p ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe | grep "DLL Name" || true)
               echo "$deps" | head -20
 
               if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
@@ -227,11 +231,11 @@ jobs:
 
       - name: 打包成 zip 压缩包
         run: |
-          zip -r esurfingclient-x86_64-windows.zip ESurfingClient-x86_64-windows.exe
+          zip -r esurfingclient-${{ inputs.full_version }}-windows-x86_64.zip ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-x86_64-windows
-          path: esurfingclient-x86_64-windows.zip
+          name: esurfingclient-${{ inputs.full_version }}-windows-x86_64
+          path: esurfingclient-${{ inputs.full_version }}-windows-x86_64.zip
           retention-days: 30

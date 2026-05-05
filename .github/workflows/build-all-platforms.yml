@@ -25,71 +25,81 @@ jobs:
   get-version:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.extract.outputs.version }}
-      release: ${{ steps.extract.outputs.release }}
-      full_version: ${{ steps.extract.outputs.full_version }}
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+      full_version: ${{ steps.version.outputs.full_version }}
     steps:
-      - name: 签出到库
-        uses: actions/checkout@v6
-
-      - name: 从 CMakeLists.txt 获取版本号
-        id: extract
+      - uses: actions/checkout@v6
+      - name: 获取版本号
+        id: version
         run: |
           cd esurfingclient/esurfing
-          
           MAJOR=$(grep -oP 'set\(PROGRAM_VERSION_MAJOR \K\d+' CMakeLists.txt)
           MINOR=$(grep -oP 'set\(PROGRAM_VERSION_MINOR \K\d+' CMakeLists.txt)
           PATCH=$(grep -oP 'set\(PROGRAM_VERSION_PATCH \K\d+' CMakeLists.txt)
           RELEASE=$(grep -oP 'set\(PROGRAM_VERSION_RELEASE \K\d+' CMakeLists.txt)
-        
           echo "version=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
           echo "release=${RELEASE}" >> $GITHUB_OUTPUT
           echo "full_version=${MAJOR}.${MINOR}.${PATCH}-r${RELEASE}" >> $GITHUB_OUTPUT
 
       - name: 展示版本号
         run: |
-          echo "Version: ${{ steps.extract.outputs.full_version }}"
-          echo "Release: ${{ steps.extract.outputs.release }}"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Release: ${{ steps.version.outputs.release }}"
+          echo "Full version: ${{ steps.version.outputs.full_version }}"
 
   # 根据选择条件性运行子 workflow
-  windows:
+  windows-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
     uses: ./.github/workflows/build-x86_64-windows.yml
     secrets: inherit
     needs: get-version
+    with:
+      full_version: ${{ needs.get-version.outputs.full_version }}
 
-  linux:
+  linux-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-x86_64'
     uses: ./.github/workflows/build-x86_64-linux.yml
     secrets: inherit
     needs: get-version
+    with:
+      full_version: ${{ needs.get-version.outputs.full_version }}
 
-  openwrt_x86:
+  openwrt-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64'
     uses: ./.github/workflows/build-openwrt-x86_64.yml
     secrets: inherit
     needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
 
-  openwrt_mt7621:
+  openwrt-ramips_mt7621:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621'
     uses: ./.github/workflows/build-openwrt-ramips_mt7621.yml
     secrets: inherit
     needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
 
-  openwrt_filogic:
+  openwrt-mediatek_filogic:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic'
     uses: ./.github/workflows/build-openwrt-mediatek_filogic.yml
     secrets: inherit
     needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
 
   # 收集所有产物并创建 Release
   release:
     needs:
-      - windows
-      - linux
-      - openwrt_x86
-      - openwrt_mt7621
-      - openwrt_filogic
+      - windows-x86_64
+      - linux-x86_64
+      - openwrt-x86_64
+      - openwrt-ramips_mt7621
+      - openwrt-mediatek_filogic
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:
@@ -112,8 +122,8 @@ jobs:
           echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
           echo "RELEASE_NAME=${RELEASE_NAME}" >> $GITHUB_ENV
           
-          echo "Release tag: ${RELEASE_TAG}"
-          echo "Release name: ${RELEASE_NAME}"
+          echo "Release 标签: ${RELEASE_TAG}"
+          echo "Release 名称: ${RELEASE_NAME}"
           
           mkdir -p release_package
           
