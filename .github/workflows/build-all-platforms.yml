@@ -56,26 +56,31 @@ jobs:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
     uses: ./.github/workflows/build-x86_64-windows.yml
     secrets: inherit
+    needs: get-version
 
   linux:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-x86_64'
     uses: ./.github/workflows/build-x86_64-linux.yml
     secrets: inherit
+    needs: get-version
 
   openwrt_x86:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64'
     uses: ./.github/workflows/build-openwrt-x86_64.yml
     secrets: inherit
+    needs: get-version
 
   openwrt_mt7621:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621'
     uses: ./.github/workflows/build-openwrt-ramips_mt7621.yml
     secrets: inherit
+    needs: get-version
 
   openwrt_filogic:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic'
     uses: ./.github/workflows/build-openwrt-mediatek_filogic.yml
     secrets: inherit
+    needs: get-version
 
   # 收集所有产物并创建 Release
   release:
