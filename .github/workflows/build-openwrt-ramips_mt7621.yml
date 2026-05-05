@@ -53,6 +53,7 @@ jobs:
           path: |
             openwrt-sdk/staging_dir/
             openwrt-sdk/dl/
+            openwrt-sdk/scripts/
           key: openwrt-ramips_mt7621-sdk-${{ inputs.sdk_version }}
 
       - name: 下载并解压 SDK
