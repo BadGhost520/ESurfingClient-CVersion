@@ -149,6 +149,9 @@ jobs:
       - openwrt-x86_64-ipk
       - openwrt-ramips_mt7621-ipk
       - openwrt-mediatek_filogic-ipk
+      - openwrt-x86_64-apk
+      - openwrt-ramips_mt7621-apk
+      - openwrt-mediatek_filogic-apk
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:
