@@ -19,7 +19,7 @@ on:
         type: string
 
 env:
-  SDK_URL: "https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/targets/x86/64"
+  SDK_URL: "https://downloads.openwrt.org/releases/24.10.6/targets/x86/64"
   SDK_NAME: "openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64"
 
 jobs:
@@ -50,14 +50,26 @@ jobs:
             sleep 3
           done
 
-      - name: 下载并解压 SDK
+      - name: 获取 OpenWrt SDK 压缩包缓存
+        id: cache-openwrt-sdk
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ env.SDK_NAME }}.tar.zst
+          key: openwrt-x86_64-ipk-sdk-${{ inputs.sdk_version }}
+
+      - name: 下载 SDK
+        if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
         run: |
           wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}.tar.zst
+
+      - name: 解压 SDK
+        run: |
           tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
           mv ${{ env.SDK_NAME }} openwrt-sdk
-          
+
           cd openwrt-sdk
-          
+
           make defconfig
 
       - name: 获取 OpenWrt 缓存
