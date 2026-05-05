@@ -26,8 +26,8 @@ jobs:
 
       - name: 更新 Makefile 版本号
         run: |
-          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" package/esurfingclient/Makefile
-          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" package/esurfingclient/Makefile
+          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" esurfingclient/Makefile
+          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" esurfingclient/Makefile
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
