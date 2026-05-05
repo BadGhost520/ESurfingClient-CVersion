@@ -52,7 +52,7 @@ jobs:
 
       - name: 下载并解压 SDK
         run: |
-          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}
+          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}.tar.zst
           tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
           mv ${{ env.SDK_NAME }} openwrt-sdk
           
