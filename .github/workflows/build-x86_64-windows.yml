@@ -19,7 +19,7 @@ on:
         type: string
 
 jobs:
-  build-windows-x86_64:
+  build:
     runs-on: ubuntu-latest
     container:
       image: debian:13

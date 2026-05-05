@@ -8,6 +8,7 @@ env:
   OPENSSL_VERSION: "4.0.0"
   CURL_VERSION: "8.20.0"
   OPENWRT_IPK_SDK_VERSION: "24.10.6"
+  OPENWRT_APK_SDK_VERSION: "25.12.0"
 
 on:
   workflow_dispatch:
@@ -21,9 +22,12 @@ on:
           - all
           - windows-x86_64
           - linux-x86_64
-          - openwrt-x86_64
-          - openwrt-ramips_mt7621
-          - openwrt-mediatek_filogic
+          - openwrt-x86_64-ipk
+          - openwrt-ramips_mt7621-ipk
+          - openwrt-mediatek_filogic-ipk
+          - openwrt-x86_64-apk
+          - openwrt-ramips_mt7621-apk
+          - openwrt-mediatek_filogic-apk
 
 jobs:
   # 获取版本号
@@ -35,7 +39,8 @@ jobs:
       full_version: ${{ steps.version.outputs.full_version }}
       openssl_version: ${{ env.OPENSSL_VERSION }}
       curl_version: ${{ env.CURL_VERSION }}
-      openwrt_sdk_version: ${{ env.OPENWRT_IPK_SDK_VERSION }}
+      openwrt_ipk_sdk_version: ${{ env.OPENWRT_IPK_SDK_VERSION }}
+      openwrt_apk_sdk_version: ${{ env.OPENWRT_APK_SDK_VERSION }}
     steps:
       - uses: actions/checkout@v6
       - name: 获取版本号
@@ -76,44 +81,74 @@ jobs:
       full_version: ${{ needs.get-version.outputs.full_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
 
-  openwrt-x86_64:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64'
-    uses: ./.github/workflows/build-openwrt-x86_64.yml
+  openwrt-x86_64-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-x86_64.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_sdk_version }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
-  openwrt-ramips_mt7621:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621'
-    uses: ./.github/workflows/build-openwrt-ramips_mt7621.yml
+  openwrt-ramips_mt7621-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-ramips_mt7621.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_sdk_version }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
-  openwrt-mediatek_filogic:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic'
-    uses: ./.github/workflows/build-openwrt-mediatek_filogic.yml
+  openwrt-mediatek_filogic-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-mediatek_filogic.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_sdk_version }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+
+  openwrt-x86_64-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-apk'
+    uses: ./.github/workflows/build-openwrt-apk-x86_64.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+
+  openwrt-ramips_mt7621-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621-apk'
+    uses: ./.github/workflows/build-openwrt-apk-ramips_mt7621.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+
+  openwrt-mediatek_filogic-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic-apk'
+    uses: ./.github/workflows/build-openwrt-apk-mediatek_filogic.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
   # 收集所有产物并创建 Release
   release:
     needs:
       - windows-x86_64
       - linux-x86_64
-      - openwrt-x86_64
-      - openwrt-ramips_mt7621
-      - openwrt-mediatek_filogic
+      - openwrt-x86_64-ipk
+      - openwrt-ramips_mt7621-ipk
+      - openwrt-mediatek_filogic-ipk
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:
