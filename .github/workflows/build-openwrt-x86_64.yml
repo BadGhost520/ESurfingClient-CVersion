@@ -62,12 +62,6 @@ jobs:
           wget "$SDK_URL"
           tar -I zstd -xf openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
-          
-          cp -r esurfingclient openwrt-sdk/package/
-          
-          if [ -f esurfingclient.tar.gz ]; then
-            cp esurfingclient.tar.gz openwrt-sdk/dl/
-          fi
 
       - name: 准备构建配置
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
@@ -122,7 +116,10 @@ jobs:
 
       - name: 编译 esurfingclient
         run: |
+          cp -r esurfingclient openwrt-sdk/package/
+          
           cd openwrt-sdk
+          
           make package/esurfingclient/compile V=sc -j$(nproc)
           
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.ipk \;

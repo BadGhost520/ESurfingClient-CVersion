@@ -45,7 +45,7 @@ jobs:
           path: |
             /usr/local/lib/libcurl.a
             /usr/local/include/curl
-          key: curl-${{ inputs.curl_version }}-openssl
+          key: curl-${{ inputs.curl_version }}
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
@@ -113,11 +113,11 @@ jobs:
           
           make -j$(nproc)
           make install
-          
-          export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
 
       - name: 构建 ESurfingClient 程序
         run: |
+          export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+          
           cd esurfingclient/esurfing
           
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \

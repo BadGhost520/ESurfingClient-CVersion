@@ -135,7 +135,7 @@ jobs:
           path: |
             /usr/x86_64-w64-mingw32/lib/libcurl.a
             /usr/x86_64-w64-mingw32/include/curl
-          key: curl-${{ inputs.curl_version }}-mingw64-openssl
+          key: curl-${{ inputs.curl_version }}-mingw64
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
