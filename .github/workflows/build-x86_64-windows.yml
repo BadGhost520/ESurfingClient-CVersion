@@ -60,128 +60,131 @@ jobs:
         run: |
           cd /tmp
           wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
-          tar -xzf openssl-4.0.0.tar.gz
-          cd openssl-4.0.0
-          
-          ./Configure mingw64 \
-            --cross-compile-prefix=x86_64-w64-mingw32- \
-            --prefix=/usr/x86_64-w64-mingw32 \
-            --libdir=lib \
-            no-shared \
-            no-tests \
-            no-docs \
-            no-apps \
-            no-ssl \
-            no-tls \
-            no-bf \
-            no-cast \
-            no-idea \
-            no-rc2 \
-            no-rc4 \
-            no-rc5 \
-            no-seed \
-            no-aria \
-            no-camellia \
-            no-sm2 \
-            no-sm3 \
-            no-mdc2 \
-            no-rmd160 \
-            no-whirlpool \
-            no-blake2 \
-            no-md4 \
-            no-dtls \
-            no-quic \
-            no-sctp \
-            no-srp \
-            no-zlib \
-            no-zstd \
-            no-brotli \
-            no-ktls \
-            no-rdrand \
-            no-asan \
-            no-msan \
-            no-ubsan \
-            no-trace \
-            no-egd \
-            no-krb5kdf \
-            no-scrypt \
-            no-x942kdf \
-            no-x963kdf \
-            no-srtp \
-            no-ocsp \
-            no-cms \
-            no-ts
-          
-          make -j$(nproc)
-          make install
+          tar -xzf openssl-4.0.0-mingw64.tar.gz -C /usr/x86_64-w64-mingw32
+#          wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
+#          tar -xzf openssl-4.0.0.tar.gz
+#          cd openssl-4.0.0
+#
+#          ./Configure mingw64 \
+#            --cross-compile-prefix=x86_64-w64-mingw32- \
+#            --prefix=/usr/x86_64-w64-mingw32 \
+#            --libdir=lib \
+#            no-shared \
+#            no-tests \
+#            no-docs \
+#            no-apps \
+#            no-tls \
+#            no-bf \
+#            no-cast \
+#            no-idea \
+#            no-rc2 \
+#            no-rc4 \
+#            no-rc5 \
+#            no-seed \
+#            no-aria \
+#            no-camellia \
+#            no-sm2 \
+#            no-sm3 \
+#            no-mdc2 \
+#            no-rmd160 \
+#            no-whirlpool \
+#            no-blake2 \
+#            no-md4 \
+#            no-dtls \
+#            no-quic \
+#            no-sctp \
+#            no-srp \
+#            no-zlib \
+#            no-zstd \
+#            no-brotli \
+#            no-ktls \
+#            no-rdrand \
+#            no-asan \
+#            no-msan \
+#            no-ubsan \
+#            no-trace \
+#            no-egd \
+#            no-krb5kdf \
+#            no-scrypt \
+#            no-x942kdf \
+#            no-x963kdf \
+#            no-srtp \
+#            no-ocsp \
+#            no-cms \
+#            no-ts
+#
+#          make -j$(nproc)
+#          make install
 
       - name: 构建 libcurl 静态链接库
         run: |
           cd /tmp
-          wget https://curl.se/download/curl-8.20.0.tar.gz
-          tar -xzf curl-8.20.0.tar.gz
-          cd curl-8.20.0
-          
-          ./configure --host=x86_64-w64-mingw32 \
-            --prefix=/usr/x86_64-w64-mingw32 \
-            --enable-static \
-            --disable-shared \
-            --without-ssl \
-            --enable-http \
-            --enable-proxy \
-            --enable-cookies \
-            --enable-basic-auth \
-            --enable-digest-auth \
-            --disable-ftp \
-            --disable-file \
-            --disable-ldap \
-            --disable-ldaps \
-            --disable-rtsp \
-            --disable-dict \
-            --disable-telnet \
-            --disable-tftp \
-            --disable-pop3 \
-            --disable-imap \
-            --disable-smb \
-            --disable-smtp \
-            --disable-gopher \
-            --disable-mqtt \
-            --disable-websockets \
-            --disable-bearer-auth \
-            --disable-kerberos-auth \
-            --disable-negotiate-auth \
-            --disable-ntlm \
-            --disable-tls-srp \
-            --disable-aws \
-            --disable-rtmp \
-            --without-brotli \
-            --without-zstd \
-            --without-libpsl \
-            --without-libssh2 \
-            --without-librtmp \
-            --without-libidn2 \
-            --without-nghttp2 \
-            --without-ngtcp2 \
-            --without-nghttp3 \
-            --without-quiche \
-            --without-msh3 \
-            --without-libgsasl \
-            --without-libssh \
-            --without-wolfssh \
-            --without-hyper \
-            --without-zlib \
-            --disable-ares \
-            --disable-rt \
-            --disable-threaded-resolver \
-            --disable-ipv6 \
-            --disable-manual \
-            --disable-docs \
-            --disable-verbose \
-            --disable-versioned-symbols \
-            --disable-sspi
-          
-          make -j$(nproc)
-          make install
+          wget https://github.com/curl/curl/releases/download/curl-8.12.1/curl-8.12.1-mingw64.tar.gz
+          tar -xzf curl-8.12.1-mingw64.tar.gz -C /usr/x86_64-w64-mingw32
+#          wget https://curl.se/download/curl-8.20.0.tar.gz
+#          tar -xzf curl-8.20.0.tar.gz
+#          cd curl-8.20.0
+#
+#          ./configure --host=x86_64-w64-mingw32 \
+#            --prefix=/usr/x86_64-w64-mingw32 \
+#            --enable-static \
+#            --disable-shared \
+#            --without-ssl \
+#            --enable-http \
+#            --enable-proxy \
+#            --enable-cookies \
+#            --enable-basic-auth \
+#            --enable-digest-auth \
+#            --disable-ftp \
+#            --disable-file \
+#            --disable-ldap \
+#            --disable-ldaps \
+#            --disable-rtsp \
+#            --disable-dict \
+#            --disable-telnet \
+#            --disable-tftp \
+#            --disable-pop3 \
+#            --disable-imap \
+#            --disable-smb \
+#            --disable-smtp \
+#            --disable-gopher \
+#            --disable-mqtt \
+#            --disable-websockets \
+#            --disable-bearer-auth \
+#            --disable-kerberos-auth \
+#            --disable-negotiate-auth \
+#            --disable-ntlm \
+#            --disable-tls-srp \
+#            --disable-aws \
+#            --disable-rtmp \
+#            --without-brotli \
+#            --without-zstd \
+#            --without-libpsl \
+#            --without-libssh2 \
+#            --without-librtmp \
+#            --without-libidn2 \
+#            --without-nghttp2 \
+#            --without-ngtcp2 \
+#            --without-nghttp3 \
+#            --without-quiche \
+#            --without-msh3 \
+#            --without-libgsasl \
+#            --without-libssh \
+#            --without-wolfssh \
+#            --without-hyper \
+#            --without-zlib \
+#            --disable-ares \
+#            --disable-rt \
+#            --disable-threaded-resolver \
+#            --disable-ipv6 \
+#            --disable-manual \
+#            --disable-docs \
+#            --disable-verbose \
+#            --disable-versioned-symbols \
+#            --disable-sspi
+#
+#          make -j$(nproc)
+#          make install
 
       - name: 构建 ESurfingClient 程序
         run: |
