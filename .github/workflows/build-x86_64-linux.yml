@@ -45,7 +45,7 @@ jobs:
           path: |
             /usr/local/lib/libcurl.a
             /usr/local/include/curl
-          key: curl-${{ inputs.curl_version }}-mingw64-openssl
+          key: curl-${{ inputs.curl_version }}-openssl
 
       - name: 构建 libcurl 静态链接库
         run: |
