@@ -48,6 +48,7 @@ jobs:
           key: curl-${{ inputs.curl_version }}-openssl
 
       - name: 构建 libcurl 静态链接库
+        if: steps.cache-curl.outputs.cache-hit != 'true'
         run: |
           wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
           tar -xzf curl-${{ inputs.curl_version }}.tar.gz
