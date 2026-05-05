@@ -1,40 +1,37 @@
 name: Build x86_64 Linux Binary
 
-# 配置工作流权限
 permissions:
+  contents: write
   actions: write
-  contents: read
 
 on:
   workflow_dispatch:
   workflow_call:
 
 jobs:
-  build-x64-linux:
+  build-linux-x86_64:
     runs-on: ubuntu-latest
     container:
       image: debian:13
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Install packages with retry
+      - name: 安装软件包 (最多重试 3 次)
         run: |
-          # 安装多个包，最多重试3次
           PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file libzstd-dev"
 
           for i in 1 2 3; do
-            echo "Attempt $i: Installing $PACKAGES"
+            echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ All packages installed"
+              echo "✅ 所有软件包已完成安装"
               break
             fi
-            echo "❌ Attempt $i failed"
+            echo "❌ 尝试 $i 失败"
             sleep 3
           done
 
-      - name: Build libcurl
+      - name: 构建 libcurl 静态链接库
         run: |
           wget https://curl.se/download/curl-8.20.0.tar.gz
           tar -xzf curl-8.20.0.tar.gz
@@ -105,60 +102,38 @@ jobs:
           make -j$(nproc)
           make install
           
-          # 更新 CMake 查找路径
           export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
-          cd ..
 
       - name: Build ESurfingClient
         run: |
-          echo "🏗️ Starting x64 Linux build process"
-          echo "📁 Go to esurfing dir"
           cd esurfingclient/esurfing
           
-          echo "⚙️ CMake configuring"
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
                 -DCMAKE_BUILD_TYPE=Release \
                 .
           
-          echo "🔨 Making Programme"
           make -j$(nproc)
           
-          EXECUTABLE=$(find . -name "ESurfingClient" -type f -executable | head -1)
-          if [ -n "$EXECUTABLE" ]; then
-            mv "$EXECUTABLE" ../../ESurfingClient-x86_64-linux
-            echo "✅ 从 $EXECUTABLE 移动成功"
-          else
-            echo "❌ 找不到可执行文件"
-            exit 1
-          fi
+          cp ESurfingClient ../../ESurfingClient-x86_64-linux
           
-          echo "📦 Protect - Compress with UPX"
-          upx --best ../../ESurfingClient-x86_64-linux
+          upx --best --lzma ../../ESurfingClient-x86_64-linux
           
-          echo "✅ Build completed successfully"
+          ls -lh ../../ESurfingClient-x86_64-linux
 
-      - name: Verify build output
+      - name: 验证
         run: |
-          echo "🔍 Verifying build output"
           if [ -f "ESurfingClient-x86_64-linux" ]; then
-            echo "✅ Binary file exists"
-            ls -la ESurfingClient-x86_64-linux
+            echo "✅ 构建成功"
+            echo "📏 文件大小: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
             file ESurfingClient-x86_64-linux
-            echo "📏 File size: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
           else
-            echo "❌ Binary file not found"
+            echo "❌ 未找到二进制文件"
             exit 1
           fi
 
-      - name: Create package
+      - name: 打包成 tar.gz 压缩包
         run: |
-          echo "📦 Creating package"
-          
-          # Create compressed package with executable in root
           tar -czf esurfingclient-x86_64-linux.tar.gz ESurfingClient-x86_64-linux
-          
-          echo "📦 Package created: esurfingclient-x86_64-linux.tar.gz"
-          ls -la esurfingclient-x86_64-linux.tar.gz
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7

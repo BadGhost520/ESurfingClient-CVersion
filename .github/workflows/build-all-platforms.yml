@@ -21,6 +21,36 @@ on:
           - openwrt-mediatek_filogic
 
 jobs:
+  # 获取版本号
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      release: ${{ steps.extract.outputs.release }}
+      full_version: ${{ steps.extract.outputs.full_version }}
+    steps:
+      - name: 签出到库
+        uses: actions/checkout@v6
+
+      - name: 从 CMakeLists.txt 获取版本号
+        id: extract
+        run: |
+          cd esurfingclient/esurfing
+          
+          MAJOR=$(grep -oP 'set\(PROGRAM_VERSION_MAJOR \K\d+' CMakeLists.txt)
+          MINOR=$(grep -oP 'set\(PROGRAM_VERSION_MINOR \K\d+' CMakeLists.txt)
+          PATCH=$(grep -oP 'set\(PROGRAM_VERSION_PATCH \K\d+' CMakeLists.txt)
+          RELEASE=$(grep -oP 'set\(PROGRAM_VERSION_RELEASE \K\d+' CMakeLists.txt)
+        
+          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
+          echo "release=${RELEASE}" >> $GITHUB_OUTPUT
+          echo "full_version=${MAJOR}.${MINOR}.${PATCH}-r${RELEASE}" >> $GITHUB_OUTPUT
+
+      - name: 展示版本号
+        run: |
+          echo "Version: ${{ steps.extract.outputs.full_version }}"
+          echo "Release: ${{ steps.extract.outputs.release }}"
+
   # 根据选择条件性运行子 workflow
   windows:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
@@ -58,17 +88,17 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:
-      - name: Download all artifacts
+      - name: 下载所有工件
         uses: actions/download-artifact@v8
         with:
           path: artifacts
 
-      - name: List downloaded files
+      - name: 列出所有下载的文件
         run: |
-          echo "📦 Downloaded artifacts:"
+          echo "已下载工件:"
           find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.tar.gz" \) | sort
 
-      - name: Create release package
+      - name: 创建 Release 包
         run: |
           export TZ='Asia/Shanghai'
           TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
@@ -77,24 +107,21 @@ jobs:
           echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
           echo "RELEASE_NAME=${RELEASE_NAME}" >> $GITHUB_ENV
           
-          echo "🏷️ Release tag: ${RELEASE_TAG}"
-          echo "📝 Release name: ${RELEASE_NAME}"
+          echo "Release tag: ${RELEASE_TAG}"
+          echo "Release name: ${RELEASE_NAME}"
           
-          # 创建发布目录
           mkdir -p release_package
           
-          # 将所有产物复制到发布目录
           find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.tar.gz" \) -exec cp {} release_package/ \;
           
-          # 打包成一个 zip 文件
           cd release_package
           zip -r "../${RELEASE_TAG}.zip" .
           cd ..
           
-          echo "✅ 已创建压缩包: ${RELEASE_TAG}.zip"
+          echo "已创建压缩包: ${RELEASE_TAG}.zip"
           ls -lh "${RELEASE_TAG}.zip"
 
-      - name: Create GitHub Release
+      - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}

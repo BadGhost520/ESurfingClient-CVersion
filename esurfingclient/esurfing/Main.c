@@ -8,7 +8,7 @@
 
 #include <stdlib.h>
 
-#define VERSION "v2.0.0-r7"
+
 
 int main()
 {
@@ -24,7 +24,7 @@ int main()
 
     if (init_logger() == false) shut(1); // 初始化日志系统
 
-    LOG_INFO("程序版本: " VERSION);
+    LOG_INFO("程序版本: " PROGRAM_FULL_VERSION);
 
     if (load_cfg() == false) shut(1); // 加载配置文件
     //

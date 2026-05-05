@@ -9,31 +9,29 @@ on:
   workflow_call:
 
 jobs:
-  build-x64-windows:
+  build-windows-x86_64:
     runs-on: ubuntu-latest
     container:
       image: debian:13
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Install packages with retry
+      - name: 安装软件包 (最多重试 3 次)
         run: |
-          # 安装多个包，最多重试3次
           PACKAGES="cmake make ninja-build gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 mingw-w64-tools upx-ucl wget file zip perl libperl-dev"
 
           for i in 1 2 3; do
-            echo "Attempt $i: Installing $PACKAGES"
+            echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ All packages installed"
+              echo "✅ 所有软件包已完成安装"
               break
             fi
-            echo "❌ Attempt $i failed"
+            echo "❌ 尝试 $i 失败"
             sleep 3
           done
 
-      - name: Create toolchain
+      - name: 创建工具链
         run: |
           cd esurfingclient/esurfing
           
@@ -54,7 +52,7 @@ jobs:
           
           cat toolchain-mingw64.cmake
 
-      - name: Build libopenssl
+      - name: 构建 libOpenSSL 静态链接库
         run: |
           cd /tmp
           wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
@@ -110,18 +108,8 @@ jobs:
           
           make -j$(nproc)
           make install
-          
-          # 验证 OpenSSL 静态库
-          if [ -f "/usr/x86_64-w64-mingw32/lib/libcrypto.a" ] && [ -f "/usr/x86_64-w64-mingw32/lib/libssl.a" ]; then
-            echo "✅ OpenSSL static libraries installed"
-            ls -la /usr/x86_64-w64-mingw32/lib/libcrypto.a
-            ls -la /usr/x86_64-w64-mingw32/lib/libssl.a
-          else
-            echo "❌ OpenSSL libraries not found!"
-            exit 1
-          fi
 
-      - name: Build libcurl
+      - name: 构建 libcurl 静态链接库
         run: |
           cd /tmp
           wget https://curl.se/download/curl-8.20.0.tar.gz
@@ -193,21 +181,11 @@ jobs:
           
           make -j$(nproc)
           make install
-          
-          # 确认 libcurl.a 存在
-          if [ -f "/usr/x86_64-w64-mingw32/lib/libcurl.a" ]; then
-            echo "✅ libcurl.a successfully installed"
-            ls -la /usr/x86_64-w64-mingw32/lib/libcurl.a
-          else
-            echo "❌ libcurl.a not found!"
-            exit 1
-          fi
 
-      - name: Build ESurfingClient
+      - name: 构建 ESurfingClient 程序
         run: |
           cd esurfingclient/esurfing
           
-          echo "⚙️ CMake configuring with Ninja"
           cmake -G Ninja \
             -B build \
             -S . \
@@ -215,44 +193,39 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=toolchain-mingw64.cmake \
             -DBUILD_SHARED_LIBS=OFF
           
-          echo "🔨 Building with Ninja"
           cmake --build build --target ESurfingClient -j$(nproc)
           
-          echo "📦 Copying executable"
           cp build/ESurfingClient.exe ../../ESurfingClient-x86_64-windows.exe
           
-          echo "🔍 Verifying static linking"
           x86_64-w64-mingw32-objdump -p ../../ESurfingClient-x86_64-windows.exe | grep "DLL Name" | head -20
           
-          echo "🗜️ Compressing with UPX"
           upx --best --lzma ../../ESurfingClient-x86_64-windows.exe || true
           
-          echo "✅ Build completed"
           ls -lh ../../ESurfingClient-x86_64-windows.exe
 
-      - name: Verify build output
+      - name: 验证
         run: |
           if [ -f "ESurfingClient-x86_64-windows.exe" ]; then
-              echo "✅ Build successful!"
-              echo "📏 File size: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
+              echo "✅ 构建成功"
+              echo "📏 文件大小: $(stat -c%s ESurfingClient-x86_64-windows.exe) bytes"
 
-              echo "🔍 Checking dependencies:"
+              echo "🔍 检查依赖:"
               deps=$(x86_64-w64-mingw32-objdump -p ESurfingClient-x86_64-windows.exe | grep "DLL Name" || true)
               echo "$deps" | head -20
 
               if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
-                  echo "❌ ERROR: Found third-party DLL dependencies!"
+                  echo "❌ 错误: 链接了第三方动态库"
                   echo "$deps" | grep -E "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
                   exit 1
               else
-                  echo "✅ Fully static binary - no third-party DLLs"
+                  echo "✅ 完全静态: 没有链接第三方动态库"
               fi
           else
-              echo "❌ Executable not found!"
+              echo "❌ 未找到二进制文件"
               exit 1
           fi
 
-      - name: Package with zip
+      - name: 打包成 zip 压缩包
         run: |
           zip -r esurfingclient-x86_64-windows.zip ESurfingClient-x86_64-windows.exe
 
