@@ -120,6 +120,8 @@ jobs:
           
           cd openwrt-sdk
           
+          scripts/feeds install esurfingclient
+          
           make package/esurfingclient/compile V=sc -j$(nproc)
           
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.ipk \;
