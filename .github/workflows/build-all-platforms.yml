@@ -32,6 +32,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       release: ${{ steps.version.outputs.release }}
       full_version: ${{ steps.version.outputs.full_version }}
+      openssl_version: ${{ env.OPENSSL_VERSION }}
+      curl_version: ${{ env.CURL_VERSION }}
     steps:
       - uses: actions/checkout@v6
       - name: 获取版本号
@@ -60,8 +62,8 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
-      openssl_version: ${{ env.OPENSSL_VERSION }}
-      curl_version: ${{ env.CURL_VERSION }}
+      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
+      curl_version: ${{ needs.get-version.outputs.curl_version }}
 
   linux-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-x86_64'
@@ -70,7 +72,7 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
-      curl_version: ${{ env.CURL_VERSION }}
+      curl_version: ${{ needs.get-version.outputs.curl_version }}
 
   openwrt-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64'
