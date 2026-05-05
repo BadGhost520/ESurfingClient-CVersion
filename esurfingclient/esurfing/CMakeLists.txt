@@ -108,6 +108,7 @@ else ()
     )
     if (NOT __OPENWRT__)
         target_link_libraries(ESurfingClient PRIVATE
+                OpenSSL::SSL
                 z
                 m
                 zstd
