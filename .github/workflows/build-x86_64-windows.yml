@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/x86_64-w64-mingw32/lib/libcrypto.a
-          key: openssl-${{ env.OPENSSL_VERSION }}-mingw64
+          key: openssl-4.0.0-mingw64
 
       - name: 构建 libOpenSSL 静态链接库
         if: steps.cache-openssl.outputs.cache-hit != 'true'
@@ -125,7 +125,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/x86_64-w64-mingw32/lib/libcurl.a
-          key: curl-${{ env.CURL_VERSION }}-mingw64-openssl
+          key: curl-8.20.0-mingw64-openssl
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
