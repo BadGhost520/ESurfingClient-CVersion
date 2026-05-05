@@ -14,6 +14,9 @@ on:
       release:
         required: true
         type: string
+      sdk_version:
+        required: true
+        type: string
 
 jobs:
   build-openwrt-mediatek_filogic:
@@ -43,7 +46,17 @@ jobs:
             sleep 3
           done
 
+      - name: 获取 OpenWrt 缓存
+        id: cache-openwrt
+        uses: actions/cache@v5
+        with:
+          path: |
+            openwrt-sdk/staging_dir/
+            openwrt-sdk/dl/
+          key: openwrt-mediatek_filogic-sdk-${{ inputs.sdk_version }}
+
       - name: 下载并解压 SDK
+        if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
           SDK_URL="https://downloads.openwrt.org/releases/24.10.6/targets/mediatek/filogic/openwrt-sdk-24.10.6-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
           wget "$SDK_URL"
@@ -57,6 +70,7 @@ jobs:
           fi
 
       - name: 准备构建配置
+        if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
           cd openwrt-sdk
 
@@ -94,11 +108,13 @@ jobs:
           make defconfig
 
       - name: 编译 libopenssl
+        if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
           cd openwrt-sdk
           make package/openssl/compile V=sc -j$(nproc)
 
       - name: 编译 libcurl
+        if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
           cd openwrt-sdk
           make package/curl/compile V=sc -j$(nproc)

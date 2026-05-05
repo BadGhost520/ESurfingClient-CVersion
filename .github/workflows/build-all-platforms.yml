@@ -7,6 +7,7 @@ permissions:
 env:
   OPENSSL_VERSION: "4.0.0"
   CURL_VERSION: "8.20.0"
+  OPENWRT_IPK_SDK_VERSION: "24.10.6"
 
 on:
   workflow_dispatch:
@@ -34,6 +35,7 @@ jobs:
       full_version: ${{ steps.version.outputs.full_version }}
       openssl_version: ${{ env.OPENSSL_VERSION }}
       curl_version: ${{ env.CURL_VERSION }}
+      openwrt_sdk_version: ${{ env.OPENWRT_IPK_SDK_VERSION }}
     steps:
       - uses: actions/checkout@v6
       - name: 获取版本号
@@ -82,6 +84,7 @@ jobs:
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_sdk_version }}
 
   openwrt-ramips_mt7621:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621'
@@ -91,6 +94,7 @@ jobs:
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_sdk_version }}
 
   openwrt-mediatek_filogic:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic'
@@ -100,6 +104,7 @@ jobs:
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_sdk_version }}
 
   # 收集所有产物并创建 Release
   release:
