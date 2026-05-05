@@ -4,6 +4,10 @@ permissions:
   actions: write
   contents: write
 
+env:
+  OPENSSL_VERSION: "4.0.0"
+  CURL_VERSION: "8.20.0"
+
 on:
   workflow_dispatch:
     inputs:
@@ -56,6 +60,8 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
+      openssl_version: ${{ env.OPENSSL_VERSION }}
+      curl_version: ${{ env.CURL_VERSION }}
 
   linux-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-x86_64'
@@ -64,6 +70,7 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
+      curl_version: ${{ env.CURL_VERSION }}
 
   openwrt-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64'

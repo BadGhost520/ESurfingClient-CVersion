@@ -4,15 +4,17 @@ permissions:
   contents: write
   actions: write
 
-env:
-  OPENSSL_VERSION: "4.0.0"
-  CURL_VERSION: "8.20.0"
-
 on:
   workflow_dispatch:
   workflow_call:
     inputs:
       full_version:
+        required: true
+        type: string
+      openssl_version:
+        required: true
+        type: string
+      curl_version:
         required: true
         type: string
 
@@ -65,15 +67,15 @@ jobs:
           path: |
             /usr/x86_64-w64-mingw32/lib/libcrypto.a
             /usr/x86_64-w64-mingw32/include/openssl
-          key: openssl-${{ env.OPENSSL_VERSION }}-mingw64
+          key: openssl-${{ inputs.openssl_version }}-mingw64
 
       - name: 构建 libOpenSSL 静态链接库
         if: steps.cache-openssl.outputs.cache-hit != 'true'
         run: |
           cd /tmp
-          wget https://github.com/openssl/openssl/releases/download/openssl-${{ env.OPENSSL_VERSION }}/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
-          tar -xzf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
-          cd openssl-${{ env.OPENSSL_VERSION }}
+          wget https://github.com/openssl/openssl/releases/download/openssl-${{ inputs.openssl_version }}/openssl-${{ inputs.openssl_version }}.tar.gz
+          tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
+          cd openssl-${{ inputs.openssl_version }}
           
           ./Configure mingw64 \
             --cross-compile-prefix=x86_64-w64-mingw32- \
@@ -133,15 +135,15 @@ jobs:
           path: |
             /usr/x86_64-w64-mingw32/lib/libcurl.a
             /usr/x86_64-w64-mingw32/include/curl
-          key: curl-${{ env.CURL_VERSION }}-mingw64-openssl
+          key: curl-${{ inputs.curl_version }}-mingw64-openssl
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
         run: |
           cd /tmp
-          wget https://curl.se/download/curl-${{ env.CURL_VERSION }}.tar.gz
-          tar -xzf curl-${{ env.CURL_VERSION }}.tar.gz
-          cd curl-${{ env.CURL_VERSION }}
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
           
           ./configure --host=x86_64-w64-mingw32 \
             --prefix=/usr/x86_64-w64-mingw32 \

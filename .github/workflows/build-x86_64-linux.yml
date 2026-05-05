@@ -11,6 +11,9 @@ on:
       full_version:
         required: true
         type: string
+      curl_version:
+        required: true
+        type: string
 
 jobs:
   build-linux-x86_64:
@@ -35,11 +38,20 @@ jobs:
             sleep 3
           done
 
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v5
+        with:
+          path: |
+            /usr/local/lib/libcurl.a
+            /usr/local/include/curl
+          key: curl-${{ inputs.curl_version }}-mingw64-openssl
+
       - name: 构建 libcurl 静态链接库
         run: |
-          wget https://curl.se/download/curl-8.20.0.tar.gz
-          tar -xzf curl-8.20.0.tar.gz
-          cd curl-8.20.0
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
           
           ./configure --prefix=/usr/local \
             --enable-static \
