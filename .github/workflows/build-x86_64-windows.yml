@@ -119,8 +119,8 @@ jobs:
       - name: 构建 libcurl 静态链接库
         run: |
           cd /tmp
-          wget https://github.com/curl/curl/releases/download/curl-8.12.1/curl-8.12.1-mingw64.tar.gz
-          tar -xzf curl-8.12.1-mingw64.tar.gz -C /usr/x86_64-w64-mingw32
+          wget https://github.com/curl/curl/releases/download/curl-8_20_0/curl-8.20.0.tar.gz
+          tar -xzf curl-8.20.0.tar.gz -C /usr/x86_64-w64-mingw32
 #          wget https://curl.se/download/curl-8.20.0.tar.gz
 #          tar -xzf curl-8.20.0.tar.gz
 #          cd curl-8.20.0
