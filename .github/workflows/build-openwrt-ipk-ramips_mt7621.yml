@@ -18,8 +18,12 @@ on:
         required: true
         type: string
 
+env:
+  SDK_URL: "https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621"
+  SDK_NAME: "openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64"
+
 jobs:
-  build-openwrt-ramips_mt7621:
+  build:
     runs-on: ubuntu-latest
     container:
       image: debian:13
@@ -48,10 +52,9 @@ jobs:
 
       - name: 下载并解压 SDK
         run: |
-          SDK_URL="https://downloads.openwrt.org/releases/24.10.6/targets/ramips/mt7621/openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
-          wget "$SDK_URL"
-          tar -I zstd -xf openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          mv openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64 openwrt-sdk
+          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}
+          tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
+          mv ${{ env.SDK_NAME }} openwrt-sdk
           
           cd openwrt-sdk
           

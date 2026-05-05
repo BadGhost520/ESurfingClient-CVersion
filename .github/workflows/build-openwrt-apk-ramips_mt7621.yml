@@ -18,6 +18,10 @@ on:
         required: true
         type: string
 
+env:
+  SDK_URL: "https://downloads.openwrt.org/releases/25.12.0/targets/ramips/mt7621"
+  SDK_NAME: "openwrt-sdk-25.12.0-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -48,10 +52,9 @@ jobs:
 
       - name: 下载并解压 SDK
         run: |
-          SDK_URL="https://downloads.openwrt.org/releases/25.12.0/targets/ramips/mt7621/openwrt-sdk-25.12.0-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
-          wget "$SDK_URL"
-          tar -I zstd -xf openwrt-sdk-25.12.0-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-          mv openwrt-sdk-25.12.0-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64 openwrt-sdk
+          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}
+          tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
+          mv ${{ env.SDK_NAME }} openwrt-sdk
           
           cd openwrt-sdk
           
@@ -81,23 +84,25 @@ jobs:
           CONFIG_TARGET_ramips=y
           CONFIG_TARGET_ramips_mt7621=y
           # CONFIG_LIBCURL_FTP is not set
+          # CONFIG_LIBCURL_HTTP2 is not set
           # CONFIG_LIBCURL_MBEDTLS is not set
-          # CONFIG_LIBCURL_NGHTTP2 is not set
           CONFIG_LIBCURL_OPENSSL=y
+          # CONFIG_OPENSSL_ENGINE is not set
           # CONFIG_OPENSSL_WITH_CHACHA_POLY1305 is not set
           # CONFIG_OPENSSL_WITH_CMS is not set
+          # CONFIG_OPENSSL_WITH_ERROR_MESSAGES is not set
           # CONFIG_OPENSSL_WITH_IDEA is not set
           # CONFIG_OPENSSL_WITH_MDC2 is not set
           # CONFIG_OPENSSL_WITH_PSK is not set
           # CONFIG_OPENSSL_WITH_SEED is not set
           # CONFIG_OPENSSL_WITH_SRP is not set
+          # CONFIG_OPENSSL_WITH_TLS13 is not set
           # CONFIG_OPENSSL_WITH_WHIRLPOOL is not set
           CONFIG_PACKAGE_libatomic=y
           CONFIG_PACKAGE_libcurl=y
           CONFIG_PACKAGE_libopenssl=y
-          # CONFIG_PACKAGE_libopenssl-afalg is not set
-          # CONFIG_PACKAGE_libopenssl-afalg_sync is not set
-          # CONFIG_PACKAGE_libopenssl-devcrypto is not set
+          CONFIG_PACKAGE_libopenssl-conf=y
+          # CONFIG_PACKAGE_libopenssl-legacy is not set
           EOF
 
           make defconfig
