@@ -4,6 +4,10 @@ permissions:
   contents: write
   actions: write
 
+env:
+  OPENSSL_VERSION: "4.0.0"
+  CURL_VERSION: "8.20.0"
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -59,15 +63,15 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/x86_64-w64-mingw32/lib/libcrypto.a
-          key: openssl-4.0.0-mingw64
+          key: openssl-${{ env.OPENSSL_VERSION }}-mingw64
 
       - name: 构建 libOpenSSL 静态链接库
         if: steps.cache-openssl.outputs.cache-hit != 'true'
         run: |
           cd /tmp
-          wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
-          tar -xzf openssl-4.0.0.tar.gz
-          cd openssl-4.0.0
+          wget https://github.com/openssl/openssl/releases/download/openssl-${{ env.OPENSSL_VERSION }}/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          tar -xzf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          cd openssl-${{ env.OPENSSL_VERSION }}
           
           ./Configure mingw64 \
             --cross-compile-prefix=x86_64-w64-mingw32- \
@@ -125,15 +129,15 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/x86_64-w64-mingw32/lib/libcurl.a
-          key: curl-8.20.0-mingw64-openssl
+          key: curl-${{ env.CURL_VERSION }}-mingw64-openssl
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
         run: |
           cd /tmp
-          wget https://curl.se/download/curl-8.20.0.tar.gz
-          tar -xzf curl-8.20.0.tar.gz
-          cd curl-8.20.0
+          wget https://curl.se/download/curl-${{ env.CURL_VERSION }}.tar.gz
+          tar -xzf curl-${{ env.CURL_VERSION }}.tar.gz
+          cd curl-${{ env.CURL_VERSION }}
           
           ./configure --host=x86_64-w64-mingw32 \
             --prefix=/usr/x86_64-w64-mingw32 \
