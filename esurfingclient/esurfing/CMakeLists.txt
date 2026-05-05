@@ -88,7 +88,6 @@ target_include_directories(ESurfingClient PRIVATE
 if (WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-            OpenSSL::SSL
             OpenSSL::Crypto
             ws2_32
             wldap32
@@ -102,7 +101,6 @@ if (WIN32)
 else ()
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-            OpenSSL::SSL
             OpenSSL::Crypto
             pthread
             dl

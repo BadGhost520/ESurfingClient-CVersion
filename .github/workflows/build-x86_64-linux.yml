@@ -45,13 +45,11 @@ jobs:
             --enable-static \
             --disable-shared \
             --without-ssl \
-            \
             --enable-http \
             --enable-proxy \
             --enable-cookies \
             --enable-basic-auth \
             --enable-digest-auth \
-            \
             --disable-ftp \
             --disable-file \
             --disable-ldap \
@@ -67,7 +65,6 @@ jobs:
             --disable-gopher \
             --disable-mqtt \
             --disable-websockets \
-            \
             --disable-bearer-auth \
             --disable-kerberos-auth \
             --disable-negotiate-auth \
@@ -75,7 +72,6 @@ jobs:
             --disable-tls-srp \
             --disable-aws \
             --disable-rtmp \
-            \
             --without-brotli \
             --without-zstd \
             --without-libpsl \
@@ -92,7 +88,6 @@ jobs:
             --without-wolfssh \
             --without-hyper \
             --without-zlib \
-            \
             --disable-ares \
             --disable-rt \
             --disable-threaded-resolver \
