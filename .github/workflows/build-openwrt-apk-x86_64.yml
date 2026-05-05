@@ -133,11 +133,11 @@ jobs:
           mkdir test
           cp ESurfingClient-openwrt-x86_64-debug test/
           cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.apk test/
-          tar -czf esurfingclient-openwrt-x86_64.tar.gz test
+          tar -czf esurfingclient-openwrt-apk-x86_64.tar.gz test
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-x86_64
-          path: esurfingclient-openwrt-x86_64.tar.gz
+          name: esurfingclient-openwrt-apk-x86_64
+          path: esurfingclient-openwrt-apk-x86_64.tar.gz
           retention-days: 30

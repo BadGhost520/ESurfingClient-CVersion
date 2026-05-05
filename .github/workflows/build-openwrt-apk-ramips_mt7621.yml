@@ -133,11 +133,11 @@ jobs:
           mkdir test
           cp ESurfingClient-openwrt-ramips_mt7621-debug test/
           cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621.apk test/
-          tar -czf esurfingclient-openwrt-ramips_mt7621.tar.gz test
+          tar -czf esurfingclient-openwrt-apk-ramips_mt7621.tar.gz test
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-ramips_mt7621
-          path: esurfingclient-openwrt-ramips_mt7621.tar.gz
+          name: esurfingclient-openwrt-apk-ramips_mt7621
+          path: esurfingclient-openwrt-apk-ramips_mt7621.tar.gz
           retention-days: 30

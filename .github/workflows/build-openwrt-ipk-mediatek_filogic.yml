@@ -133,11 +133,11 @@ jobs:
           mkdir test
           cp ESurfingClient-openwrt-mediatek_filogic-debug test/
           cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk test/
-          tar -czf esurfingclient-openwrt-mediatek_filogic.tar.gz test
+          tar -czf esurfingclient-openwrt-ipk-mediatek_filogic.tar.gz test
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-mediatek_filogic
-          path: esurfingclient-openwrt-mediatek_filogic.tar.gz
+          name: esurfingclient-openwrt-ipk-mediatek_filogic
+          path: esurfingclient-openwrt-ipk-mediatek_filogic.tar.gz
           retention-days: 30
