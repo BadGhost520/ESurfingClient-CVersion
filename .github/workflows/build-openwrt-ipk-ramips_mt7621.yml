@@ -80,28 +80,9 @@ jobs:
           scripts/feeds install openssl
           scripts/feeds install curl
           
-          cat >> .config << 'EOF'
-          CONFIG_TARGET_ramips=y
-          CONFIG_TARGET_ramips_mt7621=y
-          # CONFIG_LIBCURL_FTP is not set
-          # CONFIG_LIBCURL_MBEDTLS is not set
-          # CONFIG_LIBCURL_NGHTTP2 is not set
-          CONFIG_LIBCURL_OPENSSL=y
-          # CONFIG_OPENSSL_WITH_CHACHA_POLY1305 is not set
-          # CONFIG_OPENSSL_WITH_CMS is not set
-          # CONFIG_OPENSSL_WITH_IDEA is not set
-          # CONFIG_OPENSSL_WITH_MDC2 is not set
-          # CONFIG_OPENSSL_WITH_PSK is not set
-          # CONFIG_OPENSSL_WITH_SEED is not set
-          # CONFIG_OPENSSL_WITH_SRP is not set
-          # CONFIG_OPENSSL_WITH_WHIRLPOOL is not set
-          CONFIG_PACKAGE_libatomic=y
-          CONFIG_PACKAGE_libcurl=y
-          CONFIG_PACKAGE_libopenssl=y
-          # CONFIG_PACKAGE_libopenssl-afalg is not set
-          # CONFIG_PACKAGE_libopenssl-afalg_sync is not set
-          # CONFIG_PACKAGE_libopenssl-devcrypto is not set
-          EOF
+          make defconfig
+          
+          cat ../.configs/ramips_mt7621-ipk.config >> .config
 
           make defconfig
 

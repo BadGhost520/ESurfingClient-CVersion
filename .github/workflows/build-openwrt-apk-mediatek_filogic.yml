@@ -80,29 +80,9 @@ jobs:
           scripts/feeds install openssl
           scripts/feeds install curl
           
-          cat >> .config << 'EOF'
-          CONFIG_TARGET_mediatek=y
-          CONFIG_TARGET_mediatek_filogic=y
-          # CONFIG_LIBCURL_FTP is not set
-          # CONFIG_LIBCURL_HTTP2 is not set
-          # CONFIG_LIBCURL_MBEDTLS is not set
-          CONFIG_LIBCURL_OPENSSL=y
-          # CONFIG_OPENSSL_ENGINE is not set
-          # CONFIG_OPENSSL_WITH_CHACHA_POLY1305 is not set
-          # CONFIG_OPENSSL_WITH_CMS is not set
-          # CONFIG_OPENSSL_WITH_ERROR_MESSAGES is not set
-          # CONFIG_OPENSSL_WITH_IDEA is not set
-          # CONFIG_OPENSSL_WITH_MDC2 is not set
-          # CONFIG_OPENSSL_WITH_PSK is not set
-          # CONFIG_OPENSSL_WITH_SEED is not set
-          # CONFIG_OPENSSL_WITH_SRP is not set
-          # CONFIG_OPENSSL_WITH_TLS13 is not set
-          # CONFIG_OPENSSL_WITH_WHIRLPOOL is not set
-          CONFIG_PACKAGE_libcurl=y
-          CONFIG_PACKAGE_libopenssl=y
-          CONFIG_PACKAGE_libopenssl-conf=y
-          # CONFIG_PACKAGE_libopenssl-legacy is not set
-          EOF
+          make defconfig
+          
+          cat ../.configs/mediatek_filogic-apk.config >> .config
 
           make defconfig
 
@@ -128,7 +108,7 @@ jobs:
           
           make package/esurfingclient/compile V=sc -j$(nproc)
 
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk \;
+          find bin/packages -name "esurfingclient*.apk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.apk \;
 
       - name: 复制可调试的二进制文件
         run: |
@@ -140,7 +120,7 @@ jobs:
         run: |
           mkdir test
           cp ESurfingClient-openwrt-mediatek_filogic-debug test/
-          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk test/
+          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.apk test/
           tar -czf esurfingclient-openwrt-mediatek_filogic.tar.gz test
 
       - name: 上传工件
