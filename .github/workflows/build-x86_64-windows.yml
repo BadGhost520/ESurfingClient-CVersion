@@ -58,7 +58,7 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           EOF
 
-      - name: 缓存 OpenSSL
+      - name: 获取 OpenSSL 缓存
         id: cache-openssl
         uses: actions/cache@v5
         with:
@@ -126,7 +126,7 @@ jobs:
           make -j$(nproc)
           make install
 
-      - name: 缓存 libcurl
+      - name: 获取 libcurl 缓存
         id: cache-curl
         uses: actions/cache@v5
         with:
