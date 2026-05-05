@@ -103,7 +103,7 @@ jobs:
           
           export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
 
-      - name: Build ESurfingClient
+      - name: 构建 ESurfingClient 程序
         run: |
           cd esurfingclient/esurfing
           
