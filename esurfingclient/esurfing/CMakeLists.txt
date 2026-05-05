@@ -106,9 +106,12 @@ else ()
             dl
             atomic
     )
-    if (NOT __OPENWRT__)
+    if (__OPENWRT__)
         target_link_libraries(ESurfingClient PRIVATE
                 OpenSSL::SSL
+        )
+    else ()
+        target_link_libraries(ESurfingClient PRIVATE
                 z
                 m
                 zstd

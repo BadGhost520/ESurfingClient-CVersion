@@ -70,6 +70,7 @@ jobs:
             no-shared \
             no-tests \
             no-docs \
+            no-apps \
             no-ssl \
             no-tls \
             no-bf \
@@ -109,8 +110,7 @@ jobs:
             no-srtp \
             no-ocsp \
             no-cms \
-            no-ts \
-            no-tls
+            no-ts
           
           make -j$(nproc)
           make install
