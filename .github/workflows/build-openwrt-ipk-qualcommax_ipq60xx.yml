@@ -62,7 +62,7 @@ jobs:
       - name: 下载 SDK
         if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
         run: |
-          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}.tar.zst${{ env.SIGN }}
+          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}.tar.zst${{ env.SIGN }} -O ${{ env.SDK_NAME }}.tar.zst
 
       - name: 解压 SDK
         run: |
