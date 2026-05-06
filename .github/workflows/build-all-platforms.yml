@@ -28,6 +28,7 @@ on:
           - openwrt-x86_64-apk
           - openwrt-ramips_mt7621-apk
           - openwrt-mediatek_filogic-apk
+          - openwrt-qualcommax_ipq60xx-apk
 
 jobs:
   # 获取版本号
@@ -141,6 +142,16 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
+  openwrt-qualcommax_ipq60xx-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-qualcommax_ipq60xx-apk'
+    uses: ./.github/workflows/build-openwrt-apk-qualcommax_ipq60xx.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+
   # 收集所有产物并创建 Release
   release:
     needs:
@@ -152,6 +163,7 @@ jobs:
       - openwrt-x86_64-apk
       - openwrt-ramips_mt7621-apk
       - openwrt-mediatek_filogic-apk
+      - openwrt-qualcommax_ipq60xx-apk
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:
