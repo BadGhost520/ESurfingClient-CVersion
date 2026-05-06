@@ -25,6 +25,7 @@ on:
           - openwrt-x86_64-ipk
           - openwrt-ramips_mt7621-ipk
           - openwrt-mediatek_filogic-ipk
+          - openwrt-qualcommax_ipq60xx-ipk
           - openwrt-x86_64-apk
           - openwrt-ramips_mt7621-apk
           - openwrt-mediatek_filogic-apk
@@ -112,6 +113,16 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
+  openwrt-qualcommax_ipq60xx-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-qualcommax_ipq60xx-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-qualcommax_ipq60xx.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+
   openwrt-x86_64-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-apk'
     uses: ./.github/workflows/build-openwrt-apk-x86_64.yml
@@ -160,6 +171,7 @@ jobs:
       - openwrt-x86_64-ipk
       - openwrt-ramips_mt7621-ipk
       - openwrt-mediatek_filogic-ipk
+      - openwrt-qualcommax_ipq60xx-ipk
       - openwrt-x86_64-apk
       - openwrt-ramips_mt7621-apk
       - openwrt-mediatek_filogic-apk
