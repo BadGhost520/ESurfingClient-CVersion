@@ -1,6 +1,6 @@
 ---
 name: 报告 bug
-about: 用来向开发者提交 bug 报告
+about: 向开发者提交 bug 报告
 title: "[BUG]: "
 labels: bug
 assignees: BadGhost520
