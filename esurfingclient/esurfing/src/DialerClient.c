@@ -549,6 +549,7 @@ static RunStatus run()
         if (g_prog_status[thread_idx].runtime_status.is_initialized) // 进入认证流程的时候如果会话已经初始化, 重置认证配置参数
         {
             reset();
+            g_prog_status[thread_idx].runtime_status.is_running = true;
         }
         switch (auth())
         {
