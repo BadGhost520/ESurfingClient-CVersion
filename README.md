@@ -17,7 +17,7 @@
 
 | 系统      | 架构                 | 包管理器 | 理论最低支持版本            | 最低推荐版本          |
 |---------|--------------------|------|---------------------|-----------------|
-| Windows | x86_64             | /    | Windows XP SP3      | Windows 7	      |
+| Windows | x86_64             | /    | Windows XP SP3      | Windows 10	     |
 | Linux   | x86_64             | /    | Linux 内核 2.6.0      | Linux 内核 4.14   |
 | OpenWrt | x86_64             | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
 | OpenWrt | x86_64             | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
