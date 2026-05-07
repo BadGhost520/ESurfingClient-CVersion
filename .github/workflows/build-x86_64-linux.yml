@@ -1,56 +1,68 @@
 name: Build x86_64 Linux Binary
 
-# 配置工作流权限
 permissions:
+  contents: write
   actions: write
-  contents: read
 
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
+      curl_version:
+        required: true
+        type: string
 
 jobs:
-  build-x64-linux:
+  build:
     runs-on: ubuntu-latest
     container:
       image: debian:13
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Install packages with retry
+      - name: 安装软件包 (最多重试 3 次)
         run: |
-          # 安装多个包，最多重试3次
           PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file libzstd-dev"
 
           for i in 1 2 3; do
-            echo "Attempt $i: Installing $PACKAGES"
+            echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ All packages installed"
+              echo "✅ 所有软件包已完成安装"
               break
             fi
-            echo "❌ Attempt $i failed"
+            echo "❌ 尝试 $i 失败"
             sleep 3
           done
 
-      - name: Build libcurl
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v5
+        with:
+          path: |
+            /usr/local/lib/libcurl.a
+            /usr/local/include/curl
+          key: curl-${{ inputs.curl_version }}
+
+      - name: 构建 libcurl 静态链接库
+        if: steps.cache-curl.outputs.cache-hit != 'true'
         run: |
-          wget https://curl.se/download/curl-8.20.0.tar.gz
-          tar -xzf curl-8.20.0.tar.gz
-          cd curl-8.20.0
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
           
           ./configure --prefix=/usr/local \
             --enable-static \
             --disable-shared \
             --without-ssl \
-            \
             --enable-http \
             --enable-proxy \
             --enable-cookies \
             --enable-basic-auth \
             --enable-digest-auth \
-            \
             --disable-ftp \
             --disable-file \
             --disable-ldap \
@@ -66,7 +78,6 @@ jobs:
             --disable-gopher \
             --disable-mqtt \
             --disable-websockets \
-            \
             --disable-bearer-auth \
             --disable-kerberos-auth \
             --disable-negotiate-auth \
@@ -74,7 +85,6 @@ jobs:
             --disable-tls-srp \
             --disable-aws \
             --disable-rtmp \
-            \
             --without-brotli \
             --without-zstd \
             --without-libpsl \
@@ -91,7 +101,6 @@ jobs:
             --without-wolfssh \
             --without-hyper \
             --without-zlib \
-            \
             --disable-ares \
             --disable-rt \
             --disable-threaded-resolver \
@@ -104,65 +113,43 @@ jobs:
           
           make -j$(nproc)
           make install
-          
-          # 更新 CMake 查找路径
-          export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
-          cd ..
 
-      - name: Build ESurfingClient
+      - name: 构建 ESurfingClient 程序
         run: |
-          echo "🏗️ Starting x64 Linux build process"
-          echo "📁 Go to esurfing dir"
+          export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+          
           cd esurfingclient/esurfing
           
-          echo "⚙️ CMake configuring"
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
                 -DCMAKE_BUILD_TYPE=Release \
                 .
           
-          echo "🔨 Making Programme"
           make -j$(nproc)
           
-          EXECUTABLE=$(find . -name "ESurfingClient" -type f -executable | head -1)
-          if [ -n "$EXECUTABLE" ]; then
-            mv "$EXECUTABLE" ../../ESurfingClient-x86_64-linux
-            echo "✅ 从 $EXECUTABLE 移动成功"
-          else
-            echo "❌ 找不到可执行文件"
-            exit 1
-          fi
+          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           
-          echo "📦 Protect - Compress with UPX"
-          upx --best ../../ESurfingClient-x86_64-linux
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           
-          echo "✅ Build completed successfully"
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
 
-      - name: Verify build output
+      - name: 验证
         run: |
-          echo "🔍 Verifying build output"
-          if [ -f "ESurfingClient-x86_64-linux" ]; then
-            echo "✅ Binary file exists"
-            ls -la ESurfingClient-x86_64-linux
-            file ESurfingClient-x86_64-linux
-            echo "📏 File size: $(du -h ESurfingClient-x86_64-linux | cut -f1)"
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-linux-x86_64" ]; then
+            echo "✅ 构建成功"
+            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-linux-x86_64 | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           else
-            echo "❌ Binary file not found"
+            echo "❌ 未找到二进制文件"
             exit 1
           fi
 
-      - name: Create package
+      - name: 打包成 tar.gz 压缩包
         run: |
-          echo "📦 Creating package"
-          
-          # Create compressed package with executable in root
-          tar -czf esurfingclient-x86_64-linux.tar.gz ESurfingClient-x86_64-linux
-          
-          echo "📦 Package created: esurfingclient-x86_64-linux.tar.gz"
-          ls -la esurfingclient-x86_64-linux.tar.gz
+          tar -czf esurfingclient-${{ inputs.full_version }}-linux-x86_64.tar.gz ESurfingClient-${{ inputs.full_version }}-linux-x86_64
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-x86_64-linux
-          path: esurfingclient-x86_64-linux.tar.gz
+          name: esurfingclient-${{ inputs.full_version }}-linux-x86_64
+          path: esurfingclient-${{ inputs.full_version }}-linux-x86_64.tar.gz
           retention-days: 30

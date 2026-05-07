@@ -4,6 +4,19 @@ project(ESurfingClient C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+set(PROGRAM_VERSION_MAJOR 2)
+set(PROGRAM_VERSION_MINOR 0)
+set(PROGRAM_VERSION_PATCH 0)
+set(PROGRAM_VERSION_RELEASE 9)
+
+set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
+set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
+
+add_definitions(-DPROGRAM_VERSION="${PROGRAM_VERSION}")
+add_definitions(-DPROGRAM_FULL_VERSION="${PROGRAM_FULL_VERSION}")
+
+message(STATUS "Building version: ${PROGRAM_FULL_VERSION}")
+
 if (NOT DEFINED __OPENWRT__)
     set(__OPENWRT__ 0)
 endif ()
@@ -75,7 +88,6 @@ target_include_directories(ESurfingClient PRIVATE
 if (WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-            OpenSSL::SSL
             OpenSSL::Crypto
             ws2_32
             wldap32
@@ -89,13 +101,16 @@ if (WIN32)
 else ()
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-            OpenSSL::SSL
             OpenSSL::Crypto
             pthread
             dl
             atomic
     )
-    if (NOT __OPENWRT__)
+    if (__OPENWRT__)
+        target_link_libraries(ESurfingClient PRIVATE
+                OpenSSL::SSL
+        )
+    else ()
         target_link_libraries(ESurfingClient PRIVATE
                 z
                 m

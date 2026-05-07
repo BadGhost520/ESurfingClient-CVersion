@@ -354,7 +354,7 @@ char* clean_CDATA(const char* text)
 #ifdef __OPENWRT__
 static bool load_cfg_openwrt(cJSON* cfg_json)
 {
-    LOG_INFO("当前环境为 OpenWRT 或其衍生系统, 将会使用独有配置加载方式");
+    LOG_INFO("OpenWRT 环境, 会尝试加载所有有效配置");
 
     cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
@@ -430,7 +430,7 @@ static bool load_cfg_openwrt(cJSON* cfg_json)
 #else
 static bool load_cfg_other(cJSON* cfg_json)
 {
-    LOG_INFO("当前环境为普通系统, 将会使用通用配置加载方式, 仅会尝试加载第一个有效配置");
+    LOG_INFO("非 OpenWRT 环境, 仅会尝试加载第一个有效配置");
 
     cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
