@@ -11,6 +11,11 @@
 
 ### 2. 上传到 OpenWRT 系统安装
 
+> [!WARNING]
+> 注意使用 apk 包管理器的 OpenWRT 系统必须要在终端里用指令安装
+> 
+> OpenWRT 自带的软件包安装默认是不带 `--allow-untrusted` 参数的
+
 ```shell
 # opkg 包管理器 (OpenWRT 25.12.0 以下)
 opkg install esurfingclient_*.ipk
