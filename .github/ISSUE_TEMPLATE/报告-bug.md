@@ -8,7 +8,8 @@ assignees: BadGhost520
 ---
 
 确认以下内容再填写 BUG 报告
-- [ ] 之前没有人提交过同样的 bug
+[x]代表确认
+- [ ] 据提交本 issue 之前为止没有 issue 提交过同样的 bug
 - [ ] bug 可稳定复现
 
 ### 触发 bug 会发生的情况
