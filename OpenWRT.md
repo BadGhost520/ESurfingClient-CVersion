@@ -11,6 +11,13 @@
 
 ### 2. 上传到 OpenWRT 系统安装
 
+```shell
+# opkg 包管理器 (OpenWRT 25.12.0 以下)
+opkg install esurfingclient_*.ipk
+# apk 包管理器 (OpenWRT 25.12.0 及以上)
+apk add --allow-untrusted esurfingclient_*.apk
+```
+
 ### 3. 修改位于 /usr/bin/ESurfingClient.json 的配置文件
 
 ```json
