@@ -13,20 +13,20 @@
 
 ![Please refresh](image/3.png) ![Please refresh](image/2.png) ![Please refresh](image/1.png)
 
-# 目前支持的环境
+# 目前支持的系统和架构
 
-| 系统      | 架构                 | 包管理器 | 理论最低支持版本        | 最低推荐版本          |
-|---------|--------------------|------|-----------------|-----------------|
-| Windows | x86_64             | /    | Windows XP SP3  | Windows 7	      |
-| Linux   | x86_64             | /    | Linux 内核 2.6.0  | Linux 内核 4.14   |
-| OpenWrt | x86_64             | opkg | OpenWrt 15.05   | OpenWrt 18.06.0 |
-| OpenWrt | ramips_mt7621      | opkg | OpenWrt 15.05   | OpenWrt 18.06.0 |
-| OpenWrt | mediatek_filogic   | opkg | OpenWrt 15.05   | OpenWrt 18.06.0 |
-| OpenWrt | qualcommax_ipq60xx | opkg | OpenWrt 15.05   | OpenWrt 18.06.0 |
-| OpenWrt | x86_64             | apk  | OpenWrt 25.12.0 | OpenWrt 25.12.0 |
-| OpenWrt | ramips_mt7621      | apk  | OpenWrt 25.12.0 | OpenWrt 25.12.0 |
-| OpenWrt | mediatek_filogic   | apk  | OpenWrt 25.12.0 | OpenWrt 25.12.0 |
-| OpenWrt | qualcommax_ipq60xx | apk  | OpenWrt 25.12.0 | OpenWrt 25.12.0 |
+| 系统      | 架构                 | 包管理器 | 理论最低支持版本            | 最低推荐版本          |
+|---------|--------------------|------|---------------------|-----------------|
+| Windows | x86_64             | /    | Windows XP SP3      | Windows 7	      |
+| Linux   | x86_64             | /    | Linux 内核 2.6.0      | Linux 内核 4.14   |
+| OpenWrt | x86_64             | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
+| OpenWrt | x86_64             | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+| OpenWrt | ramips_mt7621      | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
+| OpenWrt | ramips_mt7621      | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+| OpenWrt | qualcommax_ipq60xx | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
+| OpenWrt | qualcommax_ipq60xx | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+| OpenWrt | mediatek_filogic   | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
+| OpenWrt | mediatek_filogic   | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
 
 
 > [!TIP]
