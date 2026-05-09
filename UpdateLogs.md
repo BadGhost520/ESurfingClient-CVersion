@@ -92,3 +92,4 @@
 ### 2026.5.9
 
 1. 修复部分 Linux 设备报 Floating point exception 错误
+2. 添加了自行编译教程

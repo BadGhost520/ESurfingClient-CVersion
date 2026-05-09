@@ -102,13 +102,13 @@ jobs:
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
           cd openwrt-sdk
-          make package/openssl/compile V=sc -j$(nproc)
+          make package/openssl/compile -j$(nproc)
 
       - name: 编译 libcurl
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
           cd openwrt-sdk
-          make package/curl/compile V=sc -j$(nproc)
+          make package/curl/compile -j$(nproc)
 
       - name: 编译 esurfingclient
         run: |
@@ -118,7 +118,7 @@ jobs:
           
           scripts/feeds install esurfingclient
           
-          make package/esurfingclient/compile V=sc -j$(nproc)
+          make package/esurfingclient/compile -j$(nproc)
 
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621.ipk \;
 

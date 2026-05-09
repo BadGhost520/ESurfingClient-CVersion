@@ -44,7 +44,7 @@
 
 [**OpenWRT 进阶 - 多播**](OpenWRT_mwan3.md)
 
-[**关于自行编译**](Compile.md)
+[**自行编译指南**](Compile.md)
 
 # 关于日志系统
 
@@ -78,15 +78,10 @@
 **感谢下面的赞助者支持👍**
 
 <img alt="Please refresh" src="image/fund/1.png"/>
-
 <img alt="Please refresh" src="image/fund/2.png"/>
 
 <img alt="Please refresh" height="256" src="image/fund/3.jpg" width="256"/>
-
 <img alt="Please refresh" height="256" src="image/fund/4.jpg" width="256"/>
-
 <img alt="Please refresh" height="256" src="image/fund/5.jpg" width="256"/>
-
 <img alt="Please refresh" height="256" src="image/fund/6.png" width="256"/>
-
 <img alt="Please refresh" height="256" src="image/fund/7.png" width="256"/>
