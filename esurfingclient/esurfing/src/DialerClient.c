@@ -7,7 +7,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 typedef enum
 {
@@ -25,6 +24,8 @@ typedef enum
     LOGIN_RETRY = 2,
     TIMEOUT_RETRY = 3
 } RunStatus;
+
+static const uint64_t pow2_table[] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
 
 static bool term()
 {
@@ -566,7 +567,7 @@ static RunStatus run()
             }
             else if (retry_login > 1 && retry_login <= 6) // 第 2-6 次重试,
             {
-                retry_login_time = (uint64_t)(60000 * pow(2, retry_login));
+                retry_login_time = 60000 * pow2_table[retry_login - 1];
             }
             else
             {

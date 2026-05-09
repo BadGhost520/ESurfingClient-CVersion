@@ -11,6 +11,9 @@ on:
       full_version:
         required: true
         type: string
+      openssl_version:
+        required: true
+        type: string
       curl_version:
         required: true
         type: string
@@ -26,7 +29,7 @@ jobs:
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
-          PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils libcurl4-openssl-dev libssl-dev libcrypto++-dev zlib1g-dev libkrb5-dev file libzstd-dev"
+          PACKAGES="build-essential cmake wget gcc g++ make upx-ucl binutils file"
 
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
@@ -37,6 +40,71 @@ jobs:
             echo "❌ 尝试 $i 失败"
             sleep 3
           done
+
+      - name: 获取 OpenSSL 缓存
+        id: cache-openssl
+        uses: actions/cache@v5
+        with:
+          path: |
+            /usr/local/lib64/libcrypto.a
+            /usr/local/include/openssl
+          key: openssl-${{ inputs.openssl_version }}
+
+      - name: 构建 libOpenSSL 静态链接库
+        if: steps.cache-openssl.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp
+          wget https://github.com/openssl/openssl/releases/download/openssl-${{ inputs.openssl_version }}/openssl-${{ inputs.openssl_version }}.tar.gz
+          tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
+          cd openssl-${{ inputs.openssl_version }}
+
+          ./Configure --prefix=/usr/local \
+            no-shared \
+            no-tests \
+            no-docs \
+            no-apps \
+            no-tls \
+            no-bf \
+            no-cast \
+            no-idea \
+            no-rc2 \
+            no-rc4 \
+            no-rc5 \
+            no-seed \
+            no-aria \
+            no-camellia \
+            no-sm2 \
+            no-sm3 \
+            no-mdc2 \
+            no-rmd160 \
+            no-whirlpool \
+            no-blake2 \
+            no-md4 \
+            no-dtls \
+            no-quic \
+            no-sctp \
+            no-srp \
+            no-zlib \
+            no-zstd \
+            no-brotli \
+            no-ktls \
+            no-rdrand \
+            no-asan \
+            no-msan \
+            no-ubsan \
+            no-trace \
+            no-egd \
+            no-krb5kdf \
+            no-scrypt \
+            no-x942kdf \
+            no-x963kdf \
+            no-srtp \
+            no-ocsp \
+            no-cms \
+            no-ts
+
+          make -j$(nproc)
+          make install
 
       - name: 获取 libcurl 缓存
         id: cache-curl

@@ -6,11 +6,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#ifdef _WIN32
-
-#pragma comment(lib, "IPHLPAPI.lib")
-
-#else
+#ifndef _WIN32
 
 #include <netinet/in.h>
 #include <sys/socket.h>

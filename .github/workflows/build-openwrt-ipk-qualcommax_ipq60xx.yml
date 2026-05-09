@@ -19,7 +19,7 @@ on:
         type: string
 
 env:
-  SDK_URL: "http://www.xylg.com:10007/d"
+  SDK_URL: "https://openlist.xylg.com:20001/d"
   SDK_NAME: "openwrt-sdk-qualcommax-ipq60xx_gcc-13.3.0_musl.Linux-x86_64"
   SIGN: "?sign=QexHFidwDY6AWxAu9ckCn1flR3R-DzoCKlviA-fOs6w=:0"
 
