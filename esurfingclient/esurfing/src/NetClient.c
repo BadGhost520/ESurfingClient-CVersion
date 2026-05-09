@@ -78,7 +78,7 @@ static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, 
 }
 #endif
 
-static size_t header_cb(const void *contents, const size_t size, const size_t nmemb, void* userdata)
+static size_t header_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
     const size_t real_size = size * nmemb;
     const char* header = contents;
@@ -87,10 +87,22 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
     {
         if (s_school_id[0] == '\0')
         {
+            LOG_VERBOSE("原始数据: %s", header);
+
             const char* value = header + 9;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(s_school_id, SCHOOL_ID_LENGTH, "%.*s", (uint8_t)valid_len, safe_str(value));
+
+            size_t copy_len = valid_len;
+            if (copy_len >= SCHOOL_ID_LENGTH)
+            {
+                copy_len = SCHOOL_ID_LENGTH - 1;
+                LOG_WARN("School Id 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, SCHOOL_ID_LENGTH);
+            }
+
+            memcpy(s_school_id, value, copy_len);
+            s_school_id[copy_len] = '\0';
+
             LOG_INFO("School Id: %s", s_school_id);
         }
     }
@@ -99,10 +111,22 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
     {
         if (s_domain[0] == '\0')
         {
+            LOG_VERBOSE("原始数据: %s", header);
+
             const char* value = header + 7;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(s_domain, DOMAIN_LENGTH, "%.*s", (uint8_t)valid_len, safe_str(value));
+
+            size_t copy_len = valid_len;
+            if (copy_len >= DOMAIN_LENGTH)
+            {
+                copy_len = DOMAIN_LENGTH - 1;
+                LOG_WARN("Domain 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, DOMAIN_LENGTH);
+            }
+
+            memcpy(s_domain, value, copy_len);
+            s_domain[copy_len] = '\0';
+
             LOG_INFO("Domain: %s", s_domain);
         }
     }
@@ -111,10 +135,22 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
     {
         if (s_area[0] == '\0')
         {
+            LOG_VERBOSE("原始数据: %s", header);
+
             const char* value = header + 5;
             while (*value == ' ') value++;
             const size_t valid_len = strcspn(value, "\r\n");
-            snprintf(s_area, AREA_LENGTH, "%.*s", (uint8_t)valid_len, safe_str(value));
+
+            size_t copy_len = valid_len;
+            if (copy_len >= AREA_LENGTH)
+            {
+                copy_len = AREA_LENGTH - 1;
+                LOG_WARN("Area 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, AREA_LENGTH);
+            }
+
+            memcpy(s_area, value, copy_len);
+            s_area[copy_len] = '\0';
+
             LOG_INFO("Area: %s", s_area);
         }
     }
@@ -125,11 +161,24 @@ static size_t header_cb(const void *contents, const size_t size, const size_t nm
         {
             if (!g_prog_status[thread_idx].runtime_status.last_location_lock)
             {
+                LOG_VERBOSE("原始数据: %s", header);
+
                 const char* value = header + 9;
                 while (*value == ' ') value++;
                 const size_t valid_len = strcspn(value, "\r\n");
-                snprintf(g_prog_status[thread_idx].last_location, LAST_LOCATION_LEN, "%.*s", (uint8_t)valid_len, safe_str(value));
-                LOG_VERBOSE("现在的 last_location: %s", g_prog_status[thread_idx].last_location);
+
+                size_t copy_len = valid_len;
+                if (copy_len >= LAST_LOCATION_LEN)
+                {
+                    copy_len = LAST_LOCATION_LEN - 1;
+                    LOG_WARN("Location 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, LAST_LOCATION_LEN);
+                }
+
+                memcpy(g_prog_status[thread_idx].last_location, value, copy_len);
+                g_prog_status[thread_idx].last_location[copy_len] = '\0';
+
+                LOG_VERBOSE("现在的 last_location: %s (长度: %zu)",
+                            g_prog_status[thread_idx].last_location, copy_len);
             }
         }
     }
@@ -398,7 +447,7 @@ http_resp_t get(const char* url)
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-        curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+        curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
     #ifdef __OPENWRT__
         curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
     #endif
