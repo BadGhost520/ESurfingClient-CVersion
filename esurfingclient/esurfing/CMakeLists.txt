@@ -42,7 +42,12 @@ if (WIN32)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
 else ()
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -pthread")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+
+    set(BUILD_SHARED_LIBS OFF)
+    set(OPENSSL_USE_STATIC_LIBS TRUE)
+    set(CURL_USE_STATIC_LIBS TRUE)
+
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif ()
 
@@ -107,24 +112,16 @@ else ()
             atomic
     )
     if (__OPENWRT__)
-        target_link_libraries(ESurfingClient PRIVATE
-                OpenSSL::SSL
-        )
+        target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL)
     else ()
-        target_link_libraries(ESurfingClient PRIVATE
-                z
-                m
-                zstd
-        )
+        target_link_libraries(ESurfingClient PRIVATE m)
     endif ()
 endif ()
 
 target_compile_options(ESurfingClient PRIVATE -Os)
 
-if (UNIX AND NOT WIN32)
-    target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
-endif ()
+target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
-set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
+#set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
 
 install(TARGETS ESurfingClient RUNTIME DESTINATION bin)

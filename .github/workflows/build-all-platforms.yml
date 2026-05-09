@@ -81,6 +81,7 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
+      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
 
   openwrt-x86_64-ipk:

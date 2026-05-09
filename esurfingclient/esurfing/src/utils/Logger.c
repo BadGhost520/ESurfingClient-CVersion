@@ -72,7 +72,7 @@ static bool get_exec_dir(char* out)
     if (!last) return false;
     *last = '\0';
     const uint16_t len = snprintf(out, PATH_MAX, "%s", safe_str(path));
-    if (len < 0 || (size_t)len >= PATH_MAX) return false;
+    if ((size_t)len >= PATH_MAX) return false;
     return true;
 }
 #endif
@@ -90,7 +90,7 @@ static bool get_log_dir(char* out)
         if (err != ERROR_ALREADY_EXISTS) return false;
     }
 #else
-    char dir[PATH_MAX] = "/var/log/esurfing";
+    const char dir[PATH_MAX] = "/var/log/esurfing";
     const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", safe_str(dir), sep);
     if ((size_t)len >= PATH_MAX) return false;
     struct stat st;
@@ -191,7 +191,7 @@ bool init_logger()
     s_logger_cfg.file_handle = fopen(s_logger_cfg.log_file, "a");
     if (!s_logger_cfg.file_handle)
     {
-        fprintf(stderr, "ERROR: 无法打开日志文件 %s\n", s_logger_cfg.log_file);
+        fprintf(stderr, "ERROR: 无法打开日志文件 %s, 如果是 Linux 系统请使用 sudo 运行程序\n", s_logger_cfg.log_file);
         return false;
     }
     LOG_DEBUG("日志系统初始化完成");
