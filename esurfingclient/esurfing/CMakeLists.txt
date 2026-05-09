@@ -122,6 +122,6 @@ target_compile_options(ESurfingClient PRIVATE -Os)
 
 target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
-#set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
+set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
 
 install(TARGETS ESurfingClient RUNTIME DESTINATION bin)
