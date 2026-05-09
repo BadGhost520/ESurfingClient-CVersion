@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "utils/Shutdown.h"
+
 #ifdef _WIN32
 
 #include <sysinfoapi.h>
@@ -20,6 +22,7 @@
 #endif
 
 static const char s_default_cfg[] = "{\n"
+                                    "   \"enabled\": false,\n"
                                     "   \"log_lv\": 4,\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
@@ -531,6 +534,18 @@ bool load_cfg()
         return false;
     }
 
+    const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
+    if (enabled && cJSON_IsFalse(enabled))
+    {
+        LOG_WARN("配置文件中禁用了程序启动, 程序退出");
+        shut(0);
+    }
+    else if (enabled == NULL)
+    {
+        LOG_WARN("enabled 参数不存在, 程序退出");
+        shut(0);
+    }
+
     const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
     if (log_lv && cJSON_IsNumber(log_lv))
     {
@@ -538,7 +553,7 @@ bool load_cfg()
     }
     else
     {
-        LOG_WARN("日志等级读取失败, 使用默认等级 (INFO)");
+        LOG_WARN("log_lv 参数不存在, 使用默认等级 (INFO)");
     }
 
 #ifdef __OPENWRT__

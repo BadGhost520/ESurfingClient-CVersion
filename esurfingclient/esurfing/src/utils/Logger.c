@@ -171,8 +171,11 @@ LogLevel get_logger_level()
 
 void set_logger_level(const LogLevel lv)
 {
-    s_logger_cfg.lv = lv;
-    LOG_INFO("设置日志等级为 [%s]", get_level_str(lv));
+    if (s_logger_cfg.lv != lv)
+    {
+        s_logger_cfg.lv = lv;
+        LOG_INFO("设置日志等级为 [%s]", get_level_str(lv));
+    }
 }
 
 bool init_logger()

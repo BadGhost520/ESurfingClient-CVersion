@@ -21,8 +21,7 @@ typedef enum
 {
     RUN_SUCCESS = 0,
     RUN_FAILED = 1,
-    LOGIN_RETRY = 2,
-    TIMEOUT_RETRY = 3
+    TIMEOUT_RETRY = 2
 } RunStatus;
 
 static const uint64_t pow2_table[] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
@@ -451,13 +450,32 @@ static AuthStatus auth()
 
     /**
      * 登录认证
-     * 如果失败, 清除会话并返回 false
+     * 如果失败, 重试 6 次, 重试 6 次后仍失败则清除会话并返回 LOGIN_FAILED
      */
     if (login() == false)
     {
-        LOG_FATAL("登录失败");
-        clean_session();
-        return LOGIN_FAILED;
+        uint8_t retry_login = 1;
+        uint64_t retry_login_time = 0;
+        LOG_ERROR("登录失败, 尝试重新登录");
+        sleep_ms(10000);
+        while (login() == false)
+        {
+            if (retry_login > 5)
+            {
+                LOG_FATAL("超过最多重试次数, 请检查账号密码是否正确");
+                clean_session();
+                return LOGIN_FAILED;
+            }
+            retry_login_time = 60000 * pow2_table[retry_login - 1];
+            LOG_ERROR("配置 %" PRIu8 " 登录失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次, 下一次重试时间: %" PRIu64 " 毫秒 (% " PRIu64 " 秒) 后",
+                g_prog_status[thread_idx].login_cfg.idx,
+                thread_idx,
+                retry_login,
+                retry_login_time,
+                retry_login_time / 1000);
+            sleep_ms(retry_login_time);
+            retry_login++;
+        }
     }
     LOG_DEBUG("完成登录");
 
@@ -496,7 +514,6 @@ static void reset()
 static RunStatus run()
 {
     static uint8_t retry_timeout = 1;
-    static uint8_t retry_login = 1;
 
     switch (check_network_status()) // 检测网络状态
     {
@@ -553,46 +570,15 @@ static RunStatus run()
             get_last_location();
             g_prog_status[thread_idx].runtime_status.is_running = true;
         }
-        switch (auth())
+        if (auth() != AUTH_SUCCESS)
         {
-        case AUTH_SUCCESS: // 认证成功直接返回 RUN_SUCCESS
-            retry_login = 1;
-            sleep_ms(1000);
-            return RUN_SUCCESS;
-        case LOGIN_FAILED: // 如果是登录失败, 等待 10 秒开始重试, 此后重试间隔指数增长 (2^n), 最多重试 5 次
-            ;
-            uint64_t retry_login_time = 0;
-            if (retry_login == 1) // 第 1 次重试, 等待 10 秒
-            {
-                retry_login_time = 10000;
-            }
-            else if (retry_login > 1 && retry_login <= 6) // 第 2-6 次重试,
-            {
-                retry_login_time = 60000 * pow2_table[retry_login - 1];
-            }
-            else
-            {
-                LOG_ERROR("超过最多重试次数");
-                return RUN_FAILED;
-            }
-
-            LOG_ERROR("配置 %" PRIu8 " 登录失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 6 次, 下一次重试时间: %" PRIu64 " 毫秒 (% " PRIu64 " 秒) 后",
-                g_prog_status[thread_idx].login_cfg.idx,
-                thread_idx,
-                retry_login,
-                retry_login_time,
-                retry_login_time / 1000);
-            sleep_ms(retry_login_time);
-            retry_login++;
-            return LOGIN_RETRY;
-        default: // 非登录失败, 返回 RUN_FAILED
-            retry_login = 1;
             LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8,
                 g_prog_status[thread_idx].login_cfg.idx,
                 thread_idx);
             sleep_ms(1000);
             return RUN_FAILED;
         }
+        return RUN_SUCCESS;
     case REQUEST_WARN: // 返回警告, 会重试 (错误码 28, 响应超时)
         if (retry_timeout > 5)
         {

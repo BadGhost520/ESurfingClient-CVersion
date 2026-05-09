@@ -1,6 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
+PKG_LICENSE:=Apache-2.0
+PKG_LICENSE_FILES:=../LICENSE
 
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
@@ -42,20 +44,32 @@ define Package/esurfingclient
 	TITLE:=ESurfingClient
 endef
 
-define Package/esurfingclient/prerm
+define Package/esurfingclient/conffiles
+/etc/config/esurfingclient
+endef
+
+define Package/esurfingclient/postinst
 #!/bin/sh
+echo "叮, 程序安装完成~"
+
 if [ -f "/usr/bin/ESurfingClient.json" ]; then
     cp /usr/bin/ESurfingClient.json /usr/bin/ESurfingClient.json.bak
-    echo "检测到旧配置文件, 已备份"
-    echo "恢复命令: cp /usr/bin/ESurfingClient.json.bak /usr/bin/ESurfingClient.json"
+    rm -f /usr/bin/ESurfingClient.json
+	echo "检测到旧版配置文件, 已备份:"
+	echo "-> /usr/bin/ESurfingClient.json.bak"
+	echo "新版配置文件位于:"
+	echo "-> /etc/config/esurfingclient"
+	echo "请手动迁移你的设置喔"
+fi
+
+if [ -x "/etc/init.d/esurfingclient" ]; then
+    /etc/init.d/esurfingclient restart 2>/dev/null &
 fi
 exit 0
 endef
 
 define Package/esurfingclient/description
-轻量第三方电信校园网客户端
-支持多平台运行
-Powerby: BadGhost
+轻量第三方电信校园网认证客户端 -- 支持 OpenWrt/Linux/Windows 多平台运行
 endef
 
 define Build/Compile
@@ -64,16 +78,13 @@ endef
 
 define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/
+	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CURDIR)/files/etc/config/esurfingclient.config $(1)/etc/config/esurfingclient
-
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(CP) $(CURDIR)/files/usr/bin/ESurfingClient.json $(1)/usr/bin/
+	$(INSTALL_CONF) $(CURDIR)/files/etc/config/ESurfingClient.json $(1)/etc/config/esurfingclient
 endef
 
 $(eval $(call BuildPackage,esurfingclient))
