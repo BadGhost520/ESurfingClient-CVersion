@@ -12,6 +12,8 @@ assignees: BadGhost520
 - [ ] 据提交本 issue 之前为止没有 issue 提交过同样的 bug
 - [ ] bug 可稳定复现
 
+### 系统及架构
+
 ### 触发 bug 会发生的情况
 
 ### 附图 (可选)
