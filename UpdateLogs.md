@@ -93,3 +93,4 @@
 
 1. 修复部分 Linux 设备报 Floating point exception 错误
 2. 添加了自行编译教程
+3. 修复部分设备截取 location 错误问题
