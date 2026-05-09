@@ -88,3 +88,7 @@
 2. 新增 qualcommax_ipq60xx 架构支持
 3. 更新安装教程
 4. 修复了认证步骤中重置参数问题 #14
+
+### 2026.5.9
+
+1. 修复部分 Linux 设备报 Floating point exception 错误

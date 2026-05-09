@@ -44,6 +44,8 @@
 
 [**OpenWRT 进阶 - 多播**](OpenWRT_mwan3.md)
 
+[**关于自行编译**](Compile.md)
+
 # 关于日志系统
 
 ### 在 Windows 系统中

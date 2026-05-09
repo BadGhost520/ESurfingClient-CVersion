@@ -18,7 +18,9 @@
 .\ESurfingClient-x86_64-windows.exe
 ```
 ```shell
-# Linux
+# Linux (user)
+sudo ./ESurfingClient-x86_64-linux
+# Linux (root)
 ./ESurfingClient-x86_64-linux
 ```
 
@@ -28,11 +30,11 @@
 > 何为用户所在目录, 如下所示
 
 ```shell
-# Windows CMD
+# Windows PowerShell
 C:\Users\bad_g>
 ```
 ```shell
-# Linux Shell
+# Linux Bash
 badghost@BadGhost:~$
 ```
 
