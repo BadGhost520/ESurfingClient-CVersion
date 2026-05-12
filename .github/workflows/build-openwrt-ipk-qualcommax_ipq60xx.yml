@@ -126,6 +126,6 @@ jobs:
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx-ipk
           path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk
           retention-days: 30

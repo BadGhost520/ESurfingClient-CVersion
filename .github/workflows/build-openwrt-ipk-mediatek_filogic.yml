@@ -125,6 +125,6 @@ jobs:
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic-ipk
           path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk
           retention-days: 30

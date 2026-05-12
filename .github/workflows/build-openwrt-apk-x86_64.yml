@@ -125,6 +125,6 @@ jobs:
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64-apk
           path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.apk
           retention-days: 30
