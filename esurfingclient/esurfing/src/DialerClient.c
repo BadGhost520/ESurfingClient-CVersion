@@ -485,6 +485,7 @@ static AuthStatus auth()
 
     g_prog_status[thread_idx].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
+    sleep_ms(5000);
     return AUTH_SUCCESS;
 }
 
@@ -509,6 +510,7 @@ static void reset()
 {
     clean(); // 清理数据
     refresh_states(); // 重置指定数据
+    g_prog_status[thread_idx].runtime_status.last_location_lock = true;
 }
 
 static RunStatus run()
@@ -567,7 +569,6 @@ static RunStatus run()
         if (g_prog_status[thread_idx].runtime_status.is_initialized) // 进入认证流程的时候如果会话已经初始化, 重置认证配置参数
         {
             reset();
-            get_last_location();
             g_prog_status[thread_idx].runtime_status.is_running = true;
         }
         if (auth() != AUTH_SUCCESS)
@@ -609,7 +610,7 @@ int dialer_app(void* arg)
         g_prog_status[thread_idx].login_cfg.idx);
 
     refresh_states(); // 刷新数据 (algo_id, host_name, client_id, mac_addr)
-    get_last_location(); // 获取最后一个 location, 用于获取认证配置
+    if (get_last_location() == REQUEST_ERROR) g_prog_status[thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
 
     /**
      * 运行循环

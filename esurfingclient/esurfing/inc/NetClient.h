@@ -6,7 +6,7 @@
 typedef enum {
     REQUEST_ERROR = 0,
     REQUEST_INIT_ERROR = 1,
-    REQUEST_WARN = 3,
+    REQUEST_WARN = 2,
     REQUEST_HAVE_RES = 200,
     REQUEST_SUCCESS = 204,
     REQUEST_REDIRECT = 302
@@ -50,7 +50,8 @@ NetworkStatus check_network_status();
 
 /**
  * @brief 获取所有 ip 的 last_location
+ * @return 网络状态
  */
-void get_last_location();
+NetworkStatus get_last_location();
 
 #endif //ESURFINGCLIENT_NETCLIENT_H

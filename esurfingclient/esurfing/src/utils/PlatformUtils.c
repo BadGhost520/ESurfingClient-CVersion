@@ -128,7 +128,7 @@ void get_rand_bytes(uint8_t* buf, const size_t len)
 
 void sleep_ms(const uint64_t ms)
 {
-    if (ms <= 0) return;
+    if (ms == 0) return;
 #ifdef _WIN32
     Sleep(ms);
 #else

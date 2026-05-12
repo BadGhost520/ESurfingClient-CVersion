@@ -1,5 +1,4 @@
 #include "utils/PlatformUtils.h"
-#include "utils/Shutdown.h"
 #include "utils/Logger.h"
 #include "NetClient.h"
 #include "States.h"
@@ -345,7 +344,7 @@ http_resp_t post(const char* url, const char* data)
         curl_slist_free_all(headers);
         return resp;
     }
-    LOG_VERBOSE("curl 初始化完成, curl=%p", curl);
+    LOG_VERBOSE("curl 初始化完成, curl: %p", curl);
 
     LOG_VERBOSE("设置 curl 选项");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -508,25 +507,30 @@ static void get_school_ip_symbol()
     LOG_DEBUG("校园网标志: %s", school_network_symbol);
 }
 
-void get_last_location()
+NetworkStatus get_last_location()
 {
     http_resp_t resp = {0};
 
     uint8_t retry = 1;
     do
     {
-        resp = get(s_generate_url);
+        resp = get(s_generate_url); // 检测响应码
         switch (resp.status)
         {
         case REQUEST_REDIRECT:
+            break;
+        case REQUEST_SUCCESS:
+            retry = 1;
+            LOG_INFO("网络已连接");
+            sleep_ms(10000);
             break;
         default:
             if (retry > 5)
             {
                 LOG_FATAL("超过重试次数, 退出程序");
-                shut(1);
+                return REQUEST_ERROR;
             }
-            LOG_WARN("网络不可重定向, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
+            LOG_WARN("非重定向, 响应码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", resp.status, retry);
             retry++;
             sleep_ms(1000);
             break;
@@ -539,4 +543,5 @@ void get_last_location()
     LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
 
     get_school_ip_symbol(); // 获取校园网特征
+    return REQUEST_REDIRECT;
 }
