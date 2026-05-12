@@ -122,22 +122,9 @@ jobs:
 
           find bin/packages -name "esurfingclient*.apk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.apk \;
 
-      - name: 复制可调试的二进制文件
-        run: |
-          cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-mediatek_filogic-debug \;
-          file ../ESurfingClient-openwrt-mediatek_filogic-debug
-
-      - name: 打包成 tar.gz 压缩包
-        run: |
-          mkdir test
-          cp ESurfingClient-openwrt-mediatek_filogic-debug test/
-          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.apk test/
-          tar -czf esurfingclient-openwrt-apk-mediatek_filogic.tar.gz test
-
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-apk-mediatek_filogic
-          path: esurfingclient-openwrt-apk-mediatek_filogic.tar.gz
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.apk
           retention-days: 30

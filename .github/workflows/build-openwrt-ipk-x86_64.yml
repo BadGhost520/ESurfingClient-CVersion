@@ -122,22 +122,9 @@ jobs:
           
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.ipk \;
 
-      - name: 复制可调试的二进制文件
-        run: |
-          cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-x86_64-debug \;
-          file ../ESurfingClient-openwrt-x86_64-debug
-
-      - name: 打包成 tar.gz 压缩包
-        run: |
-          mkdir test
-          cp ESurfingClient-openwrt-x86_64-debug test/
-          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.ipk test/
-          tar -czf esurfingclient-openwrt-ipk-x86_64.tar.gz test
-
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-ipk-x86_64
-          path: esurfingclient-openwrt-ipk-x86_64.tar.gz
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_x86_64.ipk
           retention-days: 30

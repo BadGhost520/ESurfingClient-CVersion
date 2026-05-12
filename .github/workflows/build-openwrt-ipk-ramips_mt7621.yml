@@ -122,22 +122,9 @@ jobs:
 
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621.ipk \;
 
-      - name: 复制可调试的二进制文件
-        run: |
-          cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-ramips_mt7621-debug \;
-          file ../ESurfingClient-openwrt-ramips_mt7621-debug
-
-      - name: 打包成 tar.gz 压缩包
-        run: |
-          mkdir test
-          cp ESurfingClient-openwrt-ramips_mt7621-debug test/
-          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621.ipk test/
-          tar -czf esurfingclient-openwrt-ipk-ramips_mt7621.tar.gz test
-
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-ipk-ramips_mt7621
-          path: esurfingclient-openwrt-ipk-ramips_mt7621.tar.gz
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621.ipk
           retention-days: 30
