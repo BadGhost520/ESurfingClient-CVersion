@@ -52,14 +52,13 @@ define Package/esurfingclient/postinst
 #!/bin/sh
 echo "叮, 程序安装完成~"
 
-if [ -f "/usr/bin/ESurfingClient.json" ]; then
-    cp /usr/bin/ESurfingClient.json /usr/bin/ESurfingClient.json.bak
-    rm -f /usr/bin/ESurfingClient.json
-	echo "检测到旧版配置文件, 已备份:"
-	echo "-> /usr/bin/ESurfingClient.json.bak"
-	echo "新版配置文件位于:"
-	echo "-> /etc/config/esurfingclient"
-	echo "请手动迁移你的设置喔"
+if [ -f "/etc/config/esurfingclient.apk-new" ]; then
+	echo "有新的模板文件, 可查看是否有更新:"
+	echo "-> /etc/config/esurfingclient.apk-new"
+fi
+
+if [ -f "/etc/init.d/esurfingclient.apk-new" ]; then
+	mv /etc/init.d/esurfingclient.apk-new /etc/init.d/esurfingclient
 fi
 
 if [ -x "/etc/init.d/esurfingclient" ]; then
@@ -69,7 +68,7 @@ exit 0
 endef
 
 define Package/esurfingclient/description
-轻量第三方电信校园网认证客户端 -- 支持 OpenWrt/Linux/Windows 多平台运行
+轻量第三方电信校园网认证客户端 ---- 支持 OpenWrt/Linux/Windows 多平台运行
 endef
 
 define Build/Compile

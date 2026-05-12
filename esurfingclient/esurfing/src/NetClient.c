@@ -527,7 +527,7 @@ NetworkStatus get_last_location()
         default:
             if (retry > 5)
             {
-                LOG_FATAL("超过重试次数, 退出程序");
+                LOG_FATAL("超过重试次数");
                 return REQUEST_ERROR;
             }
             LOG_WARN("非重定向, 响应码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", resp.status, retry);
