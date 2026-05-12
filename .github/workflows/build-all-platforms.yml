@@ -188,7 +188,7 @@ jobs:
       - name: 列出所有下载的文件
         run: |
           echo "已下载工件:"
-          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.tar.gz" \) | sort
+          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.apk" -o -name "*.tar.gz" \) | sort
 
       - name: 创建 Release 包
         run: |
