@@ -204,7 +204,7 @@ jobs:
           
           mkdir -p release_package
           
-          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.tar.gz" \) -exec cp {} release_package/ \;
+          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.apk" -o -name "*.tar.gz" \) -exec cp {} release_package/ \;
           
           cd release_package
           zip -r "../${RELEASE_TAG}.zip" .
