@@ -537,13 +537,19 @@ bool load_cfg()
     const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
     if (enabled && cJSON_IsFalse(enabled))
     {
-        LOG_WARN("配置文件中禁用了程序启动, 程序退出");
-        shut(0);
+        LOG_WARN("配置文件中禁用了程序启动, 请开启后重启程序");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
     }
-    else if (enabled == NULL)
+    if (enabled == NULL)
     {
-        LOG_WARN("enabled 参数不存在, 程序退出");
-        shut(0);
+        LOG_WARN("enabled 参数不存在, 请填写后重启程序");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
     }
 
     const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
