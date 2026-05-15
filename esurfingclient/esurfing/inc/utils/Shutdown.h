@@ -4,6 +4,11 @@
 #include <stdint.h>
 
 /**
+ * @brief 清理日志
+ */
+void shut_clean_logger();
+
+/**
  * @brief 关闭函数
  * @param exitCode 退出码
  */

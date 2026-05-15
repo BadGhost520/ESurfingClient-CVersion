@@ -1,0 +1,154 @@
+name: Build macOS Binary
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
+      openssl_version:
+        required: true
+        type: string
+      curl_version:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 安装编译工具
+        run: |
+          brew install cmake make wget upx binutils
+
+      - name: 获取 OpenSSL 缓存
+        id: cache-openssl
+        uses: actions/cache@v5
+        with:
+          path: /usr/local/opt/openssl-built
+          key: openssl-${{ inputs.openssl_version }}-macos
+
+      - name: 构建 libOpenSSL 静态链接库
+        if: steps.cache-openssl.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp
+          wget https://github.com/openssl/openssl/releases/download/openssl-${{ inputs.openssl_version }}/openssl-${{ inputs.openssl_version }}.tar.gz
+          tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
+          cd openssl-${{ inputs.openssl_version }}
+
+          ./Configure darwin64-arm64-cc \
+            --prefix=/usr/local/opt/openssl-built \
+            no-shared \
+            no-tests \
+            no-docs \
+            no-apps \
+            no-tls \
+            no-bf no-cast no-idea no-rc2 no-rc4 no-rc5 \
+            no-seed no-aria no-camellia \
+            no-sm2 no-sm3 no-mdc2 no-rmd160 no-whirlpool no-blake2 no-md4 \
+            no-dtls no-quic no-sctp no-srp \
+            no-zlib no-zstd no-brotli no-ktls \
+            no-rdrand no-asan no-msan no-ubsan no-trace \
+            no-egd no-krb5kdf no-scrypt no-x942kdf no-x963kdf \
+            no-srtp no-ocsp no-cms no-ts
+
+          make -j$(sysctl -n hw.logicalcpu)
+          make install
+
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v5
+        with:
+          path: /usr/local/opt/curl-built
+          key: curl-${{ inputs.curl_version }}-macos
+
+      - name: 构建 libcurl 静态链接库
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
+
+          ./configure \
+            --prefix=/usr/local/opt/curl-built \
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            --enable-http --enable-proxy --enable-cookies \
+            --enable-basic-auth --enable-digest-auth \
+            --disable-ftp --disable-file --disable-ldap --disable-ldaps \
+            --disable-rtsp --disable-dict --disable-telnet --disable-tftp \
+            --disable-pop3 --disable-imap --disable-smb --disable-smtp \
+            --disable-gopher --disable-mqtt --disable-websockets \
+            --disable-bearer-auth --disable-kerberos-auth --disable-negotiate-auth \
+            --disable-ntlm --disable-tls-srp --disable-aws --disable-rtmp \
+            --without-brotli --without-zstd --without-libpsl --without-libssh2 \
+            --without-librtmp --without-libidn2 --without-nghttp2 \
+            --without-ngtcp2 --without-nghttp3 --without-quiche --without-msh3 \
+            --without-libgsasl --without-libssh --without-wolfssh --without-hyper \
+            --without-zlib \
+            --disable-ares --disable-rt --disable-threaded-resolver \
+            --disable-ipv6 --disable-unix-sockets \
+            --disable-manual --disable-docs --disable-verbose --disable-versioned-symbols \
+            LDFLAGS="-framework CoreFoundation -framework SystemConfiguration" \
+            CC=clang
+
+          make -j$(sysctl -n hw.logicalcpu)
+          make install
+
+      - name: 构建 ESurfingClient 程序
+        run: |
+          export CMAKE_PREFIX_PATH=/usr/local/opt/openssl-built:/usr/local/opt/curl-built:$CMAKE_PREFIX_PATH
+          export PKG_CONFIG_PATH=/usr/local/opt/curl-built/lib/pkgconfig:$PKG_CONFIG_PATH
+
+          cd esurfingclient/esurfing
+
+          cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_C_COMPILER=clang \
+                -DCMAKE_CXX_COMPILER=clang++ \
+                -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+                -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
+                -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
+                -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
+                .
+
+          make -j$(sysctl -n hw.logicalcpu)
+
+          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64 || true
+
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+
+      - name: 验证
+        run: |
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-arm64" ]; then
+            echo "✅ 构建成功"
+            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-arm64 | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+          else
+            echo "❌ 未找到二进制文件"
+            exit 1
+          fi
+
+      - name: 打包成 tar.gz
+        run: |
+          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz \
+            ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: esurfingclient-${{ inputs.full_version }}-darwin-arm64
+          path: esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz
+          retention-days: 30

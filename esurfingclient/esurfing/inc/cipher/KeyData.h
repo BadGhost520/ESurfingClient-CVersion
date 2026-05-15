@@ -1,5 +1,5 @@
-#ifndef KEY_DATA_H
-#define KEY_DATA_H
+#ifndef ESURFINGCLIENT_KEYDATA_H
+#define ESURFINGCLIENT_KEYDATA_H
 
 #include <stdint.h>
 
@@ -108,4 +108,4 @@ extern const uint8_t key4_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
 extern const uint8_t key5_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
 extern const uint8_t key6_B306E770_B7D5_49F2_A574_BCE2C5C650ED[8];
 
-#endif // KEY_DATA_H
+#endif // ESURFINGCLIENT_KEYDATA_H
