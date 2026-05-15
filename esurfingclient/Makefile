@@ -50,11 +50,16 @@ endef
 
 define Package/esurfingclient/postinst
 #!/bin/sh
-echo "叮, 程序安装完成~"
+echo "程序安装完成"
 
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
 	echo "有新的模板文件, 可查看是否有更新:"
 	echo "-> /etc/config/esurfingclient.apk-new"
+fi
+
+if [ -f "/etc/config/esurfingclient.opkg-new" ]; then
+	echo "有新的模板文件, 可查看是否有更新:"
+	echo "-> /etc/config/esurfingclient.opkg-new"
 fi
 
 if [ -f "/etc/init.d/esurfingclient.apk-new" ]; then
@@ -62,6 +67,7 @@ if [ -f "/etc/init.d/esurfingclient.apk-new" ]; then
 fi
 
 if [ -x "/etc/init.d/esurfingclient" ]; then
+	echo "重启服务中"
     /etc/init.d/esurfingclient restart 2>/dev/null &
 fi
 exit 0
