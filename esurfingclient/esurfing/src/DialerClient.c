@@ -796,7 +796,7 @@ void work()
 
     // startWebServer();
     while (thread_keep_alive == false
-#ifndef __OPENWRT__
+#ifdef _WIN32
         && get_service_mode() == false
 #endif
         )

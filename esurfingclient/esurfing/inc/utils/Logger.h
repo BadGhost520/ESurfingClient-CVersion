@@ -5,15 +5,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifndef _WIN32
-
-#include <sys/sendfile.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
-
-#endif
-
 #ifndef PATH_MAX
 #define PATH_MAX 260
 #endif
