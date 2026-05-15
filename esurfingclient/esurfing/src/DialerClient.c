@@ -795,7 +795,11 @@ void work()
     // get_adapters();
 
     // startWebServer();
-    while (thread_keep_alive == false && get_service_mode() == false)
+    while (thread_keep_alive == false
+#ifndef __OPENWRT__
+        && get_service_mode() == false
+#endif
+        )
     {
         sleep_ms(10000);
     }
