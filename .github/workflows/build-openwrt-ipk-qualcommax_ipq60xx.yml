@@ -123,22 +123,9 @@ jobs:
 
           find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk \;
 
-      - name: 复制可调试的二进制文件
-        run: |
-          cd openwrt-sdk
-          find build_dir -name "ESurfingClient" -type f -exec cp {} ../ESurfingClient-openwrt-qualcommax_ipq60xx-debug \;
-          file ../ESurfingClient-openwrt-qualcommax_ipq60xx-debug
-
-      - name: 打包成 tar.gz 压缩包
-        run: |
-          mkdir test
-          cp ESurfingClient-openwrt-qualcommax_ipq60xx-debug test/
-          cp esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk test/
-          tar -czf esurfingclient-openwrt-ipk-qualcommax_ipq60xx.tar.gz test
-
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-openwrt-ipk-qualcommax_ipq60xx
-          path: esurfingclient-openwrt-ipk-qualcommax_ipq60xx.tar.gz
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx-ipk
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk
           retention-days: 30

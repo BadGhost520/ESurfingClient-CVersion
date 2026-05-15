@@ -22,8 +22,13 @@
 
 #endif
 
-#define XML_BUFFER_SIZE 1024
+#ifdef __OPENWRT__
+#define DIALER_CONFIG_FILE "/etc/config/esurfingclient"
+#else
 #define DIALER_CONFIG_FILE "ESurfingClient.json"
+#endif
+
+#define XML_BUFFER_SIZE 1024
 #define NAME_LENGTH 128
 
 typedef enum
