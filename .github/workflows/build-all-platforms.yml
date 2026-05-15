@@ -87,7 +87,7 @@ jobs:
 
   macOS:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macOS'
-    uses: ./.github/workflows/build-macOS.yml
+    uses: ./.github/workflows/build-arm64-macos.yml
     secrets: inherit
     needs: get-version
     with:

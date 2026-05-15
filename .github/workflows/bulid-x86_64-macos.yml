@@ -1,4 +1,4 @@
-name: Build macOS Binary
+name: Build x86_64 macOS Binary
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-13
 
     steps:
       - uses: actions/checkout@v6
@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/local/opt/openssl-built
-          key: openssl-${{ inputs.openssl_version }}-macos
+          key: openssl-${{ inputs.openssl_version }}-macos-x86_64
 
       - name: 构建 libOpenSSL 静态链接库
         if: steps.cache-openssl.outputs.cache-hit != 'true'
@@ -51,7 +51,7 @@ jobs:
           tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
           cd openssl-${{ inputs.openssl_version }}
 
-          ./Configure darwin64-arm64-cc \
+          ./Configure darwin64-x86_64-cc \
             --prefix=/usr/local/opt/openssl-built \
             no-shared \
             no-tests \
@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/local/opt/curl-built
-          key: curl-${{ inputs.curl_version }}-macos
+          key: curl-${{ inputs.curl_version }}-macos-x86_64
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
@@ -123,7 +123,7 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_C_COMPILER=clang \
                 -DCMAKE_CXX_COMPILER=clang++ \
-                -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+                -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
                 -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
                 -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
                 -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
@@ -131,18 +131,18 @@ jobs:
 
           make -j$(sysctl -n hw.logicalcpu)
 
-          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
 
-          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64 || true
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 || true
 
-          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
 
       - name: 验证
         run: |
-          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-arm64" ]; then
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-x86_64" ]; then
             echo "✅ 构建成功"
-            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-arm64 | cut -f1)"
-            file ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
           else
             echo "❌ 未找到二进制文件"
             exit 1
@@ -150,12 +150,12 @@ jobs:
 
       - name: 打包成 tar.gz
         run: |
-          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz \
-            ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz \
+            ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-${{ inputs.full_version }}-darwin-arm64
-          path: esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz
+          name: esurfingclient-${{ inputs.full_version }}-darwin-x86_64
+          path: esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz
           retention-days: 30
