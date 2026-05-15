@@ -639,6 +639,8 @@ int dialer_app(void* arg)
 
 void work()
 {
+    thread_keep_alive = true;
+
     g_prog_status = calloc(1, sizeof(prog_status_t)); // 初始化 g_prog_status 指针, 分配一个空间
 
     init_shutdown_hook(); // 初始化关闭钩子
@@ -713,7 +715,6 @@ void work()
      */
     sleep_ms(5000);
     LOG_INFO("线程守护开启");
-    thread_keep_alive = true;
     uint64_t check_time = 0;
     while (thread_keep_alive)
     {

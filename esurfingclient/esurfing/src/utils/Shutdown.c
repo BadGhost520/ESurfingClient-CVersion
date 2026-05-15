@@ -51,8 +51,6 @@ void shut_clean_logger()
 
 void shut(const uint8_t exitCode)
 {
-    (void)exitCode;
-
     LOG_INFO("主程序正在关闭");
     // if (is_webserver_running) stopWebServer();
     if (thread_keep_alive)
@@ -70,6 +68,11 @@ void shut(const uint8_t exitCode)
         LOG_DEBUG("线程退出, 退出码: %d", result_code);
     }
     LOG_INFO("退出程序");
+    if (get_service_mode() == false)
+    {
+        shut_clean_logger();
+        exit(exitCode);
+    }
 }
 #else
 // Linux/Unix 信号处理
