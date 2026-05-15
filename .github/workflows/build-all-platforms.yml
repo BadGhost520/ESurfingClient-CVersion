@@ -22,7 +22,8 @@ on:
           - all
           - windows-x86_64
           - linux-x86_64
-          - macOS
+          - macos-x86_64
+          - macos-arm64
           - openwrt-x86_64-ipk
           - openwrt-ramips_mt7621-ipk
           - openwrt-mediatek_filogic-ipk
@@ -85,8 +86,18 @@ jobs:
       openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
 
-  macOS:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macOS'
+  macos-x86_64:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-x86_64'
+    uses: ./.github/workflows/bulid-x86_64-macos.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      full_version: ${{ needs.get-version.outputs.full_version }}
+      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
+      curl_version: ${{ needs.get-version.outputs.curl_version }}
+
+  macos-arm64:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-arm64'
     uses: ./.github/workflows/build-arm64-macos.yml
     secrets: inherit
     needs: get-version
@@ -180,7 +191,8 @@ jobs:
     needs:
       - windows-x86_64
       - linux-x86_64
-      - macOS
+      - macos-x86_64
+      - macos-arm64
       - openwrt-x86_64-ipk
       - openwrt-ramips_mt7621-ipk
       - openwrt-mediatek_filogic-ipk
