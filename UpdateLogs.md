@@ -94,3 +94,8 @@
 1. 修复部分 Linux 设备报 Floating point exception 错误
 2. 添加了自行编译教程
 3. 修复部分设备截取 location 错误问题
+
+### 2026.5.15
+
+1. OpenWRT 包添加配置文件保护
+2. 配置文件移动到 /etc/config/, 转由程序进行检测是否启动

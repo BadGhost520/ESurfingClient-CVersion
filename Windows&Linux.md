@@ -45,6 +45,7 @@ badghost@BadGhost:~$
 
 ```json
 {
+  "enabled": true,
   "log_lv": 4,
   "accounts": [
     {
@@ -56,10 +57,14 @@ badghost@BadGhost:~$
 }
 ```
 
+> [!NOTE]
+> 别忘了改 `enabled` 参数
+
 ### 5. 填完保存再次运行即可
 
 ## JSON 参数解释
 
+- enabled: 程序是否启动
 - log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
 - accounts: 账号数组
 - username: 账号

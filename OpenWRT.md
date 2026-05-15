@@ -14,19 +14,25 @@
 > [!WARNING]
 > 注意使用 apk 包管理器的 OpenWRT 系统必须要在终端里用指令安装
 > 
-> OpenWRT 自带的软件包安装默认是不带 `--allow-untrusted` 参数的
+> OpenWRT 自带的软件包安装默认是不带 `--allow-untrusted` 和 `--no-network` 参数的
 
 ```shell
 # opkg 包管理器 (OpenWRT 25.12.0 以下)
 opkg install esurfingclient_*.ipk
 # apk 包管理器 (OpenWRT 25.12.0 及以上)
-apk add --allow-untrusted esurfingclient_*.apk
+apk add --allow-untrusted --no-network esurfingclient_*.apk
 ```
 
-### 3. 修改位于 /usr/bin/ESurfingClient.json 的配置文件
+### 3. 修改位于 /etc/config/esurfingclient 的配置文件
+
+> [!NOTE]
+> 2.0.0-r13 以下是在 `/usr/bin/ESurfingClient.json`, 且没有 `enabled` 参数
+> 
+> 2.0.0-r13 及以上才是在 `/etc/config/esurfingclient`
 
 ```json
 {
+  "enabled": true,
   "log_lv": 4,
   "accounts": [
     {
@@ -39,20 +45,15 @@ apk add --allow-untrusted esurfingclient_*.apk
 ```
 
 > [!NOTE]
-> 将 username 和 password 两栏填入然后保存即可
+> 将 `enabled` 值从 false 改为 true (2.0.0-r13 以下)
+> 
+> 将 `username` 和 `password` 两栏填入然后保存即可, 两个值对应的是官方客户端的账密
 
-### 4. 修改位于 /etc/config/esurfingclient 的配置文件
-
-```config
-config esurfingclient 'main'
-	option enabled '0' # <- 这个 '0' 要改成 '1' 程序才能被允许运行
-```
-
-### 5. 确保前面步骤无误之后输入如下指令即可运行程序
+### 4. 确保前面步骤无误之后输入如下指令即可让程序使用新的配置文件启动
 
 ```shell
-/etc/init.d/esurfingclient reload # 重载配置文件
-/etc/init.d/esurfingclient enable # 设置开机自启
+# 重启服务
+/etc/init.d/esurfingclient restart
 ```
 
 ## 其它程序服务类指令
@@ -60,18 +61,19 @@ config esurfingclient 'main'
 ```shell
 # 启动服务
 /etc/init.d/esurfingclient start
-```
-```shell
 # 停止服务
 /etc/init.d/esurfingclient stop
-```
-```shell
 # 重启服务
 /etc/init.d/esurfingclient restart
+# 开启自启
+/etc/init.d/esurfingclient enable
+# 关闭自启
+/etc/init.d/esurfingclient disable
 ```
 
 ## JSON 参数解释
 
+- enabled: 程序是否启动
 - log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
 - accounts: 账号数组
 - username: 账号
