@@ -39,6 +39,9 @@ jobs:
       - name: 构建 libOpenSSL 静态链接库
         if: steps.cache-openssl.outputs.cache-hit != 'true'
         run: |
+          sudo mkdir -p /usr/local/opt/openssl-built
+          sudo chown -R $(whoami) /usr/local/opt/openssl-built
+          
           cd /tmp
           wget https://github.com/openssl/openssl/releases/download/openssl-${{ inputs.openssl_version }}/openssl-${{ inputs.openssl_version }}.tar.gz
           tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
@@ -73,6 +76,9 @@ jobs:
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
         run: |
+          sudo mkdir -p /usr/local/opt/curl-built
+          sudo chown -R $(whoami) /usr/local/opt/curl-built
+          
           cd /tmp
           wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
           tar -xzf curl-${{ inputs.curl_version }}.tar.gz
