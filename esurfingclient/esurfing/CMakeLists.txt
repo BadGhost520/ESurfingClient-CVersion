@@ -110,12 +110,12 @@ else ()
             OpenSSL::Crypto
             pthread
             dl
-            atomic
     )
-    if (__OPENWRT__)
-        target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL)
-    else ()
-        target_link_libraries(ESurfingClient PRIVATE m)
+    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(ESurfingClient PRIVATE atomic m)
+        if (__OPENWRT__)
+            target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL)
+        endif ()
     endif ()
 endif ()
 
