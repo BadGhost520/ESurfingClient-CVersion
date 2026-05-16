@@ -562,7 +562,7 @@ static RunStatus run()
         }
         else
         {
-            LOG_INFO("已连接到互联网");
+            LOG_INFO("已连接至互联网");
         }
         sleep_ms(1000);
         return RUN_SUCCESS;

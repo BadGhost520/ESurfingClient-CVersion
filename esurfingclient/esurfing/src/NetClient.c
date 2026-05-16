@@ -28,6 +28,7 @@
 static const char s_req_content_type[] = "Content-Type: application/x-www-form-urlencoded";
 static const char s_req_accept[] = "Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
 static const char s_generate_url[] = "http://connect.rom.miui.com/generate_204";
+static const char s_backup_generate_url[] = "http://192.0.2.1";
 
 static char s_school_id[SCHOOL_ID_LENGTH];
 static char s_domain[DOMAIN_LENGTH];
@@ -461,6 +462,7 @@ http_resp_t get(const char* url)
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         resp.status = curl_err_msg_out(curl_code);
+        resp.curl_code = curl_code;
         return resp;
     }
 
@@ -498,7 +500,16 @@ http_resp_t get(const char* url)
 
 NetworkStatus check_network_status()
 {
-    const http_resp_t resp = get(s_generate_url);
+    http_resp_t resp = get(s_generate_url);
+    if (resp.curl_code == CURLE_COULDNT_RESOLVE_HOST)
+    {
+        LOG_WARN("DNS 解析错误, 使用备用超时方案重试");
+        resp = get(s_backup_generate_url);
+        if (resp.status == REQUEST_WARN)
+        {
+            resp.status = REQUEST_SUCCESS;
+        }
+    }
     return resp.status;
 }
 
@@ -517,19 +528,28 @@ NetworkStatus get_last_location()
     do
     {
         resp = get(s_generate_url); // 检测响应码
+        if (resp.curl_code == CURLE_COULDNT_RESOLVE_HOST)
+        {
+            LOG_WARN("DNS 解析错误, 使用备用超时方案重试");
+            resp = get(s_backup_generate_url);
+            if (resp.status == REQUEST_WARN)
+            {
+                resp.status = REQUEST_SUCCESS;
+            }
+        }
         switch (resp.status)
         {
         case REQUEST_REDIRECT:
             break;
         case REQUEST_SUCCESS:
             retry = 1;
-            LOG_INFO("网络已连接");
+            LOG_INFO("已连接至互联网");
             sleep_ms(10000);
             break;
         default:
             if (retry > 5)
             {
-                LOG_FATAL("超过重试次数");
+                LOG_FATAL("超过最多重试次数");
                 return REQUEST_ERROR;
             }
             LOG_WARN("非重定向, 响应码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", resp.status, retry);
