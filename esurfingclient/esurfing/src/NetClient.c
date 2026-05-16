@@ -8,6 +8,8 @@
 #include <stdio.h>
 
 #ifdef __OPENWRT__
+#include <errno.h>
+
 #ifndef SOL_SOCKET
     #define SOL_SOCKET 1
 #endif

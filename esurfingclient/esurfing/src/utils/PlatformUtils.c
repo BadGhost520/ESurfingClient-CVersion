@@ -12,13 +12,17 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "utils/Shutdown.h"
-
 #ifdef _WIN32
 
 #include <sysinfoapi.h>
 #include <iphlpapi.h>
 
+#endif
+
+#ifdef __OPENWRT__
+#define DIALER_CONFIG_FILE "/etc/config/esurfingclient"
+#else
+#define DIALER_CONFIG_FILE "ESurfingClient.json"
 #endif
 
 static const char s_default_cfg[] = "{\n"
@@ -33,6 +37,48 @@ static const char s_default_cfg[] = "{\n"
                                     "       }\n"
                                     "   ]\n"
                                     "}\n";
+
+bool get_exec_dir(char* out)
+{
+#ifdef _WIN32
+    char path[MAX_PATH];
+    const DWORD len_d = GetModuleFileNameA(NULL, path, MAX_PATH);
+    if (len_d == 0 || len_d >= MAX_PATH) return false;
+    char* last = strrchr(path, SEP);
+    if (!last) return false;
+    *last = '\0';
+    const uint16_t len = snprintf(out, PATH_MAX, "%s", safe_str(path));
+    if ((size_t)len >= PATH_MAX) return false;
+    return true;
+#elif __linux__
+    char path[PATH_MAX];
+    const ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (len <= 0 || len >= (ssize_t)sizeof(path)) return false;
+    path[len] = '\0';
+    char* last = strrchr(path, '/');
+    if (!last) return false;
+    *last = '\0';
+    const uint16_t n = snprintf(out, PATH_MAX, "%s", path);
+    if ((size_t)n >= PATH_MAX) return false;
+    return true;
+#elif defined(__APPLE__)
+    char path[PATH_MAX];
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) != 0) return false;
+    char* resolved = realpath(path, NULL);
+    if (!resolved) return false;
+    char* last = strrchr(resolved, '/');
+    if (!last) { free(resolved); return false; }
+    *last = '\0';
+    const uint16_t n = snprintf(out, PATH_MAX, "%s", resolved);
+    free(resolved);
+    if ((size_t)n >= PATH_MAX) return false;
+    return true;
+#else
+    (void)out;
+    return false;
+#endif
+}
 
 char* xml_parser(const char* xml_data, const char* tag)
 {
@@ -129,11 +175,28 @@ void get_rand_bytes(uint8_t* buf, const size_t len)
 void sleep_ms(const uint64_t ms)
 {
     if (ms == 0) return;
+
+    uint64_t elapsed = 0;
+
+    while (elapsed < ms && thread_keep_alive)
+    {
+        if (thread_idx != -1)
+        {
+            if (g_prog_status[thread_idx].runtime_status.is_running == false || g_prog_status[thread_idx].runtime_status.is_need_reset)
+            {
+                return;
+            }
+        }
+        const uint64_t SEGMENT_MS = 100;
+        const uint64_t sleep_time = ms - elapsed < SEGMENT_MS ? ms - elapsed : SEGMENT_MS;
+
 #ifdef _WIN32
-    Sleep(ms);
+        Sleep(sleep_time);
 #else
-    usleep(ms * 1000);
+        usleep(sleep_time * 1000);
 #endif
+        elapsed += sleep_time;
+    }
 }
 
 void get_fmt_time(char* buf, const TimeFormat fmt)
@@ -500,20 +563,30 @@ static bool load_cfg_other(cJSON* cfg_json)
 
 bool load_cfg()
 {
-    FILE* cfg_file = fopen(DIALER_CONFIG_FILE, "r");
+#ifdef __OPENWRT__
+    const char config_file[] = DIALER_CONFIG_FILE;
+#else
+    char dir[PATH_MAX];
+    if (get_exec_dir(dir) == false) return false;
+    char config_file[PATH_MAX];
+    const uint16_t file_len = snprintf(config_file, PATH_MAX, "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
+    if ((size_t)file_len >= PATH_MAX) return false;
+#endif
+
+    FILE* cfg_file = fopen(config_file, "r");
     if (!cfg_file || fgetc(cfg_file) == EOF)
     {
-        LOG_ERROR("无法打开配置文件或配置文件为空: %s", DIALER_CONFIG_FILE);
+        LOG_ERROR("无法打开配置文件或配置文件为空: %s", config_file);
         LOG_INFO("创建新的默认配置文件");
-        FILE* new_cfg = fopen(DIALER_CONFIG_FILE, "w");
+        FILE* new_cfg = fopen(config_file, "w");
         if (!new_cfg)
         {
-            LOG_FATAL("无法生成文件: %s", DIALER_CONFIG_FILE);
+            LOG_FATAL("无法生成文件: %s", config_file);
             return false;
         }
         fprintf(new_cfg, "%s", s_default_cfg);
         fclose(new_cfg);
-        LOG_INFO("创建完成, 请在 %s 填写账号数据", DIALER_CONFIG_FILE);
+        LOG_INFO("创建完成, 请在 %s 填写账号数据", config_file);
         return false;
     }
 

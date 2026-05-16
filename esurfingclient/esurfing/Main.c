@@ -1,179 +1,72 @@
-// #include "webserver/WebServer.h"
-#include "utils/PlatformUtils.h"
-#include "utils/Shutdown.h"
-#include "utils/Logger.h"
-#include "DialerClient.h"
-#include "NetClient.h"
-#include "States.h"
+#include "utils/Service.h"
 
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
-int main()
+extern void work(void);
+
+#ifndef __OPENWRT__
+
+static void PrintUsage()
 {
-#ifdef _WIN32
-    system("chcp 65001 >nul");
+    printf("参数:\n");
+    printf("  [nothing]     直接运行程序 (前台模式)\n");
+    printf("  --install     安装为系统服务 (需要管理员/root 权限)\n");
+    printf("  --uninstall   卸载系统服务 (需要管理员/root 权限)\n");
+    printf("  --help        显示此帮助信息\n");
+}
+
 #endif
 
-    // g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间 (暂弃)
+int main(int argc, char *argv[])
+{
+#ifdef _WIN32
 
-    g_prog_status = calloc(1, sizeof(prog_status_t)); // 初始化 g_prog_status 指针, 分配一个空间
+    system("chcp 65001 >nul");
 
-    init_shutdown_hook(); // 初始化关闭钩子
+#endif
 
-    if (init_logger() == false) shut(1); // 初始化日志系统
+#ifndef __OPENWRT__
 
-    LOG_INFO("-------------------------------------------------------------------");
-    LOG_INFO(" - 本程序由 BadGhost (鬼鬼) 制作, 遵循 Apache-2.0 开源协议");
-    LOG_INFO(" - 项目地址: https://github.com/BadGhost520/ESurfingClient-CVersion");
-    LOG_INFO(" - 制作不易, 赞助鬼鬼, 让鬼鬼更好地去维护更新这个项目罢~");
-    LOG_INFO("-------------------------------------------------------------------");
-    LOG_INFO("程序版本: " PROGRAM_FULL_VERSION);
-
-    if (load_cfg() == false) shut(0); // 加载配置文件
-    //
-    // /**
-    //  * 检测网络状态
-    //  * 非重定向响应都会持续循环
-    //  */
-    NetworkStatus status;
-    uint8_t retry = 1;
-    do
+    if (argc > 1)
     {
-        status = check_network_status();
-        switch (status)
+        if (strcmp(argv[1], "--install") == 0)
         {
-        case REQUEST_SUCCESS:
-            LOG_INFO("已连接到互联网");
-            sleep_ms(10000);
-            break;
-        case REQUEST_ERROR:
-        case REQUEST_INIT_ERROR:
-            if (retry > 5)
-            {
-                LOG_FATAL("超过最多重试次数, 退出程序");
-                shut(1);
-            }
-            LOG_ERROR("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
-            retry++;
-            sleep_ms(5000);
-            break;
-        default:
-            break;
+            return service_install();
         }
-    } while (status != REQUEST_REDIRECT);
-
-    /**
-     * 根据配置数创建相应数量的线程
-     */
-    LOG_DEBUG("开始创建认证线程");
-    for (uint8_t i = 0; i < g_prog_cnt; i++)
-    {
-        g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-        retry = 1;
-        while (g_prog_status[i].thread == NULL)
+        if (strcmp(argv[1], "--uninstall") == 0)
         {
-            if (retry > 5)
-            {
-                LOG_FATAL("超过重试次数, 退出程序");
-                shut(1);
-            }
-            LOG_ERROR("认证线程 %" PRIu8 " 创建失败, 重试中, 重试次数: %" PRIu8 ", 最多 5 次", i, retry);
-            g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-            retry++;
+            return service_uninstall();
         }
+        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+        {
+            PrintUsage();
+            return 0;
+        }
+        fprintf(stderr, "[ERROR] 未知参数: %s\n", argv[1]);
+        PrintUsage();
+        return 1;
     }
 
-    /**
-     * 线程守护
-     * 登录时间检测
-     */
-    sleep_ms(5000);
-    LOG_INFO("线程守护开启");
-    thread_keep_alive = true;
-    uint64_t check_time = 0;
-    while (thread_keep_alive)
+#endif
+
+#ifdef _WIN32
+
+    SERVICE_TABLE_ENTRY ServiceTable[] = {
+        {SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+        {NULL, NULL}
+    };
+    if (StartServiceCtrlDispatcher(ServiceTable))
     {
-        if (check_time > 299999)
-        {
-            check_time = 0;
-            LOG_INFO("线程守护持续运行中");
-        }
-        for (uint8_t i = 0; i < g_prog_cnt; i++)
-        {
-            /**
-             * 认证时间超过 172200000 毫秒 (1 天 23 时 50 分) 自动重启认证
-             */
-            if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 172200000 && g_prog_status[i].auth_cfg.auth_time != 0)
-            {
-                // if (g_prog_status[thread_idx].runtime_status.is_settings_changed)
-                // {
-                //     LOG_INFO("设置已更改, 正在重启认证");
-                //     g_prog_status[thread_idx].runtime_status.is_settings_changed = false;
-                // }
-                LOG_DEBUG("当前时间戳: %" PRIu64, get_cur_tm_ms());
-                LOG_WARN("认证时间超过 172200000 毫秒 (1 天 23 时 50 分), 为避免被远程服务器踢下线, 正在重新进行认证");
-                for (uint8_t j = 0; j < g_prog_cnt; j++)
-                {
-                    g_prog_status[j].runtime_status.is_need_reset = true;
-                    retry = 1;
-                    while (g_prog_status[j].runtime_status.is_authed)
-                    {
-                        if (retry > 5)
-                        {
-                            LOG_FATAL("超过重试次数, 强制退出线程");
-                            sim_thread_destroy(g_prog_status[j].thread);
-                        }
-                        LOG_DEBUG("等待配置 %" PRIu8 " 登出, 下标 %" PRIu8 ", 等待次数: %" PRIu8 ", 最多 5 次", g_prog_status[j].login_cfg.idx, j, retry);
-                        retry++;
-                        sleep_ms(2000);
-                    }
-                }
-            }
-            // else if (g_prog_status[thread_idx].runtime_status.is_settings_changed)
-            // {
-            //     LOG_INFO("设置已更改, 正在重启认证");
-            //     reset();
-            //     g_prog_status[thread_idx].runtime_status.is_settings_changed = false;
-            // }
-
-            /**
-             * 线程守护
-             */
-            if (g_prog_status[i].runtime_status.is_running == false)
-            {
-                int result_code = 0;
-                sim_thread_join(g_prog_status[i].thread, &result_code);
-                LOG_INFO("认证线程 %" PRIu8 " 已结束, 由于线程守护已开启, 将会重新启动此线程", i);
-                g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-                retry = 1;
-                while (g_prog_status[i].thread == NULL)
-                {
-                    if (retry > 5)
-                    {
-                        LOG_FATAL("超过重试次数, 退出程序");
-                        shut(1);
-                    }
-                    LOG_ERROR("认证线程 %" PRIu8 " 创建失败, 重试中, 重试次数: %" PRIu8 ", 最多 5 次", i, retry);
-                    g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-                    retry++;
-                }
-                while (g_prog_status[i].runtime_status.is_running == false)
-                {
-                    sleep_ms(100);
-                }
-            }
-        }
-        sleep_ms(10);
-        check_time += 10;
+        return 0;
     }
-    LOG_INFO("线程守护已关闭");
 
-    // get_adapters();
+#endif
 
-    // startWebServer();
+    // g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间 (搁置)
 
-    while (thread_keep_alive == false)
-    {
-        sleep_ms(1000);
-    }
+    work();
+
+    return 0;
 }

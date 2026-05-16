@@ -48,7 +48,7 @@ jobs:
           path: |
             /usr/local/lib64/libcrypto.a
             /usr/local/include/openssl
-          key: openssl-${{ inputs.openssl_version }}
+          key: openssl-${{ inputs.openssl_version }}-linux-x86_64
 
       - name: 构建 libOpenSSL 静态链接库
         if: steps.cache-openssl.outputs.cache-hit != 'true'
@@ -113,7 +113,7 @@ jobs:
           path: |
             /usr/local/lib/libcurl.a
             /usr/local/include/curl
-          key: curl-${{ inputs.curl_version }}
+          key: curl-${{ inputs.curl_version }}-linux-x86_64
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'

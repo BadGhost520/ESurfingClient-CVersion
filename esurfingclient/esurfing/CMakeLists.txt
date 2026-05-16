@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 0)
-set(PROGRAM_VERSION_PATCH 0)
-set(PROGRAM_VERSION_RELEASE 13)
+set(PROGRAM_VERSION_PATCH 1)
+set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -78,6 +78,7 @@ add_executable(ESurfingClient
         src/utils/PlatformUtils.c
         src/utils/SimThread.c
         src/utils/Shutdown.c
+        src/utils/Service.c
         src/utils/Logger.c
         src/utils/cJSON.c
         src/DialerClient.c
@@ -109,12 +110,12 @@ else ()
             OpenSSL::Crypto
             pthread
             dl
-            atomic
     )
-    if (__OPENWRT__)
-        target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL)
-    else ()
-        target_link_libraries(ESurfingClient PRIVATE m)
+    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(ESurfingClient PRIVATE atomic m)
+        if (__OPENWRT__)
+            target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL)
+        endif ()
     endif ()
 endif ()
 
@@ -122,6 +123,12 @@ target_compile_options(ESurfingClient PRIVATE -Os)
 
 target_compile_options(ESurfingClient PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
-set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
+if (__OPENWRT__)
+    set_target_properties(ESurfingClient PROPERTIES LINK_FLAGS "-Wl,--strip-all")
+else ()
+    add_custom_command(TARGET ESurfingClient POST_BUILD
+        COMMAND ${CMAKE_STRIP} "$<TARGET_FILE:ESurfingClient>"
+)
+endif ()
 
 install(TARGETS ESurfingClient RUNTIME DESTINATION bin)

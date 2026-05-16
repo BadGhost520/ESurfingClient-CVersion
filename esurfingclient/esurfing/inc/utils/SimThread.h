@@ -1,5 +1,5 @@
-#ifndef SIMPLE_THREAD_H
-#define SIMPLE_THREAD_H
+#ifndef ESURFINGCLIENT_SIMTHREAD_H
+#define ESURFINGCLIENT_SIMTHREAD_H
 
 #include <stdint.h>
 
@@ -24,4 +24,4 @@ uint64_t sim_thread_cur_id(void);
 // 销毁线程句柄 (不等待线程结束)
 void sim_thread_destroy(sim_thread_t* thread);
 
-#endif // SIMPLE_THREAD_H
+#endif // ESURFINGCLIENT_SIMTHREAD_H

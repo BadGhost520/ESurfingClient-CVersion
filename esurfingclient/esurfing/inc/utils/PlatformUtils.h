@@ -1,12 +1,18 @@
-#ifndef PLATFORMUTILS_H
-#define PLATFORMUTILS_H
+#ifndef ESURFINGCLIENT_PLATFORMUTILS_H
+#define ESURFINGCLIENT_PLATFORMUTILS_H
 
 #include "States.h"
 
 #include <inttypes.h>
 #include <stdint.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+#define SEP '\\'
+
+#else
+
+#define SEP '/'
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -20,12 +26,6 @@
 #include <fcntl.h>
 #include <time.h>
 
-#endif
-
-#ifdef __OPENWRT__
-#define DIALER_CONFIG_FILE "/etc/config/esurfingclient"
-#else
-#define DIALER_CONFIG_FILE "ESurfingClient.json"
 #endif
 
 #define XML_BUFFER_SIZE 1024
@@ -50,6 +50,8 @@ typedef struct
     uint8_t* data;
     size_t length;
 } bytes_t;
+
+bool get_exec_dir(char* out);
 
 /**
  * @brief XML 解析
@@ -146,4 +148,4 @@ char* clean_CDATA(const char* text);
  */
 bool load_cfg();
 
-#endif // PLATFORMUTILS_H
+#endif // ESURFINGCLIENT_PLATFORMUTILS_H
