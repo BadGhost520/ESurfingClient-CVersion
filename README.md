@@ -1,4 +1,4 @@
-# ESurfingClient-C
+# ESurfingClient-C (当前最新版本 [v2.0.1-r1](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest/))
 
 **根据 Rsplwe 大佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** 👍
 
@@ -26,18 +26,20 @@
 
 # 目前支持的系统和架构
 
-| 系统      | 架构                 | 包管理器 | 理论最低支持版本            | 最低推荐版本          |
-|---------|--------------------|------|---------------------|-----------------|
-| Windows | x86_64             | /    | Windows XP SP3      | Windows 10	     |
-| Linux   | x86_64             | /    | Linux 内核 2.6.0      | Linux 内核 4.14   |
-| OpenWrt | x86_64             | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
-| OpenWrt | x86_64             | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-| OpenWrt | ramips_mt7621      | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
-| OpenWrt | ramips_mt7621      | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-| OpenWrt | qualcommax_ipq60xx | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
-| OpenWrt | qualcommax_ipq60xx | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-| OpenWrt | mediatek_filogic   | opkg | OpenWrt 15.05       | OpenWrt 18.06.0 |
-| OpenWrt | mediatek_filogic   | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+|    系统     |         架构         | 包管理器 |      理论最低支持版本       |     最低推荐版本      |
+|:---------:|:------------------:|:----:|:-------------------:|:---------------:|
+|  Windows  |       x86_64       |  /   |   Windows XP SP3    |   Windows 10	   |
+|   Linux   |       x86_64       |  /   |   Linux 内核 2.6.0    |  Linux 内核 4.14  |
+|  OpenWrt  |       x86_64       | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  |       x86_64       | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+|  OpenWrt  |   ramips_mt7621    | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  |   ramips_mt7621    | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+|  OpenWrt  | qualcommax_ipq60xx | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  | qualcommax_ipq60xx | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+|  OpenWrt  |  mediatek_filogic  | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  |  mediatek_filogic  | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+|   macOS   |       x86_64       |  /   |      macOS 12       |    macOS 13     |
+|   macOS   |       arm64        |  /   |      macOS 13       |    macOS 14     |
 
 
 > [!TIP]
@@ -47,7 +49,7 @@
 
 # 使用教程
 
-[**Windows & Linux 环境**](Windows&Linux.md)
+[**Windows, Linux, macOS 环境**](Desktop.md)
 
 [**OpenWRT 环境**](OpenWRT.md)
 
@@ -64,7 +66,7 @@
 - 程序退出时, run.log 日志文件会被重命名为 <时间>.log (比如 19700101-114514.log)
 - 日志行数超过 10000 行会进行轮转操作 (虽然不大可能会有那么长)
 
-### 在 Linux 系统中 (包括 OpenWRT 系统)
+### 在类 unix 系统中
 
 - 程序运行后, 会新建 /var/log/esurfing/logs 目录
 - 程序运行时, logs 目录下会生成实时更新的 run.log 日志文件
