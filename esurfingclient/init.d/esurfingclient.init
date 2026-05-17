@@ -24,7 +24,7 @@ start_service() {
       return 1
   fi
 
-  sleep 5
+  sleep 10
 
   procd_open_instance esurfingclient
   procd_set_param command ${PROG}

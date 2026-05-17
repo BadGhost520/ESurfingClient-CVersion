@@ -569,7 +569,7 @@ bool load_cfg()
         }
         if (pwd->valuestring[0] == '\0')
         {
-            LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
+            LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
             continue;
         }
 
@@ -682,7 +682,7 @@ bool load_cfg()
         }
         if (pwd->valuestring[0] == '\0')
         {
-            LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
+            LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
             continue;
         }
 
