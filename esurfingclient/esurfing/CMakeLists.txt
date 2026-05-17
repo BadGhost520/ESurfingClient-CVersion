@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 0)
-set(PROGRAM_VERSION_PATCH 1)
-set(PROGRAM_VERSION_RELEASE 2)
+set(PROGRAM_VERSION_PATCH 2)
+set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -73,8 +73,6 @@ add_executable(ESurfingClient
         src/cipher/CipherFactory.c
         src/cipher/CipherUtils.c
         src/cipher/KeyData.c
-#        src/webserver/WebServer.c
-#        src/webserver/mongoose.c
         src/utils/PlatformUtils.c
         src/utils/SimThread.c
         src/utils/Shutdown.c
@@ -86,6 +84,13 @@ add_executable(ESurfingClient
         src/States.c
         Main.c
 )
+
+#if (NOT __OPENWRT__)
+#    add_executable(ESurfingClient
+#            src/webserver/WebServer.c
+#            src/webserver/mongoose.c
+#    )
+#endif ()
 
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
