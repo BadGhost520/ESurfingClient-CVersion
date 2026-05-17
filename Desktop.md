@@ -127,6 +127,16 @@ sudo ./ESurfingClient-*-darwin-* --help
 > [!NOTE]
 > 别忘了改 `enabled` 参数
 
+### JSON 参数详解
+
+- enabled: 程序是否启动
+- log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
+- accounts: 账号数组
+- username: 账号
+- password: 密码
+- channel: 认证通道 (暂时没找到具体作用)
+- mark: 标记值 (高级功能, 非 OpenWrt 系统无效)
+
 ## 五、重启程序 / 服务
 
 > [!NOTE]
@@ -167,12 +177,3 @@ sudo launchctl list | grep esurfing
 
 > [!TIP]
 > 建议查看日志以确定程序运行情况
-
-## JSON 参数解释
-
-- enabled: 程序是否启动
-- log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
-- accounts: 账号数组
-- username: 账号
-- password: 密码
-- channel: 认证通道 (暂时没找到具体作用)

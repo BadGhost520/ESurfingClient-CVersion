@@ -124,25 +124,21 @@
 
 <img alt="Please refresh" width="75%" src="image/mwan3/31.png"/>
 
-### 24. ssh 登录 OpenWRT, 上传并安装认证程序 - [下载传送门](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest)
+### 24. 安装认证程序 - [下载传送门](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest)
+
+### 25. 退出并重新登录后台, 打开 `服务` >> `ESurfing 客户端`
+
+### 26. 填写好认证配置 (`标记值` 的用途 > [传送门](#v202-r3-版本新增-标记值))
 
 <img alt="Please refresh" width="75%" src="image/mwan3/32.png"/>
 
-### 25. 修改位于 /usr/bin/ESurfingClient.json 的配置文件, 如图为两个账号配置的格式, 修改完保存
+### 27. 运行程序前的检查, 输入 ip rule show 检查是否有如图红框的规则, 有则正常, 没有则检查前面是否有步骤做错了
 
 <img alt="Please refresh" width="75%" src="image/mwan3/33.png"/>
 
-### 26. 修改位于 /etc/config/esurfingclient 的 init.d 配置文件, 将 enabled 值改为 '1'
-
-<img alt="Please refresh" width="75%" src="image/mwan3/34.png"/>
-
-### 27. 运行程序前的检查, 输入 ip rule show 检查是否有如图红框的规则, 有则正常, 没有则检查前面是否有步骤做错了
-
-<img alt="Please refresh" width="75%" src="image/mwan3/35.png"/>
-
 ### 28. 输入 /etc/init.d/esurfingclient reload 重载 init.d 配置文件, 输入 tail -f -n 50 /var/log/esurfing/logs/run.log 查看运行情况
 
-<img alt="Please refresh" width="75%" src="image/mwan3/36.png"/>
+<img alt="Please refresh" width="75%" src="image/mwan3/34.png"/>
 
 > [!NOTE]
 > 如果一切正常且下游设备有网了
@@ -150,3 +146,46 @@
 > 那么就恭喜你实现了双 WAN 口多播
 > 
 > 上行和下行在 `多线程` 上传和下载时都会受到叠加 buff
+
+## v2.0.2-r3 版本新增 (标记值)
+
+### 这是一个用于给一些特殊网络环境使用的方案
+
+#### 举个例子
+
+#### 假如 wan1 口接的是不用认证就有网的网络, wan2 则是需要认证的校园网络
+
+#### 小明按先 wan1, 后 wan2 的顺序填写了 mwan3 的 `接口` 配置
+
+#### 然后填写了 `仅一个` ESurfing 客户端的认证配置并启动 ESurfing 客户端, 发现不行, 无法认证, 总提示 `已连接到互联网`
+
+#### 因为 wan1 和 wan2 会被 mwan3 按填写顺序分配 0x100 和 0x200 的标记值
+
+#### wan1 只允许 0x100 和没标签的数据包通过, wan2只允许 0x200 和没标签的数据包通过
+
+#### 而 ESurfing 客户端的自动分配标记值会按照可用配置按顺序打标签
+
+#### 即, 可用配置 1 打上 0x100, 可用配置 2 打上 0x200, 以此类推
+
+#### 小明的认证配置无法进行认证, 总提示 `已连接到互联网` 的原因就是这个
+
+#### 只填了配置 1, 然后程序自动打上 0x100 的标签, 数据包就跑到 wan1 有网的口去了
+
+### 所以! 隆重推出我们的自定义标记值功能! 👏
+
+<img alt="Please refresh" width="75%" src="image/mwan3/35.png"/>
+
+### 只需要在配置页给每个认证配置填写上标记值, 对应的配置在发包的时候就会被打上对应的标签
+
+### 然后数据包就会乖乖地按照被打上的标签去走对应的通道
+
+### 妈妈再也不用担心我的数据包乱跑辣!
+
+> [!WARNING]
+> 标记值是一个十六进制数, 以 0x 开头, 而且必须是 0x100 的倍数
+> 
+> 可以直接在终端用 ip rule show 来查看要打什么标签
+> 
+> 以免数据包标签管理混乱, 只要有一个认证配置填了自定义标记值
+> 
+> 那么其它的认证配置就都要填, 不然会被程序跳过加载
