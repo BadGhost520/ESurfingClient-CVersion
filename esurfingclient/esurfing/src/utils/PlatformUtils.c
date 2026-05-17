@@ -495,9 +495,12 @@ bool load_cfg()
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (accounts == NULL || cJSON_IsArray(accounts) == false || cJSON_GetArraySize(accounts) == 0)
     {
-        LOG_FATAL("没有找到账号数据, 请添加");
+        LOG_FATAL("没有找到账号数据, 请添加后重启程序");
         cJSON_Delete(cfg_json);
-        return false;
+        while (true)
+        {
+            sleep_ms(10000);
+        }
     }
 
     const uint8_t cnt = cJSON_GetArraySize(accounts);
