@@ -55,13 +55,18 @@ define Package/esurfingclient/postinst
 echo "ESurfing 客户端安装完成"
 
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
-	echo "有新的模板文件, 可查看是否有更新:"
+	echo "有新的模板文件, 可查看是否有更新"
 	echo "-> /etc/config/esurfingclient.apk-new"
 fi
 
 if [ -f "/etc/config/esurfingclient.opkg-new" ]; then
-	echo "有新的模板文件, 可查看是否有更新:"
+	echo "有新的模板文件, 可查看是否有更新"
 	echo "-> /etc/config/esurfingclient.opkg-new"
+fi
+
+if [ -f "/etc/config/esurfingclient.opkg" ]; then
+	echo "有新的模板文件, 可查看是否有更新"
+	echo "-> /etc/config/esurfingclient.opkg"
 fi
 
 if [ -f "/etc/init.d/esurfingclient.apk-new" ]; then
@@ -72,13 +77,11 @@ if [ -x "/etc/init.d/esurfingclient" ]; then
 	echo "启动服务中"
     /etc/init.d/esurfingclient restart 2>/dev/null &
 fi
-rm -rf /tmp/luci-*
-/etc/init.d/uhttpd restart 2>/dev/null &
 exit 0
 endef
 
 define Package/esurfingclient/description
-轻量第三方电信校园网认证客户端 ---- 支持 OpenWrt/Linux/Windows 多平台运行
+轻量第三方电信校园网认证客户端 (支持 OpenWrt/Linux/Windows 多平台运行)
 endef
 
 define Build/Compile
