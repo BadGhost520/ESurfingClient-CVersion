@@ -70,11 +70,11 @@ static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, 
     {
         if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[thread_idx].login_cfg.mark, sizeof(g_prog_status[thread_idx].login_cfg.mark)) == -1)
         {
-            LOG_ERROR("设置 SO_MARK 失败 (mark = %d): %s", g_prog_status[thread_idx].login_cfg.mark, strerror(errno));
+            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s", g_prog_status[thread_idx].login_cfg.mark, g_prog_status[thread_idx].login_cfg.mark, strerror(errno));
         }
         else
         {
-            LOG_VERBOSE("设置 SO_MARK = %d (0x%x)", g_prog_status[thread_idx].login_cfg.mark, g_prog_status[thread_idx].login_cfg.mark);
+            LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[thread_idx].login_cfg.mark, g_prog_status[thread_idx].login_cfg.mark);
         }
     }
 

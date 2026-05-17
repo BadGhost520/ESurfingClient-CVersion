@@ -529,7 +529,7 @@ bool load_cfg()
         {
             if (use_cus_mark && mark->valuestring[0] == '\0')
             {
-                LOG_WARN("其它配置使用了自定义标记值, 但配置 %" PRIu8 "未填写, 将跳过该配置", i + 1);
+                LOG_WARN("其它配置使用了自定义标记值, 但配置 %" PRIu8 " 未填写, 将跳过该配置", i + 1);
                 continue;
             }
             snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
@@ -553,13 +553,13 @@ bool load_cfg()
                 g_prog_status[valid_i].login_cfg.mark = strtoul(mark->valuestring, NULL, 16);
                 g_prog_status[valid_i].login_cfg.use_cus_mark = true;
                 use_cus_mark = true;
-                LOG_DEBUG("使用自定义标记值: %" PRIu32, g_prog_status[valid_i].login_cfg.mark);
+                LOG_DEBUG("使用自定义标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
                 LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
             }
             else
             {
                 g_prog_status[valid_i].login_cfg.mark = 0x100 + valid_i * 0x100;
-                LOG_DEBUG("使用自动标记值: %" PRIu32, g_prog_status[valid_i].login_cfg.mark);
+                LOG_DEBUG("使用自动标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
                 LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
             }
             g_prog_status[valid_i].login_cfg.idx = i + 1;
