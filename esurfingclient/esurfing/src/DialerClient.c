@@ -112,7 +112,7 @@ static bool heartbeat()
         LOG_ERROR("心跳内容解析失败");
         return false;
     }
-    g_prog_status[thread_idx].auth_cfg.keep_retry = str_2_uint64(parsed_interval); // 将字符串时间转成 uint64_t 时间
+    g_prog_status[thread_idx].auth_cfg.keep_retry = strtouint64(parsed_interval); // 将字符串时间转成 uint64_t 时间
     free(parsed_interval);
     return true;
 }
@@ -199,7 +199,7 @@ static bool login()
         LOG_ERROR("解析 KeepRetry 失败");
         return false;
     }
-    g_prog_status[thread_idx].auth_cfg.keep_retry = str_2_uint64(parsed_keep_retry); // 将字符串时间转成 uint64_t 时间
+    g_prog_status[thread_idx].auth_cfg.keep_retry = strtouint64(parsed_keep_retry); // 将字符串时间转成 uint64_t 时间
     free(parsed_keep_retry);
     LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[thread_idx].auth_cfg.keep_retry);
     return true;
@@ -326,7 +326,7 @@ static bool init_session()
         return false;
     }
     LOG_VERBOSE("会话响应内容: %s", result.body_data);
-    const bytes_t zsm = str_2_bytes(result.body_data); // 将响应体数据转成 bytes 类型
+    const bytes_t zsm = strtobytes(result.body_data); // 将响应体数据转成 bytes 类型
     free(result.body_data);
 
     LOG_DEBUG("开始初始化会话");
@@ -513,7 +513,6 @@ static void reset()
 {
     clean(); // 清理数据
     refresh_states(); // 重置指定数据
-    g_prog_status[thread_idx].runtime_status.last_location_lock = true;
 }
 
 static RunStatus run()

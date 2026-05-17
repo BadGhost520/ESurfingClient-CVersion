@@ -66,21 +66,21 @@ char* xml_parser(const char* xml_data, const char* tag);
  * @param str 文本数据
  * @return 字节数据
  */
-bytes_t str_2_bytes(const char* str);
+bytes_t strtobytes(const char* str);
 
 /**
  * @brief 字符串转换为 64 位长整型
  * @param str 要转换的字符串
  * @return 转换后的 64 位长整型
  */
-uint64_t str_2_uint64(const char* str);
+uint64_t strtouint64(const char* str);
 
 /**
  * @brief 64 位长整型转换为字符串
  * @param num 要转换的 64 位长整型
  * @return 转换后的字符串
  */
-char* uint64_2_str(uint64_t num);
+char* uint64tostr(uint64_t num);
 
 /**
  * @brief 获取当前时间的毫秒时间戳

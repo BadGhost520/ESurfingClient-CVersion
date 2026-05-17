@@ -11,6 +11,8 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=libcurl libopenssl
 
+PKGARCH:=all
+
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
@@ -86,10 +88,19 @@ define Package/esurfingclient/install
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+	$(INSTALL_BIN) $(CURDIR)/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CURDIR)/files/etc/config/ESurfingClient.json $(1)/etc/config/esurfingclient
+	$(INSTALL_CONF) $(CURDIR)/config/ESurfingClient.json $(1)/etc/config/esurfingclient
+
+	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
+	$(INSTALL_DATA) $(CURDIR)/luci/menu.d/luci-app-esurfingclient.json $(1)/usr/share/luci/menu.d/
+
+	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/esurfingclient
+	$(INSTALL_DATA) $(CURDIR)/luci/view/config.js $(1)/www/luci-static/resources/view/esurfingclient/
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
+	$(INSTALL_DATA) $(CURDIR)/luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/
 endef
 
 $(eval $(call BuildPackage,esurfingclient))

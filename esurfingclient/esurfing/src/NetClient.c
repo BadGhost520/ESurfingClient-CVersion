@@ -57,6 +57,8 @@ char* extract_url_param(const char* url, const char* search_str_start)
 #ifdef __OPENWRT__
 static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct curl_sockaddr* addr)
 {
+    (void)client_p;
+    (void)purpose;
     curl_socket_t sock_fd = socket(addr->family, addr->socktype, addr->protocol);
     if (sock_fd == CURL_SOCKET_BAD)
     {
@@ -64,15 +66,15 @@ static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, 
         return CURL_SOCKET_BAD;
     }
 
-    if (g_prog_status[thread_idx].mark != 0)
+    if (g_prog_status[thread_idx].login_cfg.mark != 0)
     {
-        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[thread_idx].mark, sizeof(g_prog_status[thread_idx].mark)) == -1)
+        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[thread_idx].login_cfg.mark, sizeof(g_prog_status[thread_idx].login_cfg.mark)) == -1)
         {
-            LOG_ERROR("设置 SO_MARK 失败 (mark = %d): %s", g_prog_status[thread_idx].mark, strerror(errno));
+            LOG_ERROR("设置 SO_MARK 失败 (mark = %d): %s", g_prog_status[thread_idx].login_cfg.mark, strerror(errno));
         }
         else
         {
-            LOG_VERBOSE("设置 SO_MARK = %d (0x%x)", g_prog_status[thread_idx].mark, g_prog_status[thread_idx].mark);
+            LOG_VERBOSE("设置 SO_MARK = %d (0x%x)", g_prog_status[thread_idx].login_cfg.mark, g_prog_status[thread_idx].login_cfg.mark);
         }
     }
 
@@ -161,7 +163,7 @@ static size_t header_cb(const void* contents, const size_t size, const size_t nm
     {
         if (thread_idx != -1)
         {
-            if (!g_prog_status[thread_idx].runtime_status.last_location_lock)
+            if (!g_prog_status[thread_idx].last_location_lock)
             {
                 LOG_VERBOSE("原始数据: %s", header);
 
@@ -561,7 +563,7 @@ NetworkStatus get_last_location()
 
     while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[thread_idx].last_location);
 
-    g_prog_status[thread_idx].runtime_status.last_location_lock = true;
+    g_prog_status[thread_idx].last_location_lock = true;
     LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
 
     get_school_ip_symbol(); // 获取校园网特征
