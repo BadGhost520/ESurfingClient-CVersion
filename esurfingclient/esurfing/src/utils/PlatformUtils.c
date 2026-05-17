@@ -424,10 +424,16 @@ bool load_cfg()
     const char config_file[] = DIALER_CONFIG_FILE;
 #else
     char dir[PATH_MAX];
-    if (get_exec_dir(dir) == false) return false;
+    if (get_exec_dir(dir) == false)
+    {
+        LOG_ERROR("获取可执行文件路径失败, 请检查权限后重启");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
+    }
     char config_file[PATH_MAX];
-    const uint16_t file_len = snprintf(config_file, PATH_MAX, "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
-    if ((size_t)file_len >= PATH_MAX) return false;
+    snprintf(config_file, PATH_MAX, "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
 #endif
 
     FILE* cfg_file = fopen(config_file, "r");
@@ -438,13 +444,19 @@ bool load_cfg()
         FILE* new_cfg = fopen(config_file, "w");
         if (!new_cfg)
         {
-            LOG_FATAL("无法生成文件: %s", config_file);
-            return false;
+            LOG_FATAL("无法生成文件: %s, 请检查权限后重启", config_file);
+            while (true)
+            {
+                sleep_ms(10000);
+            }
         }
         fprintf(new_cfg, "%s", s_default_cfg);
         fclose(new_cfg);
-        LOG_INFO("创建完成, 请在 %s 填写账号数据", config_file);
-        return false;
+        LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
     }
 
     fseek(cfg_file, 0, SEEK_END);
@@ -460,8 +472,11 @@ bool load_cfg()
     free(cfg_data);
     if (!cfg_json)
     {
-        LOG_FATAL("JSON 解析失败");
-        return false;
+        LOG_FATAL("JSON 解析失败, 请检查后重启");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
     }
 
     const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
