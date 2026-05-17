@@ -555,7 +555,7 @@ bool load_cfg()
             LOG_WARN("配置 %" PRIu8 " username 参数不存在, 跳过当前配置", i + 1);
             continue;
         }
-        if (usr->valuestring[0] != '\0')
+        if (usr->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
             continue;
@@ -567,7 +567,7 @@ bool load_cfg()
             LOG_WARN("配置 %" PRIu8 " password 参数不存在, 跳过当前配置", i + 1);
             continue;
         }
-        if (pwd->valuestring[0] != '\0')
+        if (pwd->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
             continue;
@@ -582,7 +582,7 @@ bool load_cfg()
             LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道", i + 1);
             snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", "phone");
         }
-        else if (chn->valuestring[0] != '\0')
+        else if (chn->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " channel 参数为空, 使用默认通道", i + 1);
             snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", "phone");
@@ -668,7 +668,7 @@ bool load_cfg()
             LOG_WARN("配置 %" PRIu8 " username 参数不存在, 跳过当前配置", i + 1);
             continue;
         }
-        if (usr->valuestring[0] != '\0')
+        if (usr->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
             continue;
@@ -680,7 +680,7 @@ bool load_cfg()
             LOG_WARN("配置 %" PRIu8 " password 参数不存在, 跳过当前配置", i + 1);
             continue;
         }
-        if (pwd->valuestring[0] != '\0')
+        if (pwd->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
             continue;
@@ -695,7 +695,7 @@ bool load_cfg()
             LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道", i + 1);
             snprintf(g_prog_status[0].login_cfg.chn, CHN_LEN, "%s", "phone");
         }
-        else if (chn->valuestring[0] != '\0')
+        else if (chn->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " channel 参数为空, 使用默认通道", i + 1);
             snprintf(g_prog_status[0].login_cfg.chn, CHN_LEN, "%s", "phone");
