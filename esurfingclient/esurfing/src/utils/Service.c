@@ -1,5 +1,3 @@
-#ifndef __OPENWRT__
-
 #include "utils/Shutdown.h"
 #include "utils/Service.h"
 #include "utils/Logger.h"
@@ -61,7 +59,7 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR *argv)
 
     work();
 
-    shut_clean_logger();
+    clean_logger();
 
     CloseHandle(g_ServiceStopEvent);
     g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
@@ -472,7 +470,5 @@ int service_uninstall()
 
     return 0;
 }
-
-#endif
 
 #endif

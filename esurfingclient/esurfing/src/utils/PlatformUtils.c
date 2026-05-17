@@ -32,7 +32,8 @@ static const char s_default_cfg[] = "{\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
                                     "           \"password\": \"\",\n"
-                                    "           \"channel\": \"phone\"\n"
+                                    "           \"channel\": \"phone\",\n"
+                                    "           \"mark\": \"\"\n"
                                     // "           \"auto_start\": false\n"
                                     "       }\n"
                                     "   ]\n"
@@ -108,7 +109,7 @@ char* xml_parser(const char* xml_data, const char* tag)
     return content;
 }
 
-bytes_t str_2_bytes(const char* str)
+bytes_t strtobytes(const char* str)
 {
     bytes_t ba = {0};
     if (!str) return ba;
@@ -118,7 +119,7 @@ bytes_t str_2_bytes(const char* str)
     return ba;
 }
 
-uint64_t str_2_uint64(const char* str)
+uint64_t strtouint64(const char* str)
 {
     if (!str) return 0;
     while (isspace(*str)) str++;
@@ -133,7 +134,7 @@ uint64_t str_2_uint64(const char* str)
     return value;
 }
 
-char* uint64_2_str(const uint64_t num)
+char* uint64tostr(const uint64_t num)
 {
     char* result = malloc(22);
     if (!result) return NULL;
@@ -417,160 +418,22 @@ char* clean_CDATA(const char* text)
 //     return true;
 // }
 
-#ifdef __OPENWRT__
-static bool load_cfg_openwrt(cJSON* cfg_json)
-{
-    LOG_INFO("OpenWRT 环境, 会尝试加载所有有效配置");
-
-    cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
-    if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
-    {
-        LOG_FATAL("没有找到账号数据, 请添加");
-        cJSON_Delete(cfg_json);
-        return false;
-    }
-
-    const uint8_t cnt = cJSON_GetArraySize(accounts);
-
-    prog_status_t* new_prog_status = realloc(g_prog_status, sizeof(prog_status_t) * cnt);
-    if (new_prog_status)
-    {
-        g_prog_status = new_prog_status;
-        memset(g_prog_status, 0, sizeof(prog_status_t) * cnt);
-    }
-
-    int8_t valid_cnt = 0;
-
-    for (uint8_t i = 0, valid_i = 0; i < cnt; i++)
-    {
-        const cJSON* account = cJSON_GetArrayItem(accounts, i);
-
-        const cJSON* usr = cJSON_GetObjectItem(account, "username");
-        const cJSON* pwd = cJSON_GetObjectItem(account, "password");
-        const cJSON* chn = cJSON_GetObjectItem(account, "channel");
-        // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
-
-        if (usr->valuestring[0] != '\0' && pwd->valuestring[0] != '\0' && chn->valuestring[0] != '\0')
-        {
-            snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
-            snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
-            snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", safe_str(chn->valuestring));
-            // g_prog_status[valid_i].login_cfg.auto_start = auto_start->valueint;
-            if (strcmp(chn->valuestring, "pc") == 0)
-            {
-                snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/Linux64/1003");
-                LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
-                LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
-            }
-            else
-            {
-                snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
-                LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
-                LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
-            }
-            g_prog_status[valid_i].login_cfg.idx = i + 1;
-            g_prog_status[valid_i].mark = 0x100 + valid_i * 0x100;
-            LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
-            valid_cnt++;
-            valid_i++;
-        }
-        else
-        {
-            LOG_WARN("配置 %" PRIu8 " 一个或多个值为空, 跳过当前配置", i + 1);
-        }
-    }
-
-    cJSON_Delete(cfg_json);
-
-    if (valid_cnt == 0)
-    {
-        LOG_FATAL("无可用配置");
-        return false;
-    }
-
-    g_prog_cnt = valid_cnt;
-
-    LOG_INFO("可用配置数: %" PRId8, g_prog_cnt);
-    return true;
-}
-#else
-static bool load_cfg_other(cJSON* cfg_json)
-{
-    LOG_INFO("非 OpenWRT 环境, 仅会尝试加载第一个有效配置");
-
-    cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
-    if (!accounts || !cJSON_IsArray(accounts) || cJSON_GetArraySize(accounts) == 0)
-    {
-        LOG_FATAL("没有找到账号数据, 请添加");
-        cJSON_Delete(cfg_json);
-        return false;
-    }
-
-    const uint8_t cnt = cJSON_GetArraySize(accounts);
-
-    int8_t valid_cnt = 0;
-
-    for (uint8_t i = 0; i < cnt; i++)
-    {
-        const cJSON* account = cJSON_GetArrayItem(accounts, i);
-
-        const cJSON* usr = cJSON_GetObjectItem(account, "username");
-        const cJSON* pwd = cJSON_GetObjectItem(account, "password");
-        const cJSON* chn = cJSON_GetObjectItem(account, "channel");
-        // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
-
-        if (usr->valuestring[0] != '\0' && pwd->valuestring[0] != '\0' && chn->valuestring[0] != '\0')
-        {
-            // if_nametoindex(i_f->valuestring) != 0
-            snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
-            snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
-            snprintf(g_prog_status[0].login_cfg.chn, CHN_LEN, "%s", safe_str(chn->valuestring));
-            // g_prog_status[0].login_cfg.auto_start = auto_start->valueint;
-            if (strcmp(chn->valuestring, "pc") == 0)
-            {
-                snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/Linux64/1003");
-                LOG_DEBUG("使用 UA: %s", g_prog_status[0].login_cfg.user_agent);
-                LOG_DEBUG("当前使用下标: 0");
-            }
-            else
-            {
-                snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
-                LOG_DEBUG("使用 UA: %s", g_prog_status[0].login_cfg.user_agent);
-                LOG_DEBUG("当前使用下标: 0");
-            }
-            g_prog_status[0].login_cfg.idx = i + 1;
-            LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
-            valid_cnt++;
-            break;
-        }
-        LOG_WARN("配置 %" PRIu8 " 一个或多个值为空, 跳过当前配置", i + 1);
-    }
-
-    cJSON_Delete(cfg_json);
-
-    if (valid_cnt == 0)
-    {
-        LOG_FATAL("无可用配置");
-        return false;
-    }
-
-    g_prog_cnt = valid_cnt;
-
-    LOG_INFO("可用配置数: %" PRId8, g_prog_cnt);
-    return true;
-}
-#endif
-
 bool load_cfg()
 {
 #ifdef __OPENWRT__
     const char config_file[] = DIALER_CONFIG_FILE;
 #else
     char dir[PATH_MAX];
-    if (get_exec_dir(dir) == false) return false;
+    if (get_exec_dir(dir) == false)
+    {
+        LOG_ERROR("获取可执行文件路径失败, 请检查权限后重启");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
+    }
     char config_file[PATH_MAX];
-    const uint16_t file_len = snprintf(config_file, PATH_MAX, "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
-    if ((size_t)file_len >= PATH_MAX) return false;
+    snprintf(config_file, PATH_MAX, "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
 #endif
 
     FILE* cfg_file = fopen(config_file, "r");
@@ -581,13 +444,19 @@ bool load_cfg()
         FILE* new_cfg = fopen(config_file, "w");
         if (!new_cfg)
         {
-            LOG_FATAL("无法生成文件: %s", config_file);
-            return false;
+            LOG_FATAL("无法生成文件: %s, 请检查权限后重启", config_file);
+            while (true)
+            {
+                sleep_ms(10000);
+            }
         }
         fprintf(new_cfg, "%s", s_default_cfg);
         fclose(new_cfg);
-        LOG_INFO("创建完成, 请在 %s 填写账号数据", config_file);
-        return false;
+        LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
     }
 
     fseek(cfg_file, 0, SEEK_END);
@@ -603,22 +472,25 @@ bool load_cfg()
     free(cfg_data);
     if (!cfg_json)
     {
-        LOG_FATAL("JSON 解析失败");
-        return false;
-    }
-
-    const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
-    if (enabled && cJSON_IsFalse(enabled))
-    {
-        LOG_WARN("配置文件中禁用了程序启动, 请开启后重启程序");
+        LOG_FATAL("JSON 解析失败, 请检查后重启");
         while (true)
         {
             sleep_ms(10000);
         }
     }
+
+    const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
     if (enabled == NULL)
     {
         LOG_WARN("enabled 参数不存在, 请填写后重启程序");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
+    }
+    if (cJSON_IsFalse(enabled))
+    {
+        LOG_WARN("配置文件中禁用了程序启动, 请开启后重启程序");
         while (true)
         {
             sleep_ms(10000);
@@ -635,11 +507,238 @@ bool load_cfg()
         LOG_WARN("log_lv 参数不存在, 使用默认等级 (INFO)");
     }
 
+    const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
+    if (accounts == NULL || cJSON_IsArray(accounts) == false || cJSON_GetArraySize(accounts) == 0)
+    {
+        LOG_FATAL("没有找到账号数据, 请添加后重启程序");
+        cJSON_Delete(cfg_json);
+        while (true)
+        {
+            sleep_ms(10000);
+        }
+    }
+
+    const uint8_t cnt = cJSON_GetArraySize(accounts);
+
+    int8_t valid_cnt = 0;
+
 #ifdef __OPENWRT__
-    if (load_cfg_openwrt(cfg_json) == false) return false;
+    LOG_INFO("OpenWRT 环境, 会尝试加载所有有效配置");
+
+    prog_status_t* new_prog_status = realloc(g_prog_status, sizeof(prog_status_t) * cnt);
+    if (new_prog_status)
+    {
+        g_prog_status = new_prog_status;
+        memset(g_prog_status, 0, sizeof(prog_status_t) * cnt);
+    }
+    else
+    {
+        LOG_FATAL("重分配内存失败");
+        return false;
+    }
+
+    bool use_cus_mark = false;
+
+    for (uint8_t i = 0, valid_i = 0; i < cnt; i++)
+    {
+        const cJSON* account = cJSON_GetArrayItem(accounts, i);
+
+        const cJSON* usr = cJSON_GetObjectItem(account, "username");
+        const cJSON* pwd = cJSON_GetObjectItem(account, "password");
+        const cJSON* chn = cJSON_GetObjectItem(account, "channel");
+        const cJSON* mark = cJSON_GetObjectItem(account, "mark");
+        // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
+
+        // 检查账号
+        if (usr == NULL)
+        {
+            LOG_WARN("配置 %" PRIu8 " username 参数不存在, 跳过当前配置", i + 1);
+            continue;
+        }
+        if (usr->valuestring[0] == '\0')
+        {
+            LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
+            continue;
+        }
+
+        // 检查密码
+        if (pwd == NULL)
+        {
+            LOG_WARN("配置 %" PRIu8 " password 参数不存在, 跳过当前配置", i + 1);
+            continue;
+        }
+        if (pwd->valuestring[0] == '\0')
+        {
+            LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
+            continue;
+        }
+
+        snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
+        snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
+
+        // 检查通道
+        if (chn == NULL)
+        {
+            LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道", i + 1);
+            snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", "phone");
+        }
+        else if (chn->valuestring[0] == '\0')
+        {
+            LOG_WARN("配置 %" PRIu8 " channel 参数为空, 使用默认通道", i + 1);
+            snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", "phone");
+        }
+        else
+        {
+            snprintf(g_prog_status[valid_i].login_cfg.chn, CHN_LEN, "%s", safe_str(chn->valuestring));
+        }
+
+        // 转化成 UA
+        if (strcmp(g_prog_status[valid_i].login_cfg.chn, "pc") == 0)
+        {
+            snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/Linux64/1003");
+            LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
+            LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
+        }
+        else
+        {
+            snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+            LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
+            LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
+        }
+
+        // 检查标记值
+        if (mark == NULL)
+        {
+            if (use_cus_mark)
+            {
+                LOG_WARN("其它配置使用了自定义标记值, 但配置 %" PRIu8 " 未填写, 将跳过该配置", i + 1);
+                continue;
+            }
+            g_prog_status[valid_i].login_cfg.mark = 0x100 + valid_i * 0x100;
+            LOG_DEBUG("使用自动标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
+            LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
+        }
+        else
+        {
+            if (use_cus_mark && mark->valuestring[0] == '\0')
+            {
+                LOG_WARN("其它配置使用了自定义标记值, 但配置 %" PRIu8 " 未填写, 将跳过该配置", i + 1);
+                continue;
+            }
+            if (mark->valuestring[0] != '\0')
+            {
+                g_prog_status[valid_i].login_cfg.mark = strtoul(mark->valuestring, NULL, 16);
+                g_prog_status[valid_i].login_cfg.use_cus_mark = true;
+                use_cus_mark = true;
+                LOG_DEBUG("使用自定义标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
+                LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
+            }
+            else
+            {
+                g_prog_status[valid_i].login_cfg.mark = 0x100 + valid_i * 0x100;
+                LOG_DEBUG("使用自动标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
+                LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
+            }
+        }
+
+        // g_prog_status[valid_i].login_cfg.auto_start = auto_start->valueint;
+
+        g_prog_status[valid_i].login_cfg.idx = i + 1;
+        LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
+        valid_cnt++;
+        valid_i++;
+    }
+
 #else
-    if (load_cfg_other(cfg_json) == false) return false;
+
+    LOG_INFO("非 OpenWRT 环境, 仅会尝试加载第一个有效配置");
+
+    for (uint8_t i = 0; i < cnt; i++)
+    {
+        const cJSON* account = cJSON_GetArrayItem(accounts, i);
+
+        const cJSON* usr = cJSON_GetObjectItem(account, "username");
+        const cJSON* pwd = cJSON_GetObjectItem(account, "password");
+        const cJSON* chn = cJSON_GetObjectItem(account, "channel");
+        // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
+
+        // 检查账号
+        if (usr == NULL)
+        {
+            LOG_WARN("配置 %" PRIu8 " username 参数不存在, 跳过当前配置", i + 1);
+            continue;
+        }
+        if (usr->valuestring[0] == '\0')
+        {
+            LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
+            continue;
+        }
+
+        // 检查密码
+        if (pwd == NULL)
+        {
+            LOG_WARN("配置 %" PRIu8 " password 参数不存在, 跳过当前配置", i + 1);
+            continue;
+        }
+        if (pwd->valuestring[0] == '\0')
+        {
+            LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
+            continue;
+        }
+
+        snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
+        snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
+
+        // 检查通道
+        if (chn == NULL)
+        {
+            LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道", i + 1);
+            snprintf(g_prog_status[0].login_cfg.chn, CHN_LEN, "%s", "phone");
+        }
+        else if (chn->valuestring[0] == '\0')
+        {
+            LOG_WARN("配置 %" PRIu8 " channel 参数为空, 使用默认通道", i + 1);
+            snprintf(g_prog_status[0].login_cfg.chn, CHN_LEN, "%s", "phone");
+        }
+        else
+        {
+            snprintf(g_prog_status[0].login_cfg.chn, CHN_LEN, "%s", safe_str(chn->valuestring));
+        }
+
+        // 转化成 UA
+        if (strcmp(g_prog_status[0].login_cfg.chn, "pc") == 0)
+        {
+            snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/Linux64/1003");
+            LOG_DEBUG("使用 UA: %s", g_prog_status[0].login_cfg.user_agent);
+            LOG_DEBUG("当前使用下标: 0");
+        }
+        else
+        {
+            snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, "CCTP/android64_vpn/2093");
+            LOG_DEBUG("使用 UA: %s", g_prog_status[0].login_cfg.user_agent);
+            LOG_DEBUG("当前使用下标: 0");
+        }
+
+        g_prog_status[0].login_cfg.idx = 1;
+        LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
+        valid_cnt++;
+        break;
+    }
+
 #endif
+
+    cJSON_Delete(cfg_json);
+
+    if (valid_cnt == 0)
+    {
+        LOG_FATAL("无可用配置, 请检查后重启程序");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
+    }
+
+    g_prog_cnt = valid_cnt;
 
     return true;
 }

@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 0)
-set(PROGRAM_VERSION_PATCH 1)
-set(PROGRAM_VERSION_RELEASE 1)
+set(PROGRAM_VERSION_PATCH 2)
+set(PROGRAM_VERSION_RELEASE 3)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -54,38 +54,70 @@ endif ()
 find_package(CURL REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-add_executable(ESurfingClient
-        src/cipher/impl/mod_xtea_cbc_triple_pc.c
-        src/cipher/impl/des_ecb_six_pc.c
-        src/cipher/impl/desede_cbc_pc.c
-        src/cipher/impl/mod_xtea_pc.c
-        src/cipher/impl/mod_xtea_iv.c
-        src/cipher/impl/aes_ecb_pc.c
-        src/cipher/impl/aes_cbc_pc.c
-        src/cipher/impl/desede_ecb.c
-        src/cipher/impl/desede_cbc.c
-        src/cipher/impl/mod_xtea.c
-        src/cipher/impl/sm4_ecb.c
-        src/cipher/impl/sm4_cbc.c
-        src/cipher/impl/aes_ecb.c
-        src/cipher/impl/aes_cbc.c
-        src/cipher/impl/zuc.c
-        src/cipher/CipherFactory.c
-        src/cipher/CipherUtils.c
-        src/cipher/KeyData.c
-#        src/webserver/WebServer.c
-#        src/webserver/mongoose.c
-        src/utils/PlatformUtils.c
-        src/utils/SimThread.c
-        src/utils/Shutdown.c
-        src/utils/Service.c
-        src/utils/Logger.c
-        src/utils/cJSON.c
-        src/DialerClient.c
-        src/NetClient.c
-        src/States.c
-        Main.c
-)
+if (__OPENWRT__)
+    add_executable(ESurfingClient
+            src/cipher/impl/mod_xtea_cbc_triple_pc.c
+            src/cipher/impl/des_ecb_six_pc.c
+            src/cipher/impl/desede_cbc_pc.c
+            src/cipher/impl/mod_xtea_pc.c
+            src/cipher/impl/mod_xtea_iv.c
+            src/cipher/impl/aes_ecb_pc.c
+            src/cipher/impl/aes_cbc_pc.c
+            src/cipher/impl/desede_ecb.c
+            src/cipher/impl/desede_cbc.c
+            src/cipher/impl/mod_xtea.c
+            src/cipher/impl/sm4_ecb.c
+            src/cipher/impl/sm4_cbc.c
+            src/cipher/impl/aes_ecb.c
+            src/cipher/impl/aes_cbc.c
+            src/cipher/impl/zuc.c
+            src/cipher/CipherFactory.c
+            src/cipher/CipherUtils.c
+            src/cipher/KeyData.c
+            src/utils/PlatformUtils.c
+            src/utils/SimThread.c
+            src/utils/Shutdown.c
+            src/utils/Logger.c
+            src/utils/cJSON.c
+            src/DialerClient.c
+            src/NetClient.c
+            src/States.c
+            Main.c
+    )
+else ()
+    add_executable(ESurfingClient
+            src/cipher/impl/mod_xtea_cbc_triple_pc.c
+            src/cipher/impl/des_ecb_six_pc.c
+            src/cipher/impl/desede_cbc_pc.c
+            src/cipher/impl/mod_xtea_pc.c
+            src/cipher/impl/mod_xtea_iv.c
+            src/cipher/impl/aes_ecb_pc.c
+            src/cipher/impl/aes_cbc_pc.c
+            src/cipher/impl/desede_ecb.c
+            src/cipher/impl/desede_cbc.c
+            src/cipher/impl/mod_xtea.c
+            src/cipher/impl/sm4_ecb.c
+            src/cipher/impl/sm4_cbc.c
+            src/cipher/impl/aes_ecb.c
+            src/cipher/impl/aes_cbc.c
+            src/cipher/impl/zuc.c
+            src/cipher/CipherFactory.c
+            src/cipher/CipherUtils.c
+            src/cipher/KeyData.c
+#            src/webserver/WebServer.c
+#            src/webserver/mongoose.c
+            src/utils/PlatformUtils.c
+            src/utils/SimThread.c
+            src/utils/Shutdown.c
+            src/utils/Service.c
+            src/utils/Logger.c
+            src/utils/cJSON.c
+            src/DialerClient.c
+            src/NetClient.c
+            src/States.c
+            Main.c
+    )
+endif ()
 
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
@@ -112,9 +144,14 @@ else ()
             dl
     )
     if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_libraries(ESurfingClient PRIVATE atomic m)
+        target_link_libraries(ESurfingClient PRIVATE
+                atomic
+                m
+        )
         if (__OPENWRT__)
-            target_link_libraries(ESurfingClient PRIVATE OpenSSL::SSL)
+            target_link_libraries(ESurfingClient PRIVATE
+                    OpenSSL::SSL
+            )
         endif ()
     endif ()
 endif ()

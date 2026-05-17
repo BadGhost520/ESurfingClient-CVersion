@@ -11,6 +11,8 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=libcurl libopenssl
 
+PKGARCH:=all
+
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
@@ -50,16 +52,21 @@ endef
 
 define Package/esurfingclient/postinst
 #!/bin/sh
-echo "程序安装完成"
+echo "ESurfing 客户端安装完成"
 
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
-	echo "有新的模板文件, 可查看是否有更新:"
+	echo "有新的模板文件, 可查看是否有更新"
 	echo "-> /etc/config/esurfingclient.apk-new"
 fi
 
 if [ -f "/etc/config/esurfingclient.opkg-new" ]; then
-	echo "有新的模板文件, 可查看是否有更新:"
+	echo "有新的模板文件, 可查看是否有更新"
 	echo "-> /etc/config/esurfingclient.opkg-new"
+fi
+
+if [ -f "/etc/config/esurfingclient.opkg" ]; then
+	echo "有新的模板文件, 可查看是否有更新"
+	echo "-> /etc/config/esurfingclient.opkg"
 fi
 
 if [ -f "/etc/init.d/esurfingclient.apk-new" ]; then
@@ -74,7 +81,7 @@ exit 0
 endef
 
 define Package/esurfingclient/description
-轻量第三方电信校园网认证客户端 ---- 支持 OpenWrt/Linux/Windows 多平台运行
+轻量第三方电信校园网认证客户端 (支持 OpenWrt/Linux/Windows 多平台运行)
 endef
 
 define Build/Compile
@@ -86,10 +93,19 @@ define Package/esurfingclient/install
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+	$(INSTALL_BIN) $(CURDIR)/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CURDIR)/files/etc/config/ESurfingClient.json $(1)/etc/config/esurfingclient
+	$(INSTALL_CONF) $(CURDIR)/config/ESurfingClient.json $(1)/etc/config/esurfingclient
+
+	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
+	$(INSTALL_DATA) $(CURDIR)/luci/menu.d/luci-app-esurfingclient.json $(1)/usr/share/luci/menu.d/
+
+	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/esurfingclient
+	$(INSTALL_DATA) $(CURDIR)/luci/view/config.js $(1)/www/luci-static/resources/view/esurfingclient/
+
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
+	$(INSTALL_DATA) $(CURDIR)/luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/
 endef
 
 $(eval $(call BuildPackage,esurfingclient))

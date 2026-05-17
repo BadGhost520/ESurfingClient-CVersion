@@ -44,11 +44,6 @@ static BOOL WINAPI console_handler(const DWORD ctrlType)
     }
 }
 
-void shut_clean_logger()
-{
-    clean_logger();
-}
-
 void shut(const uint8_t exitCode)
 {
     LOG_INFO("主程序正在关闭");
@@ -70,7 +65,7 @@ void shut(const uint8_t exitCode)
     LOG_INFO("退出程序");
     if (get_service_mode() == false)
     {
-        shut_clean_logger();
+        clean_logger();
         exit(exitCode);
     }
 }
@@ -102,11 +97,6 @@ static void signal_handler(const int sig)
     }
 }
 
-void shut_clean_logger()
-{
-    clean_logger();
-}
-
 void shut(const uint8_t exitCode)
 {
     LOG_INFO("主程序正在关闭");
@@ -126,7 +116,7 @@ void shut(const uint8_t exitCode)
         LOG_DEBUG("线程退出, 退出码: %d", result_code);
     }
     LOG_INFO("退出程序");
-    shut_clean_logger();
+    clean_logger();
     exit(exitCode);
 }
 #endif

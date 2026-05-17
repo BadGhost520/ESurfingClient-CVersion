@@ -74,6 +74,10 @@ typedef struct
     char chn[CHN_LEN];
     /** @brief 设备 UA */
     char user_agent[USER_AGENT_LEN];
+    /** @brief 标记值 */
+    uint32_t mark;
+    /** @brief 是否使用自定义标记值 */
+    bool use_cus_mark;
     // /** @brief 自启状态 */
     // bool auto_start;
     /** @brief 配置序号 */
@@ -93,8 +97,6 @@ typedef struct
     bool is_authed;
     /** @brief 需要重置 */
     bool is_need_reset;
-    /** @brief last_location 数据锁 */
-    bool last_location_lock;
 } runtime_status_t;
 
 /** @brief 认证线程状态 */
@@ -106,14 +108,14 @@ typedef struct
     login_cfg_t login_cfg;
     /** @brief 运行状态 */
     runtime_status_t runtime_status;
-    /** @brief 获取认证配置地址 */
-    char last_location[LAST_LOCATION_LEN];
-    /** @brief 标记值 */
-    uint32_t mark;
     /** @brief 线程 ID */
     uint64_t thread_id;
     /** @brief 线程 */
     sim_thread_t* thread;
+    /** @brief 获取认证配置地址 */
+    char last_location[LAST_LOCATION_LEN];
+    /** @brief last_location 数据锁 */
+    bool last_location_lock;
 } prog_status_t;
 
 /** @brief 程序开始运行时间 */

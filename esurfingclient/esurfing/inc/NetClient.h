@@ -14,6 +14,7 @@ typedef enum {
 
 typedef struct {
     NetworkStatus status;
+    CURLcode curl_code;
     char* body_data;
     size_t body_size;
 } http_resp_t;
