@@ -400,7 +400,7 @@ http_resp_t post(const char* url, const char* data)
         return resp;
     }
 
-    LOG_ERROR("HTTP 响应错误, 响应码: %d", resp_code);
+    LOG_ERROR("HTTP 响应错误, 响应码: %ld", resp_code);
     resp.status = REQUEST_ERROR;
     return resp;
 }
@@ -495,7 +495,7 @@ http_resp_t get(const char* url)
         return resp;
     }
 
-    LOG_ERROR("HTTP 响应错误, 响应码: %d", resp_code);
+    LOG_ERROR("HTTP 响应错误, 响应码: %ld", resp_code);
     resp.status = REQUEST_ERROR;
     return resp;
 }
