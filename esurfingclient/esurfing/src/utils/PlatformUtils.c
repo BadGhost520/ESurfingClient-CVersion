@@ -716,8 +716,11 @@ bool load_cfg()
 
     if (valid_cnt == 0)
     {
-        LOG_FATAL("无可用配置");
-        return false;
+        LOG_FATAL("无可用配置, 请检查后重启程序");
+        while (true)
+        {
+            sleep_ms(10000);
+        }
     }
 
     g_prog_cnt = valid_cnt;
