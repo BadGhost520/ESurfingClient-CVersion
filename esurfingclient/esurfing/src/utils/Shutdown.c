@@ -44,7 +44,7 @@ static BOOL WINAPI console_handler(const DWORD ctrlType)
     }
 }
 
-void shut(const uint8_t exitCode)
+void shut(const uint8_t exit_code)
 {
     LOG_INFO("主程序正在关闭");
     // if (is_webserver_running) stopWebServer();
@@ -62,12 +62,13 @@ void shut(const uint8_t exitCode)
         sim_thread_join(g_prog_status[i].thread, &result_code);
         LOG_DEBUG("线程退出, 退出码: %d", result_code);
     }
-    LOG_INFO("退出程序");
-    if (get_service_mode() == false)
+    LOG_INFO("退出程序, 退出码: %" PRIu8, exit_code);
+    clean_logger();
+    if (get_service_mode())
     {
-        clean_logger();
-        exit(exitCode);
+        longjmp(exit_jmp, 1);
     }
+    exit(exit_code);
 }
 #else
 // Linux/Unix 信号处理
@@ -97,7 +98,7 @@ static void signal_handler(const int sig)
     }
 }
 
-void shut(const uint8_t exitCode)
+void shut(const uint8_t exit_code)
 {
     LOG_INFO("主程序正在关闭");
     // if (is_webserver_running) stopWebServer();
@@ -115,9 +116,9 @@ void shut(const uint8_t exitCode)
         sim_thread_join(g_prog_status[i].thread, &result_code);
         LOG_DEBUG("线程退出, 退出码: %d", result_code);
     }
-    LOG_INFO("退出程序");
+    LOG_INFO("退出程序, 退出码: %" PRIu8, exit_code);
     clean_logger();
-    exit(exitCode);
+    exit(exit_code);
 }
 #endif
 
