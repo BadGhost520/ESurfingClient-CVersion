@@ -98,14 +98,22 @@ define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) $(CURDIR)/config/ESurfingClient.json $(1)/etc/config/esurfingclient
 
-	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
-	$(INSTALL_DATA) $(CURDIR)/luci/menu.d/luci-app-esurfingclient.json $(1)/usr/share/luci/menu.d/
+	ifneq ($(wildcard $(STAGING_DIR_ROOT)/usr/share/luci/menu.d),)
+		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
+		$(INSTALL_DATA) $(CURDIR)/luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/
 
-	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/esurfingclient
-	$(INSTALL_DATA) $(CURDIR)/luci/view/config.js $(1)/www/luci-static/resources/view/esurfingclient/
+		$(INSTALL_DIR) $(1)/www/luci-static/resources/view/esurfingclient
+		$(INSTALL_DATA) $(CURDIR)/luci/view/config.js $(1)/www/luci-static/resources/view/esurfingclient/
 
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
-	$(INSTALL_DATA) $(CURDIR)/luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/
+		$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
+		$(INSTALL_DATA) $(CURDIR)/luci/menu.d/esurfingclient.json $(1)/usr/share/luci/menu.d/
+	else
+		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
+		$(INSTALL_DATA) $(CURDIR)/legacy-luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/
+
+		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/esurfingclient
+		$(INSTALL_DATA) $(CURDIR)/legacy-luci/view/config.htm $(1)/usr/lib/lua/luci/view/esurfingclient/
+	endif
 endef
 
 $(eval $(call BuildPackage,esurfingclient))

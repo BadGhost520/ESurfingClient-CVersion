@@ -1,0 +1,276 @@
+<%
+if luci.http.getenv("REQUEST_METHOD") == "POST" then
+local data = luci.http.content()
+if data and data ~= "" then
+local f = io.open("/etc/config/esurfingclient", "w")
+if f then
+f:write(data)
+f:close()
+os.execute("/etc/init.d/esurfingclient restart >/dev/null 2>&1 &")
+luci.http.prepare_content("application/json")
+luci.http.write('{"status":"ok"}')
+else
+luci.http.status(500)
+luci.http.prepare_content("application/json")
+luci.http.write('{"status":"error","message":"Cannot write file"}')
+end
+else
+luci.http.status(400)
+luci.http.prepare_content("application/json")
+luci.http.write('{"status":"error","message":"No data received"}')
+end
+return
+end
+
+local config_json = '{"enabled":false,"log_lv":4,"accounts":[]}'
+local file = io.open("/etc/config/esurfingclient", "r")
+if file then
+local content = file:read("*a")
+file:close()
+if content and content ~= "" then
+config_json = content
+end
+end
+%>
+<%+header%>
+<style>
+    .custom-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 200px;
+        padding: 12px 16px;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .custom-notification.success {
+        background-color: #4caf50;
+    }
+    .custom-notification.error {
+        background-color: #f44336;
+    }
+    .custom-notification.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+
+<h2>ESurfing 客户端</h2>
+<p>用于方便地调整 ESurfing 程序的配置文件<br>账号密码与原电信认证程序的账号密码相同</p>
+
+<div id="config-form">
+    <div class="cbi-section">
+        <h3>基本设置</h3>
+        <div class="cbi-value">
+            <label class="cbi-value-title">启用</label>
+            <div class="cbi-value-field">
+                <input type="checkbox" id="cfg_enabled" onchange="updateConfig()">
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">日志级别</label>
+            <div class="cbi-value-field">
+                <select id="cfg_log_lv" class="cbi-input-select" onchange="updateConfig()">
+                    <option value="0">0 - 关闭</option>
+                    <option value="1">1 - 致命</option>
+                    <option value="2">2 - 错误</option>
+                    <option value="3">3 - 警告</option>
+                    <option value="4">4 - 信息</option>
+                    <option value="5">5 - 调试</option>
+                    <option value="6">6 - 全部</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="cbi-section">
+        <h3>账号列表</h3>
+        <div class="cbi-section-table-wrapper">
+            <table class="cbi-section-table" id="accounts-table">
+                <thead>
+                <tr>
+                    <th>账号</th>
+                    <th>密码</th>
+                    <th>通道</th>
+                    <th>标记值</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody id="accounts-body">
+                </tbody>
+            </table>
+        </div>
+        <div class="cbi-page-actions">
+            <button class="cbi-button cbi-button-add" onclick="addAccount()">添加</button>
+        </div>
+    </div>
+
+    <div class="cbi-page-actions" style="text-align:right">
+        <button class="cbi-button cbi-button-apply" onclick="saveAndApply()">保存并应用</button>
+    </div>
+</div>
+
+<script>
+    var config = <% luci.http.write(config_json) %>;
+
+    function showNotification(message, type) {
+        var container = document.getElementById('notification-area');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-area';
+            container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;';
+            document.body.appendChild(container);
+        }
+        var note = document.createElement('div');
+        note.className = 'custom-notification ' + (type === 'success' ? 'success' : 'error');
+        note.textContent = message;
+        container.appendChild(note);
+        setTimeout(function() { note.classList.add('show'); }, 10);
+        setTimeout(function() {
+            note.classList.remove('show');
+            setTimeout(function() {
+                if (note.parentNode) note.parentNode.removeChild(note);
+            }, 300);
+        }, 3000);
+    }
+
+    function renderConfig() {
+        document.getElementById('cfg_enabled').checked = config.enabled;
+        document.getElementById('cfg_log_lv').value = config.log_lv;
+        renderAccounts();
+    }
+
+    function renderAccounts() {
+        var tbody = document.getElementById('accounts-body');
+        tbody.innerHTML = '';
+        var accounts = config.accounts || [];
+        for (var i = 0; i < accounts.length; i++) {
+            var acc = accounts[i];
+            var tr = document.createElement('tr');
+
+            var td1 = document.createElement('td');
+            var input1 = document.createElement('input');
+            input1.type = 'text';
+            input1.value = acc.username || '';
+            input1.setAttribute('data-idx', i);
+            input1.setAttribute('data-field', 'username');
+            input1.onchange = function() { updateAccount(this); };
+            td1.appendChild(input1);
+
+            var td2 = document.createElement('td');
+            var input2 = document.createElement('input');
+            input2.type = 'password';
+            input2.value = acc.password || '';
+            input2.setAttribute('data-idx', i);
+            input2.setAttribute('data-field', 'password');
+            input2.onchange = function() { updateAccount(this); };
+            td2.appendChild(input2);
+
+            var td3 = document.createElement('td');
+            var select = document.createElement('select');
+            select.setAttribute('data-idx', i);
+            select.setAttribute('data-field', 'channel');
+            select.onchange = function() { updateAccount(this); };
+            var opt1 = document.createElement('option');
+            opt1.value = 'phone';
+            opt1.textContent = 'phone';
+            if (acc.channel === 'phone') opt1.selected = true;
+            var opt2 = document.createElement('option');
+            opt2.value = 'pc';
+            opt2.textContent = 'pc';
+            if (acc.channel === 'pc') opt2.selected = true;
+            select.appendChild(opt1);
+            select.appendChild(opt2);
+            td3.appendChild(select);
+
+            var td4 = document.createElement('td');
+            var input4 = document.createElement('input');
+            input4.type = 'text';
+            input4.value = acc.mark || '';
+            input4.setAttribute('data-idx', i);
+            input4.setAttribute('data-field', 'mark');
+            input4.onchange = function() { updateAccount(this); };
+            td4.appendChild(input4);
+
+            var td5 = document.createElement('td');
+            var delBtn = document.createElement('button');
+            delBtn.className = 'cbi-button cbi-button-remove';
+            delBtn.textContent = '删除';
+            delBtn.onclick = (function(idx) {
+                return function() { deleteAccount(idx); };
+            })(i);
+            td5.appendChild(delBtn);
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tr.appendChild(td4);
+            tr.appendChild(td5);
+
+            tbody.appendChild(tr);
+        }
+    }
+
+    function updateAccount(el) {
+        var idx = parseInt(el.getAttribute('data-idx'));
+        var field = el.getAttribute('data-field');
+        config.accounts[idx][field] = el.value;
+    }
+
+    function addAccount() {
+        config.accounts = config.accounts || [];
+        config.accounts.push({username:'', password:'', channel:'phone', mark:''});
+        renderAccounts();
+    }
+
+    function deleteAccount(idx) {
+        config.accounts.splice(idx, 1);
+        renderAccounts();
+    }
+
+    function updateConfig() {
+        config.enabled = document.getElementById('cfg_enabled').checked;
+        config.log_lv = parseInt(document.getElementById('cfg_log_lv').value);
+    }
+
+    function saveAndApply() {
+        updateConfig();
+        var btn = document.querySelector('.cbi-button-apply');
+        btn.disabled = true;
+        var originalText = btn.textContent;
+        btn.textContent = '保存中...';
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config, null, 2)
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.status === 'ok') {
+                    showNotification('配置已保存并应用，服务已重启', 'success');
+                } else {
+                    showNotification('保存失败: ' + (res.message || '未知错误'), 'error');
+                }
+            })
+            .catch(function(e) {
+                showNotification('请求失败: ' + e.message, 'error');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            });
+    }
+
+    window.onload = function() {
+        renderConfig();
+    };
+</script>
+
+<%+footer%>
