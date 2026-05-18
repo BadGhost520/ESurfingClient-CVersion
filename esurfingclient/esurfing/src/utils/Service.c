@@ -2,9 +2,12 @@
 #include "utils/Service.h"
 #include "utils/Logger.h"
 
+#include <setjmp.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+
+extern jmp_buf exit_jmp;
 
 extern void work();
 
@@ -57,9 +60,10 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR *argv)
     g_ServiceStatus.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
 
-    work();
-
-    clean_logger();
+    if (setjmp(exit_jmp) == 0)
+    {
+        work();
+    }
 
     CloseHandle(g_ServiceStopEvent);
     g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;

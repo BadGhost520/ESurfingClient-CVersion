@@ -188,6 +188,13 @@ void sleep_ms(const uint64_t ms)
                 return;
             }
         }
+        else
+        {
+            if (need_exit)
+            {
+                return;
+            }
+        }
         const uint64_t SEGMENT_MS = 100;
         const uint64_t sleep_time = ms - elapsed < SEGMENT_MS ? ms - elapsed : SEGMENT_MS;
 
@@ -429,11 +436,15 @@ bool load_cfg()
         LOG_ERROR("获取可执行文件路径失败, 请检查权限后重启");
         while (true)
         {
+            if (need_exit)
+            {
+                return false;
+            }
             sleep_ms(10000);
         }
     }
-    char config_file[PATH_MAX];
-    snprintf(config_file, PATH_MAX, "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
+    char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
+    snprintf(config_file, PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE), "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
 #endif
 
     FILE* cfg_file = fopen(config_file, "r");
@@ -447,6 +458,10 @@ bool load_cfg()
             LOG_FATAL("无法生成文件: %s, 请检查权限后重启", config_file);
             while (true)
             {
+                if (need_exit)
+                {
+                    return false;
+                }
                 sleep_ms(10000);
             }
         }
@@ -455,6 +470,10 @@ bool load_cfg()
         LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启");
         while (true)
         {
+            if (need_exit)
+            {
+                return false;
+            }
             sleep_ms(10000);
         }
     }
@@ -475,6 +494,10 @@ bool load_cfg()
         LOG_FATAL("JSON 解析失败, 请检查后重启");
         while (true)
         {
+            if (need_exit)
+            {
+                return false;
+            }
             sleep_ms(10000);
         }
     }
@@ -485,6 +508,10 @@ bool load_cfg()
         LOG_WARN("enabled 参数不存在, 请填写后重启程序");
         while (true)
         {
+            if (need_exit)
+            {
+                return false;
+            }
             sleep_ms(10000);
         }
     }
@@ -493,6 +520,10 @@ bool load_cfg()
         LOG_WARN("配置文件中禁用了程序启动, 请开启后重启程序");
         while (true)
         {
+            if (need_exit)
+            {
+                return false;
+            }
             sleep_ms(10000);
         }
     }
@@ -514,6 +545,10 @@ bool load_cfg()
         cJSON_Delete(cfg_json);
         while (true)
         {
+            if (need_exit)
+            {
+                return false;
+            }
             sleep_ms(10000);
         }
     }
@@ -734,6 +769,10 @@ bool load_cfg()
         LOG_FATAL("无可用配置, 请检查后重启程序");
         while (true)
         {
+            if (need_exit)
+            {
+                return false;
+            }
             sleep_ms(10000);
         }
     }

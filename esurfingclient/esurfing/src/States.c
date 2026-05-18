@@ -6,11 +6,15 @@
 
 // uint64_t g_start_run_tm = 0;
 
+jmp_buf exit_jmp;
+
 int8_t g_prog_cnt = 0;
 
 _Thread_local int8_t thread_idx = -1;
 
 bool thread_keep_alive = false;
+
+bool need_exit = false;
 
 prog_status_t* g_prog_status;
 

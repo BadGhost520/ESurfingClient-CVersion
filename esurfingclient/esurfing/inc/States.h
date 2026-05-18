@@ -4,6 +4,7 @@
 #include "cipher/CipherInterface.h"
 #include "utils/SimThread.h"
 
+#include <setjmp.h>
 #include <stdint.h>
 
 #define SCHOOL_NETWORK_SYMBOL 8
@@ -121,6 +122,9 @@ typedef struct
 /** @brief 程序开始运行时间 */
 // extern uint64_t g_start_run_tm;
 
+/** @brief 跳出标志 */
+extern jmp_buf exit_jmp;
+
 /** @brief 适配器数 */
 extern int8_t g_prog_cnt;
 
@@ -129,6 +133,9 @@ extern _Thread_local int8_t thread_idx;
 
 /** @brief 线程保活 */
 extern bool thread_keep_alive;
+
+/** @brief 需要退出 */
+extern bool need_exit;
 
 /** @brief 认证线程状态 */
 extern prog_status_t* g_prog_status;
