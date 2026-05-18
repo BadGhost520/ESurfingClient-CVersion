@@ -11,8 +11,6 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_DEPENDS:=libcurl libopenssl
 
-PKGARCH:=all
-
 IS_NEW_LUCI := $(if $(wildcard $(STAGING_DIR_ROOT)/usr/share/luci/menu.d),1,0)
 
 include $(INCLUDE_DIR)/package.mk
@@ -46,6 +44,7 @@ define Package/esurfingclient
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=ESurfingClient
+	PKGARCH:=all
 endef
 
 define Package/esurfingclient/conffiles
