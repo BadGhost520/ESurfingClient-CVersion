@@ -2,7 +2,7 @@
 name: 报告 bug
 about: 向开发者提交 bug 报告
 title: "[BUG]: "
-labels: bug
+labels: BUG
 assignees: BadGhost520
 
 ---
