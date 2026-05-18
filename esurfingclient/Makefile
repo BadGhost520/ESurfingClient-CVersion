@@ -13,6 +13,8 @@ PKG_BUILD_DEPENDS:=libcurl libopenssl
 
 PKGARCH:=all
 
+IS_NEW_LUCI := $(if $(wildcard $(STAGING_DIR_ROOT)/usr/share/luci/menu.d),1,0)
+
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
@@ -98,22 +100,19 @@ define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) $(CURDIR)/config/ESurfingClient.json $(1)/etc/config/esurfingclient
 
-	ifneq ($(wildcard $(STAGING_DIR_ROOT)/usr/share/luci/menu.d),)
-		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
-		$(INSTALL_DATA) $(CURDIR)/luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/
-
-		$(INSTALL_DIR) $(1)/www/luci-static/resources/view/esurfingclient
-		$(INSTALL_DATA) $(CURDIR)/luci/view/config.js $(1)/www/luci-static/resources/view/esurfingclient/
-
-		$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
-		$(INSTALL_DATA) $(CURDIR)/luci/menu.d/esurfingclient.json $(1)/usr/share/luci/menu.d/
-	else
-		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
-		$(INSTALL_DATA) $(CURDIR)/legacy-luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/
-
-		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/esurfingclient
-		$(INSTALL_DATA) $(CURDIR)/legacy-luci/view/config.htm $(1)/usr/lib/lua/luci/view/esurfingclient/
-	endif
+	if [ "$(IS_NEW_LUCI)" = "1" ]; then \
+		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller; \
+		$(INSTALL_DATA) $(CURDIR)/luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/; \
+		$(INSTALL_DIR) $(1)/www/luci-static/resources/view/esurfingclient; \
+		$(INSTALL_DATA) $(CURDIR)/luci/view/config.js $(1)/www/luci-static/resources/view/esurfingclient/; \
+		$(INSTALL_DIR) $(1)/usr/share/luci/menu.d; \
+		$(INSTALL_DATA) $(CURDIR)/luci/menu.d/esurfingclient.json $(1)/usr/share/luci/menu.d/; \
+	else \
+		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller; \
+		$(INSTALL_DATA) $(CURDIR)/legacy-luci/controller/esurfingclient.lua $(1)/usr/lib/lua/luci/controller/; \
+		$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/esurfingclient; \
+		$(INSTALL_DATA) $(CURDIR)/legacy-luci/view/config.htm $(1)/usr/lib/lua/luci/view/esurfingclient/; \
+	fi
 endef
 
 $(eval $(call BuildPackage,esurfingclient))
