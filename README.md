@@ -1,4 +1,4 @@
-# ESurfingClient-C (当前最新版本 [v2.0.1-r1](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest/))
+# ESurfingClient-C > [最新版本](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest/)
 
 **根据 Rsplwe 大佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** 👍
 
