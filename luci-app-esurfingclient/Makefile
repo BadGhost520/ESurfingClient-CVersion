@@ -27,7 +27,7 @@ define Package/luci-app-esurfingclient/install
 	$(INSTALL_DATA) $(CURDIR)/luci/view/config.js $(1)/tmp/luci-staging/new/view/esurfingclient/
 
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/menu.d
-	$(INSTALL_DATA) $(CURDIR)/luci/menu.d/esurfingclient.json $(1)/tmp/luci-staging/new/menu.d/
+	$(INSTALL_DATA) $(CURDIR)/luci/menu.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/menu.d/
 
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/legacy/controller
 	$(INSTALL_DATA) $(CURDIR)/legacy-luci/controller/esurfingclient.lua $(1)/tmp/luci-staging/legacy/controller/
@@ -44,7 +44,7 @@ if [ -d "/usr/share/luci/menu.d" ]; then
 	cp /tmp/luci-staging/new/controller/esurfingclient.lua /usr/lib/lua/luci/controller/
 	mkdir -p /www/luci-static/resources/view/esurfingclient
 	cp /tmp/luci-staging/new/view/esurfingclient/config.js /www/luci-static/resources/view/esurfingclient/
-	cp /tmp/luci-staging/new/menu.d/esurfingclient.json /usr/share/luci/menu.d/
+	cp /tmp/luci-staging/new/menu.d/luci-app-esurfingclient.json /usr/share/luci/menu.d/
 else
 	cp /tmp/luci-staging/legacy/controller/esurfingclient.lua /usr/lib/lua/luci/controller/
 	mkdir -p /usr/lib/lua/luci/view/esurfingclient
