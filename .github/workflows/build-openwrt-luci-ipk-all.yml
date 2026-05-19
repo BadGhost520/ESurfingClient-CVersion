@@ -85,7 +85,6 @@ jobs:
         run: |
           cd openwrt-sdk
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
-          # 查找生成的 ipk 文件（架构为 all）
           find bin/packages -name "luci-app-esurfingclient_*.ipk" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk \;
 
       - name: 上传工件

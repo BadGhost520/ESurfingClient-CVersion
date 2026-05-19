@@ -72,7 +72,7 @@ jobs:
         run: |
           cd openwrt-sdk
           scripts/feeds update packages
-          scripts/feeds install luci-base    # 只需安装 luci-base 即可解决依赖
+          scripts/feeds install luci-base
           make defconfig
 
       - name: 部署 LuCI 包
@@ -85,8 +85,9 @@ jobs:
         run: |
           cd openwrt-sdk
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
-          # 查找生成的 apk 文件（架构为 all）
           find bin/packages -name "luci-app-esurfingclient_*.apk" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.apk \;
+          find bin/packages -name "luci-app-esurfingclient_*.apk"
+          find bin/packages -name "luci-app-esurfingclient_*.ipk"
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
