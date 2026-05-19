@@ -38,7 +38,7 @@ jobs:
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
-          PACKAGES="wget zstd file make rsync"
+          PACKAGES="wget zstd file make rsync perl"
 
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
