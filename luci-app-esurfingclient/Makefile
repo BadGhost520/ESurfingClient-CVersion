@@ -41,11 +41,14 @@ define Package/luci-app-esurfingclient/postinst
 echo "正在配置 ESurfing 客户端 LuCI 页面"
 
 if [ -d "/usr/share/luci/menu.d" ]; then
+	mkdir -p /usr/lib/lua/luci/controller
 	cp /tmp/luci-staging/new/controller/esurfingclient.lua /usr/lib/lua/luci/controller/
 	mkdir -p /www/luci-static/resources/view/esurfingclient
 	cp /tmp/luci-staging/new/view/esurfingclient/config.js /www/luci-static/resources/view/esurfingclient/
+	mkdir -p /usr/share/luci/menu.d
 	cp /tmp/luci-staging/new/menu.d/luci-app-esurfingclient.json /usr/share/luci/menu.d/
 else
+	mkdir -p /usr/lib/lua/luci/controller
 	cp /tmp/luci-staging/legacy/controller/esurfingclient.lua /usr/lib/lua/luci/controller/
 	mkdir -p /usr/lib/lua/luci/view/esurfingclient
 	cp /tmp/luci-staging/legacy/view/esurfingclient/config.htm /usr/lib/lua/luci/view/esurfingclient/
