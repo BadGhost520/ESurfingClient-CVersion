@@ -38,7 +38,7 @@ endef
 
 define Package/luci-app-esurfingclient/postinst
 #!/bin/sh
-echo "正在配置 ESurfing 客户端 LuCI 页面"
+echo "正在配置 ESurfing 客户端 LuCI"
 
 if [ -d "/usr/share/luci/menu.d" ]; then
 	mkdir -p /usr/lib/lua/luci/controller
@@ -60,6 +60,24 @@ rm -rf /tmp/luci-*
 /etc/init.d/uhttpd restart 2>/dev/null &
 
 echo "LuCI 界面配置完成"
+exit 0
+endef
+
+define Package/luci-app-esurfingclient/postrm
+#!/bin/sh
+echo "正在移除 ESurfingClient LuCI"
+
+rm -f /usr/lib/lua/luci/controller/esurfingclient.lua
+rm -f /www/luci-static/resources/view/esurfingclient/config.js
+rm -f /usr/share/luci/menu.d/luci-app-esurfingclient.json
+rmdir /www/luci-static/resources/view/esurfingclient 2>/dev/null || true
+rm -f /usr/lib/lua/luci/view/esurfingclient/config.htm
+rmdir /usr/lib/lua/luci/view/esurfingclient 2>/dev/null || true
+
+rm -rf /tmp/luci-*
+/etc/init.d/uhttpd restart 2>/dev/null &
+
+echo "LuCI 界面已移除"
 exit 0
 endef
 
