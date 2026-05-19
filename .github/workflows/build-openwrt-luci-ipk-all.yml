@@ -90,6 +90,6 @@ jobs:
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all
+          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all-ipk
           path: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk
           retention-days: 30
