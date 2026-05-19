@@ -85,7 +85,7 @@ jobs:
         run: |
           cd openwrt-sdk
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
-          find bin/packages -name "luci-app-esurfingclient_*.ipk" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk \;
+          find bin/packages -name "luci-app-esurfingclient*.ipk" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk \;
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
