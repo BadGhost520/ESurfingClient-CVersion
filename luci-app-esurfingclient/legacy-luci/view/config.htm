@@ -1,0 +1,363 @@
+<%
+-- 处理 AJAX 保存请求
+if luci.http.getenv("REQUEST_METHOD") == "POST" then
+local data = luci.http.content()
+if data and data ~= "" then
+local f = io.open("/etc/config/esurfingclient", "w")
+if f then
+f:write(data)
+f:close()
+os.execute("/etc/init.d/esurfingclient restart >/dev/null 2>&1")
+os.execute("sleep 5")
+luci.http.prepare_content("application/json")
+luci.http.write('{"status":"ok"}')
+else
+luci.http.status(500)
+luci.http.prepare_content("application/json")
+luci.http.write('{"status":"error","message":"Cannot write file"}')
+end
+else
+luci.http.status(400)
+luci.http.prepare_content("application/json")
+luci.http.write('{"status":"error","message":"No data received"}')
+end
+return
+end
+
+-- 读取配置文件
+local config_json = '{"enabled":false,"log_lv":4,"accounts":[]}'
+local file = io.open("/etc/config/esurfingclient", "r")
+if file then
+local content = file:read("*a")
+file:close()
+if content and content ~= "" then
+config_json = content
+end
+end
+%>
+<%+header%>
+<style>
+    .custom-notification {
+        position: fixed; top: 20px; right: 20px; z-index: 10000;
+        min-width: 200px; padding: 12px 16px; border-radius: 4px;
+        color: #fff; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        opacity: 0; transform: translateY(-10px);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .custom-notification.success { background-color: #4caf50; }
+    .custom-notification.error { background-color: #f44336; }
+    .custom-notification.show { opacity: 1; transform: translateY(0); }
+
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 2000;
+        display: flex; justify-content: center; align-items: flex-start;
+        padding: 70px; box-sizing: border-box;
+        opacity: 0; transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active { opacity: 1; }
+    .modal-content {
+        background: white; border-radius: 4px; padding: 20px;
+        width: 100%; max-width: 700px; max-height: calc(100vh - 140px);
+        overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .modal-title {
+        background: white; padding: 15px 20px; margin: -20px -20px 0 -20px;
+        box-shadow: 0 1px 15px rgba(0,0,0,0.05);
+        font-weight: bold; font-size: 16px; color: #525F7F;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .modal-body {
+        padding-top: 30px;
+    }
+    .modal-body .content-wrapper {
+        padding-left: 15%;   /* 左缩进，内容从第二块开始 */
+    }
+    .field-row {
+        display: flex; align-items: center; margin-bottom: 18px;
+    }
+    .field-row label {
+        width: 80px; text-align: right; margin-right: 20px; flex-shrink: 0;
+    }
+    .field-row .control {
+        width: 290px; flex-shrink: 0;
+    }
+    .modal-footer {
+        display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;
+    }
+    .btn-close {
+        background-color: rgb(240, 240, 240) !important;
+        color: #8898AA !important;
+        border: none !important;
+    }
+</style>
+
+<h2>ESurfing 客户端</h2>
+<p>用于方便地调整 ESurfing 程序的配置文件<br>账号密码与原电信认证程序的账号密码相同<br>> Powered by BadGhost</p>
+
+<div class="cbi-map">
+    <div class="cbi-section">
+        <h3>基本设置</h3>
+        <div class="cbi-value">
+            <label class="cbi-value-title">启用</label>
+            <div class="cbi-value-field">
+                <input type="checkbox" id="cfg_enabled" onchange="updateConfig()">
+            </div>
+        </div>
+        <div class="cbi-value">
+            <label class="cbi-value-title">日志级别</label>
+            <div class="cbi-value-field">
+                <select id="cfg_log_lv" class="cbi-input-select" onchange="updateConfig()">
+                    <option value="0">0 - 关闭</option>
+                    <option value="1">1 - 致命</option>
+                    <option value="2">2 - 错误</option>
+                    <option value="3">3 - 警告</option>
+                    <option value="4">4 - 信息</option>
+                    <option value="5">5 - 调试</option>
+                    <option value="6">6 - 全部</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="cbi-section">
+        <h3>账号列表 (<span id="accounts-count">0</span>个)</h3>
+        <div class="cbi-section-table-wrapper">
+            <table class="cbi-section-table">
+                <thead>
+                <tr class="cbi-section-table-row">
+                    <th class="cbi-section-table-cell">账号</th>
+                    <th class="cbi-section-table-cell">密码</th>
+                    <th class="cbi-section-table-cell">通道</th>
+                    <th class="cbi-section-table-cell">标记值</th>
+                    <th class="cbi-section-table-cell cbi-section-actions" style="width:1%; white-space:nowrap;"></th>
+                </tr>
+                </thead>
+                <tbody id="accounts-body">
+                </tbody>
+            </table>
+        </div>
+        <div class="cbi-page-actions" style="text-align:left; margin-top:10px;">
+            <button class="cbi-button cbi-button-add" onclick="openAddModal()">添加</button>
+        </div>
+    </div>
+
+    <div class="cbi-page-actions" style="text-align:right; margin-top:10px;">
+        <button class="cbi-button cbi-button-apply important" onclick="saveAndApply()">保存并应用</button>
+    </div>
+</div>
+
+<!-- 模态框 -->
+<div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-title" id="modal-title">添加账号</div>
+        <div class="modal-body">
+            <div class="content-wrapper">
+                <div class="field-row">
+                    <label>账号</label>
+                    <div class="control"><input type="text" id="modal-username" class="cbi-input-text" placeholder="用户名" style="width:100%;"></div>
+                </div>
+                <div class="field-row">
+                    <label>密码</label>
+                    <div class="control" style="display:flex; gap:4px;">
+                        <input type="password" id="modal-password" class="cbi-input-text" placeholder="密码" style="flex:1;">
+                        <button type="button" class="cbi-button cbi-button-neutral" onclick="togglePassword()" style="flex-shrink:0; width:60px;">显示</button>
+                    </div>
+                </div>
+                <div class="field-row">
+                    <label>通道</label>
+                    <div class="control"><select id="modal-channel" class="cbi-input-select" style="width:100%;">
+                        <option value="phone">phone</option>
+                        <option value="pc">pc</option>
+                    </select></div>
+                </div>
+                <div class="field-row">
+                    <label>标记值</label>
+                    <div class="control"><input type="text" id="modal-mark" class="cbi-input-text" placeholder="标记值" style="width:100%;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="cbi-button cbi-button-neutral btn-close" onclick="closeModal()">关闭</button>
+            <button class="cbi-button cbi-button-save" onclick="saveAccount()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var config = <% luci.http.write(config_json) %>;
+    var editingIndex = -1;
+    var passwordVisible = false;
+
+    function showNotification(message, type) {
+        var container = document.getElementById('notification-area');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-area';
+            container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;';
+            document.body.appendChild(container);
+        }
+        var note = document.createElement('div');
+        note.className = 'custom-notification ' + (type === 'success' ? 'success' : 'error');
+        note.textContent = message;
+        container.appendChild(note);
+        setTimeout(function(){ note.classList.add('show'); }, 10);
+        setTimeout(function(){
+            note.classList.remove('show');
+            setTimeout(function(){ if(note.parentNode) note.parentNode.removeChild(note); }, 300);
+        }, 3000);
+    }
+
+    function renderConfig() {
+        document.getElementById('cfg_enabled').checked = config.enabled;
+        document.getElementById('cfg_log_lv').value = config.log_lv;
+        renderAccountsTable();
+    }
+
+    function renderAccountsTable() {
+        var tbody = document.getElementById('accounts-body');
+        tbody.innerHTML = '';
+        var accounts = config.accounts || [];
+        document.getElementById('accounts-count').textContent = accounts.length;
+        for (var i = 0; i < accounts.length; i++) {
+            var acc = accounts[i];
+            var tr = document.createElement('tr');
+            tr.className = 'cbi-section-table-row';
+            tr.innerHTML =
+                '<td class="cbi-section-table-cell">' + (acc.username || '(空)') + '</td>' +
+                '<td class="cbi-section-table-cell">••••••</td>' +
+                '<td class="cbi-section-table-cell">' + (acc.channel || '(空)') + '</td>' +
+                '<td class="cbi-section-table-cell">' + (acc.mark || '(空)') + '</td>' +
+                '<td class="cbi-section-table-cell cbi-section-actions" style="width:1%; white-space:nowrap;">' +
+                '<button class="cbi-button cbi-button-edit" onclick="openEditModal(' + i + ')">编辑</button> ' +
+                '<button class="cbi-button cbi-button-remove" onclick="deleteAccount(' + i + ')">删除</button>' +
+                '</td>';
+            tbody.appendChild(tr);
+        }
+    }
+
+    function deleteAccount(idx) {
+        config.accounts.splice(idx, 1);
+        renderAccountsTable();
+    }
+
+    function updateConfig() {
+        config.enabled = document.getElementById('cfg_enabled').checked;
+        config.log_lv = parseInt(document.getElementById('cfg_log_lv').value);
+    }
+
+    function openModal(title) {
+        document.getElementById('modal-title').textContent = title;
+        var overlay = document.getElementById('modal-overlay');
+        overlay.style.display = 'flex';
+        setTimeout(function(){ overlay.classList.add('active'); }, 10);
+    }
+
+    function closeModal() {
+        var overlay = document.getElementById('modal-overlay');
+        overlay.classList.remove('active');
+        setTimeout(function(){ overlay.style.display = 'none'; }, 300);
+        editingIndex = -1;
+    }
+
+    function clearModalFields() {
+        document.getElementById('modal-username').value = '';
+        document.getElementById('modal-password').value = '';
+        document.getElementById('modal-password').type = 'password';
+        document.getElementById('modal-channel').value = 'phone';
+        document.getElementById('modal-mark').value = '';
+        var pwdBtn = document.querySelector('#modal-overlay .cbi-button-neutral');
+        if (pwdBtn) pwdBtn.textContent = '显示';
+        passwordVisible = false;
+    }
+
+    function openAddModal() {
+        editingIndex = -1;
+        clearModalFields();
+        openModal('添加账号');
+    }
+
+    function openEditModal(index) {
+        editingIndex = index;
+        var acc = config.accounts[index];
+        document.getElementById('modal-username').value = acc.username || '';
+        document.getElementById('modal-password').value = acc.password || '';
+        document.getElementById('modal-password').type = 'password';
+        document.getElementById('modal-channel').value = acc.channel || 'phone';
+        document.getElementById('modal-mark').value = acc.mark || '';
+        var pwdBtn = document.querySelector('#modal-overlay .cbi-button-neutral');
+        if (pwdBtn) pwdBtn.textContent = '显示';
+        passwordVisible = false;
+        openModal('编辑账号');
+    }
+
+    function togglePassword() {
+        var pwdInput = document.getElementById('modal-password');
+        var btn = document.querySelector('#modal-overlay .cbi-button-neutral');
+        if (pwdInput.type === 'password') {
+            pwdInput.type = 'text';
+            btn.textContent = '隐藏';
+        } else {
+            pwdInput.type = 'password';
+            btn.textContent = '显示';
+        }
+    }
+
+    function saveAccount() {
+        var username = document.getElementById('modal-username').value;
+        var password = document.getElementById('modal-password').value;
+        var channel = document.getElementById('modal-channel').value;
+        var mark = document.getElementById('modal-mark').value;
+
+        var acc = {
+            username: username,
+            password: password,
+            channel: channel,
+            mark: mark
+        };
+
+        config.accounts = config.accounts || [];
+        if (editingIndex >= 0) {
+            config.accounts[editingIndex] = acc;
+        } else {
+            config.accounts.push(acc);
+        }
+        closeModal();
+        renderAccountsTable();
+    }
+
+    function saveAndApply() {
+        updateConfig();
+        var btn = document.querySelector('.cbi-button-apply');
+        btn.disabled = true;
+        var originalText = btn.textContent;
+        btn.textContent = '保存中...';
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config, null, 2)
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.status === 'ok') {
+                    showNotification('配置已保存并应用，服务已重启', 'success');
+                } else {
+                    showNotification('保存失败: ' + (res.message || '未知错误'), 'error');
+                }
+            })
+            .catch(function(e) {
+                showNotification('请求失败: ' + e.message, 'error');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            });
+    }
+
+    window.onload = function() {
+        renderConfig();
+    };
+</script>
+
+<%+footer%>
