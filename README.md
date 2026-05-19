@@ -43,6 +43,12 @@
 |  OpenWrt  |  mediatek_filogic  | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
 |  OpenWrt  |  mediatek_filogic  | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
 
+### LuCI 包
+
+|   系统    | 架构  | 包管理器 |      理论最低支持版本       |     最低推荐版本      |
+|:-------:|:---:|:----:|:-------------------:|:---------------:|
+| OpenWrt | All | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+| OpenWrt | All | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
