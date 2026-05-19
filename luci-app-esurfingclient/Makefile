@@ -60,4 +60,8 @@ echo "LuCI 界面配置完成"
 exit 0
 endef
 
+define Build/Compile
+	true
+endef
+
 $(eval $(call BuildPackage,luci-app-esurfingclient))

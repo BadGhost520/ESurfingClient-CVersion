@@ -83,10 +83,6 @@ define Package/esurfingclient/description
 轻量第三方电信校园网认证客户端 (支持 OpenWrt/Linux/Windows 多平台运行)
 endef
 
-define Build/Compile
-	$(call Build/Compile/Default)
-endef
-
 define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/esurfingclient
@@ -96,6 +92,10 @@ define Package/esurfingclient/install
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) $(CURDIR)/config/ESurfingClient.json $(1)/etc/config/esurfingclient
+endef
+
+define Build/Compile
+	$(call Build/Compile/Default)
 endef
 
 $(eval $(call BuildPackage,esurfingclient))
