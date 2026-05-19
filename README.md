@@ -4,6 +4,8 @@
 
 **优点是程序文件超级小 (所有版本均是仅占用 2MB 左右的储存空间😋), 并且跨平台跨架构能力超强**
 
+**目前有支持 OpenWRT 15.05 到最新版的 LuCI 以及程序软件包**
+
 > [!WARNING]
 > 程序只负责在不同平台登录校园网
 > 
@@ -66,7 +68,7 @@
 - 程序退出时, run.log 日志文件会被重命名为 <时间>.log (比如 19700101-114514.log)
 - 日志行数超过 10000 行会进行轮转操作 (虽然不大可能会有那么长)
 
-### 在类 unix 系统中
+### 在类 Unix 系统中
 
 - 程序运行后, 会新建 /var/log/esurfing/logs 目录
 - 程序运行时, logs 目录下会生成实时更新的 run.log 日志文件
@@ -96,3 +98,4 @@
 <img alt="Please refresh" height="256" src="image/fund/5.jpg" width="256"/>
 <img alt="Please refresh" height="256" src="image/fund/6.png" width="256"/>
 <img alt="Please refresh" height="256" src="image/fund/7.png" width="256"/>
+<img alt="Please refresh" height="256" src="image/fund/8.png" width="256"/>

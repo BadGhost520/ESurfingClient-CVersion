@@ -387,7 +387,7 @@ make -j$(nproc)
 > 
 > 具体可看相应的工作流
 
-## OpenWRT
+## OpenWRT 主程序包
 
 ### OpenWRT 包的编译比较麻烦
 
@@ -504,3 +504,7 @@ find bin/packages -name "esurfingclient*.apk" -exec cp {} ./ \;
 ```
 
 ### 6. 在 bin/packages 目录就能找到编译出来的包
+
+## OpenWRT LuCI
+
+### 与主程序编译差不多, 但更简单, 具体参考工作流
