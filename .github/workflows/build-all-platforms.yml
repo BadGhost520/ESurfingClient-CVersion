@@ -24,6 +24,8 @@ on:
           - linux-x86_64
           - macos-x86_64
           - macos-arm64
+          - openwrt-luci-ipk
+          - openwrt-luci-apk
           - openwrt-x86_64-ipk
           - openwrt-ramips_mt7621-ipk
           - openwrt-mediatek_filogic-ipk
@@ -106,6 +108,16 @@ jobs:
       openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
 
+  openwrt-luci-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-luci-ipk'
+    uses: ./.github/workflows/build-openwrt-luci-ipk-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+
   openwrt-x86_64-ipk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-ipk'
     uses: ./.github/workflows/build-openwrt-ipk-x86_64.yml
@@ -145,6 +157,16 @@ jobs:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+
+  openwrt-luci-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-luci-apk'
+    uses: ./.github/workflows/build-openwrt-luci-apk-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
   openwrt-x86_64-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-apk'
@@ -193,10 +215,12 @@ jobs:
       - linux-x86_64
       - macos-x86_64
       - macos-arm64
+      - openwrt-luci-ipk
       - openwrt-x86_64-ipk
       - openwrt-ramips_mt7621-ipk
       - openwrt-mediatek_filogic-ipk
       - openwrt-qualcommax_ipq60xx-ipk
+      - openwrt-luci-apk
       - openwrt-x86_64-apk
       - openwrt-ramips_mt7621-apk
       - openwrt-mediatek_filogic-apk

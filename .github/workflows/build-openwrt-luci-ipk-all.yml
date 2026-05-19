@@ -1,0 +1,96 @@
+name: Build LuCI app IPK for esurfingclient
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      release:
+        required: true
+        type: string
+      sdk_version:
+        required: true
+        type: string
+
+env:
+  SDK_URL: "https://downloads.openwrt.org/releases/24.10.6/targets/x86/64"
+  SDK_NAME: "openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 更新 Makefile 版本号
+        run: |
+          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" luci-app-esurfingclient/Makefile
+          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" luci-app-esurfingclient/Makefile
+
+      - name: 安装软件包 (最多重试 3 次)
+        run: |
+          PACKAGES="wget zstd file make rsync"
+
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在安装 $PACKAGES"
+            if apt-get update && apt-get install -y $PACKAGES; then
+              echo "✅ 所有软件包已完成安装"
+              break
+            fi
+            echo "❌ 尝试 $i 失败"
+            sleep 3
+          done
+
+      - name: 获取 OpenWrt SDK 压缩包缓存
+        id: cache-openwrt-sdk
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ env.SDK_NAME }}.tar.zst
+          key: openwrt-x86_64-ipk-sdk-${{ inputs.sdk_version }}
+
+      - name: 下载 SDK
+        if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
+        run: |
+          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}.tar.zst -O ${{ env.SDK_NAME }}.tar.zst
+
+      - name: 解压 SDK
+        run: |
+          tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
+          mv ${{ env.SDK_NAME }} openwrt-sdk
+
+      - name: 准备构建环境
+        run: |
+          cd openwrt-sdk
+          scripts/feeds update packages
+          scripts/feeds install luci-base
+          make defconfig
+
+      - name: 部署 LuCI 包
+        run: |
+          cp -r luci-app-esurfingclient openwrt-sdk/package/
+          cd openwrt-sdk
+          scripts/feeds install luci-app-esurfingclient
+
+      - name: 编译 luci-app-esurfingclient
+        run: |
+          cd openwrt-sdk
+          make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
+          # 查找生成的 ipk 文件（架构为 all）
+          find bin/packages -name "luci-app-esurfingclient_*.ipk" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk \;
+
+      - name: 上传工件
+        uses: actions/upload-artifact@v7
+        with:
+          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all
+          path: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk
+          retention-days: 30
