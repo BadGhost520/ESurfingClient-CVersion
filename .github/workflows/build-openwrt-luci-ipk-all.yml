@@ -38,7 +38,7 @@ jobs:
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
-          PACKAGES="wget zstd file make rsync perl"
+          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev rsync wget ca-certificates unzip file zstd python3-setuptools swig"
 
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
