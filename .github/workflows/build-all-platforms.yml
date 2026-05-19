@@ -27,16 +27,15 @@ on:
           - openwrt-luci-ipk
           - openwrt-luci-apk
           - openwrt-x86_64-ipk
-          - openwrt-ramips_mt7621-ipk
-          - openwrt-mediatek_filogic-ipk
-          - openwrt-qualcommax_ipq60xx-ipk
           - openwrt-x86_64-apk
+          - openwrt-ramips_mt7621-ipk
           - openwrt-ramips_mt7621-apk
+          - openwrt-mediatek_filogic-ipk
           - openwrt-mediatek_filogic-apk
+          - openwrt-qualcommax_ipq60xx-ipk
           - openwrt-qualcommax_ipq60xx-apk
 
 jobs:
-  # 获取版本号
   get-version:
     runs-on: ubuntu-latest
     outputs:
@@ -67,7 +66,6 @@ jobs:
           echo "Release: ${{ steps.version.outputs.release }}"
           echo "Full version: ${{ steps.version.outputs.full_version }}"
 
-  # 根据选择条件性运行子 workflow
   windows-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
     uses: ./.github/workflows/build-x86_64-windows.yml
@@ -118,46 +116,6 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
-  openwrt-x86_64-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-x86_64.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
-
-  openwrt-ramips_mt7621-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-ramips_mt7621.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
-
-  openwrt-mediatek_filogic-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-mediatek_filogic.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
-
-  openwrt-qualcommax_ipq60xx-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-qualcommax_ipq60xx-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-qualcommax_ipq60xx.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
-
   openwrt-luci-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-luci-apk'
     uses: ./.github/workflows/build-openwrt-luci-apk-all.yml
@@ -167,6 +125,16 @@ jobs:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+
+  openwrt-x86_64-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-x86_64.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
   openwrt-x86_64-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-apk'
@@ -178,6 +146,16 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
+  openwrt-ramips_mt7621-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-ramips_mt7621.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+
   openwrt-ramips_mt7621-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621-apk'
     uses: ./.github/workflows/build-openwrt-apk-ramips_mt7621.yml
@@ -187,6 +165,16 @@ jobs:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+
+  openwrt-mediatek_filogic-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-mediatek_filogic.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
   openwrt-mediatek_filogic-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic-apk'
@@ -198,6 +186,16 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
+  openwrt-qualcommax_ipq60xx-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-qualcommax_ipq60xx-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-qualcommax_ipq60xx.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+
   openwrt-qualcommax_ipq60xx-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-qualcommax_ipq60xx-apk'
     uses: ./.github/workflows/build-openwrt-apk-qualcommax_ipq60xx.yml
@@ -208,7 +206,6 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
-  # 收集所有产物并创建 Release
   release:
     needs:
       - windows-x86_64

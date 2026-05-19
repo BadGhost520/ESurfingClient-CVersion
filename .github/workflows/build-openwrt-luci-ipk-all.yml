@@ -1,4 +1,4 @@
-name: Build LuCI app IPK for esurfingclient
+name: Build LuCI IPK
 
 permissions:
   contents: write

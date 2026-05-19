@@ -1,4 +1,4 @@
-name: Build LuCI app APK for esurfingclient
+name: Build LuCI APK
 
 permissions:
   contents: write
