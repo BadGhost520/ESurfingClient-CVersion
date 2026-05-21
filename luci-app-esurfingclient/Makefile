@@ -47,7 +47,7 @@ if [ -f "/www/luci-static/resources/luci.js" ]; then
 else
 	mkdir -p /usr/lib/lua/luci/controller
 	cp /tmp/luci-staging/legacy/controller/esurfingclient.lua /usr/lib/lua/luci/controller/
-	mkdir -p /usr/lib/lua/luci/view/esurfingclient
+	mkdir -p /usr/lib/lua/luci/view
 	cp /tmp/luci-staging/legacy/view/esurfingclient.htm /usr/lib/lua/luci/view/
 fi
 
