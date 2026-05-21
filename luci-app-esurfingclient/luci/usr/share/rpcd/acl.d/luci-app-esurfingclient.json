@@ -1,0 +1,21 @@
+{
+    "luci-app-esurfingclient": {
+        "description": "获取 ESurfing 客户端所需权限",
+        "read": {
+            "file": {
+                "/etc/config/esurfingclient": [ "read" ],
+                "/etc/init.d/esurfingclient": [ "exec" ],
+                "/var/log/esurfing/logs/run.log": [ "read" ]
+            }
+        },
+        "write": {
+            "file": {
+                "/etc/init.d/esurfingclient": [ "exec" ],
+                "/etc/config/esurfingclient": [ "write" ]
+            }
+        },
+        "ubus": {
+            "file": [ "exec" ]
+        }
+    }
+}

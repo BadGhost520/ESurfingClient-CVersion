@@ -72,12 +72,14 @@ static bool get_log_dir(char* out)
         if (err != ERROR_ALREADY_EXISTS) return false;
     }
 #else
-    const char dir[PATH_MAX] = "/var/log/esurfing";
-    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", safe_str(dir), SEP);
+    const char dir[] = "/var/log/esurfing";
+    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", dir, SEP);
     if ((size_t)len >= PATH_MAX) return false;
     struct stat st;
     if (stat(out, &st) != 0)
     {
+        if (mkdir("/var", 0755) != 0 && errno != EEXIST) return false;
+        if (mkdir("/var/log", 0755) != 0 && errno != EEXIST) return false;
         if (mkdir(dir, 0755) != 0 && errno != EEXIST) return false;
         if (mkdir(out, 0755) != 0 && errno != EEXIST) return false;
     }
