@@ -38,6 +38,8 @@ return view.extend({
             )
         ]);
 
+        self.logs = self.logs || [];
+
         self.config = self.config || {
             enabled: false,
             log_lv: 0,
@@ -106,8 +108,13 @@ return view.extend({
             } }, '添加')
         ]);
         
+        self.logs_selected = self.renderLogs();
+
         self.log_panel = E('div', { id: 'log_panel', style: 'display: none' }, [
             E('h3', { style: 'margin-top: 0;' }, '日志查看'),
+            E('div', { class: 'cbi-value' }, [
+                E('div', { class: 'cbi-value-field' }, self.logs_selected)
+            ]),
             E('div', { class: 'cbi-section' }, [
                 E('textarea', {
                     id: 'log_content',
@@ -149,10 +156,10 @@ return view.extend({
                 } catch(e) {
                     self.config = {};
                 }
+                self.showNotification('读取配置文件成功', 'success');
                 return self.config;
             })
             .catch(function() {
-                self.showNotification('配置文件读取失败', 'error');
                 self.config = {
                     enabled: false,
                     log_lv: 0,
@@ -164,12 +171,14 @@ return view.extend({
                         }
                     ]
                 };
+                self.showNotification('配置文件读取失败', 'error');
                 return self.config;
             });
     },
 
     saveConfig: function() {
         var self = this;
+
         return fs.write('/etc/config/esurfingclient', JSON.stringify(self.config, null, 2));
     },
 
@@ -182,7 +191,7 @@ return view.extend({
         return restartCommand('/etc/init.d/esurfingclient', ['restart']);
     },
 
-    refreshAll: function() {
+    refreshAccounts: function() {
         var self = this;
 
         if (self.config.enabled) {
@@ -211,7 +220,7 @@ return view.extend({
                     } }, '编辑'),
                     E('button', { class: 'cbi-button cbi-button-remove', click: function() {
                         self.config.accounts.splice(index, 1);
-                        self.refreshAll();
+                        self.refreshAccounts();
                     } }, '删除')
                 ])
             ]);
@@ -222,6 +231,7 @@ return view.extend({
 
     showModal: function(index) {
         var self = this;
+
         var account = {};
         var add_mode = false;
         if (self.config.accounts[index]) {
@@ -287,7 +297,7 @@ return view.extend({
                         self.config.accounts.push(account);
                     }
 
-                    self.refreshAll();
+                    self.refreshAccounts();
                     L.hideModal(modal);
                 } }, '保存')
             ])
@@ -296,16 +306,19 @@ return view.extend({
 
     startLogAutoRefresh: function() {
         var self = this;
+
         if (self.logTimer) clearInterval(self.logTimer);
         self.logTimer = setInterval(function() {
             if (self.currentTab === 'tab3') {
+                self.refreshLogs();
                 self.loadLogContent();
             }
-        }, 2000);
+        }, 500);
     },
 
     stopLogAutoRefresh: function() {
         var self = this;
+
         if (self.logTimer) {
             clearInterval(self.logTimer);
             self.logTimer = null;
@@ -313,20 +326,71 @@ return view.extend({
     },
     
     loadLogContent: function() {
+        var self = this;
+
         var textarea = document.getElementById('log_content');
         if (!textarea) return;
-        fs.read('/var/log/esurfing/logs/run.log')
-            .then(function(data) {
-                textarea.value = data || '暂无日志, 或客户端未启动';
-            })
-            .catch(function() {
-                textarea.value = '无法读取日志文件';
-                self.showNotification('日志文件读取失败', 'error');
-            });
+        fs.read('/var/log/esurfing/logs/' + document.getElementById('log_file').value)
+        .then(function(data) {
+            textarea.value = data || '暂无日志, 或客户端未启动';
+        })
+        .catch(function() {
+            textarea.value = '无法读取日志文件';
+            self.showNotification('日志文件读取失败', 'error');
+        });
+    },
+
+    refreshLogs: function() {
+        var self = this;
+
+        fs.list('/var/log/esurfing/logs')
+        .then(function(entries) {
+            var new_logs = [];
+            for (var i = 0; i < entries.length; i++) {
+                if (entries[i].type === 'file') {
+                    new_logs.push(entries[i].name);
+                }
+            }
+            new_logs.sort((a, b) => b.localeCompare(a));
+            if (!self.arraysEqual(self.logs, new_logs)) {
+                self.logs = new_logs;
+                var new_logs_selected = self.renderLogs();
+                self.logs_selected.parentNode.replaceChild(new_logs_selected, self.logs_selected);
+                self.logs_selected = new_logs_selected;
+                document.getElementById('log_file').value = self.logs[0];
+            }
+        });
+    },
+
+    renderLogs: function() {
+        var self = this;
+
+        self.logs = self.logs || [];
+        var rows = self.logs.map(function(log, index) {
+            return E('option', { value: log, selected: self.logs[index] === log ? true : undefined }, log);
+        });
+
+        return E('select', {
+            id: 'log_file',
+            class: 'cbi-input-select',
+            change: function() {
+                self.refreshLogs();
+            }
+        }, rows);
+    },
+
+    arraysEqual: function(a, b) {
+        if (!a || !b) return a === b;
+        if (a.length !== b.length) return false;
+        for (var i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
     },
 
     switchTab: function(tabName) {
         var self = this;
+
         var tabs = document.querySelectorAll('.cbi-tab, .cbi-tab-disabled');
 
         self.stopLogAutoRefresh();
@@ -360,7 +424,7 @@ return view.extend({
         } else if (tabName === 'tab3') {
             self.showNotification('正在读取日志', 'info');
             self.currentTab = 'tab3';
-            self.loadLogContent();
+            self.refreshLogs();
             self.startLogAutoRefresh();
             tabs[2].classList.remove('cbi-tab-disabled');
             tabs[2].classList.add('cbi-tab');
@@ -479,7 +543,7 @@ return view.extend({
                         ]
                     };
 
-                    self.refreshAll();
+                    self.refreshAccounts();
                     
                     return self.saveConfig()
                         .then(function() {

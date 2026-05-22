@@ -23,17 +23,24 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
                 luci.http.prepare_content("application/json")
                 luci.http.write('{"status":"error","message":"Invalid exec request"}')
             end
+            os.execute("sleep 5")
             return
         end
 
         if string.find(data, '"action":"getlog"') then
-            local log_file = "/var/log/esurfing/logs/run.log"
-            local content = ""
-            local f = io.open(log_file, "r")
-            if f then
-                content = f:read("*a") or ""
-                f:close()
+            local file_name = data:match('"file":"([^"]+)"')
+            if not file_name or file_name == "" then
+                file_name = "run.log"   -- 默认值
             end
+            if not file_name:match("^[%w_%-%.]+$") or file_name:find("%.%.", 1, true) then
+                luci.http.status(403)
+                luci.http.write("Forbidden")
+                return
+            end
+            local log_path = "/var/log/esurfing/logs/" .. file_name
+            local f = io.open(log_path, "r")
+            local content = f and f:read("*a") or ""
+            if f then f:close() end
             luci.http.prepare_content("text/plain")
             luci.http.write(content)
             return
@@ -226,6 +233,36 @@ end
         <!-- 日志查看 -->
         <div class='cbi-tabcontainer' style='display: none;'>
             <h3 style='margin-top: 0; margin-bottom: 0;'>日志查看</h3>
+            <div class='cbi-value'>
+                <div class='cbi-value-field'>
+                    <select id='log_file_select' class='cbi-input-select'>
+                        <%
+                        local log_dir = "/var/log/esurfing/logs"
+                        local files = {}
+                        local fs = require("nixio.fs")
+                        if fs and fs.dir then
+                            for f in fs.dir(log_dir) do
+                                if f:match("%.log$") then
+                                    table.insert(files, f)
+                                end
+                            end
+                            table.sort(files, function(a, b) return a > b end)
+                        end
+                        if #files == 0 then
+                        %>
+                        <option value=''>暂无日志文件</option>
+                        <%
+                        else
+                            for _, f in ipairs(files) do
+                        %>
+                        <option value='<%=f%>'><%=f%></option>
+                        <%
+                            end
+                        end
+                        %>
+                    </select>
+                </div>
+            </div>
             <textarea id='log_content' class='cbi-input-textarea' readonly rows='20' style='font-family: monospace; width: 100%;'>
                 暂无日志, 或客户端未启动
             </textarea>
@@ -306,8 +343,10 @@ end
     // 保存并应用配置
     function saveAndApplyConfig() {
         document.getElementById('save-and-apply-button').disabled = true;
+        document.getElementById('save-button').disabled = true;
+        document.getElementById('reset-button').disabled = true;
         showNotification('保存并应用配置中', 'info');
-        saveOperation()
+        return saveOperation()
         .then(response => response.json())
         .then(data => {
             if (data.status == 'ok') {
@@ -316,43 +355,71 @@ end
                 .then(data => {
                     if (data.status == 'ok') {
                         showNotification('配置已保存并应用，服务已重启', 'succ');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
                     } else {
                         showNotification('应用失败: ' + data.message, 'error');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
                     }
                 })
-                .catch(err => showNotification('请求失败: ' + err, 'error'));
+                .catch(err => {
+                    showNotification('请求失败: ' + err, 'error');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                });
             } else {
                 showNotification('配置保存失败', 'error');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
             }
         })
-        .catch(err => showNotification('配置保存失败: ' + err, 'error'));
-        setTimeout(function() {
-            location.reload();
-        }, 2000);
+        .catch(err => {
+            showNotification('配置保存失败: ' + err, 'error');
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        });
     }
 
     // 保存配置
     function saveConfig() {
+        document.getElementById('save-and-apply-button').disabled = true;
         document.getElementById('save-button').disabled = true;
+        document.getElementById('reset-button').disabled = true;
         showNotification('保存配置中', 'info');
-        saveOperation()
+        return saveOperation()
         .then(response => response.json())
         .then(data => {
             if (data.status == 'ok') {
                 showNotification('配置保存成功', 'succ');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
             } else {
                 showNotification('配置保存失败', 'error');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
             }
         })
-        .catch(err => showNotification('配置保存失败: ' + err, 'error'));
-        setTimeout(function() {
-            location.reload();
-        }, 2000);
+        .catch(err => {
+            showNotification('配置保存失败: ' + err, 'error');
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        });
     }
 
     // 重置配置
     function resetConfig() {
         hideModal();
+        document.getElementById('save-and-apply-button').disabled = true;
+        document.getElementById('save-button').disabled = true;
         document.getElementById('reset-button').disabled = true;
         showNotification('重置配置中', 'info');
         config = {
@@ -365,19 +432,27 @@ end
                 mark: ''
             }]
         };
-        saveOperation()
+        return saveOperation()
         .then(response => response.json())
         .then(data => {
             if (data.status == 'ok') {
                 showNotification('配置重置成功, 已重置到默认值', 'succ');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
             } else {
                 showNotification('配置重置失败', 'error');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
             }
         })
-        .catch(err => showNotification('配置重置失败: ' + err, 'error'));
-        setTimeout(function() {
-            location.reload();
-        }, 2000);
+        .catch(err => {
+            showNotification('配置重置失败: ' + err, 'error');
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        });
     }
 
     // 渲染表格
@@ -423,7 +498,7 @@ end
             if (currentTab == 2) {
                 loadLogContent();
             }
-        }, 2000);
+        }, 500);
     }
 
     function stopLogAutoRefresh() {
@@ -434,10 +509,17 @@ end
     }
 
     function loadLogContent() {
+        var select = document.getElementById('log_file_select');
+        if (!select) return;
+        var filename = select.value;
+        if (!filename) {
+            document.getElementById('log_content').value = '请选择一个日志文件';
+            return;
+        }
         fetch(window.location.href, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'getlog' })
+            body: JSON.stringify({ action: 'getlog', file: filename })
         })
         .then(response => response.text())
         .then(data => {
@@ -580,6 +662,7 @@ end
         enabled.checked = config.enabled;
         log_lv.value = config.log_lv;
         renderTable();
+        showNotification('读取配置文件完成', 'succ');
     });
 </script>
 <%+footer%>

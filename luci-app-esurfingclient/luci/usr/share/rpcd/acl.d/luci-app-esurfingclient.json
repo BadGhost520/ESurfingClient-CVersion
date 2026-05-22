@@ -5,7 +5,7 @@
             "file": {
                 "/etc/config/esurfingclient": [ "read" ],
                 "/etc/init.d/esurfingclient": [ "exec" ],
-                "/var/log/esurfing/logs/run.log": [ "read" ]
+                "/var/log/*.log": ["read", "list"]
             }
         },
         "write": {
