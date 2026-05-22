@@ -28,26 +28,26 @@
 
 # 目前支持的系统和架构
 
-|    系统     |         架构         | 包管理器 |      理论最低支持版本       |     最低推荐版本      |
+|    系统     |         架构         | 包管理器 |      理论最低支持版本       |      推荐版本       |
 |:---------:|:------------------:|:----:|:-------------------:|:---------------:|
 |  Windows  |       x86_64       |  /   |   Windows XP SP3    |   Windows 10	   |
 |   Linux   |       x86_64       |  /   |   Linux 内核 2.6.0    |  Linux 内核 4.14  |
 |   macOS   |       x86_64       |  /   |      macOS 12       |    macOS 13     |
 |   macOS   |       arm64        |  /   |      macOS 13       |    macOS 14     |
-|  OpenWrt  |       x86_64       | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  |       x86_64       | opkg |    OpenWrt 15.05    | OpenWrt 19.07.0 |
 |  OpenWrt  |       x86_64       | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-|  OpenWrt  |   ramips_mt7621    | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  |   ramips_mt7621    | opkg |    OpenWrt 15.05    | OpenWrt 19.07.0 |
 |  OpenWrt  |   ramips_mt7621    | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-|  OpenWrt  | qualcommax_ipq60xx | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  | qualcommax_ipq60xx | opkg |    OpenWrt 15.05    | OpenWrt 19.07.0 |
 |  OpenWrt  | qualcommax_ipq60xx | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-|  OpenWrt  |  mediatek_filogic  | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+|  OpenWrt  |  mediatek_filogic  | opkg |    OpenWrt 15.05    | OpenWrt 19.07.0 |
 |  OpenWrt  |  mediatek_filogic  | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
 
 ### LuCI 包
 
-|   系统    | 架构  | 包管理器 |      理论最低支持版本       |     最低推荐版本      |
+|   系统    | 架构  | 包管理器 |      理论最低支持版本       |      推荐版本       |
 |:-------:|:---:|:----:|:-------------------:|:---------------:|
-| OpenWrt | All | opkg |    OpenWrt 15.05    | OpenWrt 18.06.0 |
+| OpenWrt | All | opkg |    OpenWrt 15.05    | OpenWrt 19.07.0 |
 | OpenWrt | All | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
 
 > [!TIP]
