@@ -50,6 +50,11 @@
 | OpenWrt | All | opkg |    OpenWrt 15.05    | OpenWrt 19.07.0 |
 | OpenWrt | All | apk  | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
 
+> [!NOTE]
+> 为什么在使用 opkg 管理器的版本里推荐 `19.07.0` 这个版本
+> 
+> 因为它是开始使用 LuCI2 的第一个版本
+
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
 > 
