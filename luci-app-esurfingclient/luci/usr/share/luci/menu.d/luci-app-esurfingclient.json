@@ -1,0 +1,15 @@
+{
+    "admin/services/esurfingclient": {
+        "title": "ESurfing 客户端",
+        "order": 90,
+        "action": {
+            "type": "view",
+            "path": "esurfingclient"
+        },
+        "depends": {
+            "acl": [
+                "luci-app-esurfingclient"
+            ]
+        }
+    }
+}
