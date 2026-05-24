@@ -51,7 +51,7 @@ endef
 
 define Package/esurfingclient/postinst
 #!/bin/sh
-echo "ESurfing 客户端安装完成"
+echo "ESurfing 客户端主程序安装完成"
 
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
 	echo "有新的模板文件, 可查看是否有更新"

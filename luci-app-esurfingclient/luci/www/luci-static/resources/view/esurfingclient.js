@@ -163,7 +163,8 @@ return view.extend({
                 self.config = {
                     enabled: false,
                     log_lv: 0,
-                    accounts: [ {
+                    accounts: [
+                        {
                             username: '加载失败',
                             password: '加载失败',
                             channel: '加载失败',
@@ -373,6 +374,7 @@ return view.extend({
         return E('select', {
             id: 'log_file',
             class: 'cbi-input-select',
+            value: 'run.log',
             change: function() {
                 self.refreshLogs();
             }
