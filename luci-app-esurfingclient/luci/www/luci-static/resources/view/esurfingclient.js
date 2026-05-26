@@ -331,7 +331,7 @@ return view.extend({
 
         var textarea = document.getElementById('log_content');
         if (!textarea) return;
-        fs.read('/var/log/esurfing/logs/' + document.getElementById('log_file').value)
+        fs.read_direct('/var/log/esurfing/logs/' + document.getElementById('log_file').value)
         .then(function(data) {
             textarea.value = data || '暂无日志, 或客户端未启动';
         })

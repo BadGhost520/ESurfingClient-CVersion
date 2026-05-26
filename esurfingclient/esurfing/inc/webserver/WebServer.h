@@ -1,21 +1,16 @@
 #ifndef ESURFINGCLIENT_WEBSERVER_H
 #define ESURFINGCLIENT_WEBSERVER_H
 
-#include <stdint.h>
-
-// TODO 记得修改版本号
-#define VERSION "v2.0.0-r1"
-
-extern uint8_t is_webserver_running;
+#include <stdbool.h>
 
 /**
- * 启动Web服务器
+ * @brief 启动 Web 服务器
  */
-void startWebServer();
+bool start_web_server();
 
 /**
- * 停止Web服务器
+ * @brief 停止 Web 服务器
  */
-void stopWebServer();
+void stop_web_server();
 
 #endif //ESURFINGCLIENT_WEBSERVER_H
