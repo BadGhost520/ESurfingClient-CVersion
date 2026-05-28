@@ -111,21 +111,21 @@ jobs:
           cd openwrt-sdk
           make package/curl/compile V=sc -j$(nproc)
 
-      # - name: 编译 esurfingclient
-      #   run: |
-      #     cp -r esurfingclient openwrt-sdk/package/
+      - name: 编译 esurfingclient
+        run: |
+          cp -r esurfingclient openwrt-sdk/package/
           
-      #     cd openwrt-sdk
+          cd openwrt-sdk
           
-      #     scripts/feeds install esurfingclient
+          scripts/feeds install esurfingclient
           
-      #     make package/esurfingclient/compile V=sc -j$(nproc)
+          make package/esurfingclient/compile V=sc -j$(nproc)
 
-      #     find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk \;
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk \;
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
           name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx-ipk
-          path: ${{ env.SDK_NAME }}.tar.zst
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk
           retention-days: 30
