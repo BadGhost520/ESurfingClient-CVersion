@@ -1,0 +1,32 @@
+name: Download Cache
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 获取 OpenWrt SDK 压缩包缓存
+        id: cache-openwrt-sdk
+        uses: actions/cache@v5
+        with:
+          path: |
+            openwrt-sdk-qualcommax-ipq60xx_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          key: openwrt-qualcommax_ipq60xx-ipk-sdk-24.10.6
+
+      - name: 上传工件
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-sdk-qualcommax-ipq60xx_gcc-13.3.0_musl.Linux-x86_64
+          path: openwrt-sdk-qualcommax-ipq60xx_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          retention-days: 30
