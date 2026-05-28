@@ -22,7 +22,10 @@ jobs:
         with:
           path: |
             openwrt-sdk-qualcommax-ipq60xx_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          key: openwrt-qualcommax_ipq60xx-sdk-24.10.6-7e86676611b18fe30014b81ec9920616602c41bbeea847f1d9b336b81f0b3777
+          key: openwrt-qualcommax_ipq60xx-ipk-sdk-24.10.6
+          restore-keys: |
+            openwrt-qualcommax_ipq60xx-ipk
+            openwrt-qualcommax_ipq60xx-
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
