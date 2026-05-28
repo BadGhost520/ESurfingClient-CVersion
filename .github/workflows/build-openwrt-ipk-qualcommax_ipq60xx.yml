@@ -127,5 +127,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx-ipk
-          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_qualcommax_ipq60xx.ipk
+          path: ${{ env.SDK_NAME }}.tar.zst
           retention-days: 30
