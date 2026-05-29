@@ -685,7 +685,7 @@ void work()
             sleep_ms(1000);
             break;
         }
-    } while (status != REQUEST_REDIRECT);
+    } while (status != REQUEST_REDIRECT && status != REQUEST_SUCCESS);
 
     /**
      * 根据配置数创建相应数量的线程
