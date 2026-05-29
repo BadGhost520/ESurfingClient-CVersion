@@ -27,7 +27,7 @@
 #define IP_LEN 16
 #define IF_LEN 16
 
-#define LAST_LOCATION_LEN 256
+#define LAST_LOCATION_LEN 512
 
 /** @brief 认证配置 */
 typedef struct

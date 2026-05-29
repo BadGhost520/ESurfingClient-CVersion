@@ -519,7 +519,7 @@ static void get_school_ip_symbol()
 {
     const char* school_ip = extract_url_param(g_prog_status[0].last_location, "wlanuserip");
     snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", safe_str(extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.'))));
-    LOG_DEBUG("校园网标志: %s", school_network_symbol);
+    LOG_INFO("获取到校园网标志: %s", school_network_symbol);
 }
 
 NetworkStatus get_last_location()

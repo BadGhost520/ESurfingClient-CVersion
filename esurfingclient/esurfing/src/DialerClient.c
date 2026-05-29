@@ -1,4 +1,5 @@
 #include "cipher/CipherInterface.h"
+#include "webserver/WebServer.h"
 #include "utils/PlatformUtils.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
@@ -8,8 +9,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-
-#include "webserver/WebServer.h"
 
 extern bool get_service_mode();
 
@@ -647,7 +646,9 @@ void work()
     LOG_INFO(" - 制作不易, 赞助鬼鬼, 让鬼鬼更好地去维护更新这个项目罢~");
     LOG_INFO("-------------------------------------------------------------------");
 
-    if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
+#ifndef __OPENWRT__
+    // if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
+#endif
 
     if (load_cfg() == false) shut(1); // 加载配置文件
     //

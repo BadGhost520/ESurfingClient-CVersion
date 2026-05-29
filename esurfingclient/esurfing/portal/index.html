@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="assets/css/notyf.min.css" />
+    <link rel="stylesheet" href="assets/css/pico.min.css" />
+    <title>仪表板</title>
+  </head>
+
+  <body>
+    <nav class="tab-bar">
+      <ul>
+        <li>
+          <a
+            href="#"
+            @click.prevent="currentTab = 'basic'"
+            :class="currentTab === 'basic' ? 'contrast' : ''"
+            >常规</a
+          >
+        </li>
+        <li>
+          <a
+            href="#"
+            @click.prevent="currentTab = 'accounts'"
+            :class="currentTab === 'accounts' ? 'contrast' : ''"
+            >账号</a
+          >
+        </li>
+        <li>
+          <a
+            href="#"
+            @click.prevent="currentTab = 'logs'"
+            :class="currentTab === 'logs' ? 'contrast' : ''"
+            >日志</a
+          >
+        </li>
+      </ul>
+    </nav>
+  </body>
+  <script src="assets/js/alpine.min.js"></script>
+  <script src="assets/js/micromodal.min.js"></script>
+  <script src="assets/js/notyf.min.js"></script>
+</html>

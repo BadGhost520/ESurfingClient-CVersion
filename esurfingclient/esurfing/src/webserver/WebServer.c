@@ -3,7 +3,6 @@
 #include "webserver/mongoose.h"
 #include "utils/SimThread.h"
 #include "utils/Logger.h"
-#include "NetClient.h"
 #include "States.h"
 
 static const char* listenAddr = "http://0.0.0.0:8888";
@@ -21,7 +20,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             // 根目录
             if (mg_match(hm->uri, mg_str("/"), NULL))
             {
-                hm->uri = mg_str("/dashboard.html");
+
             }
             mg_http_serve_dir(c, hm, &opts);
             return;
