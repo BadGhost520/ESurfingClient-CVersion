@@ -9,8 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "webserver/WebServer.h"
-
 extern bool get_service_mode();
 
 typedef enum
@@ -29,7 +27,7 @@ typedef enum
     TIMEOUT_RETRY = 2
 } RunStatus;
 
-static const uint64_t table[] = {1, 5, 10, 20, 30};
+static const uint64_t pow2_table[] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
 
 static bool term()
 {
@@ -114,7 +112,7 @@ static bool heartbeat()
         LOG_ERROR("心跳内容解析失败");
         return false;
     }
-    g_prog_status[thread_idx].auth_cfg.keep_retry = str2uint64(parsed_interval); // 将字符串时间转成 uint64_t 时间
+    g_prog_status[thread_idx].auth_cfg.keep_retry = strtouint64(parsed_interval); // 将字符串时间转成 uint64_t 时间
     free(parsed_interval);
     return true;
 }
@@ -201,7 +199,7 @@ static bool login()
         LOG_ERROR("解析 KeepRetry 失败");
         return false;
     }
-    g_prog_status[thread_idx].auth_cfg.keep_retry = str2uint64(parsed_keep_retry); // 将字符串时间转成 uint64_t 时间
+    g_prog_status[thread_idx].auth_cfg.keep_retry = strtouint64(parsed_keep_retry); // 将字符串时间转成 uint64_t 时间
     free(parsed_keep_retry);
     LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[thread_idx].auth_cfg.keep_retry);
     return true;
@@ -328,7 +326,7 @@ static bool init_session()
         return false;
     }
     LOG_VERBOSE("会话响应内容: %s", result.body_data);
-    const bytes_t zsm = str2bytes(result.body_data); // 将响应体数据转成 bytes 类型
+    const bytes_t zsm = strtobytes(result.body_data); // 将响应体数据转成 bytes 类型
     free(result.body_data);
 
     LOG_DEBUG("开始初始化会话");
@@ -431,34 +429,56 @@ static AuthStatus auth()
 
     /**
      * 初始化会话
-     * 如果失败, 清除会话并返回 INIT_SESSION_FAILED
+     * 如果失败, 清除会话并返回 false
      */
     if (init_session() == false)
     {
         LOG_FATAL("初始化会话失败");
+        clean_session();
         return INIT_SESSION_FAILED;
     }
     LOG_DEBUG("初始化会话完成");
 
     /**
      * 获取 ticket
-     * 如果失败, 清除会话并返回 GET_TICKET_FAILED
+     * 如果失败, 清除会话并返回 false
      */
     if (get_ticket() == false)
     {
         LOG_FATAL("获取 Ticket 失败");
+        clean_session();
         return GET_TICKET_FAILED;
     }
     LOG_DEBUG("完成获取 Ticket");
 
     /**
      * 登录认证
-     * 如果失败, 清除会话并返回 LOGIN_FAILED
+     * 如果失败, 重试 6 次, 重试 6 次后仍失败则清除会话并返回 LOGIN_FAILED
      */
     if (login() == false)
     {
-        LOG_ERROR("登录失败");
-        return LOGIN_FAILED;
+        uint8_t retry_login = 1;
+        uint64_t retry_login_time = 0;
+        LOG_ERROR("登录失败, 尝试重新登录");
+        sleep_ms(10000);
+        while (login() == false)
+        {
+            if (retry_login > 5)
+            {
+                LOG_FATAL("超过最多重试次数, 请检查账号密码是否正确");
+                clean_session();
+                return LOGIN_FAILED;
+            }
+            retry_login_time = 60000 * pow2_table[retry_login - 1];
+            LOG_ERROR("配置 %" PRIu8 " 登录失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次, 下一次重试时间: %" PRIu64 " 毫秒 (% " PRIu64 " 秒) 后",
+                g_prog_status[thread_idx].login_cfg.idx,
+                thread_idx,
+                retry_login,
+                retry_login_time,
+                retry_login_time / 1000);
+            sleep_ms(retry_login_time);
+            retry_login++;
+        }
     }
     LOG_DEBUG("完成登录");
 
@@ -498,14 +518,11 @@ static void reset()
 static RunStatus run()
 {
     static uint8_t retry_timeout = 1;
-    static uint8_t retry_auth = 1;
-    static uint64_t retry_auth_time = 0;
 
     switch (check_network_status()) // 检测网络状态
     {
     case REQUEST_SUCCESS: // 返回响应成功 (204 响应码)
         retry_timeout = 1;
-        retry_auth = 1;
         /**
          * 检测是否初始化会话和认证登录
          * 如果已经初始化会话和认证登录, 则进入, 否则按已连接互联网处理
@@ -521,10 +538,10 @@ static RunStatus run()
                 if (get_cur_tm_ms() - g_prog_status[thread_idx].auth_cfg.tick >= g_prog_status[thread_idx].auth_cfg.keep_retry * 1000)
                 {
                     LOG_INFO("发送心跳包");
-                    uint8_t retry_heartbeat = 1;
+                    uint8_t retry = 1;
                     while (heartbeat() == false)
                     {
-                        if (retry_heartbeat > 5)
+                        if (retry > 5)
                         {
                             LOG_FATAL("超过最多重试次数");
                             return RUN_FAILED;
@@ -532,8 +549,8 @@ static RunStatus run()
                         LOG_ERROR("配置 %" PRIu8 " 心跳包发送失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次",
                             g_prog_status[thread_idx].login_cfg.idx,
                             thread_idx,
-                            retry_heartbeat);
-                        retry_heartbeat++;
+                            retry);
+                        retry++;
                         sleep_ms(1000);
                     }
                     LOG_INFO("下一次重试: %" PRIu64 " 秒后",
@@ -558,24 +575,14 @@ static RunStatus run()
         }
         if (auth() != AUTH_SUCCESS)
         {
-            if (retry_auth > 5)
-            {
-                LOG_FATAL("超过最多重试次数, 请检查账号密码是否正确");
-                return RUN_FAILED;
-            }
-            retry_auth_time = 60000 * table[retry_auth - 1];
-            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次, 下一次重试时间: %" PRIu64 " 毫秒 (% " PRIu64 " 秒) 后",
+            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8,
                 g_prog_status[thread_idx].login_cfg.idx,
-                thread_idx,
-                retry_auth,
-                retry_auth_time,
-                retry_auth_time / 1000);
-            retry_auth++;
-            sleep_ms(retry_auth_time);
+                thread_idx);
+            sleep_ms(1000);
+            return RUN_FAILED;
         }
         return RUN_SUCCESS;
     case REQUEST_WARN: // 返回警告, 会重试 (错误码 28, 响应超时)
-        retry_auth = 1;
         if (retry_timeout > 5)
         {
             LOG_ERROR("超过最多重试次数");
@@ -588,7 +595,6 @@ static RunStatus run()
         return TIMEOUT_RETRY;
     default:
         retry_timeout = 1;
-        retry_auth = 1;
         LOG_ERROR("其它错误");
         sleep_ms(5000);
         return RUN_FAILED;
@@ -634,11 +640,11 @@ void work()
 {
     thread_keep_alive = true;
 
-    g_prog_status = calloc(1, sizeof(prog_status_t)); // 初始化 g_prog_status 指针并分配 1 个空间
+    g_prog_status = calloc(1, sizeof(prog_status_t)); // 初始化 g_prog_status 指针, 分配一个空间
 
     init_shutdown_hook(); // 初始化关闭钩子
 
-    if (init_logger() == false) return; // 初始化日志系统
+    if (init_logger() == false) shut(1); // 初始化日志系统
 
     LOG_INFO("-------------------------------------------------------------------");
     LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
@@ -646,8 +652,6 @@ void work()
     LOG_INFO(" - 项目地址: https://github.com/BadGhost520/ESurfingClient-CVersion");
     LOG_INFO(" - 制作不易, 赞助鬼鬼, 让鬼鬼更好地去维护更新这个项目罢~");
     LOG_INFO("-------------------------------------------------------------------");
-
-    if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
 
     if (load_cfg() == false) shut(1); // 加载配置文件
     //
@@ -681,7 +685,7 @@ void work()
             sleep_ms(1000);
             break;
         }
-    } while (status != REQUEST_REDIRECT);
+    } while (status != REQUEST_REDIRECT && status != REQUEST_SUCCESS);
 
     /**
      * 根据配置数创建相应数量的线程
