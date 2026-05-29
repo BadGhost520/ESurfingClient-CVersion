@@ -9,7 +9,7 @@
 
 #define SCHOOL_NETWORK_SYMBOL 8
 
-#define TICKET_URL_LEN 256
+#define TICKET_URL_LEN 512
 #define USER_AGENT_LEN 32
 #define CLIENT_ID_LEN 40
 #define HOST_NAME_LEN 16
@@ -27,7 +27,7 @@
 #define IP_LEN 16
 #define IF_LEN 16
 
-#define LAST_LOCATION_LEN 256
+#define LAST_LOCATION_LEN 512
 
 /** @brief 认证配置 */
 typedef struct
