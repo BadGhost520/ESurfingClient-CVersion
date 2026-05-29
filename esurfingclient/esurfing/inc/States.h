@@ -13,9 +13,9 @@
 #define USER_AGENT_LEN 32
 #define CLIENT_ID_LEN 40
 #define HOST_NAME_LEN 16
-#define KEEP_URL_LEN 80
-#define TERM_URL_LEN 80
-#define AUTH_URL_LEN 80
+#define KEEP_URL_LEN 256
+#define TERM_URL_LEN 256
+#define AUTH_URL_LEN 256
 #define MAC_ADDR_LEN 20
 #define ALGO_ID_LEN 37
 #define TICKET_LEN 40
