@@ -51,7 +51,18 @@ typedef struct
     size_t length;
 } bytes_t;
 
-bool get_exec_dir(char* out);
+/**
+ * @brief 打包适配器数据
+ * @return JSON 文本
+ */
+char* get_adapters_json();
+
+/**
+ * @brief 获取程序运行目录
+ * @param dir_array 目录指针
+ * @return 是否获取成功
+ */
+bool get_exec_dir(char* dir_array);
 
 /**
  * @brief XML 解析
@@ -66,21 +77,21 @@ char* xml_parser(const char* xml_data, const char* tag);
  * @param str 文本数据
  * @return 字节数据
  */
-bytes_t strtobytes(const char* str);
+bytes_t str2bytes(const char* str);
 
 /**
  * @brief 字符串转换为 64 位长整型
  * @param str 要转换的字符串
  * @return 转换后的 64 位长整型
  */
-uint64_t strtouint64(const char* str);
+uint64_t str2uint64(const char* str);
 
 /**
  * @brief 64 位长整型转换为字符串
  * @param num 要转换的 64 位长整型
  * @return 转换后的字符串
  */
-char* uint64tostr(uint64_t num);
+char* uint642str(uint64_t num);
 
 /**
  * @brief 获取当前时间的毫秒时间戳
@@ -141,7 +152,7 @@ char* clean_CDATA(const char* text);
 /**
  * @brief 保存配置文件
  */
-// bool save_cfg();
+bool save_cfg();
 
 /**
  * @brief 加载配置文件

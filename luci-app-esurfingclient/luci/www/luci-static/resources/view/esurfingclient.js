@@ -163,7 +163,8 @@ return view.extend({
                 self.config = {
                     enabled: false,
                     log_lv: 0,
-                    accounts: [ {
+                    accounts: [
+                        {
                             username: '加载失败',
                             password: '加载失败',
                             channel: '加载失败',
@@ -330,7 +331,7 @@ return view.extend({
 
         var textarea = document.getElementById('log_content');
         if (!textarea) return;
-        fs.read('/var/log/esurfing/logs/' + document.getElementById('log_file').value)
+        fs.read_direct('/var/log/esurfing/logs/' + document.getElementById('log_file').value)
         .then(function(data) {
             textarea.value = data || '暂无日志, 或客户端未启动';
         })
@@ -373,6 +374,7 @@ return view.extend({
         return E('select', {
             id: 'log_file',
             class: 'cbi-input-select',
+            value: 'run.log',
             change: function() {
                 self.refreshLogs();
             }

@@ -20,10 +20,17 @@
 #endif
 
 #ifdef __OPENWRT__
-#define DIALER_CONFIG_FILE "/etc/config/esurfingclient"
+static const char config_file[] = "/etc/config/esurfingclient";
 #else
 #define DIALER_CONFIG_FILE "ESurfingClient.json"
+static char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
 #endif
+
+typedef struct
+{
+    char ip[IP_LEN];
+    char name[NAME_LENGTH];
+} adapter_t;
 
 static const char s_default_cfg[] = "{\n"
                                     "   \"enabled\": false,\n"
@@ -34,12 +41,96 @@ static const char s_default_cfg[] = "{\n"
                                     "           \"password\": \"\",\n"
                                     "           \"channel\": \"phone\",\n"
                                     "           \"mark\": \"\"\n"
-                                    // "           \"auto_start\": false\n"
                                     "       }\n"
                                     "   ]\n"
                                     "}\n";
 
-bool get_exec_dir(char* out)
+static adapter_t* s_adaptor = NULL;
+static uint8_t s_adaptor_count = 0;
+
+static void get_adapters()
+{
+#ifdef _WIN32
+    PIP_ADAPTER_INFO p_adapter_info = NULL;
+    ULONG ul_out_buf_len = 0;
+    if (GetAdaptersInfo(p_adapter_info, &ul_out_buf_len) == ERROR_BUFFER_OVERFLOW)
+    {
+        p_adapter_info = (PIP_ADAPTER_INFO)malloc(ul_out_buf_len);
+        if (p_adapter_info && GetAdaptersInfo(p_adapter_info, &ul_out_buf_len) == NO_ERROR)
+        {
+            PIP_ADAPTER_INFO p_adapter = p_adapter_info;
+            uint8_t cnt = 0;
+            while (p_adapter)
+            {
+                adapter_t* new_adaptor = realloc(s_adaptor, sizeof(adapter_t) * (cnt + 1));
+                if (!new_adaptor)
+                {
+                    LOG_ERROR("分配内存失败");
+                    break;
+                }
+                s_adaptor = new_adaptor;
+                snprintf(s_adaptor[cnt].name, NAME_LENGTH, "%s", p_adapter->Description);
+                snprintf(s_adaptor[cnt].ip, IP_LEN, "%s", p_adapter->IpAddressList.IpAddress.String);
+                LOG_VERBOSE("IP: %s", p_adapter->IpAddressList.IpAddress.String);
+                p_adapter = p_adapter->Next;
+                cnt++;
+            }
+            s_adaptor_count = cnt;
+        }
+    }
+    if (p_adapter_info) free(p_adapter_info);
+#else
+    struct ifaddrs* ifaddrs_ptr, *ifa;
+    if (getifaddrs(&ifaddrs_ptr) == 0)
+    {
+        uint8_t cnt = 0;
+        for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next)
+        {
+            if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET) continue;
+            if (strcmp(ifa->ifa_name, "lo") == 0) continue;
+            char ip[INET_ADDRSTRLEN];
+            struct sockaddr_in *addr = (struct sockaddr_in*)ifa->ifa_addr;
+            if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)))
+            {
+                adapter_t* new_adaptor = realloc(s_adaptor, sizeof(adapter_t) * (cnt + 1));
+                if (!new_adaptor)
+                {
+                    LOG_ERROR("分配内存失败");
+                    break;
+                }
+                s_adaptor = new_adaptor;
+                snprintf(s_adaptor[cnt].name, NAME_LENGTH, "%s", ifa->ifa_name);
+                snprintf(s_adaptor[cnt].ip, IP_LEN, "%s", ip);
+                cnt++;
+            }
+        }
+        s_adaptor_count = cnt;
+        freeifaddrs(ifaddrs_ptr);
+    }
+#endif
+}
+
+char* get_adapters_json()
+{
+    get_adapters();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* adapters = cJSON_CreateArray();
+    for (uint8_t i = 0; i < s_adaptor_count; i++)
+    {
+        if (strlen(s_adaptor[i].name) == 0) break;
+        cJSON* adapter = cJSON_CreateObject();
+        cJSON_AddStringToObject(adapter, "name", s_adaptor[i].name);
+        cJSON_AddStringToObject(adapter, "ip", s_adaptor[i].ip);
+        cJSON_AddItemToArray(adapters, adapter);
+    }
+    cJSON_AddItemToObject(root, "adapters", adapters);
+    cJSON_AddStringToObject(root, "school_network_symbol", school_network_symbol);
+    char* json = cJSON_Print(root);
+    cJSON_Delete(root);
+    return json;
+}
+
+bool get_exec_dir(char* dir_array)
 {
 #ifdef _WIN32
     char path[MAX_PATH];
@@ -48,7 +139,7 @@ bool get_exec_dir(char* out)
     char* last = strrchr(path, SEP);
     if (!last) return false;
     *last = '\0';
-    const uint16_t len = snprintf(out, PATH_MAX, "%s", safe_str(path));
+    const uint16_t len = snprintf(dir_array, PATH_MAX, "%s", safe_str(path));
     if ((size_t)len >= PATH_MAX) return false;
     return true;
 #elif __linux__
@@ -59,7 +150,7 @@ bool get_exec_dir(char* out)
     char* last = strrchr(path, '/');
     if (!last) return false;
     *last = '\0';
-    const uint16_t n = snprintf(out, PATH_MAX, "%s", path);
+    const uint16_t n = snprintf(dir_array, PATH_MAX, "%s", path);
     if ((size_t)n >= PATH_MAX) return false;
     return true;
 #elif defined(__APPLE__)
@@ -71,12 +162,12 @@ bool get_exec_dir(char* out)
     char* last = strrchr(resolved, '/');
     if (!last) { free(resolved); return false; }
     *last = '\0';
-    const uint16_t n = snprintf(out, PATH_MAX, "%s", resolved);
+    const uint16_t n = snprintf(dir_array, PATH_MAX, "%s", resolved);
     free(resolved);
     if ((size_t)n >= PATH_MAX) return false;
     return true;
 #else
-    (void)out;
+    (void)dir_array;
     return false;
 #endif
 }
@@ -109,7 +200,7 @@ char* xml_parser(const char* xml_data, const char* tag)
     return content;
 }
 
-bytes_t strtobytes(const char* str)
+bytes_t str2bytes(const char* str)
 {
     bytes_t ba = {0};
     if (!str) return ba;
@@ -119,7 +210,7 @@ bytes_t strtobytes(const char* str)
     return ba;
 }
 
-uint64_t strtouint64(const char* str)
+uint64_t str2uint64(const char* str)
 {
     if (!str) return 0;
     while (isspace(*str)) str++;
@@ -134,7 +225,7 @@ uint64_t strtouint64(const char* str)
     return value;
 }
 
-char* uint64tostr(const uint64_t num)
+char* uint642str(const uint64_t num)
 {
     char* result = malloc(22);
     if (!result) return NULL;
@@ -385,51 +476,47 @@ char* clean_CDATA(const char* text)
     return extract_between_tags(text, "<![CDATA[", "]]>");
 }
 
-// bool save_cfg()
-// {
-//     cJSON* cfg_json = cJSON_CreateObject();
-//
-//     cJSON_AddNumberToObject(cfg_json, "log_lv", get_logger_level());
-//
-//     cJSON_AddBoolToObject(cfg_json, "use_cus_if", g_use_cus_ip);
-//
-//     cJSON* accounts = cJSON_CreateArray();
-//     cJSON_AddItemToObject(cfg_json, "accounts", accounts);
-//
-//     for (uint8_t i = 0; i < g_prog_cnt; i++)
-//     {
-//         cJSON* account = cJSON_CreateObject();
-//
-//         cJSON_AddStringToObject(account, "username", g_prog_status[i].login_cfg.usr);
-//         cJSON_AddStringToObject(account, "password", g_prog_status[i].login_cfg.pwd);
-//         cJSON_AddStringToObject(account, "channel", g_prog_status[i].login_cfg.chn);
-//         cJSON_AddStringToObject(account, "bind_if", g_prog_status[i].login_cfg.if);
-//         // cJSON_AddBoolToObject(account, "auto_start", g_prog_status[i].login_cfg.auto_start);
-//
-//         cJSON_AddItemToArray(accounts, account);
-//     }
-//
-//     char* json = cJSON_Print(cfg_json);
-//
-//     FILE* cfg_file = fopen(DIALER_CONFIG_FILE, "w");
-//     if (!cfg_file)
-//     {
-//         LOG_ERROR("无法生成文件: %s", DIALER_CONFIG_FILE);
-//         return false;
-//     }
-//     fprintf(cfg_file, "%s", json);
-//     fclose(cfg_file);
-//
-//     free(json);
-//     cJSON_Delete(cfg_json);
-//     return true;
-// }
+bool save_cfg()
+{
+    LOG_INFO("保存配置中");
+    LOG_INFO("仅会保存第一个可用配置");
+
+    cJSON* cfg_json = cJSON_CreateObject();
+
+    cJSON_AddBoolToObject(cfg_json, "enabled", prog_enabled);
+    cJSON_AddNumberToObject(cfg_json, "log_lv", get_logger_level());
+
+    cJSON* accounts = cJSON_CreateArray();
+    cJSON_AddItemToObject(cfg_json, "accounts", accounts);
+
+    cJSON* account = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
+    cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
+    cJSON_AddStringToObject(account, "channel", g_prog_status[0].login_cfg.chn);
+
+    cJSON_AddItemToArray(accounts, account);
+
+    char* json = cJSON_Print(cfg_json);
+
+    FILE* cfg_file = fopen(config_file, "w");
+    if (!cfg_file)
+    {
+        LOG_ERROR("无法生成文件: %s", config_file);
+        return false;
+    }
+    fprintf(cfg_file, "%s", json);
+    fclose(cfg_file);
+
+    free(json);
+    cJSON_Delete(cfg_json);
+    return true;
+}
 
 bool load_cfg()
 {
-#ifdef __OPENWRT__
-    const char config_file[] = DIALER_CONFIG_FILE;
-#else
+#ifndef __OPENWRT__
+
     char dir[PATH_MAX];
     if (get_exec_dir(dir) == false)
     {
@@ -443,8 +530,8 @@ bool load_cfg()
             sleep_ms(10000);
         }
     }
-    char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
     snprintf(config_file, PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE), "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
+
 #endif
 
     FILE* cfg_file = fopen(config_file, "r");
@@ -502,6 +589,16 @@ bool load_cfg()
         }
     }
 
+    const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
+    if (log_lv && cJSON_IsNumber(log_lv))
+    {
+        set_logger_level(log_lv->valueint);
+    }
+    else
+    {
+        LOG_WARN("log_lv 参数不存在, 使用默认等级 (INFO)");
+    }
+
     const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
     if (enabled == NULL)
     {
@@ -512,6 +609,7 @@ bool load_cfg()
             {
                 return false;
             }
+            prog_enabled = false;
             sleep_ms(10000);
         }
     }
@@ -524,19 +622,11 @@ bool load_cfg()
             {
                 return false;
             }
+            prog_enabled = false;
             sleep_ms(10000);
         }
     }
-
-    const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
-    if (log_lv && cJSON_IsNumber(log_lv))
-    {
-        set_logger_level(log_lv->valueint);
-    }
-    else
-    {
-        LOG_WARN("log_lv 参数不存在, 使用默认等级 (INFO)");
-    }
+    prog_enabled = true;
 
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (accounts == NULL || cJSON_IsArray(accounts) == false || cJSON_GetArraySize(accounts) == 0)
@@ -582,7 +672,6 @@ bool load_cfg()
         const cJSON* pwd = cJSON_GetObjectItem(account, "password");
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
         const cJSON* mark = cJSON_GetObjectItem(account, "mark");
-        // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
 
         // 检查账号
         if (usr == NULL)
@@ -695,7 +784,6 @@ bool load_cfg()
         const cJSON* usr = cJSON_GetObjectItem(account, "username");
         const cJSON* pwd = cJSON_GetObjectItem(account, "password");
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
-        // const cJSON* auto_start = cJSON_GetObjectItem(account, "auto_start");
 
         // 检查账号
         if (usr == NULL)

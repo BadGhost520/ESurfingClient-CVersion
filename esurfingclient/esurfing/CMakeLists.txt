@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 0)
 set(PROGRAM_VERSION_PATCH 4)
-set(PROGRAM_VERSION_RELEASE 2)
+set(PROGRAM_VERSION_RELEASE 3)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -104,8 +104,8 @@ else ()
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
-#            src/webserver/WebServer.c
-#            src/webserver/mongoose.c
+            src/webserver/WebServer.c
+            src/webserver/mongoose.c
             src/utils/PlatformUtils.c
             src/utils/SimThread.c
             src/utils/Shutdown.c
@@ -118,6 +118,15 @@ else ()
             Main.c
     )
 endif ()
+
+add_custom_target(CopyPortal ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/portal"
+        "${CMAKE_CURRENT_BINARY_DIR}/portal"
+        COMMENT "Copy 'portal' to build dir"
+)
+
+add_dependencies(ESurfingClient CopyPortal)
 
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc

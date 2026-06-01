@@ -9,13 +9,13 @@
 
 #define SCHOOL_NETWORK_SYMBOL 8
 
-#define TICKET_URL_LEN 256
+#define TICKET_URL_LEN 512
 #define USER_AGENT_LEN 32
 #define CLIENT_ID_LEN 40
 #define HOST_NAME_LEN 16
-#define KEEP_URL_LEN 80
-#define TERM_URL_LEN 80
-#define AUTH_URL_LEN 80
+#define KEEP_URL_LEN 256
+#define TERM_URL_LEN 256
+#define AUTH_URL_LEN 256
 #define MAC_ADDR_LEN 20
 #define ALGO_ID_LEN 37
 #define TICKET_LEN 40
@@ -27,7 +27,7 @@
 #define IP_LEN 16
 #define IF_LEN 16
 
-#define LAST_LOCATION_LEN 256
+#define LAST_LOCATION_LEN 512
 
 /** @brief 认证配置 */
 typedef struct
@@ -122,8 +122,10 @@ typedef struct
 /** @brief 程序开始运行时间 */
 // extern uint64_t g_start_run_tm;
 
-/** @brief 跳出标志 */
+#ifdef _WIN32
+/** @brief 跳出标志 (用于 Windows 服务退出) */
 extern jmp_buf exit_jmp;
+#endif
 
 /** @brief 适配器数 */
 extern int8_t g_prog_cnt;
@@ -131,17 +133,23 @@ extern int8_t g_prog_cnt;
 /** @brief 线程独立下标 */
 extern _Thread_local int8_t thread_idx;
 
-/** @brief 线程保活 */
-extern bool thread_keep_alive;
-
-/** @brief 需要退出 */
-extern bool need_exit;
-
 /** @brief 认证线程状态 */
 extern prog_status_t* g_prog_status;
 
 /** @brief 校园网标志 */
 extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
+
+/** @brief 线程保活 */
+extern bool thread_keep_alive;
+
+/** @brief Web 服务器运行状态 */
+extern bool is_webserver_running;
+
+/** @brief 需要退出 */
+extern bool need_exit;
+
+/** @brief 程序启用状态 */
+extern bool prog_enabled;
 
 /** @brief 刷新状态函数 */
 void refresh_states();

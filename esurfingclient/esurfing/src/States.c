@@ -6,19 +6,25 @@
 
 // uint64_t g_start_run_tm = 0;
 
+#ifdef _WIN32
 jmp_buf exit_jmp;
+#endif
 
 int8_t g_prog_cnt = 0;
 
 _Thread_local int8_t thread_idx = -1;
 
-bool thread_keep_alive = false;
-
-bool need_exit = false;
-
 prog_status_t* g_prog_status;
 
 char school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
+
+bool thread_keep_alive = false;
+
+bool is_webserver_running = false;
+
+bool need_exit = false;
+
+bool prog_enabled = false;
 
 static void reset_host_name()
 {

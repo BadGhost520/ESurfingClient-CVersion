@@ -114,7 +114,11 @@ static char* get_thread_str()
             return str;
         }
     }
-    return "Main";
+    if (thread_idx == -1)
+    {
+        return "Main";
+    }
+    return "WebServer";
 }
 
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
