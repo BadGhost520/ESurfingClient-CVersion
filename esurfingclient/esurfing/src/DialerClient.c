@@ -1,5 +1,4 @@
 #include "cipher/CipherInterface.h"
-#include "webserver/WebServer.h"
 #include "utils/PlatformUtils.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
@@ -10,7 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef __OPENWRT__
+extern bool start_web_server();
+#endif
+
+#ifdef _WIN32
 extern bool get_service_mode();
+#endif
 
 typedef enum
 {
@@ -651,11 +656,11 @@ void work()
 #endif
 
     if (load_cfg() == false) shut(1); // 加载配置文件
-    //
-    // /**
-    //  * 检测网络状态
-    //  * 非重定向响应都会持续循环
-    //  */
+
+    /**
+     * 检测网络状态
+     * 非重定向响应都会持续循环
+     */
     NetworkStatus status;
     uint8_t retry = 1;
     do
@@ -788,10 +793,6 @@ void work()
         check_time += 10;
     }
     LOG_INFO("线程守护已关闭");
-
-    // get_adapters();
-
-    // startWebServer();
     while (thread_keep_alive == false
 #ifdef _WIN32
         && get_service_mode() == false

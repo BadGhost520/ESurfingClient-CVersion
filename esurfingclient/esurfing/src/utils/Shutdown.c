@@ -1,4 +1,3 @@
-#include "webserver/WebServer.h"
 #include "utils/PlatformUtils.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
@@ -6,6 +5,10 @@
 
 #include <signal.h>
 #include <stdlib.h>
+
+#ifndef __OPENWRT__
+extern void stop_web_server();
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
