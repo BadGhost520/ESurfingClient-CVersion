@@ -26,6 +26,11 @@
 
 ![Please refresh](image/3.png) ![Please refresh](image/2.png) ![Please refresh](image/1.png)
 
+> [!TIP]
+> 经实测, 运行十天后内存占用仅增加 300 kB 左右
+> 
+> 4 级信息级日志文件占用 600 kB 左右
+
 # 目前支持的系统和架构
 
 |    系统     |         架构         | 包管理器 |      理论最低支持版本       |      推荐版本       |

@@ -133,3 +133,9 @@
 3. 更好的 LuCI 提示框, 更好的使用体验
 4. logger 现在在类 Unix 系统中会自动创建父目录
 5. 旧 release 不会再删除上传的文件
+
+### 2026.6.1 (版本 v2.0.4-r3)
+
+1. 合并部分学校认证问题修复代码 (pr [传送门](https://github.com/BadGhost520/ESurfingClient-CVersion-Snapshot/pull/6))
+2. 修复 OpenWRT LuCI 日志文件过大时无法读取日志问题
+3. 桌面程序添加了 Web 服务器相关代码, 但未启用
