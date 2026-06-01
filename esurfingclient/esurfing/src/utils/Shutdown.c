@@ -18,11 +18,15 @@ extern bool get_service_mode();
 void shut(const uint8_t exit_code)
 {
     LOG_INFO("主程序正在关闭");
+
+#ifndef __OPENWRT__
     if (is_webserver_running)
     {
         LOG_INFO("关闭 Web 服务器");
         stop_web_server();
     }
+#endif
+
     if (thread_keep_alive)
     {
         LOG_INFO("关闭线程守护");
