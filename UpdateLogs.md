@@ -139,3 +139,8 @@
 1. 合并部分学校认证问题修复代码 (pr [传送门](https://github.com/BadGhost520/ESurfingClient-CVersion-Snapshot/pull/6))
 2. 修复 OpenWRT LuCI 日志文件过大时无法读取日志问题
 3. 桌面程序添加了 Web 服务器相关代码, 但未启用
+
+### 2026.6.2
+
+1. 将分支全部放到主仓库, 并重新命名分支名, 以 master 命名 v2 主分支, v1 命名 v1 旧分支
+2. Github action 生成预发布版本时会删除旧预发布版本, 并发布最新预发布版本
