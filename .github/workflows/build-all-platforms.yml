@@ -255,12 +255,6 @@ jobs:
           echo "已创建压缩包: master-latest.zip"
           ls -lh "master-latest.zip"
 
-      - name: 删除旧的 master-latest Release 和 Tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete master-latest --yes --cleanup-tag || true
-
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v3
         with:

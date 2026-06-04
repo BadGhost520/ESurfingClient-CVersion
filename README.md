@@ -99,7 +99,7 @@
 
 # 赞助 👍
 
-觉得好的话可以点击这个[神秘小链接](https://afdian.com/a/badghost)或者下边的微信赞赏码给偶打点钱喵, 谢谢泥喵~
+觉得好的话可以点击这个[神秘小链接](https://ifdian.net/a/badghost)或者下边的微信赞赏码给偶打点钱喵, 谢谢泥喵~
 
 <img alt="Please refresh" height="256" src="image/4.png" width="256"/>
 
@@ -107,12 +107,19 @@
 
 **感谢下面的赞助者支持👍**
 
-<img alt="Please refresh" src="image/fund/1.png"/>
-<img alt="Please refresh" src="image/fund/2.png"/>
+### 爱发电
 
+<img alt="Please refresh" src="image/fund/01.png"/>
+<img alt="Please refresh" src="image/fund/02.png"/>
+<img alt="Please refresh" src="image/fund/03.png"/>
+
+### 微信
+
+<img alt="Please refresh" height="256" src="image/fund/1.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="image/fund/2.jpg" width="256"/>
 <img alt="Please refresh" height="256" src="image/fund/3.jpg" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/4.jpg" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/5.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="image/fund/4.png" width="256"/>
+<img alt="Please refresh" height="256" src="image/fund/5.png" width="256"/>
 <img alt="Please refresh" height="256" src="image/fund/6.png" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/7.png" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/8.png" width="256"/>
+<img alt="Please refresh" height="256" src="image/fund/7.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="image/fund/8.jpg" width="256"/>
