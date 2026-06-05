@@ -259,16 +259,19 @@ jobs:
           path: tailwindcss-linux-x64
           key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
 
-      - name: 处理 web 文件
+      - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+
+      - name: 处理 web 文件
         run: |
           cp -r esurfingclient/esurfing/portal ./
           mkdir portal/assets/css
           
           wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
           wget -O portal/daisyui.mjs https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
-          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
-          chmod +x tailwindcss-linux-x64
           
           ./tailwindcss-linux-x64 -i portal/input.css -o portal/assets/css/output.css --minify
           rm portal/input.css
