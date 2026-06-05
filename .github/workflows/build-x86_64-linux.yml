@@ -222,6 +222,7 @@ jobs:
           key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
 
       - name: 处理 web 文件
+        if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
           cp -r esurfingclient/esurfing/portal ./
           mkdir portal/assets/css
