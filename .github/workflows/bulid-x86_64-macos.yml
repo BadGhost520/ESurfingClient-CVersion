@@ -154,11 +154,13 @@ jobs:
           mkdir portal/assets/css
           
           wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
-          wget https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.0/tailwindcss-macos-x64
+          wget -O portal/daisyui.mjs https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
+          wget https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-macos-x64
           chmod +x tailwindcss-macos-x64
           
           ./tailwindcss-macos-x64 -i portal/input.css -o portal/assets/css/output.css --minify
           rm portal/input.css
+          rm portal/daisyui.mjs
           
           sed '13,14 s/.*//' portal/index.html
           sed '396s/.*//' portal/index.html
