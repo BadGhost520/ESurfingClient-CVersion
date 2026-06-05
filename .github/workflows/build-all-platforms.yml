@@ -262,6 +262,8 @@ jobs:
           ls -lh "master-latest.zip"
 
       - name: 清理 GitHub Prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete master-latest -y --cleanup-tag
 
