@@ -120,14 +120,14 @@ jobs:
           cd esurfingclient/esurfing
 
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_C_COMPILER=clang \
-                -DCMAKE_CXX_COMPILER=clang++ \
-                -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-                -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
-                -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
-                -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
-                .
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
+            -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
+            -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
+            .
 
           make -j$(sysctl -n hw.logicalcpu)
 
@@ -148,10 +148,28 @@ jobs:
             exit 1
           fi
 
+      - name: 处理 web 文件
+        run: |
+          cp -r esurfingclient/esurfing/build/portal ./
+          mkdir portal/assets/css
+          
+          wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.0/tailwindcss-macos-x64
+          chmod +x tailwindcss-macos-x64
+          
+          ./tailwindcss-macos-x64 -i portal/input.css -o portal/assets/css/output.css --minify
+          rm portal/input.css
+          
+          sed '13,14 s/.*//' portal/index.html
+          sed '396s/.*//' portal/index.html
+          
+          sed 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#portal/assets/js/alpine.js#g' portal/index.html
+          
+          sed 's#https://cdn.jsdelivr.net/npm/daisyui@5#portal/assets/css/output.css#g' portal/index.html
+
       - name: 打包成 tar.gz
         run: |
-          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz \
-            ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
+          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 portal/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7

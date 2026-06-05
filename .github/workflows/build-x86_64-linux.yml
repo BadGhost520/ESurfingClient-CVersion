@@ -189,8 +189,8 @@ jobs:
           cd esurfingclient/esurfing
           
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
-                -DCMAKE_BUILD_TYPE=Release \
-                .
+            -DCMAKE_BUILD_TYPE=Release \
+            .
           
           make -j$(nproc)
           
@@ -211,9 +211,28 @@ jobs:
             exit 1
           fi
 
+      - name: 处理 web 文件
+        run: |
+          cp -r esurfingclient/esurfing/build/portal ./
+          mkdir portal/assets/css
+          
+          wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.0/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          
+          ./tailwindcss-linux-x64 -i portal/input.css -o portal/assets/css/output.css --minify
+          rm portal/input.css
+          
+          sed '13,14 s/.*//' portal/index.html
+          sed '396s/.*//' portal/index.html
+          
+          sed 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#portal/assets/js/alpine.js#g' portal/index.html
+          
+          sed 's#https://cdn.jsdelivr.net/npm/daisyui@5#portal/assets/css/output.css#g' portal/index.html
+
       - name: 打包成 tar.gz 压缩包
         run: |
-          tar -czf esurfingclient-${{ inputs.full_version }}-linux-x86_64.tar.gz ESurfingClient-${{ inputs.full_version }}-linux-x86_64
+          tar -czf esurfingclient-${{ inputs.full_version }}-linux-x86_64.tar.gz ESurfingClient-${{ inputs.full_version }}-linux-x86_64 portal/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7

@@ -230,28 +230,47 @@ jobs:
       - name: 验证
         run: |
           if [ -f "ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe" ]; then
-              echo "✅ 构建成功"
-              echo "📏 文件大小: $(stat -c%s ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe) bytes"
+            echo "✅ 构建成功"
+            echo "📏 文件大小: $(stat -c%s ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe) bytes"
 
-              echo "🔍 检查依赖:"
-              deps=$(x86_64-w64-mingw32-objdump -p ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe | grep "DLL Name" || true)
-              echo "$deps" | head -20
+            echo "🔍 检查依赖:"
+            deps=$(x86_64-w64-mingw32-objdump -p ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe | grep "DLL Name" || true)
+            echo "$deps" | head -20
 
-              if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
-                  echo "❌ 错误: 链接了第三方动态库"
-                  echo "$deps" | grep -E "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
-                  exit 1
-              else
-                  echo "✅ 完全静态: 没有链接第三方动态库"
-              fi
-          else
-              echo "❌ 未找到二进制文件"
+            if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
+              echo "❌ 错误: 链接了第三方动态库"
+              echo "$deps" | grep -E "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
               exit 1
+            else
+              echo "✅ 完全静态: 没有链接第三方动态库"
+            fi
+          else
+            echo "❌ 未找到二进制文件"
+            exit 1
           fi
+
+      - name: 处理 web 文件
+        run: |
+          cp -r esurfingclient/esurfing/build/portal ./
+          mkdir portal/assets/css
+          
+          wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.0/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          
+          ./tailwindcss-linux-x64 -i portal/input.css -o portal/assets/css/output.css --minify
+          rm portal/input.css
+          
+          sed '13,14 s/.*//' portal/index.html
+          sed '396s/.*//' portal/index.html
+          
+          sed 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#portal/assets/js/alpine.js#g' portal/index.html
+          
+          sed 's#https://cdn.jsdelivr.net/npm/daisyui@5#portal/assets/css/output.css#g' portal/index.html
 
       - name: 打包成 zip 压缩包
         run: |
-          zip -r esurfingclient-${{ inputs.full_version }}-windows-x86_64.zip ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe
+          zip -r esurfingclient-${{ inputs.full_version }}-windows-x86_64.zip ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe portal/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
