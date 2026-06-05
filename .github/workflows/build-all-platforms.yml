@@ -261,7 +261,11 @@ jobs:
           echo "已创建压缩包: master-latest.zip"
           ls -lh "master-latest.zip"
 
-      - name: 创建 GitHub Release
+      - name: 清理 GitHub Prerelease
+        run: |
+          gh release delete master-latest -y --cleanup-tag
+
+      - name: 创建 GitHub Prerelease
         uses: softprops/action-gh-release@v3
         with:
           tag_name: 'master-latest'
