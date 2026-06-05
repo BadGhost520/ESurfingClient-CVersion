@@ -263,12 +263,12 @@ jobs:
           rm portal/input.css
           rm portal/daisyui.mjs
           
-          sed '13,14 s/.*//' portal/index.html
-          sed '396s/.*//' portal/index.html
+          sed -i '13,14 s/.*//' portal/index.html
+          sed -i '396s/.*//' portal/index.html
           
-          sed 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#portal/assets/js/alpine.js#g' portal/index.html
+          sed -i 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#portal/assets/js/alpine.js#g' portal/index.html
           
-          sed 's#https://cdn.jsdelivr.net/npm/daisyui@5#portal/assets/css/output.css#g' portal/index.html
+          sed -i 's#https://cdn.jsdelivr.net/npm/daisyui@5#portal/assets/css/output.css#g' portal/index.html
 
       - name: 打包成 zip 压缩包
         run: |
