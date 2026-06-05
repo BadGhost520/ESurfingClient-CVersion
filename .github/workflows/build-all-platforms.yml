@@ -231,6 +231,8 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:
+      - uses: actions/checkout@v6
+
       - name: 下载所有工件
         uses: actions/download-artifact@v8
         with:
