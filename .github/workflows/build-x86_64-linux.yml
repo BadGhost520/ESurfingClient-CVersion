@@ -17,6 +17,9 @@ on:
       curl_version:
         required: true
         type: string
+      tail_wind_labs_version:
+        required: true
+        type: string
 
 jobs:
   build:
@@ -211,6 +214,13 @@ jobs:
             exit 1
           fi
 
+      - name: 获取 web 处理缓存
+        id: cache-curl
+        uses: actions/cache@v5
+        with:
+          path: tailwindcss-linux-x64
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
+
       - name: 处理 web 文件
         run: |
           cp -r esurfingclient/esurfing/portal ./
@@ -218,19 +228,19 @@ jobs:
           
           wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
           wget -O portal/daisyui.mjs https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
-          wget https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
           chmod +x tailwindcss-linux-x64
           
           ./tailwindcss-linux-x64 -i portal/input.css -o portal/assets/css/output.css --minify
           rm portal/input.css
           rm portal/daisyui.mjs
           
-          sed -i '13,14 s/.*//' portal/index.html
-          sed -i '396s/.*//' portal/index.html
+          sed -i '' '13,14 s/.*//' portal/index.html
+          sed -i '' '396s/.*//' portal/index.html
           
-          sed -i 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#portal/assets/js/alpine.js#g' portal/index.html
+          sed -i '' 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#portal/assets/js/alpine.js#g' portal/index.html
           
-          sed -i 's#https://cdn.jsdelivr.net/npm/daisyui@5#portal/assets/css/output.css#g' portal/index.html
+          sed -i '' 's#https://cdn.jsdelivr.net/npm/daisyui@5#portal/assets/css/output.css#g' portal/index.html
 
       - name: 打包成 tar.gz 压缩包
         run: |
