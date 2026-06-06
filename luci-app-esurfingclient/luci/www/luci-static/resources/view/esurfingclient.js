@@ -314,7 +314,7 @@ return view.extend({
                 self.refreshLogs();
                 self.loadLogContent();
             }
-        }, 500);
+        }, 5000);
     },
 
     stopLogAutoRefresh: function() {

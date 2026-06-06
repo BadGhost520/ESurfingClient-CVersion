@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>ESurfing 客户端</title>
+    <title>ESurfing 客户端控制面板</title>
     <link rel="icon" id="favicon" type="image/svg+xml"
       href="assets/svg/dashboard.svg" />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet"
@@ -64,6 +64,9 @@
           <div class="mx-2 flex-1 px-2 text-xl font-bold"
             x-text="menuText"></div>
           <div class="flex items-center mr-4">
+            <button class="btn btn-soft btn-warning" @click>重启认证</button>
+          </div>
+          <div class="flex items-center mr-4">
             <div aria-label="warning" class="status status-warning mr-2"></div>
             <span id="auth">未认证</span>
           </div>
@@ -91,8 +94,9 @@
           </div>
         </div>
         <!-- 仪表板页面 -->
-        <div x-show="activePanel === 'dashboard'"
-          class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 place-content-start gap-4 p-10">
+        <div
+          class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 place-content-start gap-4 p-10"
+          x-show="activePanel === 'dashboard'">
           <div class="card bg-base-300 shadow-md">
             <div class="card-body">
               <h2 class="card-title">
@@ -149,12 +153,176 @@
           </div>
         </div>
         <!-- 设置页面 -->
-        <div class="flex-1 p-10" x-show="activePanel === 'settings'">
-
+        <div
+          class="flex-1 grid grid-cols-1 place-content-start gap-4 p-10"
+          x-show="activePanel === 'settings'"
+          x-data="{
+            openModal() {
+              this.$refs.setModal.showModal();
+            },
+            closeModal() {
+              this.$refs.setModal.close();
+            }
+          }">
+          <div class="card bg-base-300 shadow-md">
+            <div class="card-body">
+              <h2 class="card-title">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 1024 1024"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill-rule="evenodd"
+                  clip-rule="evenodd"
+                  class="fill-current">
+                  <path
+                    d="M469.333333 60.693333a85.333333 85.333333 0 0 1 85.333334 0l326.826666 188.714667a85.333333 85.333333 0 0 1 42.666667 73.898667v377.386666a85.333333 85.333333 0 0 1-42.666667 73.898667L554.666667 963.306667a85.333333 85.333333 0 0 1-85.333334 0L142.506667 774.592a85.333333 85.333333 0 0 1-42.666667-73.898667v-377.386666a85.333333 85.333333 0 0 1 42.666667-73.898667z m42.666667 73.898667L185.173333 323.306667v377.386666L512 889.408l326.826667-188.714667v-377.386666L512 134.592zM512 341.333333a170.666667 170.666667 0 1 1 0 341.333334 170.666667 170.666667 0 0 1 0-341.333334z m0 85.333334a85.333333 85.333333 0 1 0 0 170.666666 85.333333 85.333333 0 0 0 0-170.666666z"></path>
+                </svg>
+                常规</h2>
+              <div class="mx-[20%] text-lg">
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">启用</legend>
+                  <input type="checkbox" class="checkbox" />
+                  <span class="label">启用 ESurfing 客户端</span>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">日志等级</legend>
+                  <select class="select">
+                    <option>0 - 关闭</option>
+                    <option>1 - 致命</option>
+                    <option>2 - 错误</option>
+                    <option>3 - 警告</option>
+                    <option>4 - 信息</option>
+                    <option>5 - 调试</option>
+                    <option>6 - 全部</option>
+                  </select>
+                  <span class="label">日志的详细程度</span>
+                </fieldset>
+              </div>
+            </div>
+          </div>
+          <div class="card bg-base-300 shadow-md">
+            <div class="card-body">
+              <h2 class="card-title">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 1024 1024"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill-rule="evenodd"
+                  clip-rule="evenodd"
+                  class="fill-current">
+                  <path
+                    d="M448 469.333333A192 192 0 1 1 640 277.333333a192.213333 192.213333 0 0 1-192 192z m0-298.666666A106.666667 106.666667 0 1 0 554.666667 277.333333 106.666667 106.666667 0 0 0 448 170.666667z"></path>
+                  <path
+                    d="M490.666667 938.666667H128a42.666667 42.666667 0 0 1-42.666667-42.666667v-25.6c0-102.4 0-153.6 23.253334-199.296a211.882667 211.882667 0 0 1 93.226666-93.184C247.466667 554.666667 298.794667 554.666667 401.066667 554.666667h89.6a42.666667 42.666667 0 0 1 0 85.333333H401.066667c-88.661333 0-133.162667 0-160.512 13.952a127.061333 127.061333 0 0 0-55.936 55.936A362.666667 362.666667 0 0 0 170.666667 853.333333h320a42.666667 42.666667 0 0 1 0 85.333334z"></path>
+                  <path
+                    d="M863.274667 704h-237.824a42.666667 42.666667 0 0 1 0-85.333333h237.824a42.666667 42.666667 0 0 1 0 85.333333z"></path>
+                  <path
+                    d="M863.274667 874.666667h-237.824a42.666667 42.666667 0 0 1 0-85.333334h237.824a42.666667 42.666667 0 0 1 0 85.333334z"></path>
+                </svg>
+                账号</h2>
+              <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                  <!-- 表头 -->
+                  <thead>
+                    <tr class="bg-base-200">
+                      <th></th>
+                      <th>账号</th>
+                      <th>密码</th>
+                      <th>通道</th>
+                      <th>标记值</th>
+                      <th></th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <!-- 表体 -->
+                  <tbody>
+                    <!-- 第一行 -->
+                    <tr>
+                      <th>1</th>
+                      <td>abc</td>
+                      <td>******</td>
+                      <td>phone</td>
+                      <td>(无)</td>
+                      <th class="w-[1%] whitespace-nowrap px-1">
+                        <button class="btn btn-soft btn-neutral"
+                          @click="openModal">修改</button>
+                      </th>
+                      <th class="w-[1%] whitespace-nowrap px-1">
+                        <button class="btn btn-soft btn-error"
+                          @click="openModal">删除</button>
+                      </th>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <dialog x-ref="setModal" class="modal modal-top">
+            <div class="modal-box max-w-[90%] mx-auto mt-18 rounded-t-lg">
+              <h3 class="text-lg font-bold">编辑账号</h3>
+              <div class="mx-[20%]">
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">账号</legend>
+                  <input type="text" class="input" placeholder="请输入账号" />
+                  <p class="label">和官方认证程序的账号相同</p>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">密码</legend>
+                  <input type="text" class="input" placeholder="请输入密码" />
+                  <p class="label">和官方认证程序的密码相同</p>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">通道</legend>
+                  <select class="select">
+                    <option>phone</option>
+                    <option>pc</option>
+                  </select>
+                  <span class="label">选择账号的认证通道</span>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">标记值</legend>
+                  <input type="text" class="input" placeholder="请输入标记值" />
+                  <p class="label">
+                    可选项, 用于 MWAN 多路区分
+                    <br>
+                    十六进制数, 以 0x 开头, 例如 0x100
+                  </p>
+                </fieldset>
+              </div>
+              <div class="modal-action">
+                <button class="btn btn-soft btn-neutral"
+                  @click="closeModal">关闭</button>
+                <button class="btn btn-soft btn-info"
+                  @click="closeModal">保存</button>
+              </div>
+            </div>
+          </dialog>
         </div>
         <!-- 日志页面 -->
         <div class="flex-1 p-10" x-show="activePanel === 'logs'">
-
+          <div class="card bg-base-300 shadow-md">
+            <div class="card-body">
+              <h2 class="card-title">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 1024 1024"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill-rule="evenodd"
+                  clip-rule="evenodd"
+                  class="fill-current">
+                  <path
+                    d="M805.216 128l-586.432 0C204 128 192 140.2688 192 155.3792l0 713.2352c0 15.1424 12 27.3792 26.7904 27.3792l586.432 0c14.816 0 26.784-12.2368 26.784-27.3792L832.0064 155.3792C832 140.2432 820.0064 128 805.216 128L805.216 128zM771.136 805.2096c0 12.5568-9.6832 22.7264-21.664 22.7264L275.104 827.936c-11.9616 0-21.6704-10.1696-21.6704-22.7264L253.4336 213.2288c0-12.5504 9.7088-22.7264 21.6704-22.7264l474.3744 0c11.9552 0 21.664 10.1504 21.664 22.7264L771.1424 805.2096 771.136 805.2096zM771.136 805.2096M524.9344 323.3024 359.232 323.3024c-16.0512 0-29.056 14.3296-29.056 32 0 17.6704 13.0048 32 29.056 32l165.7024 0c16.0384 0 29.0496-14.3296 29.0496-32C553.9904 337.632 540.9728 323.3024 524.9344 323.3024L524.9344 323.3024zM524.9344 323.3024M701.9648 479.3984 359.232 479.3984c-16.0512 0-29.056 14.3296-29.056 32.0064 0 17.6768 13.0048 31.9936 29.056 31.9936l342.7264 0c16.0448 0 29.056-14.3168 29.056-31.9936C731.0208 493.728 718.0032 479.3984 701.9648 479.3984L701.9648 479.3984zM701.9648 479.3984M630.0224 635.5008 359.2384 635.5008c-16.0512 0-29.056 14.3232-29.056 32 0 17.6832 13.0048 32 29.056 32l270.7904 0c16.0512 0 29.0624-14.3168 29.0624-32C659.0848 649.824 646.0736 635.5008 630.0224 635.5008L630.0224 635.5008zM630.0224 635.5008"></path>
+                </svg>
+                日志查看</h2>
+              <fieldset class="fieldset">
+                <select class="select"></select>
+              </fieldset>
+              <pre class="p-4 bg-base-200 rounded-lg">读取日志失败, 或程序未启动</pre>
+            </div>
+          </div>
         </div>
         <!-- 关于页面 -->
         <div class="flex-1 p-10" x-show="activePanel === 'about'">
@@ -177,7 +345,7 @@
               class="collapse-content text-sm z-1"
               x-data="{ license: ''}"
               x-init="fetch('assets/LICENSE').then(r=>r.text()).then(t=>license=t)">
-              <pre class="p-4 bg-base-200" x-text="license"></pre>
+              <pre class="p-4" x-text="license"></pre>
             </div>
           </div>
         </div>

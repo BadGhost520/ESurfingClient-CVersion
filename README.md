@@ -2,6 +2,8 @@
 
 **根据 Rsplwe 大佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** 👍
 
+**使用了 [cJSON](https://github.com/DaveGamble/cJSON), [mongoose](https://github.com/cesanta/mongoose) 开源库**
+
 **优点是程序文件超级小 (所有版本均是仅占用 2MB 左右的储存空间😋), 并且跨平台跨架构能力超强**
 
 **目前有支持 OpenWRT 15.05 到最新版的 LuCI 以及程序软件包**
@@ -28,7 +30,11 @@
 ![Please refresh](image/3.png) ![Please refresh](image/2.png) ![Please refresh](image/1.png)
 
 > [!TIP]
-> 经实测, 运行十天后内存占用仅增加 300 kB 左右
+> 经实测, 运行十天后运行内存占用仅增加 300 kB 左右
+> 
+> VmHWM: 3108 kB
+> 
+> VmRSS: 3048 kB
 > 
 > 4 级信息级日志文件占用 600 kB 左右
 
