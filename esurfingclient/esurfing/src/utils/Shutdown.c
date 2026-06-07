@@ -20,17 +20,17 @@ void shut(const uint8_t exit_code)
     LOG_INFO("主程序正在关闭");
 
 #ifndef __OPENWRT__
-    if (is_webserver_running)
+    if (g_is_webserver_running)
     {
         LOG_INFO("关闭 Web 服务器");
         stop_web_server();
     }
 #endif
 
-    if (thread_keep_alive)
+    if (g_thread_keep_alive)
     {
         LOG_INFO("关闭线程守护");
-        thread_keep_alive = false;
+        g_thread_keep_alive = false;
     }
     LOG_INFO("清理资源中");
     LOG_DEBUG("关闭线程");
@@ -47,7 +47,7 @@ void shut(const uint8_t exit_code)
 #ifdef _WIN32
     if (get_service_mode())
     {
-        longjmp(exit_jmp, 1);
+        longjmp(g_exit_jmp, 1);
     }
 #endif
 

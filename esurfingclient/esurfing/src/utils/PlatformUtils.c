@@ -124,7 +124,7 @@ char* get_adapters_json()
         cJSON_AddItemToArray(adapters, adapter);
     }
     cJSON_AddItemToObject(root, "adapters", adapters);
-    cJSON_AddStringToObject(root, "school_network_symbol", school_network_symbol);
+    cJSON_AddStringToObject(root, "school_network_symbol", g_school_network_symbol);
     char* json = cJSON_Print(root);
     cJSON_Delete(root);
     return json;
@@ -270,18 +270,18 @@ void sleep_ms(const uint64_t ms)
 
     uint64_t elapsed = 0;
 
-    while (elapsed < ms && thread_keep_alive)
+    while (elapsed < ms && g_thread_keep_alive)
     {
-        if (thread_idx != -1)
+        if (tl_thread_idx != -1)
         {
-            if (g_prog_status[thread_idx].runtime_status.is_running == false || g_prog_status[thread_idx].runtime_status.is_need_reset)
+            if (g_prog_status[tl_thread_idx].runtime_status.is_running == false || g_prog_status[tl_thread_idx].runtime_status.is_need_reset)
             {
                 return;
             }
         }
         else
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return;
             }
@@ -365,14 +365,14 @@ char* create_xml_payload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "    <gwip>%s</gwip>\n"
             "</request>\n",
-            safe_str(g_prog_status[thread_idx].login_cfg.user_agent),
-            safe_str(g_prog_status[thread_idx].auth_cfg.client_id),
+            safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id),
             safe_str(cur_tm),
-            safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
-            safe_str(g_prog_status[thread_idx].auth_cfg.client_ip),
-            safe_str(g_prog_status[thread_idx].auth_cfg.mac_addr),
-            safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
-            safe_str(g_prog_status[thread_idx].auth_cfg.ac_ip)
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_ip),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.mac_addr),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.ac_ip)
         );
         break;
     case LOGIN:
@@ -386,12 +386,12 @@ char* create_xml_payload(const XmlChoose choose)
             "    <userid>%s</userid>\n"
             "    <passwd>%s</passwd>\n"
             "</request>\n",
-            safe_str(g_prog_status[thread_idx].login_cfg.user_agent),
-            safe_str(g_prog_status[thread_idx].auth_cfg.client_id),
-            safe_str(g_prog_status[thread_idx].auth_cfg.ticket),
+            safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.ticket),
             safe_str(cur_tm),
-            safe_str(g_prog_status[thread_idx].login_cfg.usr),
-            safe_str(g_prog_status[thread_idx].login_cfg.pwd)
+            safe_str(g_prog_status[tl_thread_idx].login_cfg.usr),
+            safe_str(g_prog_status[tl_thread_idx].login_cfg.pwd)
         );
         break;
     case HEART_BEAT:
@@ -409,14 +409,14 @@ char* create_xml_payload(const XmlChoose choose)
             "    <mac>%s</mac>\n"
             "    <ostag>%s</ostag>\n"
             "</request>\n",
-            safe_str(g_prog_status[thread_idx].login_cfg.user_agent),
-            safe_str(g_prog_status[thread_idx].auth_cfg.client_id),
+            safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id),
             safe_str(cur_tm),
-            safe_str(g_prog_status[thread_idx].auth_cfg.host_name),
-            safe_str(g_prog_status[thread_idx].auth_cfg.client_ip),
-            safe_str(g_prog_status[thread_idx].auth_cfg.ticket),
-            safe_str(g_prog_status[thread_idx].auth_cfg.mac_addr),
-            safe_str(g_prog_status[thread_idx].auth_cfg.host_name)
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_ip),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.ticket),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.mac_addr),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name)
         );
         break;
     default:
@@ -483,7 +483,7 @@ bool save_cfg()
 
     cJSON* cfg_json = cJSON_CreateObject();
 
-    cJSON_AddBoolToObject(cfg_json, "enabled", prog_enabled);
+    cJSON_AddBoolToObject(cfg_json, "enabled", g_prog_enabled);
     cJSON_AddNumberToObject(cfg_json, "log_lv", get_logger_level());
 
     cJSON* accounts = cJSON_CreateArray();
@@ -523,7 +523,7 @@ bool load_cfg()
         LOG_ERROR("获取可执行文件路径失败, 请检查权限后重启");
         while (true)
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return false;
             }
@@ -545,7 +545,7 @@ bool load_cfg()
             LOG_FATAL("无法生成文件: %s, 请检查权限后重启", config_file);
             while (true)
             {
-                if (need_exit)
+                if (g_need_exit)
                 {
                     return false;
                 }
@@ -557,7 +557,7 @@ bool load_cfg()
         LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启");
         while (true)
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return false;
             }
@@ -581,7 +581,7 @@ bool load_cfg()
         LOG_FATAL("JSON 解析失败, 请检查后重启");
         while (true)
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return false;
             }
@@ -605,11 +605,11 @@ bool load_cfg()
         LOG_WARN("enabled 参数不存在, 请填写后重启程序");
         while (true)
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return false;
             }
-            prog_enabled = false;
+            g_prog_enabled = false;
             sleep_ms(10000);
         }
     }
@@ -618,15 +618,15 @@ bool load_cfg()
         LOG_WARN("配置文件中禁用了程序启动, 请开启后重启程序");
         while (true)
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return false;
             }
-            prog_enabled = false;
+            g_prog_enabled = false;
             sleep_ms(10000);
         }
     }
-    prog_enabled = true;
+    g_prog_enabled = true;
 
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (accounts == NULL || cJSON_IsArray(accounts) == false || cJSON_GetArraySize(accounts) == 0)
@@ -635,7 +635,7 @@ bool load_cfg()
         cJSON_Delete(cfg_json);
         while (true)
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return false;
             }
@@ -857,7 +857,7 @@ bool load_cfg()
         LOG_FATAL("无可用配置, 请检查后重启程序");
         while (true)
         {
-            if (need_exit)
+            if (g_need_exit)
             {
                 return false;
             }

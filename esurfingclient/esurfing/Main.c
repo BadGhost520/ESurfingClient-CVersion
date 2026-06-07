@@ -1,4 +1,6 @@
+#include "utils/PlatformUtils.h"
 #include "utils/Service.h"
+#include "States.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +23,8 @@ static void PrintUsage()
 
 int main(int argc, char *argv[])
 {
+    g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间
+
 #ifdef _WIN32
 
     system("chcp 65001 >nul");
@@ -31,11 +35,11 @@ int main(int argc, char *argv[])
 
     if (argc > 1)
     {
-        if (strcmp(argv[1], "--install") == 0)
+        if (strcmp(argv[1], "--install") == 0 || strcmp(argv[1], "-i") == 0)
         {
             return service_install();
         }
-        if (strcmp(argv[1], "--uninstall") == 0)
+        if (strcmp(argv[1], "--uninstall") == 0 || strcmp(argv[1], "-u") == 0)
         {
             return service_uninstall();
         }
@@ -63,8 +67,6 @@ int main(int argc, char *argv[])
     }
 
 #endif
-
-    // g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间 (搁置)
 
     work();
 

@@ -4,27 +4,27 @@
 
 #include <ctype.h>
 
-// uint64_t g_start_run_tm = 0;
-
 #ifdef _WIN32
-jmp_buf exit_jmp;
+jmp_buf g_exit_jmp;
 #endif
+
+uint64_t g_start_run_tm = 0;
 
 int8_t g_prog_cnt = 0;
 
-_Thread_local int8_t thread_idx = -1;
+_Thread_local int8_t tl_thread_idx = -1;
 
 prog_status_t* g_prog_status;
 
-char school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
+char g_school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
 
-bool thread_keep_alive = false;
+bool g_thread_keep_alive = false;
 
-bool is_webserver_running = false;
+bool g_is_webserver_running = false;
 
-bool need_exit = false;
+bool g_need_exit = false;
 
-bool prog_enabled = false;
+bool g_prog_enabled = false;
 
 static void reset_host_name()
 {
@@ -37,7 +37,7 @@ static void reset_host_name()
     host_bytes[2], host_bytes[3],
     host_bytes[4]);
     LOG_DEBUG("新的主机名: %s", host_name);
-    snprintf(g_prog_status[thread_idx].auth_cfg.host_name, HOST_NAME_LEN, "%s", safe_str(host_name));
+    snprintf(g_prog_status[tl_thread_idx].auth_cfg.host_name, HOST_NAME_LEN, "%s", safe_str(host_name));
 }
 
 static void reset_client_id()
@@ -58,7 +58,7 @@ static void reset_client_id()
         client_bytes[14], client_bytes[15]);
     for (int i = 0; client_id[i]; i++) client_id[i] = (char)tolower((unsigned char)client_id[i]);
     LOG_DEBUG("新的 Client Id: %s", client_id);
-    snprintf(g_prog_status[thread_idx].auth_cfg.client_id, CLIENT_ID_LEN, "%s", safe_str(client_id));
+    snprintf(g_prog_status[tl_thread_idx].auth_cfg.client_id, CLIENT_ID_LEN, "%s", safe_str(client_id));
 }
 
 static void reset_mac_addr()
@@ -72,12 +72,12 @@ static void reset_mac_addr()
     mac_bytes[2], mac_bytes[3],
     mac_bytes[4], mac_bytes[5]);
     LOG_DEBUG("新的 MAC 地址: %s", mac_addr);
-    snprintf(g_prog_status[thread_idx].auth_cfg.mac_addr, MAC_ADDR_LEN, "%s", safe_str(mac_addr));
+    snprintf(g_prog_status[tl_thread_idx].auth_cfg.mac_addr, MAC_ADDR_LEN, "%s", safe_str(mac_addr));
 }
 
 void refresh_states()
 {
-    snprintf(g_prog_status[thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000"); // 初始化 algo_id
+    snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000"); // 初始化 algo_id
     reset_host_name(); // 重置 hostname
     reset_client_id(); // 重置 client_id
     reset_mac_addr(); // 重置 mac_address

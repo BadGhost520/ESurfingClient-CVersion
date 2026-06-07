@@ -3,6 +3,8 @@
 #include "webserver/mongoose.h"
 #include "utils/SimThread.h"
 #include "utils/Logger.h"
+#include "utils/cJSON.h"
+#include "NetClient.h"
 #include "States.h"
 
 static const char* listenAddr = "http://0.0.0.0:8888";
@@ -17,10 +19,35 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
         // GET 请求
         if (mg_strcmp(hm->method, mg_str("GET")) == 0)
         {
-            // 根目录
+            // 根目录转发到 index.html
             if (mg_match(hm->uri, mg_str("/"), NULL))
             {
-
+                mg_http_reply(c, 302, "Location: /index.html\r\n", "");
+            }
+            // 获取认证和联网状态
+            if (mg_match(hm->uri, mg_str("/api/status/auth"), NULL))
+            {
+                cJSON* auth = cJSON_CreateObject();
+                cJSON_AddBoolToObject(auth, "status", g_prog_status[0].runtime_status.is_authed);
+                char* status_str = cJSON_Print(auth);
+                mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", status_str);
+                free(status_str);
+            }
+            if (mg_match(hm->uri, mg_str("/api/status/online"), NULL))
+            {
+                const NetworkStatus status = check_network_status();
+                if (status == REQUEST_SUCCESS)
+                {
+                    mg_http_reply(c, 204, "", "");
+                }
+                else if (status == REQUEST_REDIRECT)
+                {
+                    mg_http_reply(c, 302, "", "");
+                }
+                else
+                {
+                    mg_http_reply(c, 503, "", "");
+                }
             }
             mg_http_serve_dir(c, hm, &opts);
             return;
@@ -113,16 +140,16 @@ static void logFn(const char ch, void *param)
 
 int web_server(void* arg)
 {
-    thread_idx = (int8_t)(intptr_t)arg;
+    tl_thread_idx = (int8_t)(intptr_t)arg;
     struct mg_mgr mgr;
     mg_log_level = MG_LL_VERBOSE;
     mg_log_set_fn(logFn, NULL);
     mg_mgr_init(&mgr);
 
     mg_http_listen(&mgr, listenAddr, fn, NULL);
-    is_webserver_running = 1;
+    g_is_webserver_running = 1;
     LOG_INFO("Web 服务器已启动, 后台访问地址: http://127.0.0.1:8888/");
-    while (is_webserver_running) mg_mgr_poll(&mgr, 1000);
+    while (g_is_webserver_running) mg_mgr_poll(&mgr, 1000);
     mg_mgr_free(&mgr);
     LOG_INFO("Web 服务器已停止");
     return 0;
@@ -149,7 +176,7 @@ bool start_web_server()
 
 void stop_web_server()
 {
-    is_webserver_running = 0;
+    g_is_webserver_running = 0;
     int result_code = 0;
     sim_thread_join(web_thread, &result_code);
     LOG_DEBUG("Web 服务器线程退出, 退出码: %d", result_code);

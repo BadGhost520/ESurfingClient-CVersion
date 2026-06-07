@@ -66,15 +66,15 @@ static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, 
         return CURL_SOCKET_BAD;
     }
 
-    if (g_prog_status[thread_idx].login_cfg.mark != 0)
+    if (g_prog_status[tl_thread_idx].login_cfg.mark != 0)
     {
-        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[thread_idx].login_cfg.mark, sizeof(g_prog_status[thread_idx].login_cfg.mark)) == -1)
+        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[tl_thread_idx].login_cfg.mark, sizeof(g_prog_status[tl_thread_idx].login_cfg.mark)) == -1)
         {
-            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s", g_prog_status[thread_idx].login_cfg.mark, g_prog_status[thread_idx].login_cfg.mark, strerror(errno));
+            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s", g_prog_status[tl_thread_idx].login_cfg.mark, g_prog_status[tl_thread_idx].login_cfg.mark, strerror(errno));
         }
         else
         {
-            LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[thread_idx].login_cfg.mark, g_prog_status[thread_idx].login_cfg.mark);
+            LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].login_cfg.mark, g_prog_status[tl_thread_idx].login_cfg.mark);
         }
     }
 
@@ -161,9 +161,9 @@ static size_t header_cb(const void* contents, const size_t size, const size_t nm
 
     if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
     {
-        if (thread_idx != -1)
+        if (tl_thread_idx != -1)
         {
-            if (!g_prog_status[thread_idx].last_location_lock)
+            if (!g_prog_status[tl_thread_idx].last_location_lock)
             {
                 LOG_VERBOSE("原始数据: %s", header);
 
@@ -178,11 +178,11 @@ static size_t header_cb(const void* contents, const size_t size, const size_t nm
                     LOG_WARN("Location 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, LAST_LOCATION_LEN);
                 }
 
-                memcpy(g_prog_status[thread_idx].last_location, value, copy_len);
-                g_prog_status[thread_idx].last_location[copy_len] = '\0';
+                memcpy(g_prog_status[tl_thread_idx].last_location, value, copy_len);
+                g_prog_status[tl_thread_idx].last_location[copy_len] = '\0';
 
                 LOG_VERBOSE("现在的 last_location: %s (长度: %zu)",
-                            g_prog_status[thread_idx].last_location, copy_len);
+                            g_prog_status[tl_thread_idx].last_location, copy_len);
             }
         }
     }
@@ -311,9 +311,9 @@ http_resp_t post(const char* url, const char* data)
 
     snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", safe_str(md5_hash));
     free(md5_hash);
-    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
-    snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
-    snprintf(a_id, MAX_LEN, "Algo-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.algo_id));
+    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
+    snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
+    snprintf(a_id, MAX_LEN, "Algo-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.algo_id));
     snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", safe_str(s_school_id));
     snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", safe_str(s_domain));
     snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", safe_str(s_area));
@@ -327,7 +327,7 @@ http_resp_t post(const char* url, const char* data)
     LOG_VERBOSE("POST 添加头 %s", cdc_sid);
     LOG_VERBOSE("POST 添加头 %s", cdc_d);
     LOG_VERBOSE("POST 添加头 %s", cdc_a);
-    LOG_VERBOSE("下标: %" PRId8, thread_idx);
+    LOG_VERBOSE("下标: %" PRId8, tl_thread_idx);
 
     struct curl_slist* headers = NULL;
 
@@ -383,7 +383,7 @@ http_resp_t post(const char* url, const char* data)
     if (resp_code == 302)
     {
         LOG_DEBUG("重定向, 响应码: 302");
-        if (thread_idx != -1) LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
+        if (tl_thread_idx != -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
         resp.status = REQUEST_REDIRECT;
         return resp;
     }
@@ -416,15 +416,15 @@ http_resp_t get(const char* url)
 
     struct curl_slist* headers = NULL;
 
-    if (thread_idx != -1)
+    if (tl_thread_idx != -1)
     {
-        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[thread_idx].login_cfg.user_agent));
-        snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[thread_idx].auth_cfg.client_id));
+        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
+        snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
 
         LOG_VERBOSE("GET 添加头 %s", ua);
         LOG_VERBOSE("GET 添加头 %s", s_req_accept);
         LOG_VERBOSE("GET 添加头 %s", c_id);
-        LOG_VERBOSE("线程下标: %" PRId8, thread_idx);
+        LOG_VERBOSE("线程下标: %" PRId8, tl_thread_idx);
 
         headers = curl_slist_append(headers, ua);
         headers = curl_slist_append(headers, s_req_accept);
@@ -445,7 +445,7 @@ http_resp_t get(const char* url)
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
-    if (thread_idx != -1)
+    if (tl_thread_idx != -1)
     {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
@@ -478,7 +478,7 @@ http_resp_t get(const char* url)
     if (resp_code == 302)
     {
         LOG_DEBUG("重定向, 响应码: 302");
-        if (thread_idx != -1) LOG_VERBOSE("重定向至: %s", g_prog_status[thread_idx].last_location);
+        if (tl_thread_idx != -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
         resp.status = REQUEST_REDIRECT;
         return resp;
     }
@@ -518,8 +518,8 @@ NetworkStatus check_network_status()
 static void get_school_ip_symbol()
 {
     const char* school_ip = extract_url_param(g_prog_status[0].last_location, "wlanuserip");
-    snprintf(school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", safe_str(extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.'))));
-    LOG_INFO("获取到校园网标志: %s", school_network_symbol);
+    snprintf(g_school_network_symbol, SCHOOL_NETWORK_SYMBOL, "%s", safe_str(extract_between_tags(school_ip, "", strchr(strchr(school_ip, '.') + 1, '.'))));
+    LOG_INFO("获取到校园网标志: %s", g_school_network_symbol);
 }
 
 NetworkStatus get_last_location()
@@ -561,10 +561,10 @@ NetworkStatus get_last_location()
         }
     } while (resp.status != REQUEST_REDIRECT);
 
-    while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[thread_idx].last_location);
+    while (resp.status == REQUEST_REDIRECT) resp = get(g_prog_status[tl_thread_idx].last_location);
 
-    g_prog_status[thread_idx].last_location_lock = true;
-    LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[thread_idx].login_cfg.idx, g_prog_status[thread_idx].last_location);
+    g_prog_status[tl_thread_idx].last_location_lock = true;
+    LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[tl_thread_idx].login_cfg.idx, g_prog_status[tl_thread_idx].last_location);
 
     get_school_ip_symbol(); // 获取校园网特征
     return REQUEST_REDIRECT;

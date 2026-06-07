@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-extern jmp_buf exit_jmp;
+extern jmp_buf g_exit_jmp;
 
 extern void work();
 
@@ -60,7 +60,7 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR *argv)
     g_ServiceStatus.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
 
-    if (setjmp(exit_jmp) == 0)
+    if (setjmp(g_exit_jmp) == 0)
     {
         work();
     }

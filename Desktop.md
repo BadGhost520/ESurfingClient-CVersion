@@ -75,11 +75,11 @@ badghost@badghostdeMac ~ %
 ```shell
 # Windows PowerShell or CMD
 # 安装服务 (需要管理员权限)
-.\ESurfingClient-*-windows-*.exe --install
+.\ESurfingClient-*-windows-*.exe -i
 # 卸载服务 (需要管理员权限)
-.\ESurfingClient-*-windows-*.exe --uninstall
+.\ESurfingClient-*-windows-*.exe -u
 # 帮助 (无权限要求)
-.\ESurfingClient-*-windows-*.exe --help
+.\ESurfingClient-*-windows-*.exe -h
 ```
 
 ### 2. Linux 在终端执行
@@ -87,11 +87,11 @@ badghost@badghostdeMac ~ %
 ```shell
 # Linux Bash
 # 安装服务 (需要 root 权限)
-sudo ./ESurfingClient-*-linux-* --install
+sudo ./ESurfingClient-*-linux-* -i
 # 卸载服务 (需要 root 权限)
-sudo ./ESurfingClient-*-linux-* --uninstall
+sudo ./ESurfingClient-*-linux-* -u
 # 帮助 (无权限要求)
-sudo ./ESurfingClient-*-linux-* --help
+sudo ./ESurfingClient-*-linux-* -h
 ```
 
 ### 3. macOS 在终端执行
@@ -99,11 +99,11 @@ sudo ./ESurfingClient-*-linux-* --help
 ```shell
 # macOS Zsh
 # 安装服务 (需要 root 权限)
-sudo ./ESurfingClient-*-darwin-* --install
+sudo ./ESurfingClient-*-darwin-* -i
 # 卸载服务 (需要 root 权限)
-sudo ./ESurfingClient-*-darwin-* --uninstall
+sudo ./ESurfingClient-*-darwin-* -u
 # 帮助 (无权限要求)
-sudo ./ESurfingClient-*-darwin-* --help
+sudo ./ESurfingClient-*-darwin-* -h
 ```
 
 ## 四、修改生成的 ESurfingClient.json

@@ -18,11 +18,80 @@
     <div class="drawer lg:drawer-open" x-data="{
     activePanel: 'dashboard',
     menuText: '仪表板',
+    authStatus: '未知认证状态',
+    getAuthStatusTimer: null,
+    onlineStatus: '未知联网状态',
+    getOnlineStatusTimer: null,
+    updateAuthStatus() {
+      const authStatusElement = document.getElementById('authStatus');
+
+      if (this.getAuthStatusTimer) clearInterval(this.getAuthStatusTimer);
+
+      fetch('/api/status/auth')
+      .then(r => r.json())
+      .then(data => {
+        authStatusElement.classList.remove('status-success');
+        authStatusElement.classList.remove('status-error');
+        if (data.status) {
+          this.authStatus = '已认证';
+          authStatusElement.classList.add('status-success');
+        } else {
+          this.authStatus = '未认证';
+          authStatusElement.classList.add('status-error');
+        }
+      })
+      .catch(error => {
+        authStatusElement.classList.remove('status-success');
+        authStatusElement.classList.remove('status-error');
+        this.authStatus = '未知认证状态';
+        authStatusElement.classList.add('status-error');
+      });
+
+      this.getAuthStatusTimer = setInterval(() => {
+        this.updateAuthStatus();
+      }, 5000);
+    },
+
+    updateOnlineStatus() {
+        const onlineStatusElement = document.getElementById('onlineStatus');
+
+        if (this.getOnlineStatusTimer) clearInterval(this.getOnlineStatusTimer);
+
+        fetch('/api/status/online')
+        .then(r => {
+          onlineStatusElement.classList.remove('status-success');
+          onlineStatusElement.classList.remove('status-warning');
+          onlineStatusElement.classList.remove('status-error');
+          if (r.status === 204) {
+            this.onlineStatus = '已连接互联网';
+            onlineStatusElement.classList.add('status-success');
+          } else if (r.status === 302) {
+            this.onlineStatus = '互联网需要认证';
+            onlineStatusElement.classList.add('status-warning');
+          } else {
+            this.onlineStatus = '未连接互联网';
+            onlineStatusElement.classList.add('status-error');
+          }
+        })
+        .catch(error => {
+          onlineStatusElement.classList.remove('status-success');
+          onlineStatusElement.classList.remove('status-warning');
+          onlineStatusElement.classList.remove('status-error');
+          this.onlineStatus = '未知联网状态';
+          onlineStatusElement.classList.add('status-error');
+        });
+
+        this.getOnlineStatusTimer = setInterval(() => {
+          this.updateOnlineStatus();
+        }, 5000);
+      },
+
     closeDrawerIfNeeded() {
       if (window.innerWidth < 1024) {
         document.getElementById('main-drawer').checked = false;
       }
     },
+
     updateFavicon(panel) {
       const iconMap = {
         dashboard: 'assets/svg/dashboard.svg',
@@ -67,12 +136,12 @@
             <button class="btn btn-soft btn-warning" @click>重启认证</button>
           </div>
           <div class="flex items-center mr-4">
-            <div aria-label="warning" class="status status-warning mr-2"></div>
-            <span id="auth">未认证</span>
+            <div id="authStatus" class="status status-success mr-2"></div>
+            <span x-init="updateAuthStatus()" x-text="authStatus"></span>
           </div>
           <div class="flex items-center mr-4">
-            <div aria-label="warning" class="status status-warning mr-2"></div>
-            <span id="online">未连接互联网</span>
+            <div id="onlineStatus" class="status status-error mr-2"></div>
+            <span x-init="updateOnlineStatus()" x-text="onlineStatus"></span>
           </div>
           <div class="flex-none mr-2">
             <label class="swap swap-rotate">
@@ -157,11 +226,11 @@
           class="flex-1 grid grid-cols-1 place-content-start gap-4 p-10"
           x-show="activePanel === 'settings'"
           x-data="{
-            openModal() {
-              this.$refs.setModal.showModal();
-            },
-            closeModal() {
-              this.$refs.setModal.close();
+            toggleModal(modalName, action) {
+              const modal = this.$refs[modalName];
+              if (!modal) return;
+              if (action === 'open') modal.showModal();
+              else if (action === 'close') modal.close();
             }
           }">
           <div class="card bg-base-300 shadow-md">
@@ -247,11 +316,11 @@
                       <td>(无)</td>
                       <th class="w-[1%] whitespace-nowrap px-1">
                         <button class="btn btn-soft btn-neutral"
-                          @click="openModal">修改</button>
+                          @click="toggleModal('setModal', 'open')">修改</button>
                       </th>
                       <th class="w-[1%] whitespace-nowrap px-1">
                         <button class="btn btn-soft btn-error"
-                          @click="openModal">删除</button>
+                          @click="">删除</button>
                       </th>
                     </tr>
                   </tbody>
@@ -293,10 +362,31 @@
               </div>
               <div class="modal-action">
                 <button class="btn btn-soft btn-neutral"
-                  @click="closeModal">关闭</button>
+                  @click="toggleModal('setModal', 'close')">关闭</button>
                 <button class="btn btn-soft btn-info"
-                  @click="closeModal">保存</button>
+                  @click="">保存</button>
               </div>
+            </div>
+          </dialog>
+          <!-- 保存按钮 -->
+          <div class="flex-1 flex flex-row-reverse gap-4 mt-2">
+            <button class="btn btn-soft btn-error" @click="toggleModal('resetModal', 'open')">复位</button>
+            <button class="btn btn-soft btn-info">保存</button>
+            <button class="btn btn-soft btn-info">保存并应用</button>
+          </div>
+          <dialog x-ref="resetModal" class="modal modal-top">
+            <div class="modal-box max-w-[90%] mx-auto mt-18 rounded-t-lg">
+              <h3 class="text-lg font-bold">重置配置</h3>
+              <div class="text-center text-xl font-bold text-error">
+                确定要重置配置到默认值吗? ∑(°Д°) 此操作不可逆!
+              </div>
+              <div class="modal-action">
+                <button class="btn btn-soft btn-neutral"
+                  @click="toggleModal('resetModal', 'close')">关闭</button>
+                <button class="btn btn-soft btn-info"
+                  @click="">保存</button>
+              </div>
+              <div class="text-right text-sm">真的不可逆喔...</div>
             </div>
           </dialog>
         </div>

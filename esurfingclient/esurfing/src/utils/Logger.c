@@ -114,7 +114,7 @@ static char* get_thread_str()
             return str;
         }
     }
-    if (thread_idx == -1)
+    if (tl_thread_idx == -1)
     {
         return "Main";
     }

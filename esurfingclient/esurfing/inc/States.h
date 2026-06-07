@@ -88,8 +88,8 @@ typedef struct
 /** @brief 运行状态 */
 typedef struct
 {
-    // /** @brief 设置是否变化 */
-    // bool is_settings_changed;
+    /** @brief 设置是否变化 */
+    bool is_settings_changed;
     /** @brief 初始化状态 */
     bool is_initialized;
     /** @brief 运行状态 */
@@ -119,37 +119,37 @@ typedef struct
     bool last_location_lock;
 } prog_status_t;
 
-/** @brief 程序开始运行时间 */
-// extern uint64_t g_start_run_tm;
-
 #ifdef _WIN32
 /** @brief 跳出标志 (用于 Windows 服务退出) */
-extern jmp_buf exit_jmp;
+extern jmp_buf g_exit_jmp;
 #endif
+
+/** @brief 程序开始运行时间 */
+extern uint64_t g_start_run_tm;
 
 /** @brief 适配器数 */
 extern int8_t g_prog_cnt;
 
 /** @brief 线程独立下标 */
-extern _Thread_local int8_t thread_idx;
+extern _Thread_local int8_t tl_thread_idx;
 
 /** @brief 认证线程状态 */
 extern prog_status_t* g_prog_status;
 
 /** @brief 校园网标志 */
-extern char school_network_symbol[SCHOOL_NETWORK_SYMBOL];
+extern char g_school_network_symbol[SCHOOL_NETWORK_SYMBOL];
 
 /** @brief 线程保活 */
-extern bool thread_keep_alive;
+extern bool g_thread_keep_alive;
 
 /** @brief Web 服务器运行状态 */
-extern bool is_webserver_running;
+extern bool g_is_webserver_running;
 
 /** @brief 需要退出 */
-extern bool need_exit;
+extern bool g_need_exit;
 
 /** @brief 程序启用状态 */
-extern bool prog_enabled;
+extern bool g_prog_enabled;
 
 /** @brief 刷新状态函数 */
 void refresh_states();
