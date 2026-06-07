@@ -239,12 +239,15 @@ jobs:
           rm portal/input.css
           rm portal/daisyui.mjs
           
-          sed -i '13,14 s/.*//' portal/index.html
-          sed -i '396s/.*//' portal/index.html
+          sed -i 's#https://cdn.jsdelivr.net/npm/daisyui@5#assets/css/output.css#g' portal/index.html
+          
+          sed -i 's#<link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css"##g' portal/index.html
+          
+          sed -i 's#rel="stylesheet" type="text/css" />##g' portal/index.html
+          
+          sed -i 's#<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>##g' portal/index.html
           
           sed -i 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#assets/js/alpine.js#g' portal/index.html
-          
-          sed -i 's#https://cdn.jsdelivr.net/npm/daisyui@5#assets/css/output.css#g' portal/index.html
 
       - name: 打包成 tar.gz 压缩包
         run: |
