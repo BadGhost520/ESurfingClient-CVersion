@@ -1,4 +1,4 @@
-name: Build arm64 macOS Binary
+name: Build Desktop x86_64 macOS Binary
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15-intel
 
     steps:
       - uses: actions/checkout@v6
@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/local/opt/openssl-built
-          key: openssl-${{ inputs.openssl_version }}-macos-arm64
+          key: openssl-${{ inputs.openssl_version }}-macos-x86_64
 
       - name: 构建 libOpenSSL 静态链接库
         if: steps.cache-openssl.outputs.cache-hit != 'true'
@@ -54,7 +54,7 @@ jobs:
           tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
           cd openssl-${{ inputs.openssl_version }}
 
-          ./Configure darwin64-arm64-cc \
+          ./Configure darwin64-x86_64-cc \
             --prefix=/usr/local/opt/openssl-built \
             no-shared \
             no-tests \
@@ -78,7 +78,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/local/opt/curl-built
-          key: curl-${{ inputs.curl_version }}-macos-arm64
+          key: curl-${{ inputs.curl_version }}-macos-x86_64
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
@@ -123,29 +123,29 @@ jobs:
           cd esurfingclient/esurfing
 
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_C_COMPILER=clang \
-                -DCMAKE_CXX_COMPILER=clang++ \
-                -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
-                -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
-                -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
-                -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
-                .
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
+            -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
+            -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
+            .
 
           make -j$(sysctl -n hw.logicalcpu)
 
-          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
 
-          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64 || true
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 || true
 
-          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
 
       - name: 验证
         run: |
-          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-arm64" ]; then
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-x86_64" ]; then
             echo "✅ 构建成功"
-            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-arm64 | cut -f1)"
-            file ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
           else
             echo "❌ 未找到二进制文件"
             exit 1
@@ -155,14 +155,14 @@ jobs:
         id: cache-web
         uses: actions/cache@v5
         with:
-          path: tailwindcss-macos-arm64
-          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-arm64
+          path: tailwindcss-macos-x64
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-x86_64
 
       - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
-          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-arm64
-          chmod +x tailwindcss-macos-arm64
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-x64
+          chmod +x tailwindcss-macos-x64
 
       - name: 处理 web 文件
         run: |
@@ -172,24 +172,27 @@ jobs:
           wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
           wget -O portal/daisyui.mjs https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
           
-          ./tailwindcss-macos-arm64 -i portal/input.css -o portal/assets/css/output.css --minify
+          ./tailwindcss-macos-x64 -i portal/input.css -o portal/assets/css/output.css --minify
           rm portal/input.css
           rm portal/daisyui.mjs
           
-          sed -i '' '13,14 s/.*//' portal/index.html
-          sed -i '' '396s/.*//' portal/index.html
+          sed -i '' 's#https://cdn.jsdelivr.net/npm/daisyui@5#assets/css/output.css#g' portal/index.html
+          
+          sed -i '' 's#<link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css"##g' portal/index.html
+          
+          sed -i '' 's#rel="stylesheet" type="text/css" />##g' portal/index.html
+          
+          sed -i '' 's#<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>##g' portal/index.html
           
           sed -i '' 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#assets/js/alpine.js#g' portal/index.html
-          
-          sed -i '' 's#https://cdn.jsdelivr.net/npm/daisyui@5#assets/css/output.css#g' portal/index.html
 
       - name: 打包成 tar.gz
         run: |
-          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-arm64 portal/
+          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 portal/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-${{ inputs.full_version }}-darwin-arm64
-          path: esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz
+          name: esurfingclient-${{ inputs.full_version }}-darwin-x86_64
+          path: esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz
           retention-days: 30

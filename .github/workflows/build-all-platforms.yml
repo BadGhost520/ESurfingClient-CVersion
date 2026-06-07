@@ -70,7 +70,7 @@ jobs:
 
   windows-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
-    uses: ./.github/workflows/build-x86_64-windows.yml
+    uses: ./.github/workflows/build-desktop-x86_64-windows.yml
     secrets: inherit
     needs: get-version
     with:
@@ -81,7 +81,7 @@ jobs:
 
   linux-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-x86_64'
-    uses: ./.github/workflows/build-x86_64-linux.yml
+    uses: ./.github/workflows/build-desktop-x86_64-linux.yml
     secrets: inherit
     needs: get-version
     with:
@@ -92,7 +92,7 @@ jobs:
 
   macos-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-x86_64'
-    uses: ./.github/workflows/bulid-x86_64-macos.yml
+    uses: ./.github/workflows/build-desktop-x86_64-macos.yml
     secrets: inherit
     needs: get-version
     with:
@@ -103,7 +103,7 @@ jobs:
 
   macos-arm64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-arm64'
-    uses: ./.github/workflows/build-arm64-macos.yml
+    uses: ./.github/workflows/build-desktop-arm64-macos.yml
     secrets: inherit
     needs: get-version
     with:
