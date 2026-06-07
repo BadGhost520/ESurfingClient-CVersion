@@ -148,7 +148,7 @@ int web_server(void* arg)
 
     mg_http_listen(&mgr, listenAddr, fn, NULL);
     g_is_webserver_running = 1;
-    LOG_INFO("Web 服务器已启动, 后台访问地址: http://127.0.0.1:8888/");
+    LOG_INFO("Web 服务器已启动 (Web 前端尚未完工), 后台访问地址: http://127.0.0.1:8888/");
     while (g_is_webserver_running) mg_mgr_poll(&mgr, 1000);
     mg_mgr_free(&mgr);
     LOG_INFO("Web 服务器已停止");

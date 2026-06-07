@@ -562,6 +562,10 @@ static RunStatus run()
         }
         if (auth() != AUTH_SUCCESS)
         {
+            if (g_prog_status[tl_thread_idx].runtime_status.is_running == false)
+            {
+                return RUN_FAILED;
+            }
             if (retry_auth > 5)
             {
                 LOG_FATAL("超过最多重试次数, 请检查账号密码是否正确");
