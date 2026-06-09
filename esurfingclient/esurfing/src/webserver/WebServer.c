@@ -24,7 +24,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             {
                 mg_http_reply(c, 302, "Location: /index.html\r\n", "");
             }
-            // 获取认证和联网状态
+            // 获取认证状态
             if (mg_match(hm->uri, mg_str("/api/status/auth"), NULL))
             {
                 cJSON* auth = cJSON_CreateObject();
@@ -33,6 +33,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                 mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", status_str);
                 free(status_str);
             }
+            // 获取联网状态
             if (mg_match(hm->uri, mg_str("/api/status/online"), NULL))
             {
                 const NetworkStatus status = check_network_status();
@@ -49,13 +50,30 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                     mg_http_reply(c, 503, "", "");
                 }
             }
+            // 获取配置
+            if (mg_match(hm->uri, mg_str("/api/getConfigs"), NULL))
+            {
+                cJSON* configs = cJSON_CreateObject();
+                cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);
+                cJSON_AddNumberToObject(configs, "log_lv", get_logger_level());
+                cJSON* accounts = cJSON_CreateArray();
+                cJSON* account = cJSON_CreateObject();
+                cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
+                cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
+                cJSON_AddStringToObject(account, "channel", g_prog_status[0].login_cfg.chn);
+                cJSON_AddItemToArray(accounts, account);
+                cJSON_AddItemToObject(configs, "accounts", accounts);
+                char* config_str = cJSON_Print(configs);
+                mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", config_str);
+                free(config_str);
+            }
             mg_http_serve_dir(c, hm, &opts);
             return;
         }
         // POST 请求
         if (mg_strcmp(hm->method, mg_str("POST")) == 0)
         {
-            if (mg_match(hm->uri, mg_str("/api/test"), NULL))
+            if (mg_match(hm->uri, mg_str("/api/saveConfigs"), NULL))
             {
 
             }

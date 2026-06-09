@@ -669,6 +669,10 @@ void work()
     uint8_t retry = 1;
     do
     {
+        if (g_need_exit)
+        {
+            break;
+        }
         status = check_network_status();
         switch (status)
         {

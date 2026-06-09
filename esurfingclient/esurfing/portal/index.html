@@ -15,100 +15,7 @@
   </head>
 
   <body>
-    <div class="drawer lg:drawer-open" x-data="{
-    activePanel: 'dashboard',
-    menuText: '仪表板',
-    authStatus: '未知认证状态',
-    getAuthStatusTimer: null,
-    onlineStatus: '未知联网状态',
-    getOnlineStatusTimer: null,
-    updateAuthStatus() {
-      const authStatusElement = document.getElementById('authStatus');
-
-      if (this.getAuthStatusTimer) clearInterval(this.getAuthStatusTimer);
-
-      fetch('/api/status/auth')
-      .then(r => r.json())
-      .then(data => {
-        authStatusElement.classList.remove('status-success');
-        authStatusElement.classList.remove('status-error');
-        if (data.status) {
-          this.authStatus = '已认证';
-          authStatusElement.classList.add('status-success');
-        } else {
-          this.authStatus = '未认证';
-          authStatusElement.classList.add('status-error');
-        }
-      })
-      .catch(error => {
-        authStatusElement.classList.remove('status-success');
-        authStatusElement.classList.remove('status-error');
-        this.authStatus = '未知认证状态';
-        authStatusElement.classList.add('status-error');
-      });
-
-      this.getAuthStatusTimer = setInterval(() => {
-        this.updateAuthStatus();
-      }, 5000);
-    },
-
-    updateOnlineStatus() {
-        const onlineStatusElement = document.getElementById('onlineStatus');
-
-        if (this.getOnlineStatusTimer) clearInterval(this.getOnlineStatusTimer);
-
-        fetch('/api/status/online')
-        .then(r => {
-          onlineStatusElement.classList.remove('status-success');
-          onlineStatusElement.classList.remove('status-warning');
-          onlineStatusElement.classList.remove('status-error');
-          if (r.status === 204) {
-            this.onlineStatus = '已连接互联网';
-            onlineStatusElement.classList.add('status-success');
-          } else if (r.status === 302) {
-            this.onlineStatus = '互联网需要认证';
-            onlineStatusElement.classList.add('status-warning');
-          } else {
-            this.onlineStatus = '未连接互联网';
-            onlineStatusElement.classList.add('status-error');
-          }
-        })
-        .catch(error => {
-          onlineStatusElement.classList.remove('status-success');
-          onlineStatusElement.classList.remove('status-warning');
-          onlineStatusElement.classList.remove('status-error');
-          this.onlineStatus = '未知联网状态';
-          onlineStatusElement.classList.add('status-error');
-        });
-
-        this.getOnlineStatusTimer = setInterval(() => {
-          this.updateOnlineStatus();
-        }, 5000);
-      },
-
-    closeDrawerIfNeeded() {
-      if (window.innerWidth < 1024) {
-        document.getElementById('main-drawer').checked = false;
-      }
-    },
-
-    updateFavicon(panel) {
-      const iconMap = {
-        dashboard: 'assets/svg/dashboard.svg',
-        settings:  'assets/svg/settings.svg',
-        logs:      'assets/svg/logs.svg',
-        about:     'assets/svg/about.svg'
-      };
-      const iconUrl = iconMap[panel] || iconMap.dashboard;
-      const link = document.getElementById('favicon');
-      if (link) {
-        link.href = iconUrl;
-        const newLink = link.cloneNode(true);
-        link.parentNode.replaceChild(newLink, link);
-        newLink.id = 'favicon';
-      }
-    }
-  }">
+    <div class="drawer lg:drawer-open" x-data>
       <input id="main-drawer" type="checkbox" class="drawer-toggle" />
       <!-- 内容区 -->
       <div class="drawer-content flex flex-col min-h-screen">
@@ -131,17 +38,17 @@
             </label>
           </div>
           <div class="mx-2 flex-1 px-2 text-xl font-bold"
-            x-text="menuText"></div>
+            x-text="$store.main.menuText"></div>
           <div class="flex items-center mr-4">
             <button class="btn btn-soft btn-warning" @click>重启认证</button>
           </div>
           <div class="flex items-center mr-4">
             <div id="authStatus" class="status status-success mr-2"></div>
-            <span x-init="updateAuthStatus()" x-text="authStatus"></span>
+            <span x-init="$store.status.updateAuthStatus()" x-text="$store.status.authStatusText"></span>
           </div>
           <div class="flex items-center mr-4">
             <div id="onlineStatus" class="status status-error mr-2"></div>
-            <span x-init="updateOnlineStatus()" x-text="onlineStatus"></span>
+            <span x-init="$store.status.updateOnlineStatus()" x-text="$store.status.onlineStatusText"></span>
           </div>
           <div class="flex-none mr-2">
             <label class="swap swap-rotate">
@@ -165,7 +72,7 @@
         <!-- 仪表板页面 -->
         <div
           class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 place-content-start gap-4 p-10"
-          x-show="activePanel === 'dashboard'">
+          x-show="$store.main.activePanel === 'dashboard'">
           <div class="card bg-base-300 shadow-md">
             <div class="card-body">
               <h2 class="card-title">
@@ -224,15 +131,8 @@
         <!-- 设置页面 -->
         <div
           class="flex-1 grid grid-cols-1 place-content-start gap-4 p-10"
-          x-show="activePanel === 'settings'"
-          x-data="{
-            toggleModal(modalName, action) {
-              const modal = this.$refs[modalName];
-              if (!modal) return;
-              if (action === 'open') modal.showModal();
-              else if (action === 'close') modal.close();
-            }
-          }">
+          x-show="$store.main.activePanel === 'settings'"
+          x-data="editConfigs">
           <div class="card bg-base-300 shadow-md">
             <div class="card-body">
               <h2 class="card-title">
@@ -251,19 +151,19 @@
               <div class="mx-[20%] text-lg">
                 <fieldset class="fieldset">
                   <legend class="fieldset-legend">启用</legend>
-                  <input type="checkbox" class="checkbox" />
+                  <input type="checkbox" class="checkbox" x-model="$store.main.configs.enabled" />
                   <span class="label">启用 ESurfing 客户端</span>
                 </fieldset>
                 <fieldset class="fieldset">
                   <legend class="fieldset-legend">日志等级</legend>
-                  <select class="select">
-                    <option>0 - 关闭</option>
-                    <option>1 - 致命</option>
-                    <option>2 - 错误</option>
-                    <option>3 - 警告</option>
-                    <option>4 - 信息</option>
-                    <option>5 - 调试</option>
-                    <option>6 - 全部</option>
+                  <select class="select" x-model="$store.main.configs.log_lv">
+                    <option value=0>0 - 关闭</option>
+                    <option value=1>1 - 致命</option>
+                    <option value=2>2 - 错误</option>
+                    <option value=3>3 - 警告</option>
+                    <option value=4>4 - 信息</option>
+                    <option value=5>5 - 调试</option>
+                    <option value=6>6 - 全部</option>
                   </select>
                   <span class="label">日志的详细程度</span>
                 </fieldset>
@@ -296,31 +196,21 @@
                   <!-- 表头 -->
                   <thead>
                     <tr class="bg-base-200">
-                      <th></th>
-                      <th>账号</th>
-                      <th>密码</th>
-                      <th>通道</th>
-                      <th>标记值</th>
-                      <th></th>
+                      <th class="text-center">账号</th>
+                      <th class="text-center">密码</th>
+                      <th class="text-center">通道</th>
                       <th></th>
                     </tr>
                   </thead>
                   <!-- 表体 -->
                   <tbody>
-                    <!-- 第一行 -->
                     <tr>
-                      <th>1</th>
-                      <td>abc</td>
-                      <td>******</td>
-                      <td>phone</td>
-                      <td>(无)</td>
-                      <th class="w-[1%] whitespace-nowrap px-1">
+                      <td class="text-center" x-text="$store.main.configs.accounts[0]?.username || '(未知)'"></td>
+                      <td class="text-center">******</td>
+                      <td class="text-center" x-text="$store.main.configs.accounts[0]?.channel || '(未知)'"></td>
+                      <th class="w-[10%] whitespace-nowrap px-1">
                         <button class="btn btn-soft btn-neutral"
-                          @click="toggleModal('setModal', 'open')">修改</button>
-                      </th>
-                      <th class="w-[1%] whitespace-nowrap px-1">
-                        <button class="btn btn-soft btn-error"
-                          @click="">删除</button>
+                          @click="getAccounts(); toggleModal('setModal', 'open')">修改</button>
                       </th>
                     </tr>
                   </tbody>
@@ -328,52 +218,45 @@
               </div>
             </div>
           </div>
-          <dialog x-ref="setModal" class="modal modal-top">
-            <div class="modal-box max-w-[90%] mx-auto mt-18 rounded-t-lg">
-              <h3 class="text-lg font-bold">编辑账号</h3>
-              <div class="mx-[20%]">
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">账号</legend>
-                  <input type="text" class="input" placeholder="请输入账号" />
-                  <p class="label">和官方认证程序的账号相同</p>
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">密码</legend>
-                  <input type="text" class="input" placeholder="请输入密码" />
-                  <p class="label">和官方认证程序的密码相同</p>
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">通道</legend>
-                  <select class="select">
-                    <option>phone</option>
-                    <option>pc</option>
-                  </select>
-                  <span class="label">选择账号的认证通道</span>
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">标记值</legend>
-                  <input type="text" class="input" placeholder="请输入标记值" />
-                  <p class="label">
-                    可选项, 用于 MWAN 多路区分
-                    <br>
-                    十六进制数, 以 0x 开头, 例如 0x100
-                  </p>
-                </fieldset>
-              </div>
-              <div class="modal-action">
-                <button class="btn btn-soft btn-neutral"
-                  @click="toggleModal('setModal', 'close')">关闭</button>
-                <button class="btn btn-soft btn-info"
-                  @click="">保存</button>
-              </div>
-            </div>
-          </dialog>
           <!-- 保存按钮 -->
           <div class="flex-1 flex flex-row-reverse gap-4 mt-2">
             <button class="btn btn-soft btn-error" @click="toggleModal('resetModal', 'open')">复位</button>
             <button class="btn btn-soft btn-info">保存</button>
             <button class="btn btn-soft btn-info">保存并应用</button>
           </div>
+          <!-- 编辑账号模态框 -->
+          <dialog x-ref="setModal" class="modal modal-top">
+            <div class="modal-box max-w-[90%] mx-auto mt-18 rounded-t-lg">
+              <h3 class="text-lg font-bold">编辑账号</h3>
+              <div class="mx-[25%]">
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">账号</legend>
+                  <input type="text" class="input" placeholder="请输入账号" x-model="accounts[0].username" />
+                  <p class="label">和官方认证程序的账号相同</p>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">密码</legend>
+                  <input type="password" class="input" placeholder="请输入密码" x-model="accounts[0].password" />
+                  <p class="label">和官方认证程序的密码相同</p>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">通道</legend>
+                  <select class="select" x-model="accounts[0].channel">
+                    <option value="phone">phone</option>
+                    <option value="pc">pc</option>
+                  </select>
+                  <span class="label">选择账号的认证通道</span>
+                </fieldset>
+              </div>
+              <div class="modal-action">
+                <button class="btn btn-soft btn-neutral"
+                  @click="toggleModal('setModal', 'close')">关闭</button>
+                <button class="btn btn-soft btn-info"
+                  @click="saveAccounts(); toggleModal('setModal', 'close')">保存</button>
+              </div>
+            </div>
+          </dialog>
+          <!-- 重置模态框 -->
           <dialog x-ref="resetModal" class="modal modal-top">
             <div class="modal-box max-w-[90%] mx-auto mt-18 rounded-t-lg">
               <h3 class="text-lg font-bold">重置配置</h3>
@@ -384,14 +267,14 @@
                 <button class="btn btn-soft btn-neutral"
                   @click="toggleModal('resetModal', 'close')">关闭</button>
                 <button class="btn btn-soft btn-info"
-                  @click="">保存</button>
+                  @click="">确定</button>
               </div>
               <div class="text-right text-sm">真的不可逆喔...</div>
             </div>
           </dialog>
         </div>
         <!-- 日志页面 -->
-        <div class="flex-1 p-10" x-show="activePanel === 'logs'">
+        <div class="flex-1 p-10" x-show="$store.main.activePanel === 'logs'">
           <div class="card bg-base-300 shadow-md">
             <div class="card-body">
               <h2 class="card-title">
@@ -415,7 +298,7 @@
           </div>
         </div>
         <!-- 关于页面 -->
-        <div class="flex-1 p-10" x-show="activePanel === 'about'">
+        <div class="flex-1 p-10" x-show="$store.main.activePanel === 'about'">
           <div
             class="collapse collapse-arrow bg-base-100 border border-base-300">
             <input type="checkbox" />
@@ -584,8 +467,8 @@
               客户端</a>
           </li>
           <li><a
-              @click="activePanel = 'dashboard'; menuText = '仪表板'; updateFavicon('dashboard'); closeDrawerIfNeeded()"
-              :class="{ 'menu-active': activePanel === 'dashboard' }">
+              @click="$store.main.activePanel = 'dashboard'; $store.main.menuText = '仪表板'; $store.main.updateFavicon('dashboard'); $store.main.closeDrawerIfNeeded()"
+              :class="{ 'menu-active': $store.main.activePanel === 'dashboard' }">
               <svg
                 width="24"
                 height="24"
@@ -600,8 +483,8 @@
               仪表板</a>
           </li>
           <li><a
-              @click="activePanel = 'settings'; menuText = '设置'; updateFavicon('settings'); closeDrawerIfNeeded()"
-              :class="{ 'menu-active': activePanel === 'settings' }">
+              @click="$store.main.activePanel = 'settings'; $store.main.menuText = '设置'; $store.main.updateFavicon('settings'); $store.main.closeDrawerIfNeeded()"
+              :class="{ 'menu-active': $store.main.activePanel === 'settings' }">
               <svg
                 width="24"
                 height="24"
@@ -616,8 +499,8 @@
               设置</a>
           </li>
           <li><a
-              @click="activePanel = 'logs'; menuText = '日志'; updateFavicon('logs'); closeDrawerIfNeeded()"
-              :class="{ 'menu-active': activePanel === 'logs' }">
+              @click="$store.main.activePanel = 'logs'; $store.main.menuText = '日志'; $store.main.updateFavicon('logs'); $store.main.closeDrawerIfNeeded()"
+              :class="{ 'menu-active': $store.main.activePanel === 'logs' }">
               <svg
                 width="24"
                 height="24"
@@ -632,8 +515,8 @@
               日志</a>
           </li>
           <li><a
-              @click="activePanel = 'about'; menuText = '关于'; updateFavicon('about'); closeDrawerIfNeeded()"
-              :class="{ 'menu-active': activePanel === 'about' }">
+              @click="$store.main.activePanel = 'about'; $store.main.menuText = '关于'; $store.main.updateFavicon('about'); $store.main.closeDrawerIfNeeded()"
+              :class="{ 'menu-active': $store.main.activePanel === 'about' }">
               <svg
                 width="24"
                 height="24"
@@ -654,6 +537,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script defer
     src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
   <script src="assets/js/toggleTheme.js"></script>
+  <script src="assets/js/main.js"></script>
 
 </html>
