@@ -220,7 +220,7 @@ jobs:
             -B build \
             -S .
           
-          cmake --build build --target ESurfingClient -j$(nproc)
+          cmake --build build -j$(nproc)
           
           cp build/ESurfingClient.exe ../../ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe
           

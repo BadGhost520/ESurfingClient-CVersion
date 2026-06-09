@@ -133,9 +133,9 @@ jobs:
             -B build \
             -S .
 
-          make -j$(sysctl -n hw.logicalcpu)
+          cmake --build build -j$(sysctl -n hw.logicalcpu)
 
-          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
+          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
 
           upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 || true
 

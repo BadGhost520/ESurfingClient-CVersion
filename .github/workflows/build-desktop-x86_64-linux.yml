@@ -196,9 +196,9 @@ jobs:
             -B build \
             -S .
           
-          make -j$(nproc)
+          cmake --build build -j$(nproc)
           
-          cp ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
+          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           
           upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-linux-x86_64
           
