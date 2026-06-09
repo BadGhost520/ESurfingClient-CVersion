@@ -130,7 +130,8 @@ jobs:
             -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
             -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
             -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
-            .
+            -B build \
+            -S .
 
           make -j$(sysctl -n hw.logicalcpu)
 

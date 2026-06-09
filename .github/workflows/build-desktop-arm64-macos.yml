@@ -123,14 +123,15 @@ jobs:
           cd esurfingclient/esurfing
 
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_C_COMPILER=clang \
-                -DCMAKE_CXX_COMPILER=clang++ \
-                -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
-                -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
-                -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
-                -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
-                .
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
+            -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
+            -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
+            -B build \
+            -S .
 
           make -j$(sysctl -n hw.logicalcpu)
 

@@ -193,7 +193,8 @@ jobs:
           
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
             -DCMAKE_BUILD_TYPE=Release \
-            .
+            -B build \
+            -S .
           
           make -j$(nproc)
           

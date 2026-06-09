@@ -214,11 +214,11 @@ jobs:
           cd esurfingclient/esurfing
           
           cmake -G Ninja \
-            -B build \
-            -S . \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE=toolchain-mingw64.cmake \
-            -DBUILD_SHARED_LIBS=OFF
+            -DBUILD_SHARED_LIBS=OFF \
+            -B build \
+            -S .
           
           cmake --build build --target ESurfingClient -j$(nproc)
           

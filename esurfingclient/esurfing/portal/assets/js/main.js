@@ -21,11 +21,9 @@ document.addEventListener('alpine:init', () => {
             .then(r => r.json())
             .then(data => {
                 this.configs = data;
-                console.log(data);
             })
             .catch(error => {
                 // 处理错误，例如显示通知
-                console.error(error);
             });
         },
 
