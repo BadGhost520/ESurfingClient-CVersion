@@ -119,7 +119,7 @@ else ()
     )
 endif ()
 
-if (NOT DEFINED __OPENWRT__)
+if (NOT __OPENWRT__)
 add_custom_target(CopyPortal ALL
         COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/portal"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -127,9 +127,9 @@ add_custom_target(CopyPortal ALL
             "${CMAKE_CURRENT_BINARY_DIR}/portal"
         COMMENT "Copy 'portal' to build dir"
 )
-end ()
 
 add_dependencies(ESurfingClient CopyPortal)
+endif ()
 
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
