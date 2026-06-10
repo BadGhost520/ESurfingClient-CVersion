@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #ifndef __OPENWRT__
+extern void restart_process();
 extern void stop_web_server();
 #endif
 
@@ -15,9 +16,10 @@ extern void stop_web_server();
 extern bool get_service_mode();
 #endif
 
-void shut(const uint8_t exit_code)
+void shut(const int8_t exit_code)
 {
     LOG_INFO("主程序正在关闭");
+    g_need_exit = true;
 
 #ifndef __OPENWRT__
     if (g_is_webserver_running)
@@ -50,6 +52,11 @@ void shut(const uint8_t exit_code)
         longjmp(g_exit_jmp, 1);
     }
 #endif
+
+    if (g_need_restart)
+    {
+        restart_process();
+    }
 
     exit(exit_code);
 }

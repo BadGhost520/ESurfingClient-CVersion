@@ -546,7 +546,7 @@ NetworkStatus get_last_location()
         case REQUEST_SUCCESS:
             retry = 1;
             LOG_INFO("已连接至互联网");
-            sleep_ms(10000);
+            sleep_ms(10000, true);
             break;
         default:
             if (retry > 5)
@@ -556,7 +556,7 @@ NetworkStatus get_last_location()
             }
             LOG_WARN("非重定向, 响应码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", resp.status, retry);
             retry++;
-            sleep_ms(1000);
+            sleep_ms(1000, true);
             break;
         }
     } while (resp.status != REQUEST_REDIRECT);

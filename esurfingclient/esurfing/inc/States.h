@@ -88,8 +88,6 @@ typedef struct
 /** @brief 运行状态 */
 typedef struct
 {
-    /** @brief 设置是否变化 */
-    bool is_settings_changed;
     /** @brief 初始化状态 */
     bool is_initialized;
     /** @brief 运行状态 */
@@ -150,6 +148,9 @@ extern bool g_need_exit;
 
 /** @brief 程序启用状态 */
 extern bool g_prog_enabled;
+
+/** @brief 需要重启 */
+extern bool g_need_restart;
 
 /** @brief 刷新状态函数 */
 void refresh_states();

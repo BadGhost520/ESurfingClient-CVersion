@@ -123,7 +123,41 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.store('settings', {
         saveConfigs() {
+            fetch('/api/saveConfigs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify($store.main.configs)
+            })
+            .then(r => {
+                if (r.status === 204) {
+                    console.log('保存成功');
+                } else if (r.status === 400) {
+                    console.log('配置为空');
+                } else if (r.status === 500) {
+                    console.log('保存失败');
+                }
+            })
+        },
 
+        applyConfigs() {
+            fetch('/api/applyConfigs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 'apply': true })
+            })
+            .then(r => {
+                if (r.status === 204) {
+                    console.log('应用成功');
+                } else if (r.status === 400) {
+                    console.log('发送内容为空');
+                } else if (r.status === 500) {
+                    console.log('应用失败');
+                }
+            })
         }
     }),
 

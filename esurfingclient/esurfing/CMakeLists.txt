@@ -107,6 +107,7 @@ else ()
             src/webserver/WebServer.c
             src/webserver/mongoose.c
             src/utils/PlatformUtils.c
+            src/utils/SimProcess.c
             src/utils/SimThread.c
             src/utils/Shutdown.c
             src/utils/Service.c

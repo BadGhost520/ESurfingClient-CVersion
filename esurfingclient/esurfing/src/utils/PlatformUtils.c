@@ -264,37 +264,48 @@ void get_rand_bytes(uint8_t* buf, const size_t len)
 #endif
 }
 
-void sleep_ms(const uint64_t ms)
+void sleep_ms(const uint64_t ms, const bool can_stop)
 {
     if (ms == 0) return;
 
-    uint64_t elapsed = 0;
-
-    while (elapsed < ms && g_thread_keep_alive)
+    if (can_stop)
     {
-        if (tl_thread_idx != -1)
+        uint64_t elapsed = 0;
+
+        while (elapsed < ms && g_thread_keep_alive)
         {
-            if (g_prog_status[tl_thread_idx].runtime_status.is_running == false || g_prog_status[tl_thread_idx].runtime_status.is_need_reset)
+            if (tl_thread_idx != -1)
             {
-                return;
+                if (g_prog_status[tl_thread_idx].runtime_status.is_running == false || g_prog_status[tl_thread_idx].runtime_status.is_need_reset)
+                {
+                    return;
+                }
             }
-        }
-        else
-        {
-            if (g_need_exit)
+            else
             {
-                return;
+                if (g_need_exit)
+                {
+                    return;
+                }
             }
-        }
-        const uint64_t SEGMENT_MS = 100;
-        const uint64_t sleep_time = ms - elapsed < SEGMENT_MS ? ms - elapsed : SEGMENT_MS;
+            const uint64_t SEGMENT_MS = 100;
+            const uint64_t sleep_time = ms - elapsed < SEGMENT_MS ? ms - elapsed : SEGMENT_MS;
 
 #ifdef _WIN32
-        Sleep(sleep_time);
+            Sleep(sleep_time);
 #else
-        usleep(sleep_time * 1000);
+            usleep(sleep_time * 1000);
 #endif
-        elapsed += sleep_time;
+            elapsed += sleep_time;
+        }
+    }
+    else
+    {
+#ifdef _WIN32
+        Sleep(ms);
+#else
+        usleep(ms * 1000);
+#endif
     }
 }
 
@@ -476,28 +487,10 @@ char* clean_CDATA(const char* text)
     return extract_between_tags(text, "<![CDATA[", "]]>");
 }
 
-bool save_cfg()
+bool save_cfg(char* configs_str)
 {
     LOG_INFO("保存配置中");
     LOG_INFO("仅会保存第一个可用配置");
-
-    cJSON* cfg_json = cJSON_CreateObject();
-
-    cJSON_AddBoolToObject(cfg_json, "enabled", g_prog_enabled);
-    cJSON_AddNumberToObject(cfg_json, "log_lv", get_logger_level());
-
-    cJSON* accounts = cJSON_CreateArray();
-    cJSON_AddItemToObject(cfg_json, "accounts", accounts);
-
-    cJSON* account = cJSON_CreateObject();
-
-    cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
-    cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
-    cJSON_AddStringToObject(account, "channel", g_prog_status[0].login_cfg.chn);
-
-    cJSON_AddItemToArray(accounts, account);
-
-    char* json = cJSON_Print(cfg_json);
 
     FILE* cfg_file = fopen(config_file, "w");
     if (!cfg_file)
@@ -505,11 +498,29 @@ bool save_cfg()
         LOG_ERROR("无法生成文件: %s", config_file);
         return false;
     }
-    fprintf(cfg_file, "%s", json);
+    fprintf(cfg_file, "%s", configs_str);
     fclose(cfg_file);
 
-    free(json);
-    cJSON_Delete(cfg_json);
+    cJSON* configs = cJSON_Parse(configs_str);
+
+    const cJSON* enabled = cJSON_GetObjectItem(configs, "enabled");
+    const cJSON* log_lv = cJSON_GetObjectItem(configs, "log_lv");
+
+    const cJSON* accounts = cJSON_GetObjectItem(configs, "accounts");
+    const cJSON* account = cJSON_GetArrayItem(accounts, 0);
+
+    const cJSON* username = cJSON_GetObjectItem(account, "username");
+    const cJSON* password = cJSON_GetObjectItem(account, "password");
+    const cJSON* channel = cJSON_GetObjectItem(account, "channel");
+
+    g_prog_enabled = enabled->valueint;
+    set_logger_level(log_lv->valueint);
+    snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", username->valuestring);
+    snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", password->valuestring);
+    snprintf(g_prog_status[0].login_cfg.chn, CHN_LEN, "%s", channel->valuestring);
+
+    cJSON_Delete(configs);
+
     return true;
 }
 
@@ -527,7 +538,7 @@ bool load_cfg()
             {
                 return false;
             }
-            sleep_ms(10000);
+            sleep_ms(10000, true);
         }
     }
     snprintf(config_file, PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE), "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
@@ -549,7 +560,7 @@ bool load_cfg()
                 {
                     return false;
                 }
-                sleep_ms(10000);
+                sleep_ms(10000, true);
             }
         }
         fprintf(new_cfg, "%s", s_default_cfg);
@@ -561,7 +572,7 @@ bool load_cfg()
             {
                 return false;
             }
-            sleep_ms(10000);
+            sleep_ms(10000, true);
         }
     }
 
@@ -585,7 +596,7 @@ bool load_cfg()
             {
                 return false;
             }
-            sleep_ms(10000);
+            sleep_ms(10000, true);
         }
     }
 
@@ -610,7 +621,7 @@ bool load_cfg()
                 return false;
             }
             g_prog_enabled = false;
-            sleep_ms(10000);
+            sleep_ms(10000, true);
         }
     }
     if (cJSON_IsFalse(enabled))
@@ -623,7 +634,7 @@ bool load_cfg()
                 return false;
             }
             g_prog_enabled = false;
-            sleep_ms(10000);
+            sleep_ms(10000, true);
         }
     }
     g_prog_enabled = true;
@@ -639,7 +650,7 @@ bool load_cfg()
             {
                 return false;
             }
-            sleep_ms(10000);
+            sleep_ms(10000, true);
         }
     }
 
@@ -861,7 +872,7 @@ bool load_cfg()
             {
                 return false;
             }
-            sleep_ms(10000);
+            sleep_ms(10000, true);
         }
     }
 

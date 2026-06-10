@@ -6,6 +6,7 @@
 #include "utils/cJSON.h"
 #include "NetClient.h"
 #include "States.h"
+#include "utils/Shutdown.h"
 
 static const char* listenAddr = "http://0.0.0.0:8888";
 static sim_thread_t* web_thread;
@@ -14,7 +15,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
 {
     if (ev == MG_EV_HTTP_MSG)
     {
-        struct mg_http_message *hm = ev_data;
+        struct mg_http_message* hm = ev_data;
         struct mg_http_serve_opts opts = { .root_dir = "portal" };
         // GET 请求
         if (mg_strcmp(hm->method, mg_str("GET")) == 0)
@@ -54,18 +55,26 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             if (mg_match(hm->uri, mg_str("/api/getConfigs"), NULL))
             {
                 cJSON* configs = cJSON_CreateObject();
+
                 cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);
                 cJSON_AddNumberToObject(configs, "log_lv", get_logger_level());
+
                 cJSON* accounts = cJSON_CreateArray();
                 cJSON* account = cJSON_CreateObject();
+
                 cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
                 cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
                 cJSON_AddStringToObject(account, "channel", g_prog_status[0].login_cfg.chn);
+
                 cJSON_AddItemToArray(accounts, account);
                 cJSON_AddItemToObject(configs, "accounts", accounts);
+
                 char* config_str = cJSON_Print(configs);
+
                 mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", config_str);
+
                 free(config_str);
+                cJSON_Delete(configs);
             }
             mg_http_serve_dir(c, hm, &opts);
             return;
@@ -73,9 +82,63 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
         // POST 请求
         if (mg_strcmp(hm->method, mg_str("POST")) == 0)
         {
+            // 仅保存
             if (mg_match(hm->uri, mg_str("/api/saveConfigs"), NULL))
             {
+                struct mg_str* body = &hm->body;
 
+                if (body->len == 0)
+                {
+                    mg_http_reply(c, 400, "", "");
+                    return;
+                }
+
+                char* data = malloc(body->len + 1);
+                memcpy(data, body->buf, body->len);
+                data[body->len] = '\0';
+
+                if (save_cfg(data))
+                {
+                    mg_http_reply(c, 204, "", "");
+                }
+                else
+                {
+                    mg_http_reply(c, 500, "", "");
+                }
+
+                free(data);
+            }
+            // 仅应用
+            if (mg_match(hm->uri, mg_str("/api/applyConfigs"), NULL))
+            {
+                struct mg_str* body = &hm->body;
+
+                if (body->len == 0)
+                {
+                    mg_http_reply(c, 400, "", "");
+                    return;
+                }
+
+                char* data = malloc(body->len + 1);
+                memcpy(data, body->buf, body->len);
+                data[body->len] = '\0';
+
+                cJSON* operation_json = cJSON_Parse(data);
+
+                cJSON* apply = cJSON_GetObjectItem(operation_json, "apply");
+
+                if (apply->valueint)
+                {
+                    mg_http_reply(c, 204, "", "");
+                    g_need_restart = true;
+                }
+                else
+                {
+                    mg_http_reply(c, 500, "", "");
+                }
+
+                free(data);
+                cJSON_Delete(operation_json);
             }
         }
     }

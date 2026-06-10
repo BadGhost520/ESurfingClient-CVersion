@@ -109,8 +109,9 @@ void get_rand_bytes(uint8_t* buf, size_t len);
 /**
  * @brief 睡眠
  * @param ms 毫秒
+ * @param can_stop 能否被打断
  */
-void sleep_ms(uint64_t ms);
+void sleep_ms(uint64_t ms, bool can_stop);
 
 /**
  * @brief 获取当前时间
@@ -151,8 +152,9 @@ char* clean_CDATA(const char* text);
 
 /**
  * @brief 保存配置文件
+ * @param configs_str 配置文件字符串
  */
-bool save_cfg();
+bool save_cfg(char* configs_str);
 
 /**
  * @brief 加载配置文件

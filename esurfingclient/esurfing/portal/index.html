@@ -221,8 +221,8 @@
           <!-- 保存按钮 -->
           <div class="flex-1 flex flex-row-reverse gap-4 mt-2">
             <button class="btn btn-soft btn-error" @click="toggleModal('resetModal', 'open')">复位</button>
-            <button class="btn btn-soft btn-info">保存</button>
-            <button class="btn btn-soft btn-info">保存并应用</button>
+            <button class="btn btn-soft btn-info" @click="$store.settings.saveConfigs()">保存</button>
+            <button class="btn btn-soft btn-info" @click="$store.settings.saveConfigs(); $store.settings.applyConfigs()">保存并应用</button>
           </div>
           <!-- 编辑账号模态框 -->
           <dialog x-ref="setModal" class="modal modal-top">

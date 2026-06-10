@@ -26,6 +26,8 @@ bool g_need_exit = false;
 
 bool g_prog_enabled = false;
 
+bool g_need_restart = false;
+
 static void reset_host_name()
 {
     char host_name[16];
