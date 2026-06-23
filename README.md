@@ -1,5 +1,8 @@
 # ESurfingClient-C > [最新版本](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest/)
 
+> [!NOTE]
+> 期末考试周, 会停更一段时间
+
 **根据 Rsplwe 大佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** 👍
 
 **使用了 [cJSON](https://github.com/DaveGamble/cJSON), [mongoose](https://github.com/cesanta/mongoose) 开源库**
