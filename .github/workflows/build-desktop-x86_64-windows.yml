@@ -65,7 +65,7 @@ jobs:
 
       - name: 获取 OpenSSL 缓存
         id: cache-openssl
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             /usr/x86_64-w64-mingw32/lib/libcrypto.a
@@ -133,7 +133,7 @@ jobs:
 
       - name: 获取 libcurl 缓存
         id: cache-curl
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             /usr/x86_64-w64-mingw32/lib/libcurl.a
@@ -254,7 +254,7 @@ jobs:
 
       - name: 获取 web 处理缓存
         id: cache-web
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: tailwindcss-linux-x64
           key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
