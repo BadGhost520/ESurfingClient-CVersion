@@ -34,7 +34,7 @@ static void reset_host_name()
     unsigned char host_bytes[10];
     get_rand_bytes(host_bytes, 10);
     host_bytes[0] = host_bytes[0] & 0xFEU;
-    sprintf(host_name, "%02x%02x%02x%02x%02x",
+    snprintf(host_name, sizeof(host_name), "%02x%02x%02x%02x%02x",
     host_bytes[0], host_bytes[1],
     host_bytes[2], host_bytes[3],
     host_bytes[4]);
@@ -47,7 +47,7 @@ static void reset_client_id()
     char client_id[40];
     unsigned char client_bytes[16];
     get_rand_bytes(client_bytes, 16);
-    sprintf(client_id,
+    snprintf(client_id, sizeof(client_id),
         "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
         client_bytes[0], client_bytes[1],
         client_bytes[2], client_bytes[3],
@@ -69,7 +69,7 @@ static void reset_mac_addr()
     unsigned char mac_bytes[6];
     get_rand_bytes(mac_bytes, 6);
     mac_bytes[0] = mac_bytes[0] & 0xFEU;
-    sprintf(mac_addr, "%02x:%02x:%02x:%02x:%02x:%02x",
+    snprintf(mac_addr, sizeof(mac_addr), "%02x:%02x:%02x:%02x:%02x:%02x",
     mac_bytes[0], mac_bytes[1],
     mac_bytes[2], mac_bytes[3],
     mac_bytes[4], mac_bytes[5]);
