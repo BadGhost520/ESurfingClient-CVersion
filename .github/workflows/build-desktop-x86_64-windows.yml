@@ -28,7 +28,7 @@ jobs:
       image: debian:13
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
