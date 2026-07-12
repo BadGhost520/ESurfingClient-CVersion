@@ -41,7 +41,7 @@ jobs:
 
       - name: 获取 OpenSSL 缓存
         id: cache-openssl
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /usr/local/opt/openssl-built
           key: openssl-${{ inputs.openssl_version }}-macos-x86_64
@@ -75,7 +75,7 @@ jobs:
 
       - name: 获取 libcurl 缓存
         id: cache-curl
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /usr/local/opt/curl-built
           key: curl-${{ inputs.curl_version }}-macos-x86_64
@@ -154,7 +154,7 @@ jobs:
 
       - name: 获取 web 处理缓存
         id: cache-web
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: tailwindcss-macos-x64
           key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-x86_64

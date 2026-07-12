@@ -52,7 +52,7 @@ jobs:
 
       - name: 获取 OpenWrt SDK 压缩包缓存
         id: cache-openwrt-sdk
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.SDK_NAME }}.tar.zst
