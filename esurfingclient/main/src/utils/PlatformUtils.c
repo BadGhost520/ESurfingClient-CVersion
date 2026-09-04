@@ -45,13 +45,49 @@ static const char s_default_cfg[] = "{\n"
                                     "           \"username\": \"\",\n"
                                     "           \"password\": \"\",\n"
                                     "           \"channel\": 3,\n"
-                                    "           \"mark\": \"\"\n"
+                                    "           \"mark\": \"\",\n"
+                                    "           \"time_range\": \"\"\n"
                                     "       }\n"
                                     "   ]\n"
                                     "}\n";
 
 static adapter_t* s_adaptor = NULL;
 static uint8_t s_adaptor_count = 0;
+
+/**
+ * @brief 解析时间控制字段 (HH:MM-HH:MM)
+ * @param str 原始字符串
+ * @param start_min 输出开始分钟 (0-1439)
+ * @param end_min 输出结束分钟 (0-1439)
+ * @return 是否合法 (要求开始 <= 结束)
+ */
+static bool parse_time_range(const char* str, uint16_t* start_min, uint16_t* end_min)
+{
+    if (!str || strlen(str) != 11) return false;
+    if (str[2] != ':' || str[5] != '-' || str[8] != ':') return false;
+
+    for (uint8_t i = 0; i < 11; i++)
+    {
+        if (i == 2 || i == 5 || i == 8) continue;
+        if (isdigit((unsigned char)str[i]) == 0) return false;
+    }
+
+    const int start_hour = (str[0] - '0') * 10 + (str[1] - '0');
+    const int start_minute = (str[3] - '0') * 10 + (str[4] - '0');
+    const int end_hour = (str[6] - '0') * 10 + (str[7] - '0');
+    const int end_minute = (str[9] - '0') * 10 + (str[10] - '0');
+
+    if (start_hour > 23 || start_minute > 59 || end_hour > 23 || end_minute > 59) return false;
+
+    const uint16_t start = (uint16_t)(start_hour * 60 + start_minute);
+    const uint16_t end = (uint16_t)(end_hour * 60 + end_minute);
+
+    if (start > end) return false;
+
+    if (start_min) *start_min = start;
+    if (end_min) *end_min = end;
+    return true;
+}
 
 static void get_adapters()
 {
@@ -497,32 +533,98 @@ bool save_cfg(char* configs_str)
     LOG_INFO("保存配置中");
     LOG_INFO("仅会保存第一个可用配置");
 
-    FILE* cfg_file = fopen(config_file, "w");
-    if (!cfg_file)
+    cJSON* configs = cJSON_Parse(configs_str);
+    if (!configs)
     {
-        LOG_ERROR("无法生成文件: %s", config_file);
+        LOG_ERROR("配置 JSON 解析失败");
         return false;
     }
-    fprintf(cfg_file, "%s", configs_str);
-    fclose(cfg_file);
-
-    cJSON* configs = cJSON_Parse(configs_str);
 
     const cJSON* enabled = cJSON_GetObjectItem(configs, "enabled");
     const cJSON* log_lv = cJSON_GetObjectItem(configs, "log_lv");
 
     const cJSON* accounts = cJSON_GetObjectItem(configs, "accounts");
-    const cJSON* account = cJSON_GetArrayItem(accounts, 0);
+    const cJSON* account = accounts ? cJSON_GetArrayItem(accounts, 0) : NULL;
+    if (account == NULL)
+    {
+        LOG_ERROR("配置中没有账号数据");
+        cJSON_Delete(configs);
+        return false;
+    }
 
     const cJSON* username = cJSON_GetObjectItem(account, "username");
     const cJSON* password = cJSON_GetObjectItem(account, "password");
     const cJSON* channel = cJSON_GetObjectItem(account, "channel");
+    const cJSON* time_range_item = cJSON_GetObjectItem(account, "time_range");
 
-    g_prog_enabled = enabled->valueint;
-    set_logger_level(log_lv->valueint);
-    snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", username->valuestring);
-    snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", password->valuestring);
-    g_prog_status[0].login_cfg.chn = channel->valueint;
+    // 保存前先校验 time_range，避免把非法配置写盘
+    if (time_range_item != NULL)
+    {
+        if (cJSON_IsString(time_range_item) == false)
+        {
+            LOG_ERROR("time_range 类型错误, 仅接受字符串 HH:MM-HH:MM");
+            cJSON_Delete(configs);
+            return false;
+        }
+        if (time_range_item->valuestring[0] != '\0')
+        {
+            uint16_t start_min = 0;
+            uint16_t end_min = 0;
+            if (parse_time_range(time_range_item->valuestring, &start_min, &end_min) == false)
+            {
+                LOG_ERROR("time_range 非法: %s, 仅接受 HH:MM-HH:MM 且开始 <= 结束", time_range_item->valuestring);
+                cJSON_Delete(configs);
+                return false;
+            }
+        }
+    }
+
+    FILE* cfg_file = fopen(config_file, "w");
+    if (!cfg_file)
+    {
+        LOG_ERROR("无法生成文件: %s", config_file);
+        cJSON_Delete(configs);
+        return false;
+    }
+    fprintf(cfg_file, "%s", configs_str);
+    fclose(cfg_file);
+
+    if (enabled)
+    {
+        g_prog_enabled = enabled->valueint;
+    }
+    if (log_lv)
+    {
+        set_logger_level(log_lv->valueint);
+    }
+    if (username)
+    {
+        snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", username->valuestring);
+    }
+    if (password)
+    {
+        snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", password->valuestring);
+    }
+    if (channel)
+    {
+        g_prog_status[0].login_cfg.chn = channel->valueint;
+    }
+
+    // 透传 time_range 到内存，保持桌面端与配置一致
+    g_prog_status[0].login_cfg.has_time_control = false;
+    g_prog_status[0].login_cfg.time_range[0] = '\0';
+    if (time_range_item && cJSON_IsString(time_range_item) && time_range_item->valuestring[0] != '\0')
+    {
+        uint16_t start_min = 0;
+        uint16_t end_min = 0;
+        if (parse_time_range(time_range_item->valuestring, &start_min, &end_min))
+        {
+            g_prog_status[0].login_cfg.time_start_min = start_min;
+            g_prog_status[0].login_cfg.time_end_min = end_min;
+            g_prog_status[0].login_cfg.has_time_control = true;
+            snprintf(g_prog_status[0].login_cfg.time_range, TIME_RANGE_LEN, "%s", time_range_item->valuestring);
+        }
+    }
 
     cJSON_Delete(configs);
 
@@ -688,6 +790,7 @@ bool load_cfg()
         const cJSON* pwd = cJSON_GetObjectItem(account, "password");
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
         const cJSON* mark = cJSON_GetObjectItem(account, "mark");
+        const cJSON* time_range_item = cJSON_GetObjectItem(account, "time_range");
 
         // 检查账号
         if (usr == NULL)
@@ -711,6 +814,42 @@ bool load_cfg()
         {
             LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
             continue;
+        }
+
+        // 检查时间控制字段
+        if (time_range_item != NULL)
+        {
+            if (cJSON_IsString(time_range_item) == false)
+            {
+                LOG_FATAL("配置 %" PRIu8 " time_range 类型错误, 仅接受字符串 HH:MM-HH:MM", i + 1);
+                cJSON_Delete(cfg_json);
+                return false;
+            }
+            if (time_range_item->valuestring[0] != '\0')
+            {
+                uint16_t start_min = 0;
+                uint16_t end_min = 0;
+                if (parse_time_range(time_range_item->valuestring, &start_min, &end_min) == false)
+                {
+                    LOG_FATAL("配置 %" PRIu8 " time_range 非法: %s, 仅接受 HH:MM-HH:MM 且开始 <= 结束", i + 1, time_range_item->valuestring);
+                    cJSON_Delete(cfg_json);
+                    return false;
+                }
+                g_prog_status[valid_i].login_cfg.time_start_min = start_min;
+                g_prog_status[valid_i].login_cfg.time_end_min = end_min;
+                g_prog_status[valid_i].login_cfg.has_time_control = true;
+                snprintf(g_prog_status[valid_i].login_cfg.time_range, TIME_RANGE_LEN, "%s", time_range_item->valuestring);
+            }
+            else
+            {
+                g_prog_status[valid_i].login_cfg.has_time_control = false;
+                g_prog_status[valid_i].login_cfg.time_range[0] = '\0';
+            }
+        }
+        else
+        {
+            g_prog_status[valid_i].login_cfg.has_time_control = false;
+            g_prog_status[valid_i].login_cfg.time_range[0] = '\0';
         }
 
         snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
@@ -812,6 +951,7 @@ bool load_cfg()
         const cJSON* usr = cJSON_GetObjectItem(account, "username");
         const cJSON* pwd = cJSON_GetObjectItem(account, "password");
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
+        const cJSON* time_range_item = cJSON_GetObjectItem(account, "time_range");
 
         // 检查账号
         if (usr == NULL)
@@ -835,6 +975,42 @@ bool load_cfg()
         {
             LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
             continue;
+        }
+
+        // 检查时间控制字段
+        if (time_range_item != NULL)
+        {
+            if (cJSON_IsString(time_range_item) == false)
+            {
+                LOG_FATAL("配置 %" PRIu8 " time_range 类型错误, 仅接受字符串 HH:MM-HH:MM", i + 1);
+                cJSON_Delete(cfg_json);
+                return false;
+            }
+            if (time_range_item->valuestring[0] != '\0')
+            {
+                uint16_t start_min = 0;
+                uint16_t end_min = 0;
+                if (parse_time_range(time_range_item->valuestring, &start_min, &end_min) == false)
+                {
+                    LOG_FATAL("配置 %" PRIu8 " time_range 非法: %s, 仅接受 HH:MM-HH:MM 且开始 <= 结束", i + 1, time_range_item->valuestring);
+                    cJSON_Delete(cfg_json);
+                    return false;
+                }
+                g_prog_status[0].login_cfg.time_start_min = start_min;
+                g_prog_status[0].login_cfg.time_end_min = end_min;
+                g_prog_status[0].login_cfg.has_time_control = true;
+                snprintf(g_prog_status[0].login_cfg.time_range, TIME_RANGE_LEN, "%s", time_range_item->valuestring);
+            }
+            else
+            {
+                g_prog_status[0].login_cfg.has_time_control = false;
+                g_prog_status[0].login_cfg.time_range[0] = '\0';
+            }
+        }
+        else
+        {
+            g_prog_status[0].login_cfg.has_time_control = false;
+            g_prog_status[0].login_cfg.time_range[0] = '\0';
         }
 
         snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));

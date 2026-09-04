@@ -38,7 +38,8 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
       "username": "账号",
       "password": "密码",
       "channel": "phone",
-      "mark": ""
+      "mark": "",
+      "time_range": ""
     }
   ]
 }
@@ -53,6 +54,7 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 - password: 密码
 - channel: 认证通道 (暂时没找到具体作用)
 - mark: 标记值 (高级功能)
+- time_range: 时间控制, 可选, 格式为 `HH:MM-HH:MM` (例如 `08:13-21:25`), 留空表示不限; 按系统本地时间判断
 
 ### 2. 保存, 输入如下指令重启服务
 
@@ -81,6 +83,7 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 - password: 密码
 - channel: 认证通道 (暂时没找到具体作用)
 - mark: 标记值 (高级功能)
+- time_range: 时间控制, 可选, 格式为 `HH:MM-HH:MM` (例如 `08:13-21:25`), 留空表示不限; 按系统本地时间判断
 
 ### 4. 右下角保存并应用
 

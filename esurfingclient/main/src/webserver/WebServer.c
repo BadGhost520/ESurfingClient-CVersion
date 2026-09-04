@@ -64,6 +64,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                 cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
                 cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
                 cJSON_AddNumberToObject(account, "channel", g_prog_status[0].login_cfg.chn);
+                cJSON_AddStringToObject(account, "time_range", g_prog_status[0].login_cfg.time_range);
 
                 cJSON_AddItemToArray(accounts, account);
                 cJSON_AddItemToObject(configs, "accounts", accounts);

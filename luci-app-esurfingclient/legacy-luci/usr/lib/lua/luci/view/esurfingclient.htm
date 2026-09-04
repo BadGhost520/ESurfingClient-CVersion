@@ -63,7 +63,7 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
     return
 end
 
-local config_json = '{"enabled":false,"log_lv":4,"accounts":[{"username":"","password":"","channel":"phone","mark":""}]}'
+local config_json = '{"enabled":false,"log_lv":4,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_range":""}]}'
 local file = io.open("/etc/config/esurfingclient", "r")
 if file then
     local content = file:read("*a")
@@ -220,6 +220,7 @@ end
                         <th class='th'>密码</th>
                         <th class='th'>通道</th>
                         <th class='th'>标记值</th>
+                        <th class='th'>时间控制</th>
                         <th class='th' style='width: 135px;'></th>
                     </tr>
                 </thead>
@@ -290,19 +291,40 @@ end
     // 当前有多少个提示
     var notification_count = 0;
 
+    // 校验时间控制格式
+    function isValidTimeRange(value) {
+        if (!value) return true;
+        var match = value.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+        if (!match) return false;
+        var startHour = parseInt(match[1], 10);
+        var startMinute = parseInt(match[2], 10);
+        var endHour = parseInt(match[3], 10);
+        var endMinute = parseInt(match[4], 10);
+        if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return false;
+        return (startHour * 60 + startMinute) <= (endHour * 60 + endMinute);
+    }
+
     // 保存账号
     function saveAccount() {
         var edit_username = document.getElementById('edit_username');
         var edit_password = document.getElementById('edit_password');
         var edit_channel = document.getElementById('edit_channel');
         var edit_mark = document.getElementById('edit_mark');
+        var edit_time_range = document.getElementById('edit_time_range');
+        var timeRange = edit_time_range.value.trim();
+
+        if (!isValidTimeRange(timeRange)) {
+            showNotification('时间控制格式错误：' + (timeRange || '(空)') + '，应为 HH:MM-HH:MM 且开始不能晚于结束', 'error');
+            return;
+        }
 
         if (add_mode) {
             var new_account = {
                 username: edit_username.value.trim(),
                 password: edit_password.value.trim(),
                 channel: edit_channel.value,
-                mark: edit_mark.value.trim()
+                mark: edit_mark.value.trim(),
+                time_range: timeRange
             };
             config.accounts.push(new_account);
         } else{
@@ -310,6 +332,7 @@ end
             account.password = edit_password.value.trim();
             account.channel = edit_channel.value;
             account.mark = edit_mark.value.trim();
+            account.time_range = timeRange;
         }
 
         renderTable();
@@ -429,7 +452,8 @@ end
                 username: '',
                 password: '',
                 channel: 'phone',
-                mark: ''
+                mark: '',
+                time_range: ''
             }]
         };
         return saveOperation()
@@ -483,7 +507,11 @@ end
 
             var cell4 = row.insertCell(4);
             cell4.className = 'td';
-            cell4.innerHTML = `
+            cell4.textContent = item.time_range || '(不限)';
+
+            var cell5 = row.insertCell(5);
+            cell5.className = 'td';
+            cell5.innerHTML = `
                 <button class='cbi-button cbi-button-edit' onclick='showModal(${index}, "edit_modal")'>编辑</button>
                 <button class='cbi-button cbi-button-remove' onclick='deleteAccount(${index})'>删除</button>
             `;
@@ -541,6 +569,7 @@ end
         var edit_password = document.getElementById('edit_password');
         var edit_channel = document.getElementById('edit_channel');
         var edit_mark = document.getElementById('edit_mark');
+        var edit_time_range = document.getElementById('edit_time_range');
 
         account = {};
         add_mode = false;
@@ -552,7 +581,8 @@ end
                 username: '',
                 password: '',
                 channel: 'phone',
-                mark: ''
+                mark: '',
+                time_range: ''
             };
         }
 
@@ -565,6 +595,7 @@ end
             }
         }
         edit_mark.value = account.mark;
+        edit_time_range.value = account.time_range || '';
 
         modal.classList.add('show');
     }
@@ -703,6 +734,13 @@ end
                 <div class='cbi-value-field'>
                     <input type='text' id='edit_mark' class='cbi-input-text' placeholder='请输入标记值' name='mark' />
                     <div class='cbi-value-description'>可选项, 用于 MWAN 多路区分<br>十六进制数, 以 0x 开头, 例如 0x100</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='time_range'>时间控制</label>
+                <div class='cbi-value-field'>
+                    <input type='text' id='edit_time_range' class='cbi-input-text' placeholder='08:13-21:25' name='time_range' />
+                    <div class='cbi-value-description'>留空表示不限；格式 HH:MM-HH:MM，开始不能晚于结束，按系统本地时间判断</div>
                 </div>
             </div>
         </div>

@@ -5,6 +5,7 @@
 #include "utils/SimThread.h"
 
 #include <setjmp.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define SCHOOL_NETWORK_SYMBOL 8
@@ -22,6 +23,8 @@
 
 #define USR_LEN 16
 #define PWD_LEN 128
+
+#define TIME_RANGE_LEN 12
 
 #define IP_LEN 16
 #define IF_LEN 16
@@ -80,6 +83,14 @@ typedef struct
     bool use_cus_mark;
     // /** @brief 自启状态 */
     // bool auto_start;
+    /** @brief 时间控制字符串 (HH:MM-HH:MM) */
+    char time_range[TIME_RANGE_LEN];
+    /** @brief 时间控制开始分钟 (0-1439) */
+    uint16_t time_start_min;
+    /** @brief 时间控制结束分钟 (0-1439) */
+    uint16_t time_end_min;
+    /** @brief 是否启用时间控制 */
+    bool has_time_control;
     /** @brief 配置序号 */
     uint8_t idx;
 } login_cfg_t;
@@ -95,6 +106,8 @@ typedef struct
     bool is_authed;
     /** @brief 需要重置 */
     bool is_need_reset;
+    /** @brief 时间控制禁用中 (仅内存状态, 不落盘) */
+    bool is_time_disabled;
 } runtime_status_t;
 
 /** @brief 认证线程状态 */

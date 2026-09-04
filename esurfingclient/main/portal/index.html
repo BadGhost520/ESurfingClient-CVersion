@@ -199,6 +199,7 @@
                       <th class="text-center">账号</th>
                       <th class="text-center">密码</th>
                       <th class="text-center">通道</th>
+                      <th class="text-center">时间控制</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -208,6 +209,7 @@
                       <td class="text-center" x-text="$store.main.configs.accounts[0]?.username || '(未知)'"></td>
                       <td class="text-center">******</td>
                       <td class="text-center" x-text="$store.main.configs.accounts[0]?.channel || '(未知)'"></td>
+                      <td class="text-center" x-text="$store.main.configs.accounts[0]?.time_range || '(不限)'"></td>
                       <th class="w-[10%] whitespace-nowrap px-1">
                         <button class="btn btn-soft btn-neutral"
                           @click="getAccounts(); toggleModal('setModal', 'open')">修改</button>
@@ -246,6 +248,11 @@
                     <option value="pc">pc</option>
                   </select>
                   <span class="label">选择账号的认证通道</span>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">时间控制</legend>
+                  <input type="text" class="input" placeholder="08:13-21:25" x-model="accounts[0].time_range" />
+                  <p class="label">留空表示不限；格式为 HH:MM-HH:MM，开始不能晚于结束，按系统本地时间判断</p>
                 </fieldset>
               </div>
               <div class="modal-action">

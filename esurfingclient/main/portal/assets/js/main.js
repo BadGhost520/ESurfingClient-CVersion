@@ -8,7 +8,8 @@ document.addEventListener('alpine:init', () => {
                 {
                     username: '',
                     password: '',
-                    channel: 'phone'
+                    channel: 'phone',
+                    time_range: ''
                 }
             ]
         },
@@ -122,7 +123,29 @@ document.addEventListener('alpine:init', () => {
     });
 
     Alpine.store('settings', {
+        isValidTimeRange(value) {
+            if (!value) return true;
+            const match = value.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+            if (!match) return false;
+            const startHour = parseInt(match[1], 10);
+            const startMinute = parseInt(match[2], 10);
+            const endHour = parseInt(match[3], 10);
+            const endMinute = parseInt(match[4], 10);
+            if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return false;
+            return (startHour * 60 + startMinute) <= (endHour * 60 + endMinute);
+        },
+
         saveConfigs() {
+            const accounts = Alpine.store('main').configs.accounts || [];
+            for (const account of accounts) {
+                const timeRange = (account.time_range || '').trim();
+                if (!this.isValidTimeRange(timeRange)) {
+                    alert('时间控制格式错误：' + (timeRange || '(空)') + '，应为 HH:MM-HH:MM 且开始不能晚于结束');
+                    return;
+                }
+                account.time_range = timeRange;
+            }
+
             fetch('/api/saveConfigs', {
                 method: 'POST',
                 headers: {
@@ -167,6 +190,9 @@ document.addEventListener('alpine:init', () => {
         init() {
             const original = Alpine.store('main').configs.accounts;
             this.accounts = JSON.parse(JSON.stringify(original));
+            this.accounts.forEach(account => {
+                if (account.time_range === undefined) account.time_range = '';
+            });
         },
 
         saveAccounts() {
