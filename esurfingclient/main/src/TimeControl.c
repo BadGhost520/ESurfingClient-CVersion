@@ -7,6 +7,9 @@
 #include <stdint.h>
 #include <time.h>
 
+#define WEEK_MILLIS 604800000LL
+#define MAX_SLEEP_SLICE_MS 10000
+
 static sim_thread_t* g_time_control_thread = NULL;
 
 /**
@@ -28,6 +31,30 @@ static int32_t get_current_week_minute(void)
     }
 #endif
     return (int32_t)local_tm.tm_wday * 1440 + local_tm.tm_hour * 60 + local_tm.tm_min;
+}
+
+/**
+ * @brief 获取当前本地时间的“一周毫秒数”(0-604799999)
+ */
+static int64_t get_current_week_ms(void)
+{
+    time_t now = time(NULL);
+    struct tm local_tm;
+#ifdef _WIN32
+    if (localtime_s(&local_tm, &now) != 0)
+    {
+        return 0;
+    }
+#else
+    if (localtime_r(&now, &local_tm) == NULL)
+    {
+        return 0;
+    }
+#endif
+    return ((int64_t)local_tm.tm_wday * 86400 +
+            local_tm.tm_hour * 3600 +
+            local_tm.tm_min * 60 +
+            local_tm.tm_sec) * 1000;
 }
 
 /**
@@ -59,28 +86,28 @@ static bool is_in_windows_abs(const login_cfg_t* cfg, const int32_t week_min_abs
  * @brief 计算下一个状态切换（启用/禁用）的延迟毫秒数
  * @return 延迟毫秒数，无窗口时返回 (uint64_t)-1
  */
-static uint64_t compute_next_event_delay_ms(const login_cfg_t* cfg, const int32_t now_week_min)
+static uint64_t compute_next_event_delay_ms(const login_cfg_t* cfg, const int64_t now_week_ms)
 {
-    int32_t boundaries[MAX_TIME_WINDOWS * 10];
+    int64_t boundaries[MAX_TIME_WINDOWS * 10];
     int boundary_count = 0;
 
     for (uint8_t i = 0; i < cfg->time_window_count; i++)
     {
         const time_window_t* win = &cfg->time_windows[i];
-        const int32_t start = win->start_week_min;
-        const int32_t end = win->end_week_min;
+        const int64_t start_ms = (int64_t)win->start_week_min * 60000;
+        const int64_t end_ms = (int64_t)win->end_week_min * 60000;
 
         // k 覆盖当前周前后足够多的周期，保证能找到下一个边界
         for (int k = -2; k <= 2; k++)
         {
-            const int32_t start_abs = start + k * WEEK_MINUTES;
-            const int32_t end_abs = end + k * WEEK_MINUTES;
+            const int64_t start_abs = start_ms + k * WEEK_MILLIS;
+            const int64_t end_abs = end_ms + k * WEEK_MILLIS;
 
-            if (start_abs > now_week_min && boundary_count < (int)(sizeof(boundaries) / sizeof(boundaries[0])))
+            if (start_abs > now_week_ms && boundary_count < (int)(sizeof(boundaries) / sizeof(boundaries[0])))
             {
                 boundaries[boundary_count++] = start_abs;
             }
-            if (end_abs > now_week_min && boundary_count < (int)(sizeof(boundaries) / sizeof(boundaries[0])))
+            if (end_abs > now_week_ms && boundary_count < (int)(sizeof(boundaries) / sizeof(boundaries[0])))
             {
                 boundaries[boundary_count++] = end_abs;
             }
@@ -95,7 +122,7 @@ static uint64_t compute_next_event_delay_ms(const login_cfg_t* cfg, const int32_
     // 简单插入排序
     for (int i = 1; i < boundary_count; i++)
     {
-        const int32_t key = boundaries[i];
+        const int64_t key = boundaries[i];
         int j = i - 1;
         while (j >= 0 && boundaries[j] > key)
         {
@@ -108,17 +135,17 @@ static uint64_t compute_next_event_delay_ms(const login_cfg_t* cfg, const int32_
     // 找到第一个让“是否在窗口内”发生变化的边界
     for (int i = 0; i < boundary_count; i++)
     {
-        const int32_t t = boundaries[i];
+        const int64_t t = boundaries[i];
         if (i > 0 && t == boundaries[i - 1])
         {
             continue;
         }
 
-        const bool before = is_in_windows_abs(cfg, t - 1);
-        const bool after = is_in_windows_abs(cfg, t);
+        const bool before = is_in_windows_abs(cfg, (int32_t)((t - 1) / 60000));
+        const bool after = is_in_windows_abs(cfg, (int32_t)(t / 60000));
         if (before != after)
         {
-            return (uint64_t)(t - now_week_min) * 60000;
+            return (uint64_t)(t - now_week_ms);
         }
     }
 
@@ -205,7 +232,7 @@ static int time_control_app(void* arg)
     {
         time_control_sync();
 
-        const int32_t now_week_min = get_current_week_minute();
+        const int64_t now_week_ms = get_current_week_ms();
         uint64_t next_delay = (uint64_t)-1;
 
         for (uint8_t i = 0; i < g_prog_cnt; i++)
@@ -216,7 +243,7 @@ static int time_control_app(void* arg)
                 continue;
             }
 
-            const uint64_t delay = compute_next_event_delay_ms(cfg, now_week_min);
+            const uint64_t delay = compute_next_event_delay_ms(cfg, now_week_ms);
             if (delay != (uint64_t)-1 && delay < next_delay)
             {
                 next_delay = delay;
@@ -233,12 +260,13 @@ static int time_control_app(void* arg)
         if (next_delay == 0)
         {
             // 避免极端情况下忙等
-            next_delay = 1000;
+            next_delay = 1;
         }
 
-        // 最多睡 1 秒就回到循环重新校正一次：
-        // 这样设备休眠/系统时间跳变后，最多 1 秒内就会按“当前时间”重新同步状态。
-        sleep_ms(next_delay > 1000 ? 1000 : next_delay, true);
+        // 精确睡到下一个边界，但最多只睡 MAX_SLEEP_SLICE_MS 就重新校正一次：
+        // 正常情况最后一段会精确落在边界上；休眠/时间跳变时也能在切片时间内纠正。
+        const uint64_t slice = next_delay > MAX_SLEEP_SLICE_MS ? MAX_SLEEP_SLICE_MS : next_delay;
+        sleep_ms(slice, true);
     }
 
     LOG_INFO("时间控制线程已退出");
