@@ -233,41 +233,94 @@ return view.extend({
         return E('tbody', { class: 'tbody' }, rows);
     },
 
-    parseTimeWindowLine: function(line) {
-        var match = line.trim().match(/^(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})-(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})$/i);
-        if (!match) return null;
-
-        var startHour = parseInt(match[2], 10);
-        var startMinute = parseInt(match[3], 10);
-        var endHour = parseInt(match[5], 10);
-        var endMinute = parseInt(match[6], 10);
-        if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return null;
-
-        var start = match[1].toLowerCase() + ' ' + match[2] + ':' + match[3];
-        var end = match[4].toLowerCase() + ' ' + match[5] + ':' + match[6];
-        if (start === end) return null;
-
-        return { start: start, end: end };
+    defaultEditTimeWindow: function() {
+        return { startDay: '', startTime: '', endDay: '', endTime: '' };
     },
 
-    timeWindowsToText: function(windows) {
-        return (windows || [])
-            .map(function(window) { return (window.start || '') + '-' + (window.end || ''); })
-            .join('\n');
-    },
-
-    timeWindowsFromText: function(text) {
+    timeWindowsToEdit: function(windows) {
         var self = this;
-        var lines = (text || '').split('\n').map(function(line) { return line.trim(); }).filter(Boolean);
+        return (windows || []).map(function(window) {
+            var startParts = (window.start || '').split(' ');
+            var endParts = (window.end || '').split(' ');
+            return {
+                startDay: startParts[0] || '',
+                startTime: startParts[1] || '',
+                endDay: endParts[0] || '',
+                endTime: endParts[1] || ''
+            };
+        });
+    },
+
+    editToTimeWindows: function(editWindows) {
         var windows = [];
-        for (var i = 0; i < lines.length; i++) {
-            var window = self.parseTimeWindowLine(lines[i]);
-            if (!window) {
-                throw new Error('时间窗口格式错误：' + lines[i] + '，应为 mon 08:13-mon 23:57');
+        for (var i = 0; i < editWindows.length; i++) {
+            var edit = editWindows[i];
+            if (!edit.startDay || !edit.startTime || !edit.endDay || !edit.endTime) {
+                throw new Error('存在未填写完整的时间段，请补全或删除该时间段');
             }
-            windows.push(window);
+
+            var start = edit.startDay.toLowerCase() + ' ' + edit.startTime;
+            var end = edit.endDay.toLowerCase() + ' ' + edit.endTime;
+            if (start === end) {
+                throw new Error('时间段开始和结束不能相同：' + start);
+            }
+
+            windows.push({ start: start, end: end });
         }
         return windows;
+    },
+
+    createDaySelect: function(id, selected) {
+        var days = [
+            { value: '', label: '星期' },
+            { value: 'mon', label: '周一' },
+            { value: 'tue', label: '周二' },
+            { value: 'wed', label: '周三' },
+            { value: 'thu', label: '周四' },
+            { value: 'fri', label: '周五' },
+            { value: 'sat', label: '周六' },
+            { value: 'sun', label: '周日' }
+        ];
+        var options = days.map(function(day) {
+            return E('option', { value: day.value, selected: selected === day.value ? true : undefined }, day.label);
+        });
+        return E('select', { id: id, class: 'cbi-input-select' }, options);
+    },
+
+    renderTimeWindows: function() {
+        var self = this;
+        var container = document.getElementById('time-windows-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        self.currentTimeWindows.forEach(function(edit, index) {
+            var row = E('div', { style: 'display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;' }, [
+                E('span', {}, '开始'),
+                self.createDaySelect('tw_start_day_' + index, edit.startDay),
+                E('input', { type: 'time', id: 'tw_start_time_' + index, class: 'cbi-input-text', value: edit.startTime }),
+                E('span', {}, '结束'),
+                self.createDaySelect('tw_end_day_' + index, edit.endDay),
+                E('input', { type: 'time', id: 'tw_end_time_' + index, class: 'cbi-input-text', value: edit.endTime }),
+                E('button', { class: 'cbi-button cbi-button-remove', click: function() { self.removeTimeWindow(index); } }, '删除')
+            ]);
+            container.appendChild(row);
+        });
+    },
+
+    addTimeWindow: function() {
+        var self = this;
+        if (self.currentTimeWindows.length >= 16) {
+            self.showNotification('最多支持 16 个时间段', 'error');
+            return;
+        }
+        self.currentTimeWindows.push(self.defaultEditTimeWindow());
+        self.renderTimeWindows();
+    },
+
+    removeTimeWindow: function(index) {
+        var self = this;
+        self.currentTimeWindows.splice(index, 1);
+        self.renderTimeWindows();
     },
 
     showModal: function(index) {
@@ -287,6 +340,8 @@ return view.extend({
                 time_windows: []
             };
         }
+
+        self.currentTimeWindows = self.timeWindowsToEdit(account.time_windows);
 
         var modal = L.showModal('编辑账号', [
             E('div', { class: 'cbi-value', style: 'margin-top: 25px;' }, [
@@ -327,14 +382,9 @@ return view.extend({
             E('div', { class: 'cbi-value' }, [
                 E('label', { class: 'cbi-value-title', style: 'margin-top: 10px;' }, '时间控制'),
                 E('div', { class: 'cbi-value-field' }, [
-                    E('textarea', {
-                        class: 'cbi-input-textarea',
-                        rows: 8,
-                        style: 'font-family: monospace; width: 100%;',
-                        id: 'edit_time_windows',
-                        placeholder: 'mon 08:13-mon 23:57\ntue 08:13-tue 23:57\nfri 08:13-sun 23:57'
-                    }, self.timeWindowsToText(account.time_windows)),
-                    E('div', { class: 'cbi-value-description' }, '每行一个窗口，格式：星期 时:分-星期 时:分，例如 fri 08:13-sun 23:57；留空表示不限')
+                    E('div', { id: 'time-windows-container' }),
+                    E('button', { class: 'cbi-button cbi-button-add', click: function() { self.addTimeWindow(); } }, '添加时间段'),
+                    E('div', { class: 'cbi-value-description' }, '未设置时间段 = 不限制')
                 ])
             ]),
             E('div', { style: 'text-align: right; margin-top: 20px; padding-top: 10px;' }, [
@@ -343,9 +393,19 @@ return view.extend({
                 } }, '关闭'),
                 ' ',
                 E('button', { class: 'cbi-button cbi-button-apply', click: function() {
+                    var editWindows = [];
+                    for (var i = 0; i < self.currentTimeWindows.length; i++) {
+                        editWindows.push({
+                            startDay: document.getElementById('tw_start_day_' + i).value,
+                            startTime: document.getElementById('tw_start_time_' + i).value,
+                            endDay: document.getElementById('tw_end_day_' + i).value,
+                            endTime: document.getElementById('tw_end_time_' + i).value
+                        });
+                    }
+
                     var timeWindows;
                     try {
-                        timeWindows = self.timeWindowsFromText(document.getElementById('edit_time_windows').value);
+                        timeWindows = self.editToTimeWindows(editWindows);
                     } catch (error) {
                         self.showNotification(error.message, 'error');
                         return;
@@ -366,6 +426,8 @@ return view.extend({
                 } }, '保存')
             ])
         ]);
+
+        setTimeout(function() { self.renderTimeWindows(); }, 0);
     },
 
     startLogAutoRefresh: function() {

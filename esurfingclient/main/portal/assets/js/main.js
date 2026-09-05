@@ -1,36 +1,35 @@
 // 时间窗口辅助函数
-function parseTimeWindowLine(line) {
-    const match = line.trim().match(/^(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})-(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})$/i);
-    if (!match) return null;
-
-    const startHour = parseInt(match[2], 10);
-    const startMinute = parseInt(match[3], 10);
-    const endHour = parseInt(match[5], 10);
-    const endMinute = parseInt(match[6], 10);
-    if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return null;
-
-    const start = match[1].toLowerCase() + ' ' + match[2] + ':' + match[3];
-    const end = match[4].toLowerCase() + ' ' + match[5] + ':' + match[6];
-    if (start === end) return null;
-
-    return { start: start, end: end };
+function defaultEditTimeWindow() {
+    return { startDay: '', startTime: '', endDay: '', endTime: '' };
 }
 
-function timeWindowsToText(windows) {
-    return (windows || [])
-        .map(window => (window.start || '') + '-' + (window.end || ''))
-        .join('\n');
+function timeWindowsToEdit(windows) {
+    return (windows || []).map(window => {
+        const startParts = (window.start || '').split(' ');
+        const endParts = (window.end || '').split(' ');
+        return {
+            startDay: startParts[0] || '',
+            startTime: startParts[1] || '',
+            endDay: endParts[0] || '',
+            endTime: endParts[1] || ''
+        };
+    });
 }
 
-function timeWindowsFromText(text) {
-    const lines = (text || '').split('\n').map(line => line.trim()).filter(Boolean);
+function editToTimeWindows(editWindows) {
     const windows = [];
-    for (const line of lines) {
-        const window = parseTimeWindowLine(line);
-        if (!window) {
-            throw new Error('时间窗口格式错误：' + line + '，应为 mon 08:13-mon 23:57');
+    for (const edit of editWindows) {
+        if (!edit.startDay || !edit.startTime || !edit.endDay || !edit.endTime) {
+            throw new Error('存在未填写完整的时间段，请补全或删除该时间段');
         }
-        windows.push(window);
+
+        const start = edit.startDay.toLowerCase() + ' ' + edit.startTime;
+        const end = edit.endDay.toLowerCase() + ' ' + edit.endTime;
+        if (start === end) {
+            throw new Error('时间段开始和结束不能相同：' + start);
+        }
+
+        windows.push({ start: start, end: end });
     }
     return windows;
 }
@@ -201,7 +200,7 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('editConfigs', () => ({
         accounts: [],
-        timeWindowsText: '',
+        timeWindows: [],
 
         init() {
             const original = Alpine.store('main').configs.accounts;
@@ -209,17 +208,29 @@ document.addEventListener('alpine:init', () => {
             this.accounts.forEach(account => {
                 if (account.time_windows === undefined) account.time_windows = [];
             });
-            this.syncTimeWindowsText();
+            this.syncTimeWindows();
         },
 
-        syncTimeWindowsText() {
-            this.timeWindowsText = timeWindowsToText(this.accounts[0]?.time_windows);
+        syncTimeWindows() {
+            this.timeWindows = timeWindowsToEdit(this.accounts[0]?.time_windows);
+        },
+
+        addTimeWindow() {
+            if (this.timeWindows.length >= 16) {
+                alert('最多支持 16 个时间段');
+                return;
+            }
+            this.timeWindows.push(defaultEditTimeWindow());
+        },
+
+        removeTimeWindow(index) {
+            this.timeWindows.splice(index, 1);
         },
 
         saveAccounts() {
             let windows;
             try {
-                windows = timeWindowsFromText(this.timeWindowsText);
+                windows = editToTimeWindows(this.timeWindows);
             } catch (error) {
                 alert(error.message);
                 return;
@@ -235,7 +246,7 @@ document.addEventListener('alpine:init', () => {
             this.accounts.forEach(account => {
                 if (account.time_windows === undefined) account.time_windows = [];
             });
-            this.syncTimeWindowsText();
+            this.syncTimeWindows();
         },
 
         toggleModal(modalName, action) {

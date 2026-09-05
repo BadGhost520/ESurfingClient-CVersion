@@ -292,40 +292,95 @@ end
     var notification_count = 0;
 
     // 时间窗口辅助函数
-    function parseTimeWindowLine(line) {
-        var match = line.trim().match(/^(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})-(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})$/i);
-        if (!match) return null;
+    var currentTimeWindows = [];
 
-        var startHour = parseInt(match[2], 10);
-        var startMinute = parseInt(match[3], 10);
-        var endHour = parseInt(match[5], 10);
-        var endMinute = parseInt(match[6], 10);
-        if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return null;
-
-        var start = match[1].toLowerCase() + ' ' + match[2] + ':' + match[3];
-        var end = match[4].toLowerCase() + ' ' + match[5] + ':' + match[6];
-        if (start === end) return null;
-
-        return { start: start, end: end };
+    function defaultEditTimeWindow() {
+        return { startDay: '', startTime: '', endDay: '', endTime: '' };
     }
 
-    function timeWindowsToText(windows) {
-        return (windows || [])
-            .map(function(window) { return (window.start || '') + '-' + (window.end || ''); })
-            .join('\n');
+    function timeWindowsToEdit(windows) {
+        return (windows || []).map(function(window) {
+            var startParts = (window.start || '').split(' ');
+            var endParts = (window.end || '').split(' ');
+            return {
+                startDay: startParts[0] || '',
+                startTime: startParts[1] || '',
+                endDay: endParts[0] || '',
+                endTime: endParts[1] || ''
+            };
+        });
     }
 
-    function timeWindowsFromText(text) {
-        var lines = (text || '').split('\n').map(function(line) { return line.trim(); }).filter(Boolean);
+    function editToTimeWindows(editWindows) {
         var windows = [];
-        for (var i = 0; i < lines.length; i++) {
-            var window = parseTimeWindowLine(lines[i]);
-            if (!window) {
-                throw new Error('时间窗口格式错误：' + lines[i] + '，应为 mon 08:13-mon 23:57');
+        for (var i = 0; i < editWindows.length; i++) {
+            var edit = editWindows[i];
+            if (!edit.startDay || !edit.startTime || !edit.endDay || !edit.endTime) {
+                throw new Error('存在未填写完整的时间段，请补全或删除该时间段');
             }
-            windows.push(window);
+
+            var start = edit.startDay.toLowerCase() + ' ' + edit.startTime;
+            var end = edit.endDay.toLowerCase() + ' ' + edit.endTime;
+            if (start === end) {
+                throw new Error('时间段开始和结束不能相同：' + start);
+            }
+
+            windows.push({ start: start, end: end });
         }
         return windows;
+    }
+
+    function dayOptionsHtml(id, selected) {
+        var days = [
+            { value: '', label: '星期' },
+            { value: 'mon', label: '周一' },
+            { value: 'tue', label: '周二' },
+            { value: 'wed', label: '周三' },
+            { value: 'thu', label: '周四' },
+            { value: 'fri', label: '周五' },
+            { value: 'sat', label: '周六' },
+            { value: 'sun', label: '周日' }
+        ];
+        var html = '<select id="' + id + '" class="cbi-input-select">';
+        days.forEach(function(day) {
+            html += '<option value="' + day.value + '"' + (selected === day.value ? ' selected' : '') + '>' + day.label + '</option>';
+        });
+        html += '</select>';
+        return html;
+    }
+
+    function renderTimeWindows() {
+        var container = document.getElementById('time-windows-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        currentTimeWindows.forEach(function(edit, index) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;';
+            row.innerHTML =
+                '<span>开始</span>' +
+                dayOptionsHtml('tw_start_day_' + index, edit.startDay) +
+                '<input type="time" id="tw_start_time_' + index + '" class="cbi-input-text" value="' + edit.startTime + '" />' +
+                '<span>结束</span>' +
+                dayOptionsHtml('tw_end_day_' + index, edit.endDay) +
+                '<input type="time" id="tw_end_time_' + index + '" class="cbi-input-text" value="' + edit.endTime + '" />' +
+                '<button type="button" class="cbi-button cbi-button-remove" onclick="removeTimeWindow(' + index + ')">删除</button>';
+            container.appendChild(row);
+        });
+    }
+
+    function addTimeWindow() {
+        if (currentTimeWindows.length >= 16) {
+            showNotification('最多支持 16 个时间段', 'error');
+            return;
+        }
+        currentTimeWindows.push(defaultEditTimeWindow());
+        renderTimeWindows();
+    }
+
+    function removeTimeWindow(index) {
+        currentTimeWindows.splice(index, 1);
+        renderTimeWindows();
     }
 
     // 保存账号
@@ -334,11 +389,20 @@ end
         var edit_password = document.getElementById('edit_password');
         var edit_channel = document.getElementById('edit_channel');
         var edit_mark = document.getElementById('edit_mark');
-        var edit_time_windows = document.getElementById('edit_time_windows');
-        var timeWindows;
 
+        var editWindows = [];
+        for (var i = 0; i < currentTimeWindows.length; i++) {
+            editWindows.push({
+                startDay: document.getElementById('tw_start_day_' + i).value,
+                startTime: document.getElementById('tw_start_time_' + i).value,
+                endDay: document.getElementById('tw_end_day_' + i).value,
+                endTime: document.getElementById('tw_end_time_' + i).value
+            });
+        }
+
+        var timeWindows;
         try {
-            timeWindows = timeWindowsFromText(edit_time_windows.value);
+            timeWindows = editToTimeWindows(editWindows);
         } catch (error) {
             showNotification(error.message, 'error');
             return;
@@ -595,7 +659,6 @@ end
         var edit_password = document.getElementById('edit_password');
         var edit_channel = document.getElementById('edit_channel');
         var edit_mark = document.getElementById('edit_mark');
-        var edit_time_windows = document.getElementById('edit_time_windows');
 
         account = {};
         add_mode = false;
@@ -612,6 +675,9 @@ end
             };
         }
 
+        currentTimeWindows = timeWindowsToEdit(account.time_windows);
+        renderTimeWindows();
+
         edit_username.value = account.username;
         edit_password.value = account.password;
         for (var i = 0; i < edit_channel.options.length; i++) {
@@ -621,7 +687,6 @@ end
             }
         }
         edit_mark.value = account.mark;
-        edit_time_windows.value = timeWindowsToText(account.time_windows);
 
         modal.classList.add('show');
     }
@@ -765,8 +830,9 @@ end
             <div class='cbi-value'>
                 <label class='cbi-value-title' for='time_windows'>时间控制</label>
                 <div class='cbi-value-field'>
-                    <textarea id='edit_time_windows' class='cbi-input-textarea' rows='8' style='font-family: monospace; width: 100%;' placeholder='mon 08:13-mon 23:57&#10;tue 08:13-tue 23:57&#10;fri 08:13-sun 23:57' name='time_windows'></textarea>
-                    <div class='cbi-value-description'>每行一个窗口，格式：星期 时:分-星期 时:分，例如 fri 08:13-sun 23:57；留空表示不限</div>
+                    <div id='time-windows-container'></div>
+                    <button type='button' class='cbi-button cbi-button-add' onclick='addTimeWindow()'>添加时间段</button>
+                    <div class='cbi-value-description'>未设置时间段 = 不限制</div>
                 </div>
             </div>
         </div>
