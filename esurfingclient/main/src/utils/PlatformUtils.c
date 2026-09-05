@@ -183,6 +183,20 @@ static bool parse_time_windows(const cJSON* arr, time_window_t* windows, uint8_t
     return true;
 }
 
+/**
+ * @brief 解析 time_windows 并写入 login_cfg
+ * @return 是否合法
+ */
+static bool apply_time_windows(const cJSON* item, login_cfg_t* cfg)
+{
+    if (parse_time_windows(item, cfg->time_windows, &cfg->time_window_count) == false)
+    {
+        return false;
+    }
+    cfg->has_time_control = cfg->time_window_count > 0;
+    return true;
+}
+
 static void get_adapters()
 {
 #ifdef _WIN32
@@ -693,15 +707,9 @@ bool save_cfg(char* configs_str)
     }
 
     // 透传 time_windows 到内存，保持桌面端与配置一致
-    g_prog_status[0].login_cfg.has_time_control = false;
-    g_prog_status[0].login_cfg.time_window_count = 0;
-    if (parse_time_windows(time_windows_item, g_prog_status[0].login_cfg.time_windows, &g_prog_status[0].login_cfg.time_window_count))
-    {
-        if (g_prog_status[0].login_cfg.time_window_count > 0)
-        {
-            g_prog_status[0].login_cfg.has_time_control = true;
-        }
-    }
+    g_prog_status[0].login_cfg.has_time_control = tmp_window_count > 0;
+    g_prog_status[0].login_cfg.time_window_count = tmp_window_count;
+    memcpy(g_prog_status[0].login_cfg.time_windows, tmp_windows, sizeof(time_window_t) * tmp_window_count);
 
     cJSON_Delete(configs);
 
@@ -894,13 +902,12 @@ bool load_cfg()
         }
 
         // 检查时间控制字段
-        if (parse_time_windows(time_windows_item, g_prog_status[valid_i].login_cfg.time_windows, &g_prog_status[valid_i].login_cfg.time_window_count) == false)
+        if (apply_time_windows(time_windows_item, &g_prog_status[valid_i].login_cfg) == false)
         {
             LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
             cJSON_Delete(cfg_json);
             return false;
         }
-        g_prog_status[valid_i].login_cfg.has_time_control = g_prog_status[valid_i].login_cfg.time_window_count > 0;
 
         snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
         snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
@@ -1028,13 +1035,12 @@ bool load_cfg()
         }
 
         // 检查时间控制字段
-        if (parse_time_windows(time_windows_item, g_prog_status[0].login_cfg.time_windows, &g_prog_status[0].login_cfg.time_window_count) == false)
+        if (apply_time_windows(time_windows_item, &g_prog_status[0].login_cfg) == false)
         {
             LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
             cJSON_Delete(cfg_json);
             return false;
         }
-        g_prog_status[0].login_cfg.has_time_control = g_prog_status[0].login_cfg.time_window_count > 0;
 
         snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
         snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
