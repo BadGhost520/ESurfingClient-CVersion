@@ -63,7 +63,7 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
     return
 end
 
-local config_json = '{"enabled":false,"log_lv":4,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_range":""}]}'
+local config_json = '{"enabled":false,"log_lv":4,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
 local file = io.open("/etc/config/esurfingclient", "r")
 if file then
     local content = file:read("*a")
@@ -291,17 +291,41 @@ end
     // 当前有多少个提示
     var notification_count = 0;
 
-    // 校验时间控制格式
-    function isValidTimeRange(value) {
-        if (!value) return true;
-        var match = value.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
-        if (!match) return false;
-        var startHour = parseInt(match[1], 10);
-        var startMinute = parseInt(match[2], 10);
-        var endHour = parseInt(match[3], 10);
-        var endMinute = parseInt(match[4], 10);
-        if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return false;
-        return (startHour * 60 + startMinute) <= (endHour * 60 + endMinute);
+    // 时间窗口辅助函数
+    function parseTimeWindowLine(line) {
+        var match = line.trim().match(/^(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})-(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})$/i);
+        if (!match) return null;
+
+        var startHour = parseInt(match[2], 10);
+        var startMinute = parseInt(match[3], 10);
+        var endHour = parseInt(match[5], 10);
+        var endMinute = parseInt(match[6], 10);
+        if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return null;
+
+        var start = match[1].toLowerCase() + ' ' + match[2] + ':' + match[3];
+        var end = match[4].toLowerCase() + ' ' + match[5] + ':' + match[6];
+        if (start === end) return null;
+
+        return { start: start, end: end };
+    }
+
+    function timeWindowsToText(windows) {
+        return (windows || [])
+            .map(function(window) { return (window.start || '') + '-' + (window.end || ''); })
+            .join('\n');
+    }
+
+    function timeWindowsFromText(text) {
+        var lines = (text || '').split('\n').map(function(line) { return line.trim(); }).filter(Boolean);
+        var windows = [];
+        for (var i = 0; i < lines.length; i++) {
+            var window = parseTimeWindowLine(lines[i]);
+            if (!window) {
+                throw new Error('时间窗口格式错误：' + lines[i] + '，应为 mon 08:13-mon 23:57');
+            }
+            windows.push(window);
+        }
+        return windows;
     }
 
     // 保存账号
@@ -310,11 +334,13 @@ end
         var edit_password = document.getElementById('edit_password');
         var edit_channel = document.getElementById('edit_channel');
         var edit_mark = document.getElementById('edit_mark');
-        var edit_time_range = document.getElementById('edit_time_range');
-        var timeRange = edit_time_range.value.trim();
+        var edit_time_windows = document.getElementById('edit_time_windows');
+        var timeWindows;
 
-        if (!isValidTimeRange(timeRange)) {
-            showNotification('时间控制格式错误：' + (timeRange || '(空)') + '，应为 HH:MM-HH:MM 且开始不能晚于结束', 'error');
+        try {
+            timeWindows = timeWindowsFromText(edit_time_windows.value);
+        } catch (error) {
+            showNotification(error.message, 'error');
             return;
         }
 
@@ -324,7 +350,7 @@ end
                 password: edit_password.value.trim(),
                 channel: edit_channel.value,
                 mark: edit_mark.value.trim(),
-                time_range: timeRange
+                time_windows: timeWindows
             };
             config.accounts.push(new_account);
         } else{
@@ -332,7 +358,7 @@ end
             account.password = edit_password.value.trim();
             account.channel = edit_channel.value;
             account.mark = edit_mark.value.trim();
-            account.time_range = timeRange;
+            account.time_windows = timeWindows;
         }
 
         renderTable();
@@ -453,7 +479,7 @@ end
                 password: '',
                 channel: 'phone',
                 mark: '',
-                time_range: ''
+                time_windows: []
             }]
         };
         return saveOperation()
@@ -507,7 +533,7 @@ end
 
             var cell4 = row.insertCell(4);
             cell4.className = 'td';
-            cell4.textContent = item.time_range || '(不限)';
+            cell4.textContent = (item.time_windows && item.time_windows.length) ? item.time_windows.length + ' 个时段' : '(不限)';
 
             var cell5 = row.insertCell(5);
             cell5.className = 'td';
@@ -569,7 +595,7 @@ end
         var edit_password = document.getElementById('edit_password');
         var edit_channel = document.getElementById('edit_channel');
         var edit_mark = document.getElementById('edit_mark');
-        var edit_time_range = document.getElementById('edit_time_range');
+        var edit_time_windows = document.getElementById('edit_time_windows');
 
         account = {};
         add_mode = false;
@@ -582,7 +608,7 @@ end
                 password: '',
                 channel: 'phone',
                 mark: '',
-                time_range: ''
+                time_windows: []
             };
         }
 
@@ -595,7 +621,7 @@ end
             }
         }
         edit_mark.value = account.mark;
-        edit_time_range.value = account.time_range || '';
+        edit_time_windows.value = timeWindowsToText(account.time_windows);
 
         modal.classList.add('show');
     }
@@ -737,10 +763,10 @@ end
                 </div>
             </div>
             <div class='cbi-value'>
-                <label class='cbi-value-title' for='time_range'>时间控制</label>
+                <label class='cbi-value-title' for='time_windows'>时间控制</label>
                 <div class='cbi-value-field'>
-                    <input type='text' id='edit_time_range' class='cbi-input-text' placeholder='08:13-21:25' name='time_range' />
-                    <div class='cbi-value-description'>留空表示不限；格式 HH:MM-HH:MM，开始不能晚于结束，按系统本地时间判断</div>
+                    <textarea id='edit_time_windows' class='cbi-input-textarea' rows='8' style='font-family: monospace; width: 100%;' placeholder='mon 08:13-mon 23:57&#10;tue 08:13-tue 23:57&#10;fri 08:13-sun 23:57' name='time_windows'></textarea>
+                    <div class='cbi-value-description'>每行一个窗口，格式：星期 时:分-星期 时:分，例如 fri 08:13-sun 23:57；留空表示不限</div>
                 </div>
             </div>
         </div>

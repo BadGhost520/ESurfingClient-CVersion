@@ -170,7 +170,7 @@ return view.extend({
                             password: '加载失败',
                             channel: '加载失败',
                             mark: '加载失败',
-                            time_range: ''
+                            time_windows: []
                         }
                     ]
                 };
@@ -217,7 +217,7 @@ return view.extend({
                 E('td', { class: 'td' }, account.password ? '******' : '(无)'),
                 E('td', { class: 'td' }, account.channel),
                 E('td', { class: 'td' }, account.mark || '(无)'),
-                E('td', { class: 'td' }, account.time_range || '(不限)'),
+                E('td', { class: 'td' }, (account.time_windows && account.time_windows.length) ? account.time_windows.length + ' 个时段' : '(不限)'),
                 E('td', { class: 'td' }, [
                     E('button', { class: 'cbi-button cbi-button-edit', click: function() {
                         self.showModal(index);
@@ -233,16 +233,41 @@ return view.extend({
         return E('tbody', { class: 'tbody' }, rows);
     },
 
-    isValidTimeRange: function(value) {
-        if (!value) return true;
-        var match = value.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
-        if (!match) return false;
-        var startHour = parseInt(match[1], 10);
-        var startMinute = parseInt(match[2], 10);
-        var endHour = parseInt(match[3], 10);
-        var endMinute = parseInt(match[4], 10);
-        if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return false;
-        return (startHour * 60 + startMinute) <= (endHour * 60 + endMinute);
+    parseTimeWindowLine: function(line) {
+        var match = line.trim().match(/^(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})-(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})$/i);
+        if (!match) return null;
+
+        var startHour = parseInt(match[2], 10);
+        var startMinute = parseInt(match[3], 10);
+        var endHour = parseInt(match[5], 10);
+        var endMinute = parseInt(match[6], 10);
+        if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return null;
+
+        var start = match[1].toLowerCase() + ' ' + match[2] + ':' + match[3];
+        var end = match[4].toLowerCase() + ' ' + match[5] + ':' + match[6];
+        if (start === end) return null;
+
+        return { start: start, end: end };
+    },
+
+    timeWindowsToText: function(windows) {
+        return (windows || [])
+            .map(function(window) { return (window.start || '') + '-' + (window.end || ''); })
+            .join('\n');
+    },
+
+    timeWindowsFromText: function(text) {
+        var self = this;
+        var lines = (text || '').split('\n').map(function(line) { return line.trim(); }).filter(Boolean);
+        var windows = [];
+        for (var i = 0; i < lines.length; i++) {
+            var window = self.parseTimeWindowLine(lines[i]);
+            if (!window) {
+                throw new Error('时间窗口格式错误：' + lines[i] + '，应为 mon 08:13-mon 23:57');
+            }
+            windows.push(window);
+        }
+        return windows;
     },
 
     showModal: function(index) {
@@ -259,7 +284,7 @@ return view.extend({
                 password: '',
                 channel: 'phone',
                 mark: '',
-                time_range: ''
+                time_windows: []
             };
         }
 
@@ -302,8 +327,14 @@ return view.extend({
             E('div', { class: 'cbi-value' }, [
                 E('label', { class: 'cbi-value-title', style: 'margin-top: 10px;' }, '时间控制'),
                 E('div', { class: 'cbi-value-field' }, [
-                    E('input', { type: 'text', class: 'cbi-input-text', value: account.time_range || '', placeholder: '08:13-21:25', id: 'edit_time_range' }),
-                    E('div', { class: 'cbi-value-description' }, '留空表示不限；格式 HH:MM-HH:MM，开始不能晚于结束，按系统本地时间判断')
+                    E('textarea', {
+                        class: 'cbi-input-textarea',
+                        rows: 8,
+                        style: 'font-family: monospace; width: 100%;',
+                        id: 'edit_time_windows',
+                        placeholder: 'mon 08:13-mon 23:57\ntue 08:13-tue 23:57\nfri 08:13-sun 23:57'
+                    }, self.timeWindowsToText(account.time_windows)),
+                    E('div', { class: 'cbi-value-description' }, '每行一个窗口，格式：星期 时:分-星期 时:分，例如 fri 08:13-sun 23:57；留空表示不限')
                 ])
             ]),
             E('div', { style: 'text-align: right; margin-top: 20px; padding-top: 10px;' }, [
@@ -312,9 +343,11 @@ return view.extend({
                 } }, '关闭'),
                 ' ',
                 E('button', { class: 'cbi-button cbi-button-apply', click: function() {
-                    var timeRange = document.getElementById('edit_time_range').value.trim();
-                    if (!self.isValidTimeRange(timeRange)) {
-                        self.showNotification('时间控制格式错误：' + (timeRange || '(空)') + '，应为 HH:MM-HH:MM 且开始不能晚于结束', 'error');
+                    var timeWindows;
+                    try {
+                        timeWindows = self.timeWindowsFromText(document.getElementById('edit_time_windows').value);
+                    } catch (error) {
+                        self.showNotification(error.message, 'error');
                         return;
                     }
 
@@ -322,7 +355,7 @@ return view.extend({
                     account.password = document.getElementById('edit_password').value;
                     account.channel = document.getElementById('edit_channel').value;
                     account.mark = document.getElementById('edit_mark').value;
-                    account.time_range = timeRange;
+                    account.time_windows = timeWindows;
                     
                     if (add_mode) {
                         self.config.accounts.push(account);
@@ -571,7 +604,7 @@ return view.extend({
                                 password: '',
                                 channel: 'phone',
                                 mark: '',
-                                time_range: ''
+                                time_windows: []
                             }
                         ]
                     };

@@ -1,3 +1,40 @@
+// 时间窗口辅助函数
+function parseTimeWindowLine(line) {
+    const match = line.trim().match(/^(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})-(mon|tue|wed|thu|fri|sat|sun) (\d{2}):(\d{2})$/i);
+    if (!match) return null;
+
+    const startHour = parseInt(match[2], 10);
+    const startMinute = parseInt(match[3], 10);
+    const endHour = parseInt(match[5], 10);
+    const endMinute = parseInt(match[6], 10);
+    if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return null;
+
+    const start = match[1].toLowerCase() + ' ' + match[2] + ':' + match[3];
+    const end = match[4].toLowerCase() + ' ' + match[5] + ':' + match[6];
+    if (start === end) return null;
+
+    return { start: start, end: end };
+}
+
+function timeWindowsToText(windows) {
+    return (windows || [])
+        .map(window => (window.start || '') + '-' + (window.end || ''))
+        .join('\n');
+}
+
+function timeWindowsFromText(text) {
+    const lines = (text || '').split('\n').map(line => line.trim()).filter(Boolean);
+    const windows = [];
+    for (const line of lines) {
+        const window = parseTimeWindowLine(line);
+        if (!window) {
+            throw new Error('时间窗口格式错误：' + line + '，应为 mon 08:13-mon 23:57');
+        }
+        windows.push(window);
+    }
+    return windows;
+}
+
 // 用来存储全局变量和函数
 document.addEventListener('alpine:init', () => {
     Alpine.store('main', {
@@ -9,7 +46,7 @@ document.addEventListener('alpine:init', () => {
                     username: '',
                     password: '',
                     channel: 'phone',
-                    time_range: ''
+                    time_windows: []
                 }
             ]
         },
@@ -123,29 +160,7 @@ document.addEventListener('alpine:init', () => {
     });
 
     Alpine.store('settings', {
-        isValidTimeRange(value) {
-            if (!value) return true;
-            const match = value.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
-            if (!match) return false;
-            const startHour = parseInt(match[1], 10);
-            const startMinute = parseInt(match[2], 10);
-            const endHour = parseInt(match[3], 10);
-            const endMinute = parseInt(match[4], 10);
-            if (startHour > 23 || startMinute > 59 || endHour > 23 || endMinute > 59) return false;
-            return (startHour * 60 + startMinute) <= (endHour * 60 + endMinute);
-        },
-
         saveConfigs() {
-            const accounts = Alpine.store('main').configs.accounts || [];
-            for (const account of accounts) {
-                const timeRange = (account.time_range || '').trim();
-                if (!this.isValidTimeRange(timeRange)) {
-                    alert('时间控制格式错误：' + (timeRange || '(空)') + '，应为 HH:MM-HH:MM 且开始不能晚于结束');
-                    return;
-                }
-                account.time_range = timeRange;
-            }
-
             fetch('/api/saveConfigs', {
                 method: 'POST',
                 headers: {
@@ -186,22 +201,41 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('editConfigs', () => ({
         accounts: [],
+        timeWindowsText: '',
 
         init() {
             const original = Alpine.store('main').configs.accounts;
             this.accounts = JSON.parse(JSON.stringify(original));
             this.accounts.forEach(account => {
-                if (account.time_range === undefined) account.time_range = '';
+                if (account.time_windows === undefined) account.time_windows = [];
             });
+            this.syncTimeWindowsText();
+        },
+
+        syncTimeWindowsText() {
+            this.timeWindowsText = timeWindowsToText(this.accounts[0]?.time_windows);
         },
 
         saveAccounts() {
+            let windows;
+            try {
+                windows = timeWindowsFromText(this.timeWindowsText);
+            } catch (error) {
+                alert(error.message);
+                return;
+            }
+
+            this.accounts[0].time_windows = windows;
             Alpine.store('main').configs.accounts = JSON.parse(JSON.stringify(this.accounts));
         },
 
         getAccounts() {
             const original = Alpine.store('main').configs.accounts;
             this.accounts = JSON.parse(JSON.stringify(original));
+            this.accounts.forEach(account => {
+                if (account.time_windows === undefined) account.time_windows = [];
+            });
+            this.syncTimeWindowsText();
         },
 
         toggleModal(modalName, action) {

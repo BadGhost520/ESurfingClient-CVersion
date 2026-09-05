@@ -10,6 +10,22 @@
 static const char* listenAddr = "http://0.0.0.0:8888";
 static sim_thread_t* web_thread;
 
+static const char* week_day_to_str(const int day)
+{
+    static const char* names[] = {"sun", "mon", "tue", "wed", "thu", "fri", "sat"};
+    if (day < 0 || day > 6) return "sun";
+    return names[day];
+}
+
+static void format_week_min(const uint16_t week_min, char* out)
+{
+    const uint16_t mod = week_min % WEEK_MINUTES;
+    const int day = mod / 1440;
+    const int hour = (mod % 1440) / 60;
+    const int minute = mod % 60;
+    snprintf(out, TIME_WINDOW_STR_LEN, "%s %02d:%02d", week_day_to_str(day), hour, minute);
+}
+
 static void fn(struct mg_connection *c, const int ev, void *ev_data)
 {
     if (ev == MG_EV_HTTP_MSG)
@@ -64,7 +80,22 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
                 cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
                 cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
                 cJSON_AddNumberToObject(account, "channel", g_prog_status[0].login_cfg.chn);
-                cJSON_AddStringToObject(account, "time_range", g_prog_status[0].login_cfg.time_range);
+
+                cJSON* time_windows = cJSON_CreateArray();
+                for (uint8_t i = 0; i < g_prog_status[0].login_cfg.time_window_count; i++)
+                {
+                    const time_window_t* win = &g_prog_status[0].login_cfg.time_windows[i];
+                    char start_str[TIME_WINDOW_STR_LEN];
+                    char end_str[TIME_WINDOW_STR_LEN];
+                    format_week_min(win->start_week_min, start_str);
+                    format_week_min(win->end_week_min, end_str);
+
+                    cJSON* window_obj = cJSON_CreateObject();
+                    cJSON_AddStringToObject(window_obj, "start", start_str);
+                    cJSON_AddStringToObject(window_obj, "end", end_str);
+                    cJSON_AddItemToArray(time_windows, window_obj);
+                }
+                cJSON_AddItemToObject(account, "time_windows", time_windows);
 
                 cJSON_AddItemToArray(accounts, account);
                 cJSON_AddItemToObject(configs, "accounts", accounts);

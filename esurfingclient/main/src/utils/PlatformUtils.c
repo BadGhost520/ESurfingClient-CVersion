@@ -46,7 +46,7 @@ static const char s_default_cfg[] = "{\n"
                                     "           \"password\": \"\",\n"
                                     "           \"channel\": 3,\n"
                                     "           \"mark\": \"\",\n"
-                                    "           \"time_range\": \"\"\n"
+                                    "           \"time_windows\": []\n"
                                     "       }\n"
                                     "   ]\n"
                                     "}\n";
@@ -55,37 +55,131 @@ static adapter_t* s_adaptor = NULL;
 static uint8_t s_adaptor_count = 0;
 
 /**
- * @brief 解析时间控制字段 (HH:MM-HH:MM)
- * @param str 原始字符串
- * @param start_min 输出开始分钟 (0-1439)
- * @param end_min 输出结束分钟 (0-1439)
- * @return 是否合法 (要求开始 <= 结束)
+ * @brief 将英文星期缩写转为周起始偏移 (0=周日 ... 6=周六)
+ * @return 0-6, 失败返回 -1
  */
-static bool parse_time_range(const char* str, uint16_t* start_min, uint16_t* end_min)
+static int week_day_from_str(const char* str)
 {
-    if (!str || strlen(str) != 11) return false;
-    if (str[2] != ':' || str[5] != '-' || str[8] != ':') return false;
+    if (!str) return -1;
+    const char d0 = (char)tolower((unsigned char)str[0]);
+    const char d1 = (char)tolower((unsigned char)str[1]);
+    const char d2 = (char)tolower((unsigned char)str[2]);
 
-    for (uint8_t i = 0; i < 11; i++)
+    if (d0 == 'm' && d1 == 'o' && d2 == 'n') return 1;
+    if (d0 == 't' && d1 == 'u' && d2 == 'e') return 2;
+    if (d0 == 'w' && d1 == 'e' && d2 == 'd') return 3;
+    if (d0 == 't' && d1 == 'h' && d2 == 'u') return 4;
+    if (d0 == 'f' && d1 == 'r' && d2 == 'i') return 5;
+    if (d0 == 's' && d1 == 'a' && d2 == 't') return 6;
+    if (d0 == 's' && d1 == 'u' && d2 == 'n') return 0;
+    return -1;
+}
+
+/**
+ * @brief 解析 "mon 08:13" 格式
+ * @param str 原始字符串
+ * @param week_min 输出周分钟 (0-10079)
+ * @return 是否合法
+ */
+static bool parse_week_time(const char* str, uint16_t* week_min)
+{
+    if (!str || strlen(str) != 9) return false;
+    if (str[3] != ' ') return false;
+    if (isdigit((unsigned char)str[4]) == 0 ||
+        isdigit((unsigned char)str[5]) == 0 ||
+        isdigit((unsigned char)str[7]) == 0 ||
+        isdigit((unsigned char)str[8]) == 0 ||
+        str[6] != ':')
     {
-        if (i == 2 || i == 5 || i == 8) continue;
-        if (isdigit((unsigned char)str[i]) == 0) return false;
+        return false;
     }
 
-    const int start_hour = (str[0] - '0') * 10 + (str[1] - '0');
-    const int start_minute = (str[3] - '0') * 10 + (str[4] - '0');
-    const int end_hour = (str[6] - '0') * 10 + (str[7] - '0');
-    const int end_minute = (str[9] - '0') * 10 + (str[10] - '0');
+    const int day = week_day_from_str(str);
+    if (day < 0) return false;
 
-    if (start_hour > 23 || start_minute > 59 || end_hour > 23 || end_minute > 59) return false;
+    const int hour = (str[4] - '0') * 10 + (str[5] - '0');
+    const int minute = (str[7] - '0') * 10 + (str[8] - '0');
+    if (hour > 23 || minute > 59) return false;
 
-    const uint16_t start = (uint16_t)(start_hour * 60 + start_minute);
-    const uint16_t end = (uint16_t)(end_hour * 60 + end_minute);
+    if (week_min) *week_min = (uint16_t)(day * 1440 + hour * 60 + minute);
+    return true;
+}
 
-    if (start > end) return false;
+/**
+ * @brief 解析一个 time_windows 数组元素 { "start": "mon 08:13", "end": "sun 23:57" }
+ * @param item cJSON 对象
+ * @param win 输出窗口
+ * @return 是否合法 (end <= start 时按跨周处理)
+ */
+static bool parse_time_window(const cJSON* item, time_window_t* win)
+{
+    if (!item || !cJSON_IsObject(item)) return false;
 
-    if (start_min) *start_min = start;
-    if (end_min) *end_min = end;
+    const cJSON* start_item = cJSON_GetObjectItem(item, "start");
+    const cJSON* end_item = cJSON_GetObjectItem(item, "end");
+    if (!start_item || !cJSON_IsString(start_item) ||
+        !end_item || !cJSON_IsString(end_item))
+    {
+        return false;
+    }
+
+    uint16_t start = 0;
+    uint16_t end = 0;
+    if (parse_week_time(start_item->valuestring, &start) == false ||
+        parse_week_time(end_item->valuestring, &end) == false)
+    {
+        return false;
+    }
+
+    if (start == end) return false;
+
+    if (end <= start)
+    {
+        end = (uint16_t)(end + WEEK_MINUTES);
+    }
+
+    if (win)
+    {
+        win->start_week_min = start;
+        win->end_week_min = end;
+    }
+    return true;
+}
+
+/**
+ * @brief 从 cJSON 数组解析 time_windows
+ * @param arr cJSON 数组 (允许 NULL/空)
+ * @param windows 输出窗口数组
+ * @param count 输出窗口数量
+ * @return 是否合法
+ */
+static bool parse_time_windows(const cJSON* arr, time_window_t* windows, uint8_t* count)
+{
+    if (count) *count = 0;
+
+    if (arr == NULL)
+    {
+        return true;
+    }
+    if (cJSON_IsArray(arr) == false)
+    {
+        return false;
+    }
+
+    const int size = cJSON_GetArraySize(arr);
+    if (size < 0 || size > MAX_TIME_WINDOWS) return false;
+
+    for (int i = 0; i < size; i++)
+    {
+        time_window_t win;
+        if (parse_time_window(cJSON_GetArrayItem(arr, i), &win) == false)
+        {
+            return false;
+        }
+        if (windows) windows[i] = win;
+    }
+
+    if (count) *count = (uint8_t)size;
     return true;
 }
 
@@ -555,28 +649,16 @@ bool save_cfg(char* configs_str)
     const cJSON* username = cJSON_GetObjectItem(account, "username");
     const cJSON* password = cJSON_GetObjectItem(account, "password");
     const cJSON* channel = cJSON_GetObjectItem(account, "channel");
-    const cJSON* time_range_item = cJSON_GetObjectItem(account, "time_range");
+    const cJSON* time_windows_item = cJSON_GetObjectItem(account, "time_windows");
 
-    // 保存前先校验 time_range，避免把非法配置写盘
-    if (time_range_item != NULL)
+    // 保存前先校验 time_windows，避免把非法配置写盘
+    time_window_t tmp_windows[MAX_TIME_WINDOWS];
+    uint8_t tmp_window_count = 0;
+    if (parse_time_windows(time_windows_item, tmp_windows, &tmp_window_count) == false)
     {
-        if (cJSON_IsString(time_range_item) == false)
-        {
-            LOG_ERROR("time_range 类型错误, 仅接受字符串 HH:MM-HH:MM");
-            cJSON_Delete(configs);
-            return false;
-        }
-        if (time_range_item->valuestring[0] != '\0')
-        {
-            uint16_t start_min = 0;
-            uint16_t end_min = 0;
-            if (parse_time_range(time_range_item->valuestring, &start_min, &end_min) == false)
-            {
-                LOG_ERROR("time_range 非法: %s, 仅接受 HH:MM-HH:MM 且开始 <= 结束", time_range_item->valuestring);
-                cJSON_Delete(configs);
-                return false;
-            }
-        }
+        LOG_ERROR("time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]");
+        cJSON_Delete(configs);
+        return false;
     }
 
     FILE* cfg_file = fopen(config_file, "w");
@@ -610,19 +692,14 @@ bool save_cfg(char* configs_str)
         g_prog_status[0].login_cfg.chn = channel->valueint;
     }
 
-    // 透传 time_range 到内存，保持桌面端与配置一致
+    // 透传 time_windows 到内存，保持桌面端与配置一致
     g_prog_status[0].login_cfg.has_time_control = false;
-    g_prog_status[0].login_cfg.time_range[0] = '\0';
-    if (time_range_item && cJSON_IsString(time_range_item) && time_range_item->valuestring[0] != '\0')
+    g_prog_status[0].login_cfg.time_window_count = 0;
+    if (parse_time_windows(time_windows_item, g_prog_status[0].login_cfg.time_windows, &g_prog_status[0].login_cfg.time_window_count))
     {
-        uint16_t start_min = 0;
-        uint16_t end_min = 0;
-        if (parse_time_range(time_range_item->valuestring, &start_min, &end_min))
+        if (g_prog_status[0].login_cfg.time_window_count > 0)
         {
-            g_prog_status[0].login_cfg.time_start_min = start_min;
-            g_prog_status[0].login_cfg.time_end_min = end_min;
             g_prog_status[0].login_cfg.has_time_control = true;
-            snprintf(g_prog_status[0].login_cfg.time_range, TIME_RANGE_LEN, "%s", time_range_item->valuestring);
         }
     }
 
@@ -790,7 +867,7 @@ bool load_cfg()
         const cJSON* pwd = cJSON_GetObjectItem(account, "password");
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
         const cJSON* mark = cJSON_GetObjectItem(account, "mark");
-        const cJSON* time_range_item = cJSON_GetObjectItem(account, "time_range");
+        const cJSON* time_windows_item = cJSON_GetObjectItem(account, "time_windows");
 
         // 检查账号
         if (usr == NULL)
@@ -817,40 +894,13 @@ bool load_cfg()
         }
 
         // 检查时间控制字段
-        if (time_range_item != NULL)
+        if (parse_time_windows(time_windows_item, g_prog_status[valid_i].login_cfg.time_windows, &g_prog_status[valid_i].login_cfg.time_window_count) == false)
         {
-            if (cJSON_IsString(time_range_item) == false)
-            {
-                LOG_FATAL("配置 %" PRIu8 " time_range 类型错误, 仅接受字符串 HH:MM-HH:MM", i + 1);
-                cJSON_Delete(cfg_json);
-                return false;
-            }
-            if (time_range_item->valuestring[0] != '\0')
-            {
-                uint16_t start_min = 0;
-                uint16_t end_min = 0;
-                if (parse_time_range(time_range_item->valuestring, &start_min, &end_min) == false)
-                {
-                    LOG_FATAL("配置 %" PRIu8 " time_range 非法: %s, 仅接受 HH:MM-HH:MM 且开始 <= 结束", i + 1, time_range_item->valuestring);
-                    cJSON_Delete(cfg_json);
-                    return false;
-                }
-                g_prog_status[valid_i].login_cfg.time_start_min = start_min;
-                g_prog_status[valid_i].login_cfg.time_end_min = end_min;
-                g_prog_status[valid_i].login_cfg.has_time_control = true;
-                snprintf(g_prog_status[valid_i].login_cfg.time_range, TIME_RANGE_LEN, "%s", time_range_item->valuestring);
-            }
-            else
-            {
-                g_prog_status[valid_i].login_cfg.has_time_control = false;
-                g_prog_status[valid_i].login_cfg.time_range[0] = '\0';
-            }
+            LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
+            cJSON_Delete(cfg_json);
+            return false;
         }
-        else
-        {
-            g_prog_status[valid_i].login_cfg.has_time_control = false;
-            g_prog_status[valid_i].login_cfg.time_range[0] = '\0';
-        }
+        g_prog_status[valid_i].login_cfg.has_time_control = g_prog_status[valid_i].login_cfg.time_window_count > 0;
 
         snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
         snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
@@ -951,7 +1001,7 @@ bool load_cfg()
         const cJSON* usr = cJSON_GetObjectItem(account, "username");
         const cJSON* pwd = cJSON_GetObjectItem(account, "password");
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
-        const cJSON* time_range_item = cJSON_GetObjectItem(account, "time_range");
+        const cJSON* time_windows_item = cJSON_GetObjectItem(account, "time_windows");
 
         // 检查账号
         if (usr == NULL)
@@ -978,40 +1028,13 @@ bool load_cfg()
         }
 
         // 检查时间控制字段
-        if (time_range_item != NULL)
+        if (parse_time_windows(time_windows_item, g_prog_status[0].login_cfg.time_windows, &g_prog_status[0].login_cfg.time_window_count) == false)
         {
-            if (cJSON_IsString(time_range_item) == false)
-            {
-                LOG_FATAL("配置 %" PRIu8 " time_range 类型错误, 仅接受字符串 HH:MM-HH:MM", i + 1);
-                cJSON_Delete(cfg_json);
-                return false;
-            }
-            if (time_range_item->valuestring[0] != '\0')
-            {
-                uint16_t start_min = 0;
-                uint16_t end_min = 0;
-                if (parse_time_range(time_range_item->valuestring, &start_min, &end_min) == false)
-                {
-                    LOG_FATAL("配置 %" PRIu8 " time_range 非法: %s, 仅接受 HH:MM-HH:MM 且开始 <= 结束", i + 1, time_range_item->valuestring);
-                    cJSON_Delete(cfg_json);
-                    return false;
-                }
-                g_prog_status[0].login_cfg.time_start_min = start_min;
-                g_prog_status[0].login_cfg.time_end_min = end_min;
-                g_prog_status[0].login_cfg.has_time_control = true;
-                snprintf(g_prog_status[0].login_cfg.time_range, TIME_RANGE_LEN, "%s", time_range_item->valuestring);
-            }
-            else
-            {
-                g_prog_status[0].login_cfg.has_time_control = false;
-                g_prog_status[0].login_cfg.time_range[0] = '\0';
-            }
+            LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
+            cJSON_Delete(cfg_json);
+            return false;
         }
-        else
-        {
-            g_prog_status[0].login_cfg.has_time_control = false;
-            g_prog_status[0].login_cfg.time_range[0] = '\0';
-        }
+        g_prog_status[0].login_cfg.has_time_control = g_prog_status[0].login_cfg.time_window_count > 0;
 
         snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
         snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));

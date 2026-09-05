@@ -7,7 +7,7 @@
       "password": "",
       "channel": "phone",
       "mark": "",
-      "time_range": ""
+      "time_windows": []
     }
   ]
 }

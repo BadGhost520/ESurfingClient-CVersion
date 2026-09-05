@@ -10,9 +10,9 @@
 static sim_thread_t* g_time_control_thread = NULL;
 
 /**
- * @brief 获取当前本地时间的“分钟数”(0-1439)
+ * @brief 获取当前本地时间的“一周分钟数”(0-10079, 0=周日 00:00)
  */
-static uint16_t get_current_minute(void)
+static int32_t get_current_week_minute(void)
 {
     time_t now = time(NULL);
     struct tm local_tm;
@@ -27,54 +27,106 @@ static uint16_t get_current_minute(void)
         return 0;
     }
 #endif
-    return (uint16_t)(local_tm.tm_hour * 60 + local_tm.tm_min);
+    return (int32_t)local_tm.tm_wday * 1440 + local_tm.tm_hour * 60 + local_tm.tm_min;
 }
 
 /**
- * @brief 计算从 now 到下一个 target_min 时刻的毫秒数
- * @note 如果目标时刻已经过去，则返回明天同一时刻的延迟
+ * @brief 判断某个绝对周分钟是否落在任意时间窗口内
+ *
+ * 窗口按周循环，end_week_min 可能大于 WEEK_MINUTES（跨周）。
+ * 通过 (t - start) mod WEEK_MINUTES 判断是否位于窗口持续时间内。
  */
-static uint64_t compute_delay_to_minute(const uint16_t target_min, const time_t now)
+static bool is_in_windows_abs(const login_cfg_t* cfg, const int32_t week_min_abs)
 {
-    struct tm target_tm;
-#ifdef _WIN32
-    if (localtime_s(&target_tm, &now) != 0)
+    for (uint8_t i = 0; i < cfg->time_window_count; i++)
     {
-        return (uint64_t)-1;
-    }
-#else
-    if (localtime_r(&now, &target_tm) == NULL)
-    {
-        return (uint64_t)-1;
-    }
-#endif
+        const time_window_t* win = &cfg->time_windows[i];
+        const int32_t start = win->start_week_min;
+        const int32_t duration = (int32_t)win->end_week_min - start;
 
-    target_tm.tm_hour = target_min / 60;
-    target_tm.tm_min = target_min % 60;
-    target_tm.tm_sec = 0;
-    target_tm.tm_isdst = -1;
+        int32_t rel = (week_min_abs - start) % WEEK_MINUTES;
+        if (rel < 0) rel += WEEK_MINUTES;
 
-    time_t target = mktime(&target_tm);
-    if (target == (time_t)-1)
-    {
-        return (uint64_t)-1;
-    }
-
-    if (target <= now)
-    {
-        target_tm.tm_mday += 1;
-        target = mktime(&target_tm);
-        if (target == (time_t)-1)
+        if (rel < duration)
         {
-            return (uint64_t)-1;
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @brief 计算下一个状态切换（启用/禁用）的延迟毫秒数
+ * @return 延迟毫秒数，无窗口时返回 (uint64_t)-1
+ */
+static uint64_t compute_next_event_delay_ms(const login_cfg_t* cfg, const int32_t now_week_min)
+{
+    int32_t boundaries[MAX_TIME_WINDOWS * 10];
+    int boundary_count = 0;
+
+    for (uint8_t i = 0; i < cfg->time_window_count; i++)
+    {
+        const time_window_t* win = &cfg->time_windows[i];
+        const int32_t start = win->start_week_min;
+        const int32_t end = win->end_week_min;
+
+        // k 覆盖当前周前后足够多的周期，保证能找到下一个边界
+        for (int k = -2; k <= 2; k++)
+        {
+            const int32_t start_abs = start + k * WEEK_MINUTES;
+            const int32_t end_abs = end + k * WEEK_MINUTES;
+
+            if (start_abs > now_week_min && boundary_count < (int)(sizeof(boundaries) / sizeof(boundaries[0])))
+            {
+                boundaries[boundary_count++] = start_abs;
+            }
+            if (end_abs > now_week_min && boundary_count < (int)(sizeof(boundaries) / sizeof(boundaries[0])))
+            {
+                boundaries[boundary_count++] = end_abs;
+            }
         }
     }
 
-    return (uint64_t)(target - now) * 1000;
+    if (boundary_count == 0)
+    {
+        return (uint64_t)-1;
+    }
+
+    // 简单插入排序
+    for (int i = 1; i < boundary_count; i++)
+    {
+        const int32_t key = boundaries[i];
+        int j = i - 1;
+        while (j >= 0 && boundaries[j] > key)
+        {
+            boundaries[j + 1] = boundaries[j];
+            j--;
+        }
+        boundaries[j + 1] = key;
+    }
+
+    // 找到第一个让“是否在窗口内”发生变化的边界
+    for (int i = 0; i < boundary_count; i++)
+    {
+        const int32_t t = boundaries[i];
+        if (i > 0 && t == boundaries[i - 1])
+        {
+            continue;
+        }
+
+        const bool before = is_in_windows_abs(cfg, t - 1);
+        const bool after = is_in_windows_abs(cfg, t);
+        if (before != after)
+        {
+            return (uint64_t)(t - now_week_min) * 60000;
+        }
+    }
+
+    return (uint64_t)-1;
 }
 
 /**
- * @brief 按当前时间重新同步所有账号的 time_range 启用/禁用状态
+ * @brief 按当前时间重新同步所有账号的 time_windows 启用/禁用状态
  *
  * 设计说明：
  * - 冷启动时由 work() 调用一次，之后定时线程每次醒来都会调用；
@@ -92,14 +144,14 @@ void time_control_sync(void)
         return;
     }
 
-    const uint16_t now_min = get_current_minute();
+    const int32_t now_week_min = get_current_week_minute();
 
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
         login_cfg_t* cfg = &g_prog_status[i].login_cfg;
         if (cfg->has_time_control == false)
         {
-            // 没有时间控制的账号保持默认启用；防止保存配置去掉 time_range 后残留禁用状态
+            // 没有时间控制的账号保持默认启用；防止保存配置去掉 time_windows 后残留禁用状态
             if (g_prog_status[i].runtime_status.is_time_disabled)
             {
                 g_prog_status[i].runtime_status.is_time_disabled = false;
@@ -109,7 +161,7 @@ void time_control_sync(void)
             continue;
         }
 
-        const bool in_window = (now_min >= cfg->time_start_min && now_min < cfg->time_end_min);
+        const bool in_window = is_in_windows_abs(cfg, now_week_min);
         const bool was_disabled = g_prog_status[i].runtime_status.is_time_disabled;
 
         if (in_window && was_disabled)
@@ -153,8 +205,7 @@ static int time_control_app(void* arg)
     {
         time_control_sync();
 
-        const uint16_t now_min = get_current_minute();
-        const time_t now = time(NULL);
+        const int32_t now_week_min = get_current_week_minute();
         uint64_t next_delay = (uint64_t)-1;
 
         for (uint8_t i = 0; i < g_prog_cnt; i++)
@@ -165,10 +216,7 @@ static int time_control_app(void* arg)
                 continue;
             }
 
-            const bool in_window = (now_min >= cfg->time_start_min && now_min < cfg->time_end_min);
-            const uint16_t target_min = in_window ? cfg->time_end_min : cfg->time_start_min;
-            const uint64_t delay = compute_delay_to_minute(target_min, now);
-
+            const uint64_t delay = compute_next_event_delay_ms(cfg, now_week_min);
             if (delay != (uint64_t)-1 && delay < next_delay)
             {
                 next_delay = delay;
