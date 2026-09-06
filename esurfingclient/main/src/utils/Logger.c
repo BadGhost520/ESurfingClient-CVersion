@@ -20,7 +20,7 @@ static log_cfg_t s_logger_cfg = {
     .log_dir = "",
     .log_file = "",
     .file_handle = NULL,
-    .max_lines = 10000,
+    .max_lines = 1000,
     .cur_lines = 0
 };
 
