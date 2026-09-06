@@ -559,14 +559,18 @@ end
         edit_username.value = account.username;
         edit_password.value = account.password;
         var channel = account.channel;
-        if (channel === 5 || channel === '5' || channel === 'macos' || channel === 'mac' || channel === 'osx') {
-            channel = 'macos';
+        if (channel === 1 || channel === '1' || channel === 'windows') {
+            channel = 'android'; // 未实现, 暂用 android 通道代替
+        } else if (channel === 2 || channel === '2' || channel === 'linux') {
+            channel = 'linux';
+        } else if (channel === 3 || channel === '3' || channel === 'android') {
+            channel = 'android';
         } else if (channel === 4 || channel === '4' || channel === 'ios' || channel === 'iphone') {
             channel = 'ios';
-        } else if (channel === 2 || channel === '2' || channel === 'pc' || channel === 'linux') {
-            channel = 'pc';
+        } else if (channel === 5 || channel === '5' || channel === 'macos' || channel === 'mac' || channel === 'osx') {
+            channel = 'macos';
         } else {
-            channel = 'phone';
+            channel = 'android';
         }
         for (var i = 0; i < edit_channel.options.length; i++) {
             if (edit_channel.options[i].value === channel) {
@@ -702,10 +706,11 @@ end
                 <label class='cbi-value-title' for='channel'>*通道</label>
                 <div class='cbi-value-field'>
                     <select id='edit_channel' class='cbi-input-select' name='channel'>
-                        <option value='phone'>phone</option>
-                        <option value='pc'>pc</option>
-                        <option value='ios'>ios</option>
-                        <option value='macos'>macos</option>
+                        <option value='windows'>Windows (未实现, Android 替代)</option>
+                        <option value='linux'>Linux</option>
+                        <option value='android'>Android</option>
+                        <option value='ios'>iOS</option>
+                        <option value='macos'>MacOS</option>
                     </select>
                     <div class='cbi-value-description'>选择账号的认证通道</div>
                 </div>

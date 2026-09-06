@@ -266,10 +266,11 @@ return view.extend({
                 E('label', { class: 'cbi-value-title', style: 'margin-top: 10px;' }, '*通道'),
                 E('div', { class: 'cbi-value-field' }, [
                     E('select', { id: 'edit_channel', class: 'cbi-input-select' }, [
-                        E('option', { value: 'phone', selected: (account.channel === 'phone' || account.channel === 'android' || account.channel === 3 || account.channel === '3') ? true : undefined }, 'phone'),
-                        E('option', { value: 'pc', selected: (account.channel === 'pc' || account.channel === 'linux' || account.channel === 2 || account.channel === '2') ? true : undefined }, 'pc'),
-                        E('option', { value: 'ios', selected: (account.channel === 'ios' || account.channel === 'iphone' || account.channel === 4 || account.channel === '4') ? true : undefined }, 'ios'),
-                        E('option', { value: 'macos', selected: (account.channel === 'macos' || account.channel === 'mac' || account.channel === 'osx' || account.channel === 5 || account.channel === '5') ? true : undefined }, 'macos')
+                        E('option', { value: 'windows', selected: (account.channel === 1 || account.channel === '1' || account.channel === 'windows') ? true : undefined }, 'Windows (未实现, Android 替代)'),
+                        E('option', { value: 'linux', selected: (account.channel === 2 || account.channel === '2' || account.channel === 'linux') ? true : undefined }, 'Linux'),
+                        E('option', { value: 'android', selected: (account.channel === 3 || account.channel === '3' || account.channel === 'android') ? true : undefined }, 'Android'),
+                        E('option', { value: 'ios', selected: (account.channel === 4 || account.channel === '4' || account.channel === 'ios' || account.channel === 'iphone') ? true : undefined }, 'iOS'),
+                        E('option', { value: 'macos', selected: (account.channel === 5 || account.channel === '5' || account.channel === 'macos' || account.channel === 'mac' || account.channel === 'osx') ? true : undefined }, 'MacOS')
                     ]),
                     E('div', { class: 'cbi-value-description' }, '选择账号的认证通道')
                 ])

@@ -71,11 +71,11 @@ static uint8_t parse_channel_json(const cJSON* chn, uint8_t cfg_no)
         {
             return 1;
         }
-        if (channel_str_eq(value, "linux") || channel_str_eq(value, "pc") || channel_str_eq(value, "2"))
+        if (channel_str_eq(value, "linux") || channel_str_eq(value, "2"))
         {
             return 2;
         }
-        if (channel_str_eq(value, "android") || channel_str_eq(value, "phone") || channel_str_eq(value, "3"))
+        if (channel_str_eq(value, "android") || channel_str_eq(value, "3"))
         {
             return 3;
         }
