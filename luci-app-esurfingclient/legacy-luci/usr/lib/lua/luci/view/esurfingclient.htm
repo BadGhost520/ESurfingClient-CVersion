@@ -680,8 +680,18 @@ end
 
         edit_username.value = account.username;
         edit_password.value = account.password;
+        var channel = account.channel;
+        if (channel === 5 || channel === '5' || channel === 'macos' || channel === 'mac' || channel === 'osx') {
+            channel = 'macos';
+        } else if (channel === 4 || channel === '4' || channel === 'ios' || channel === 'iphone') {
+            channel = 'ios';
+        } else if (channel === 2 || channel === '2' || channel === 'pc' || channel === 'linux') {
+            channel = 'pc';
+        } else {
+            channel = 'phone';
+        }
         for (var i = 0; i < edit_channel.options.length; i++) {
-            if (edit_channel.options[i].value === account.channel) {
+            if (edit_channel.options[i].value === channel) {
                 edit_channel.selectedIndex = i;
                 break;
             }
@@ -816,6 +826,8 @@ end
                     <select id='edit_channel' class='cbi-input-select' name='channel'>
                         <option value='phone'>phone</option>
                         <option value='pc'>pc</option>
+                        <option value='ios'>ios</option>
+                        <option value='macos'>macos</option>
                     </select>
                     <div class='cbi-value-description'>选择账号的认证通道</div>
                 </div>

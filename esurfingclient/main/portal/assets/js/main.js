@@ -58,6 +58,18 @@ document.addEventListener('alpine:init', () => {
             .then(r => r.json())
             .then(data => {
                 this.configs = data;
+                if (this.configs.accounts && this.configs.accounts[0]) {
+                    const ch = this.configs.accounts[0].channel;
+                    if (ch === 5 || ch === '5' || ch === 'macos' || ch === 'mac' || ch === 'osx') {
+                        this.configs.accounts[0].channel = 'macos';
+                    } else if (ch === 4 || ch === '4' || ch === 'ios' || ch === 'iphone') {
+                        this.configs.accounts[0].channel = 'ios';
+                    } else if (ch === 2 || ch === '2' || ch === 'pc' || ch === 'linux') {
+                        this.configs.accounts[0].channel = 'pc';
+                    } else {
+                        this.configs.accounts[0].channel = 'phone';
+                    }
+                }
             })
             .catch(error => {
                 // 处理错误，例如显示通知

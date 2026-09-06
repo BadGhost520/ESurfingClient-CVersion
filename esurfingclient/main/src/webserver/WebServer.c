@@ -79,7 +79,25 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
 
                 cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
                 cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
-                cJSON_AddNumberToObject(account, "channel", g_prog_status[0].login_cfg.chn);
+                {
+                    const char* channel_name = "phone";
+                    switch (g_prog_status[0].login_cfg.chn)
+                    {
+                    case 2:
+                        channel_name = "pc";
+                        break;
+                    case 4:
+                        channel_name = "ios";
+                        break;
+                    case 5:
+                        channel_name = "macos";
+                        break;
+                    default:
+                        channel_name = "phone";
+                        break;
+                    }
+                    cJSON_AddStringToObject(account, "channel", channel_name);
+                }
 
                 cJSON* time_windows = cJSON_CreateArray();
                 for (uint8_t i = 0; i < g_prog_status[0].login_cfg.time_window_count; i++)
