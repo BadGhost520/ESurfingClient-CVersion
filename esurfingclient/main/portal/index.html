@@ -199,6 +199,7 @@
                       <th class="text-center">账号</th>
                       <th class="text-center">密码</th>
                       <th class="text-center">通道</th>
+                      <th class="text-center">时间控制</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -208,6 +209,7 @@
                       <td class="text-center" x-text="$store.main.configs.accounts[0]?.username || '(未知)'"></td>
                       <td class="text-center">******</td>
                       <td class="text-center" x-text="$store.main.configs.accounts[0]?.channel || '(未知)'"></td>
+                      <td class="text-center" x-text="$store.main.configs.accounts[0]?.time_windows?.length ? ($store.main.configs.accounts[0].time_windows.length + ' 个时段') : '(不限)'"></td>
                       <th class="w-[10%] whitespace-nowrap px-1">
                         <button class="btn btn-soft btn-neutral"
                           @click="getAccounts(); toggleModal('setModal', 'open')">修改</button>
@@ -248,6 +250,50 @@
                     <option value="macos">macos</option>
                   </select>
                   <span class="label">选择账号的认证通道</span>
+                </fieldset>
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">时间控制</legend>
+                  <template x-for="(tw, i) in timeWindows" :key="i">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 border border-base-300 rounded-lg p-3">
+                      <div>
+                        <span class="label">开始</span>
+                        <div class="flex gap-2">
+                          <select class="select select-sm" x-model="timeWindows[i].startDay">
+                            <option value="">星期</option>
+                            <option value="mon">周一</option>
+                            <option value="tue">周二</option>
+                            <option value="wed">周三</option>
+                            <option value="thu">周四</option>
+                            <option value="fri">周五</option>
+                            <option value="sat">周六</option>
+                            <option value="sun">周日</option>
+                          </select>
+                          <input type="time" class="input input-sm" x-model="timeWindows[i].startTime" />
+                        </div>
+                      </div>
+                      <div>
+                        <span class="label">结束</span>
+                        <div class="flex gap-2">
+                          <select class="select select-sm" x-model="timeWindows[i].endDay">
+                            <option value="">星期</option>
+                            <option value="mon">周一</option>
+                            <option value="tue">周二</option>
+                            <option value="wed">周三</option>
+                            <option value="thu">周四</option>
+                            <option value="fri">周五</option>
+                            <option value="sat">周六</option>
+                            <option value="sun">周日</option>
+                          </select>
+                          <input type="time" class="input input-sm" x-model="timeWindows[i].endTime" />
+                        </div>
+                      </div>
+                      <div class="md:col-span-2 text-right">
+                        <button class="btn btn-xs btn-error" @click="removeTimeWindow(i)">删除</button>
+                      </div>
+                    </div>
+                  </template>
+                  <button class="btn btn-sm btn-soft btn-info" @click="addTimeWindow()">添加时间段</button>
+                  <p class="label" x-show="timeWindows.length === 0">未设置时间段 = 不限制</p>
                 </fieldset>
               </div>
               <div class="modal-action">

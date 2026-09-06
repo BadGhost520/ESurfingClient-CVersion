@@ -63,7 +63,7 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
     return
 end
 
-local config_json = '{"enabled":false,"log_lv":4,"accounts":[{"username":"","password":"","channel":"phone","mark":""}]}'
+local config_json = '{"enabled":false,"log_lv":4,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
 local file = io.open("/etc/config/esurfingclient", "r")
 if file then
     local content = file:read("*a")
@@ -220,6 +220,7 @@ end
                         <th class='th'>密码</th>
                         <th class='th'>通道</th>
                         <th class='th'>标记值</th>
+                        <th class='th'>时间控制</th>
                         <th class='th' style='width: 135px;'></th>
                     </tr>
                 </thead>
@@ -290,6 +291,98 @@ end
     // 当前有多少个提示
     var notification_count = 0;
 
+    // 时间窗口辅助函数
+    var currentTimeWindows = [];
+
+    function defaultEditTimeWindow() {
+        return { startDay: '', startTime: '', endDay: '', endTime: '' };
+    }
+
+    function timeWindowsToEdit(windows) {
+        return (windows || []).map(function(window) {
+            var startParts = (window.start || '').split(' ');
+            var endParts = (window.end || '').split(' ');
+            return {
+                startDay: startParts[0] || '',
+                startTime: startParts[1] || '',
+                endDay: endParts[0] || '',
+                endTime: endParts[1] || ''
+            };
+        });
+    }
+
+    function editToTimeWindows(editWindows) {
+        var windows = [];
+        for (var i = 0; i < editWindows.length; i++) {
+            var edit = editWindows[i];
+            if (!edit.startDay || !edit.startTime || !edit.endDay || !edit.endTime) {
+                throw new Error('存在未填写完整的时间段，请补全或删除该时间段');
+            }
+
+            var start = edit.startDay.toLowerCase() + ' ' + edit.startTime;
+            var end = edit.endDay.toLowerCase() + ' ' + edit.endTime;
+            if (start === end) {
+                throw new Error('时间段开始和结束不能相同：' + start);
+            }
+
+            windows.push({ start: start, end: end });
+        }
+        return windows;
+    }
+
+    function dayOptionsHtml(id, selected) {
+        var days = [
+            { value: '', label: '星期' },
+            { value: 'mon', label: '周一' },
+            { value: 'tue', label: '周二' },
+            { value: 'wed', label: '周三' },
+            { value: 'thu', label: '周四' },
+            { value: 'fri', label: '周五' },
+            { value: 'sat', label: '周六' },
+            { value: 'sun', label: '周日' }
+        ];
+        var html = '<select id="' + id + '" class="cbi-input-select">';
+        days.forEach(function(day) {
+            html += '<option value="' + day.value + '"' + (selected === day.value ? ' selected' : '') + '>' + day.label + '</option>';
+        });
+        html += '</select>';
+        return html;
+    }
+
+    function renderTimeWindows() {
+        var container = document.getElementById('time-windows-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        currentTimeWindows.forEach(function(edit, index) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;';
+            row.innerHTML =
+                '<span>开始</span>' +
+                dayOptionsHtml('tw_start_day_' + index, edit.startDay) +
+                '<input type="time" id="tw_start_time_' + index + '" class="cbi-input-text" value="' + edit.startTime + '" />' +
+                '<span>结束</span>' +
+                dayOptionsHtml('tw_end_day_' + index, edit.endDay) +
+                '<input type="time" id="tw_end_time_' + index + '" class="cbi-input-text" value="' + edit.endTime + '" />' +
+                '<button type="button" class="cbi-button cbi-button-remove" onclick="removeTimeWindow(' + index + ')">删除</button>';
+            container.appendChild(row);
+        });
+    }
+
+    function addTimeWindow() {
+        if (currentTimeWindows.length >= 16) {
+            showNotification('最多支持 16 个时间段', 'error');
+            return;
+        }
+        currentTimeWindows.push(defaultEditTimeWindow());
+        renderTimeWindows();
+    }
+
+    function removeTimeWindow(index) {
+        currentTimeWindows.splice(index, 1);
+        renderTimeWindows();
+    }
+
     // 保存账号
     function saveAccount() {
         var edit_username = document.getElementById('edit_username');
@@ -297,12 +390,31 @@ end
         var edit_channel = document.getElementById('edit_channel');
         var edit_mark = document.getElementById('edit_mark');
 
+        var editWindows = [];
+        for (var i = 0; i < currentTimeWindows.length; i++) {
+            editWindows.push({
+                startDay: document.getElementById('tw_start_day_' + i).value,
+                startTime: document.getElementById('tw_start_time_' + i).value,
+                endDay: document.getElementById('tw_end_day_' + i).value,
+                endTime: document.getElementById('tw_end_time_' + i).value
+            });
+        }
+
+        var timeWindows;
+        try {
+            timeWindows = editToTimeWindows(editWindows);
+        } catch (error) {
+            showNotification(error.message, 'error');
+            return;
+        }
+
         if (add_mode) {
             var new_account = {
                 username: edit_username.value.trim(),
                 password: edit_password.value.trim(),
                 channel: edit_channel.value,
-                mark: edit_mark.value.trim()
+                mark: edit_mark.value.trim(),
+                time_windows: timeWindows
             };
             config.accounts.push(new_account);
         } else{
@@ -310,6 +422,7 @@ end
             account.password = edit_password.value.trim();
             account.channel = edit_channel.value;
             account.mark = edit_mark.value.trim();
+            account.time_windows = timeWindows;
         }
 
         renderTable();
@@ -429,7 +542,8 @@ end
                 username: '',
                 password: '',
                 channel: 'phone',
-                mark: ''
+                mark: '',
+                time_windows: []
             }]
         };
         return saveOperation()
@@ -483,7 +597,11 @@ end
 
             var cell4 = row.insertCell(4);
             cell4.className = 'td';
-            cell4.innerHTML = `
+            cell4.textContent = (item.time_windows && item.time_windows.length) ? item.time_windows.length + ' 个时段' : '(不限)';
+
+            var cell5 = row.insertCell(5);
+            cell5.className = 'td';
+            cell5.innerHTML = `
                 <button class='cbi-button cbi-button-edit' onclick='showModal(${index}, "edit_modal")'>编辑</button>
                 <button class='cbi-button cbi-button-remove' onclick='deleteAccount(${index})'>删除</button>
             `;
@@ -552,9 +670,13 @@ end
                 username: '',
                 password: '',
                 channel: 'phone',
-                mark: ''
+                mark: '',
+                time_windows: []
             };
         }
+
+        currentTimeWindows = timeWindowsToEdit(account.time_windows);
+        renderTimeWindows();
 
         edit_username.value = account.username;
         edit_password.value = account.password;
@@ -715,6 +837,14 @@ end
                 <div class='cbi-value-field'>
                     <input type='text' id='edit_mark' class='cbi-input-text' placeholder='请输入标记值' name='mark' />
                     <div class='cbi-value-description'>可选项, 用于 MWAN 多路区分<br>十六进制数, 以 0x 开头, 例如 0x100</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='time_windows'>时间控制</label>
+                <div class='cbi-value-field'>
+                    <div id='time-windows-container'></div>
+                    <button type='button' class='cbi-button cbi-button-add' onclick='addTimeWindow()'>添加时间段</button>
+                    <div class='cbi-value-description'>未设置时间段 = 不限制</div>
                 </div>
             </div>
         </div>

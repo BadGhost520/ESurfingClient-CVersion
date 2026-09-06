@@ -118,7 +118,8 @@ sudo ./ESurfingClient-*-darwin-* -h
     {
       "username": "在这填账号",
       "password": "在这填密码",
-      "channel": "phone"
+      "channel": "phone",
+      "time_windows": []
     }
   ]
 }
@@ -136,6 +137,7 @@ sudo ./ESurfingClient-*-darwin-* -h
 - password: 密码
 - channel: 认证通道 (暂时没找到具体作用)
 - mark: 标记值 (高级功能, 非 OpenWrt 系统无效)
+- time_windows: 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
 
 ## 五、重启程序 / 服务
 
