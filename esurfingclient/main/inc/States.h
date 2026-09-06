@@ -5,6 +5,7 @@
 #include "utils/SimThread.h"
 
 #include <setjmp.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define SCHOOL_NETWORK_SYMBOL 8
@@ -23,6 +24,10 @@
 
 #define USR_LEN 16
 #define PWD_LEN 128
+
+#define WEEK_MINUTES 10080
+#define MAX_TIME_WINDOWS 16
+#define TIME_WINDOW_STR_LEN 32
 
 #define IP_LEN 16
 #define IF_LEN 16
@@ -66,6 +71,15 @@ typedef struct
     uint64_t tick;
 } auth_cfg_t;
 
+/** @brief 一周时间窗口 */
+typedef struct
+{
+    /** @brief 开始周分钟 (0-10079, 0=周日 00:00) */
+    uint16_t start_week_min;
+    /** @brief 结束周分钟 (可大于 10080, 用于跨周窗口) */
+    uint16_t end_week_min;
+} time_window_t;
+
 /** @brief 登录配置 */
 typedef struct
 {
@@ -83,6 +97,12 @@ typedef struct
     bool use_cus_mark;
     // /** @brief 自启状态 */
     // bool auto_start;
+    /** @brief 一周时间窗口列表 */
+    time_window_t time_windows[MAX_TIME_WINDOWS];
+    /** @brief 有效时间窗口数量 */
+    uint8_t time_window_count;
+    /** @brief 是否启用时间控制 */
+    bool has_time_control;
     /** @brief 配置序号 */
     uint8_t idx;
 } login_cfg_t;
@@ -98,6 +118,8 @@ typedef struct
     bool is_authed;
     /** @brief 需要重置 */
     bool is_need_reset;
+    /** @brief 时间控制禁用中 (仅内存状态, 不落盘) */
+    bool is_time_disabled;
 } runtime_status_t;
 
 /** @brief 认证线程状态 */

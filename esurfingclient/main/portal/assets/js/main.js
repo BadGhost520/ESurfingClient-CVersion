@@ -1,3 +1,39 @@
+// 时间窗口辅助函数
+function defaultEditTimeWindow() {
+    return { startDay: '', startTime: '', endDay: '', endTime: '' };
+}
+
+function timeWindowsToEdit(windows) {
+    return (windows || []).map(window => {
+        const startParts = (window.start || '').split(' ');
+        const endParts = (window.end || '').split(' ');
+        return {
+            startDay: startParts[0] || '',
+            startTime: startParts[1] || '',
+            endDay: endParts[0] || '',
+            endTime: endParts[1] || ''
+        };
+    });
+}
+
+function editToTimeWindows(editWindows) {
+    const windows = [];
+    for (const edit of editWindows) {
+        if (!edit.startDay || !edit.startTime || !edit.endDay || !edit.endTime) {
+            throw new Error('存在未填写完整的时间段，请补全或删除该时间段');
+        }
+
+        const start = edit.startDay.toLowerCase() + ' ' + edit.startTime;
+        const end = edit.endDay.toLowerCase() + ' ' + edit.endTime;
+        if (start === end) {
+            throw new Error('时间段开始和结束不能相同：' + start);
+        }
+
+        windows.push({ start: start, end: end });
+    }
+    return windows;
+}
+
 // 用来存储全局变量和函数
 document.addEventListener('alpine:init', () => {
     Alpine.store('main', {
@@ -8,7 +44,8 @@ document.addEventListener('alpine:init', () => {
                 {
                     username: '',
                     password: '',
-                    channel: 'phone'
+                    channel: 'phone',
+                    time_windows: []
                 }
             ]
         },
@@ -175,19 +212,53 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('editConfigs', () => ({
         accounts: [],
+        timeWindows: [],
 
         init() {
             const original = Alpine.store('main').configs.accounts;
             this.accounts = JSON.parse(JSON.stringify(original));
+            this.accounts.forEach(account => {
+                if (account.time_windows === undefined) account.time_windows = [];
+            });
+            this.syncTimeWindows();
+        },
+
+        syncTimeWindows() {
+            this.timeWindows = timeWindowsToEdit(this.accounts[0]?.time_windows);
+        },
+
+        addTimeWindow() {
+            if (this.timeWindows.length >= 16) {
+                alert('最多支持 16 个时间段');
+                return;
+            }
+            this.timeWindows.push(defaultEditTimeWindow());
+        },
+
+        removeTimeWindow(index) {
+            this.timeWindows.splice(index, 1);
         },
 
         saveAccounts() {
+            let windows;
+            try {
+                windows = editToTimeWindows(this.timeWindows);
+            } catch (error) {
+                alert(error.message);
+                return;
+            }
+
+            this.accounts[0].time_windows = windows;
             Alpine.store('main').configs.accounts = JSON.parse(JSON.stringify(this.accounts));
         },
 
         getAccounts() {
             const original = Alpine.store('main').configs.accounts;
             this.accounts = JSON.parse(JSON.stringify(original));
+            this.accounts.forEach(account => {
+                if (account.time_windows === undefined) account.time_windows = [];
+            });
+            this.syncTimeWindows();
         },
 
         toggleModal(modalName, action) {

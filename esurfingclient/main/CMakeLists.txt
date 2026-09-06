@@ -84,6 +84,7 @@ if (__OPENWRT__)
             src/DialerClient.c
             src/NetClient.c
             src/States.c
+            src/TimeControl.c
             Main.c
     )
 else ()
@@ -120,6 +121,7 @@ else ()
             src/DialerClient.c
             src/NetClient.c
             src/States.c
+            src/TimeControl.c
             Main.c
     )
 endif ()

@@ -98,6 +98,7 @@ return view.extend({
                         E('th', { class: 'th' }, '密码'),
                         E('th', { class: 'th' }, '通道'),
                         E('th', { class: 'th' }, '标记值'),
+                        E('th', { class: 'th' }, '时间控制'),
                         E('th', { class: 'th', style: 'width: 135px' }, '')
                     ])
                 ]),
@@ -168,7 +169,8 @@ return view.extend({
                             username: '加载失败',
                             password: '加载失败',
                             channel: '加载失败',
-                            mark: '加载失败'
+                            mark: '加载失败',
+                            time_windows: []
                         }
                     ]
                 };
@@ -215,6 +217,7 @@ return view.extend({
                 E('td', { class: 'td' }, account.password ? '******' : '(无)'),
                 E('td', { class: 'td' }, account.channel),
                 E('td', { class: 'td' }, account.mark || '(无)'),
+                E('td', { class: 'td' }, (account.time_windows && account.time_windows.length) ? account.time_windows.length + ' 个时段' : '(不限)'),
                 E('td', { class: 'td' }, [
                     E('button', { class: 'cbi-button cbi-button-edit', click: function() {
                         self.showModal(index);
@@ -230,6 +233,96 @@ return view.extend({
         return E('tbody', { class: 'tbody' }, rows);
     },
 
+    defaultEditTimeWindow: function() {
+        return { startDay: '', startTime: '', endDay: '', endTime: '' };
+    },
+
+    timeWindowsToEdit: function(windows) {
+        var self = this;
+        return (windows || []).map(function(window) {
+            var startParts = (window.start || '').split(' ');
+            var endParts = (window.end || '').split(' ');
+            return {
+                startDay: startParts[0] || '',
+                startTime: startParts[1] || '',
+                endDay: endParts[0] || '',
+                endTime: endParts[1] || ''
+            };
+        });
+    },
+
+    editToTimeWindows: function(editWindows) {
+        var windows = [];
+        for (var i = 0; i < editWindows.length; i++) {
+            var edit = editWindows[i];
+            if (!edit.startDay || !edit.startTime || !edit.endDay || !edit.endTime) {
+                throw new Error('存在未填写完整的时间段，请补全或删除该时间段');
+            }
+
+            var start = edit.startDay.toLowerCase() + ' ' + edit.startTime;
+            var end = edit.endDay.toLowerCase() + ' ' + edit.endTime;
+            if (start === end) {
+                throw new Error('时间段开始和结束不能相同：' + start);
+            }
+
+            windows.push({ start: start, end: end });
+        }
+        return windows;
+    },
+
+    createDaySelect: function(id, selected) {
+        var days = [
+            { value: '', label: '星期' },
+            { value: 'mon', label: '周一' },
+            { value: 'tue', label: '周二' },
+            { value: 'wed', label: '周三' },
+            { value: 'thu', label: '周四' },
+            { value: 'fri', label: '周五' },
+            { value: 'sat', label: '周六' },
+            { value: 'sun', label: '周日' }
+        ];
+        var options = days.map(function(day) {
+            return E('option', { value: day.value, selected: selected === day.value ? true : undefined }, day.label);
+        });
+        return E('select', { id: id, class: 'cbi-input-select' }, options);
+    },
+
+    renderTimeWindows: function() {
+        var self = this;
+        var container = document.getElementById('time-windows-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        self.currentTimeWindows.forEach(function(edit, index) {
+            var row = E('div', { style: 'display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;' }, [
+                E('span', {}, '开始'),
+                self.createDaySelect('tw_start_day_' + index, edit.startDay),
+                E('input', { type: 'time', id: 'tw_start_time_' + index, class: 'cbi-input-text', value: edit.startTime }),
+                E('span', {}, '结束'),
+                self.createDaySelect('tw_end_day_' + index, edit.endDay),
+                E('input', { type: 'time', id: 'tw_end_time_' + index, class: 'cbi-input-text', value: edit.endTime }),
+                E('button', { class: 'cbi-button cbi-button-remove', click: function() { self.removeTimeWindow(index); } }, '删除')
+            ]);
+            container.appendChild(row);
+        });
+    },
+
+    addTimeWindow: function() {
+        var self = this;
+        if (self.currentTimeWindows.length >= 16) {
+            self.showNotification('最多支持 16 个时间段', 'error');
+            return;
+        }
+        self.currentTimeWindows.push(self.defaultEditTimeWindow());
+        self.renderTimeWindows();
+    },
+
+    removeTimeWindow: function(index) {
+        var self = this;
+        self.currentTimeWindows.splice(index, 1);
+        self.renderTimeWindows();
+    },
+
     showModal: function(index) {
         var self = this;
 
@@ -243,9 +336,12 @@ return view.extend({
                 username: '',
                 password: '',
                 channel: 'phone',
-                mark: ''
+                mark: '',
+                time_windows: []
             };
         }
+
+        self.currentTimeWindows = self.timeWindowsToEdit(account.time_windows);
 
         var modal = L.showModal('编辑账号', [
             E('div', { class: 'cbi-value', style: 'margin-top: 25px;' }, [
@@ -286,16 +382,43 @@ return view.extend({
                     ])
                 ])
             ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title', style: 'margin-top: 10px;' }, '时间控制'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('div', { id: 'time-windows-container' }),
+                    E('button', { class: 'cbi-button cbi-button-add', click: function() { self.addTimeWindow(); } }, '添加时间段'),
+                    E('div', { class: 'cbi-value-description' }, '未设置时间段 = 不限制')
+                ])
+            ]),
             E('div', { style: 'text-align: right; margin-top: 20px; padding-top: 10px;' }, [
                 E('button', { class: 'cbi-button cbi-button-neutral', click: function() {
                     L.hideModal(modal);
                 } }, '关闭'),
                 ' ',
                 E('button', { class: 'cbi-button cbi-button-apply', click: function() {
+                    var editWindows = [];
+                    for (var i = 0; i < self.currentTimeWindows.length; i++) {
+                        editWindows.push({
+                            startDay: document.getElementById('tw_start_day_' + i).value,
+                            startTime: document.getElementById('tw_start_time_' + i).value,
+                            endDay: document.getElementById('tw_end_day_' + i).value,
+                            endTime: document.getElementById('tw_end_time_' + i).value
+                        });
+                    }
+
+                    var timeWindows;
+                    try {
+                        timeWindows = self.editToTimeWindows(editWindows);
+                    } catch (error) {
+                        self.showNotification(error.message, 'error');
+                        return;
+                    }
+
                     account.username = document.getElementById('edit_account').value;
                     account.password = document.getElementById('edit_password').value;
                     account.channel = document.getElementById('edit_channel').value;
                     account.mark = document.getElementById('edit_mark').value;
+                    account.time_windows = timeWindows;
                     
                     if (add_mode) {
                         self.config.accounts.push(account);
@@ -306,6 +429,8 @@ return view.extend({
                 } }, '保存')
             ])
         ]);
+
+        setTimeout(function() { self.renderTimeWindows(); }, 0);
     },
 
     startLogAutoRefresh: function() {
@@ -543,7 +668,8 @@ return view.extend({
                                 username: '',
                                 password: '',
                                 channel: 'phone',
-                                mark: ''
+                                mark: '',
+                                time_windows: []
                             }
                         ]
                     };

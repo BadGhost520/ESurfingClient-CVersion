@@ -6,6 +6,7 @@
 #include "DialerClient.h"
 #include "NetClient.h"
 #include "States.h"
+#include "TimeControl.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -619,6 +620,10 @@ static AuthStatus auth()
 
 static void clean()
 {
+    // 时间控制禁用状态是跨线程的“外部闸门”，线程退出清理时不能把它清掉，
+    // 否则线程守护会立刻把刚下线的账号重新拉起来。
+    const bool time_disabled = g_prog_status[tl_thread_idx].runtime_status.is_time_disabled;
+
     if (g_prog_status[tl_thread_idx].runtime_status.is_initialized) // 如果已经初始化会话, 则进入
     {
         if (g_prog_status[tl_thread_idx].runtime_status.is_authed) // 如果已经认证, 则进入
@@ -632,6 +637,7 @@ static void clean()
     }
     memset(&g_prog_status[tl_thread_idx].auth_cfg, 0, sizeof(auth_cfg_t)); // 清除 auth_cfg 的内容, 并置零
     memset(&g_prog_status[tl_thread_idx].runtime_status, 0, sizeof(runtime_status_t)); // 清除 runtime_status 的内容, 并置零
+    g_prog_status[tl_thread_idx].runtime_status.is_time_disabled = time_disabled; // 恢复时间控制禁用状态
 }
 
 static void reset()
@@ -645,6 +651,17 @@ static RunStatus run()
     static uint8_t retry_timeout = 1;
     static uint8_t retry_auth = 1;
     static uint64_t retry_auth_time = 0;
+
+    // 时间控制/重置请求优先于一切网络操作：
+    // 到点下线后不应再发送心跳包，也不应继续认证或重试。
+    if (g_prog_status[tl_thread_idx].runtime_status.is_time_disabled)
+    {
+        g_prog_status[tl_thread_idx].runtime_status.is_need_reset = true;
+    }
+    if (g_prog_status[tl_thread_idx].runtime_status.is_need_reset)
+    {
+        return RUN_SUCCESS;
+    }
 
     switch (check_network_status()) // 检测网络状态
     {
@@ -811,6 +828,9 @@ void work()
 
     if (load_cfg() == false) shut(1); // 加载配置文件
 
+    time_control_sync(); // 冷启动时先按当前时间同步各账号的时间控制状态
+    if (time_control_init() == false) shut(1); // 启动时间控制定时线程
+
     /**
      * 检测网络状态
      * 非重定向响应都会持续循环
@@ -853,6 +873,11 @@ void work()
     LOG_DEBUG("开始创建认证线程");
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
+        if (g_prog_status[i].runtime_status.is_time_disabled)
+        {
+            LOG_INFO("配置 %" PRIu8 " 当前不在允许时段，暂不启动认证线程", g_prog_status[i].login_cfg.idx);
+            continue;
+        }
         g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
         uint8_t retry_ct = 1;
         while (g_prog_status[i].thread == NULL)
@@ -914,9 +939,21 @@ void work()
              */
             if (g_prog_status[i].runtime_status.is_running == false)
             {
-                int result_code = 0;
-                sim_thread_join(g_prog_status[i].thread, &result_code);
-                LOG_INFO("认证线程 %" PRIu8 " 已结束, 由于线程守护已开启, 将会重新启动此线程", i);
+                if (g_prog_status[i].thread != NULL)
+                {
+                    int result_code = 0;
+                    sim_thread_join(g_prog_status[i].thread, &result_code);
+                    g_prog_status[i].thread = NULL;
+                    LOG_INFO("认证线程 %" PRIu8 " 已结束", i);
+                }
+
+                if (g_prog_status[i].runtime_status.is_time_disabled)
+                {
+                    // 时间控制禁用中，不重启该线程；等时间控制线程在允许时段再放行
+                    continue;
+                }
+
+                LOG_INFO("由于线程守护已开启，将会重新启动认证线程 %" PRIu8, i);
                 g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
                 uint8_t retry_ct = 1;
                 while (g_prog_status[i].thread == NULL)

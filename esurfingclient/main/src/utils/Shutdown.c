@@ -1,6 +1,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
+#include "TimeControl.h"
 #include "States.h"
 
 #include <signal.h>
@@ -34,14 +35,18 @@ void shut(const int8_t exit_code)
         LOG_INFO("关闭线程守护");
         g_thread_keep_alive = false;
     }
+    time_control_stop(); // 等待时间控制定时线程退出
     LOG_INFO("清理资源中");
     LOG_DEBUG("关闭线程");
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
         int result_code = 0;
         g_prog_status[i].runtime_status.is_running = false;
-        sim_thread_join(g_prog_status[i].thread, &result_code);
-        LOG_DEBUG("认证线程退出, 退出码: %d", result_code);
+        if (g_prog_status[i].thread != NULL)
+        {
+            sim_thread_join(g_prog_status[i].thread, &result_code);
+            LOG_DEBUG("认证线程退出, 退出码: %d", result_code);
+        }
     }
     LOG_INFO("退出程序, 退出码: %" PRIu8, exit_code);
     clean_logger();
