@@ -65,6 +65,8 @@ if (__OPENWRT__)
             src/cipher/algo/android/snow3g_variant_android.c
             src/cipher/algo/android/tea_triple_cbc_android.c
             src/cipher/algo/android/tea_triple_ecb_android.c
+            src/cipher/algo/ios/ios_zsm.c
+            src/cipher/algo/ios/lzma/LzmaDec.c
             src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
             src/cipher/algo/linux/des_ecb_six_linux.c
             src/cipher/algo/linux/desede_cbc_linux.c
@@ -95,6 +97,8 @@ else ()
             src/cipher/algo/android/snow3g_variant_android.c
             src/cipher/algo/android/tea_triple_cbc_android.c
             src/cipher/algo/android/tea_triple_ecb_android.c
+            src/cipher/algo/ios/ios_zsm.c
+            src/cipher/algo/ios/lzma/LzmaDec.c
             src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
             src/cipher/algo/linux/des_ecb_six_linux.c
             src/cipher/algo/linux/desede_cbc_linux.c
@@ -134,6 +138,7 @@ endif ()
 
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
+        ${CMAKE_SOURCE_DIR}/src/cipher/algo/ios/lzma
 )
 
 if (WIN32)

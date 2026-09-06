@@ -12,7 +12,8 @@
 #define TICKET_URL_LEN 512
 #define USER_AGENT_LEN 32
 #define CLIENT_ID_LEN 40
-#define HOST_NAME_LEN 16
+#define HOST_NAME_LEN 32
+#define OSTAG_LEN 32
 #define KEEP_URL_LEN 256
 #define TERM_URL_LEN 256
 #define AUTH_URL_LEN 256
@@ -37,6 +38,8 @@ typedef struct
     char client_id[CLIENT_ID_LEN];
     /** @brief 主机名 */
     char host_name[HOST_NAME_LEN];
+    /** @brief 系统标识 */
+    char ostag[OSTAG_LEN];
     /** @brief 心跳 URL */
     char keep_url[KEEP_URL_LEN];
     /** @brief 登出 URL */

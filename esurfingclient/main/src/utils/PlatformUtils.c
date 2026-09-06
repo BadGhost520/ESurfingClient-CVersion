@@ -11,6 +11,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <time.h>
+#ifndef _WIN32
+#include <strings.h>
+#endif
 
 #ifdef _WIN32
 
@@ -30,6 +33,97 @@ static char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
 #define LINUX_UA "CCTP/Linux64/1003"
 #define OLD_ANDROID_UA "CCTP/android64_vpn/2093"
 #define ANDROID_UA "CCTP/android11_64/2104"
+#define IOS_UA "CCTP/iOSdy/4023"
+#define MACOS_UA "CCTP/macdy/5019"
+
+static bool channel_str_eq(const char* a, const char* b)
+{
+#ifdef _WIN32
+    return _stricmp(a, b) == 0;
+#else
+    return strcasecmp(a, b) == 0;
+#endif
+}
+
+static uint8_t parse_channel_json(const cJSON* chn, uint8_t cfg_no)
+{
+    if (chn == NULL)
+    {
+        LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道 (Android)", cfg_no);
+        return 3;
+    }
+
+    if (cJSON_IsNumber(chn))
+    {
+        const int value = chn->valueint;
+        if (value >= 1 && value <= 5)
+        {
+            return (uint8_t)value;
+        }
+        LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", cfg_no);
+        return 3;
+    }
+
+    if (cJSON_IsString(chn) && chn->valuestring != NULL)
+    {
+        const char* value = chn->valuestring;
+        if (channel_str_eq(value, "windows") || channel_str_eq(value, "1"))
+        {
+            return 1;
+        }
+        if (channel_str_eq(value, "linux") || channel_str_eq(value, "pc") || channel_str_eq(value, "2"))
+        {
+            return 2;
+        }
+        if (channel_str_eq(value, "android") || channel_str_eq(value, "phone") || channel_str_eq(value, "3"))
+        {
+            return 3;
+        }
+        if (channel_str_eq(value, "ios") || channel_str_eq(value, "iphone") || channel_str_eq(value, "4"))
+        {
+            return 4;
+        }
+        if (channel_str_eq(value, "macos") || channel_str_eq(value, "mac") || channel_str_eq(value, "osx") || channel_str_eq(value, "5"))
+        {
+            return 5;
+        }
+    }
+
+    LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", cfg_no);
+    return 3;
+}
+
+static void apply_channel_ua(login_cfg_t* cfg, uint8_t cfg_no)
+{
+    switch (cfg->chn)
+    {
+    case 1:
+        LOG_INFO("使用通道: Windows (暂未实现, 使用 Android 通道)");
+        snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
+        break;
+    case 2:
+        LOG_INFO("使用通道: Linux");
+        snprintf(cfg->user_agent, USER_AGENT_LEN, LINUX_UA);
+        break;
+    case 3:
+        LOG_INFO("使用通道: Android");
+        snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
+        break;
+    case 4:
+        LOG_INFO("使用通道: iOS");
+        snprintf(cfg->user_agent, USER_AGENT_LEN, IOS_UA);
+        break;
+    case 5:
+        LOG_INFO("使用通道: macOS");
+        snprintf(cfg->user_agent, USER_AGENT_LEN, MACOS_UA);
+        break;
+    default:
+        LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", cfg_no);
+        cfg->chn = 3;
+        snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
+        break;
+    }
+}
 
 typedef struct
 {
@@ -387,7 +481,7 @@ char* create_xml_payload(const XmlChoose choose)
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_ip),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.mac_addr),
-            safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name),
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.ostag),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.ac_ip)
         );
         break;
@@ -432,7 +526,7 @@ char* create_xml_payload(const XmlChoose choose)
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_ip),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.ticket),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.mac_addr),
-            safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name)
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.ostag)
         );
         break;
     default:
@@ -522,7 +616,8 @@ bool save_cfg(char* configs_str)
     set_logger_level(log_lv->valueint);
     snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", username->valuestring);
     snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", password->valuestring);
-    g_prog_status[0].login_cfg.chn = channel->valueint;
+    g_prog_status[0].login_cfg.chn = parse_channel_json(channel, 1);
+    apply_channel_ua(&g_prog_status[0].login_cfg, 1);
 
     cJSON_Delete(configs);
 
@@ -716,44 +811,8 @@ bool load_cfg()
         snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
         snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
 
-        // 检查通道
-        if (chn == NULL)
-        {
-            LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道", i + 1);
-            g_prog_status[valid_i].login_cfg.chn = 3;
-        }
-        else
-        {
-            if (cJSON_IsNumber(chn))
-            {
-                g_prog_status[valid_i].login_cfg.chn = chn->valueint;
-            }
-            else
-            {
-                LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道", i + 1);
-                g_prog_status[valid_i].login_cfg.chn = 3;
-            }
-        }
-
-        // 转化成 UA
-        switch (g_prog_status[valid_i].login_cfg.chn)
-        {
-        case 1:
-            LOG_INFO("使用通道: Windows (暂未实现, 使用 Android 通道)");
-            snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, ANDROID_UA);
-            break;
-        case 2:
-            LOG_INFO("使用通道: Linux");
-            snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, LINUX_UA);
-            break;
-        case 3:
-            LOG_INFO("使用通道: Android");
-            snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, ANDROID_UA);
-            break;
-        default:
-            LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", i + 1);
-            snprintf(g_prog_status[valid_i].login_cfg.user_agent, USER_AGENT_LEN, ANDROID_UA);
-        }
+        g_prog_status[valid_i].login_cfg.chn = parse_channel_json(chn, i + 1);
+        apply_channel_ua(&g_prog_status[valid_i].login_cfg, i + 1);
 
         LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
         LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
@@ -840,44 +899,8 @@ bool load_cfg()
         snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
         snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
 
-        // 检查通道
-        if (chn == NULL)
-        {
-            LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道 (Android)", i + 1);
-            g_prog_status[0].login_cfg.chn = 3;
-        }
-        else
-        {
-            if (cJSON_IsNumber(chn))
-            {
-                g_prog_status[0].login_cfg.chn = chn->valueint;
-            }
-            else
-            {
-                LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", i + 1);
-                g_prog_status[0].login_cfg.chn = 3;
-            }
-        }
-
-        // 转化成 UA
-        switch (g_prog_status[0].login_cfg.chn)
-        {
-        case 1:
-            LOG_INFO("使用通道: Windows (暂未实现, 使用 Android 通道)");
-            snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, ANDROID_UA);
-            break;
-        case 2:
-            LOG_INFO("使用通道: Linux");
-            snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, LINUX_UA);
-            break;
-        case 3:
-            LOG_INFO("使用通道: Android");
-            snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, ANDROID_UA);
-            break;
-        default:
-            LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", i + 1);
-            snprintf(g_prog_status[0].login_cfg.user_agent, USER_AGENT_LEN, ANDROID_UA);
-        }
+        g_prog_status[0].login_cfg.chn = parse_channel_json(chn, i + 1);
+        apply_channel_ua(&g_prog_status[0].login_cfg, i + 1);
 
         LOG_DEBUG("使用 UA: %s", g_prog_status[0].login_cfg.user_agent);
         LOG_DEBUG("当前使用下标: 0");
