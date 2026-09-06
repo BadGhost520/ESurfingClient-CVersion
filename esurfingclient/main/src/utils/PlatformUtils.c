@@ -22,6 +22,13 @@
 
 #endif
 
+#define WINDOWS_UA "CCTP/WinSVR5/1068"
+#define LINUX_UA "CCTP/Linux64/1003"
+#define OLD_ANDROID_UA "CCTP/android64_vpn/2093"
+#define ANDROID_UA "CCTP/android11_64/2104"
+#define IOS_UA "CCTP/iOSdy/4023"
+#define MACOS_UA "CCTP/macdy/5019"
+
 #ifdef __OPENWRT__
 static const char config_file[] = "/etc/config/esurfingclient";
 #else
@@ -29,12 +36,28 @@ static const char config_file[] = "/etc/config/esurfingclient";
 static char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
 #endif
 
-#define WINDOWS_UA "CCTP/WinSVR5/1068"
-#define LINUX_UA "CCTP/Linux64/1003"
-#define OLD_ANDROID_UA "CCTP/android64_vpn/2093"
-#define ANDROID_UA "CCTP/android11_64/2104"
-#define IOS_UA "CCTP/iOSdy/4023"
-#define MACOS_UA "CCTP/macdy/5019"
+typedef struct
+{
+    char ip[IP_LEN];
+    char name[NAME_LENGTH];
+} adapter_t;
+
+static const char s_default_cfg[] = "{\n"
+                                    "   \"enabled\": false,\n"
+                                    "   \"log_lv\": 4,\n"
+                                    "   \"accounts\": [\n"
+                                    "       {\n"
+                                    "           \"username\": \"\",\n"
+                                    "           \"password\": \"\",\n"
+                                    "           \"channel\": 3,\n"
+                                    "           \"mark\": \"\",\n"
+                                    "           \"time_windows\": []\n"
+                                    "       }\n"
+                                    "   ]\n"
+                                    "}\n";
+
+static adapter_t* s_adaptor = NULL;
+static uint8_t s_adaptor_count = 0;
 
 static bool channel_str_eq(const char* a, const char* b)
 {
@@ -124,29 +147,6 @@ static void apply_channel_ua(login_cfg_t* cfg, uint8_t cfg_no)
         break;
     }
 }
-
-typedef struct
-{
-    char ip[IP_LEN];
-    char name[NAME_LENGTH];
-} adapter_t;
-
-static const char s_default_cfg[] = "{\n"
-                                    "   \"enabled\": false,\n"
-                                    "   \"log_lv\": 4,\n"
-                                    "   \"accounts\": [\n"
-                                    "       {\n"
-                                    "           \"username\": \"\",\n"
-                                    "           \"password\": \"\",\n"
-                                    "           \"channel\": 3,\n"
-                                    "           \"mark\": \"\",\n"
-                                    "           \"time_windows\": []\n"
-                                    "       }\n"
-                                    "   ]\n"
-                                    "}\n";
-
-static adapter_t* s_adaptor = NULL;
-static uint8_t s_adaptor_count = 0;
 
 /**
  * @brief 将英文星期缩写转为周起始偏移 (0=周日 ... 6=周六)
