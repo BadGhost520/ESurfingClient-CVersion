@@ -59,7 +59,7 @@ static void reset_host_name()
     host_bytes[4]);
     LOG_DEBUG("新的主机名: %s", host_name);
     snprintf(auth_cfg->host_name, HOST_NAME_LEN, "%s", safe_str(host_name));
-    snprintf(auth_cfg->ostag, OSTAG_LEN, "%s", auth_cfg->host_name);
+    snprintf(auth_cfg->ostag, OSTAG_LEN, "%s", safe_str(host_name));
 }
 
 static void reset_client_id()

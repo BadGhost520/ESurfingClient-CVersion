@@ -32,7 +32,8 @@ static const char s_generate_url[] = "http://223.5.5.5";
 static char s_school_id[SCHOOL_ID_LENGTH];
 static char s_domain[DOMAIN_LENGTH];
 static char s_area[AREA_LENGTH];
-static _Thread_local char s_request_url[LAST_LOCATION_LEN];
+
+static _Thread_local char s_request_url[LOCATION_LEN];
 
 static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
 {
@@ -57,7 +58,7 @@ static void resolve_url(char* out, size_t out_len, const char* base, const char*
     {
         const char* scheme_end = strstr(base, "://");
         if (scheme_end) snprintf(out, out_len, "%.*s:%s", (int)(scheme_end - base), base, ref);
-        else snprintf(out, out_len, "http:%s", ref);
+        else snprintf(out, out_len + 5, "http:%s", ref);
         return;
     }
 
@@ -244,13 +245,13 @@ static size_t header_cb(const void* contents, const size_t size, const size_t nm
                 const size_t valid_len = strcspn(value, "\r\n");
 
                 size_t copy_len = valid_len;
-                if (copy_len >= LAST_LOCATION_LEN)
+                if (copy_len >= LOCATION_LEN)
                 {
-                    copy_len = LAST_LOCATION_LEN - 1;
-                    LOG_WARN("Location 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, LAST_LOCATION_LEN);
+                    copy_len = LOCATION_LEN - 1;
+                    LOG_WARN("Location 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, LOCATION_LEN);
                 }
 
-                char location[LAST_LOCATION_LEN];
+                char location[LOCATION_LEN];
                 memcpy(location, value, copy_len);
                 location[copy_len] = '\0';
 

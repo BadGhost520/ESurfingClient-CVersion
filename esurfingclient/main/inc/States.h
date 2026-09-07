@@ -32,7 +32,8 @@
 #define IP_LEN 16
 #define IF_LEN 16
 
-#define LAST_LOCATION_LEN 512
+#define LOCATION_LEN 512
+#define LAST_LOCATION_LEN 1024
 
 /** @brief 认证配置 */
 typedef struct
@@ -136,7 +137,7 @@ typedef struct
     /** @brief 线程 */
     sim_thread_t* thread;
     /** @brief 获取认证配置地址 */
-    char last_location[LAST_LOCATION_LEN];
+    char last_location[LAST_LOCATION_LEN * 2];
     /** @brief last_location 数据锁 */
     bool last_location_lock;
 } prog_status_t;
