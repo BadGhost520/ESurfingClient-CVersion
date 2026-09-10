@@ -55,9 +55,9 @@ static bool term()
     }
     LOG_VERBOSE("发送加密登出内容: %s", encrypt);
 
-    http_resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据
+    resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据
     uint8_t retry = 1;
-    while (result.status != REQUEST_SUCCESS && result.status != REQUEST_HAVE_RES)
+    while (result.status != STATUS_SUCCESS && result.status != REQUEST_HAVE_RES)
     {
         if (retry > 5)
         {
@@ -96,7 +96,7 @@ static bool heartbeat()
     }
     LOG_VERBOSE("发送加密心跳内容: %s", encrypt);
 
-    const http_resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.keep_url, encrypt); // 向 keep_url 发送加密数据
+    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.keep_url, encrypt); // 向 keep_url 发送加密数据
     free(encrypt);
     if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
     {
@@ -143,7 +143,7 @@ static bool login()
     }
     LOG_VERBOSE("发送加密登录内容: %s", encrypt);
 
-    const http_resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.auth_url, encrypt); // 向 auth_url 发送加密数据
+    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.auth_url, encrypt); // 向 auth_url 发送加密数据
     free(encrypt);
     if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
     {
@@ -233,7 +233,7 @@ static bool get_ticket()
     }
     LOG_VERBOSE("发送加密获取 ticket 内容: %s", encrypt);
 
-    const http_resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, encrypt); // 向 ticket_url 发送加密内容
+    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, encrypt); // 向 ticket_url 发送加密内容
     free(encrypt);
     if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
     {
@@ -462,7 +462,7 @@ static bool init_session()
         ticket_body = "";
         LOG_INFO("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
     }
-    const http_resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
+    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
     if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL) // 响应错误或无响应数据, 则返回 false
     {
         LOG_ERROR("初始化会话失败");
@@ -503,7 +503,7 @@ static AuthStatus auth()
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
 
-    const http_resp_t resp = get(g_prog_status[tl_thread_idx].last_location); // curl GET last_location 获取认证配置
+    const resp_t resp = get(g_prog_status[tl_thread_idx].last_location); // curl GET last_location 获取认证配置
     if (resp.status != REQUEST_HAVE_RES || resp.body_size == 0 || resp.body_data == NULL) // 如果响应体没有内容 (非 200 响应码), 则返回
     {
         LOG_ERROR("响应体为空, 无法提取认证配置");
@@ -665,7 +665,7 @@ static RunStatus run()
 
     switch (check_network_status()) // 检测网络状态
     {
-    case REQUEST_SUCCESS: // 返回响应成功 (204 响应码)
+    case STATUS_SUCCESS: // 返回响应成功 (204 响应码)
         retry_timeout = 1;
         retry_auth = 1;
         /**
@@ -740,7 +740,7 @@ static RunStatus run()
             sleep_ms(retry_auth_time, true);
         }
         return RUN_SUCCESS;
-    case REQUEST_WARN: // 返回警告, 会重试 (错误码 28, 响应超时)
+    case STATUS_WARN: // 返回警告, 会重试 (错误码 28, 响应超时)
         retry_auth = 1;
         if (retry_timeout > 5)
         {
@@ -772,7 +772,7 @@ int dialer_app(void* arg)
         g_prog_status[tl_thread_idx].login_cfg.idx);
 
     refresh_states(); // 刷新数据 (algo_id, host_name, client_id, mac_addr)
-    if (get_last_location() == REQUEST_ERROR) g_prog_status[tl_thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
+    if (get_last_location() == STATUS_ERROR) g_prog_status[tl_thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
 
     /**
      * 运行循环
@@ -835,7 +835,7 @@ void work()
      * 检测网络状态
      * 非重定向响应都会持续循环
      */
-    NetworkStatus status;
+    network_status_t status;
     uint8_t retry_network = 1;
     do
     {
@@ -846,12 +846,12 @@ void work()
         status = check_network_status();
         switch (status)
         {
-        case REQUEST_SUCCESS:
+        case STATUS_SUCCESS:
             LOG_INFO("已连接到互联网");
             sleep_ms(10000, true);
             break;
-        case REQUEST_ERROR:
-        case REQUEST_INIT_ERROR:
+        case STATUS_ERROR:
+        case STATUS_INIT_ERROR:
             if (retry_network > 5)
             {
                 LOG_FATAL("超过最多重试次数, 退出程序");
@@ -865,7 +865,7 @@ void work()
             sleep_ms(1000, true);
             break;
         }
-    } while (status != REQUEST_REDIRECT && status != REQUEST_SUCCESS);
+    } while (status != REQUEST_REDIRECT && status != STATUS_SUCCESS);
 
     /**
      * 根据配置数创建相应数量的线程

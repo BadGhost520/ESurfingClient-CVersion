@@ -27,7 +27,10 @@
 
 static const char s_req_content_type[] = "Content-Type: application/x-www-form-urlencoded";
 static const char s_req_accept[] = "Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
-static const char s_generate_url[] = "http://223.5.5.5";
+static const char s_generate_url[] = "http://connect.rom.miui.com/generate_204";
+static const char s_generate_bak_url[] = "http://1.1.1.1";
+static const char s_auth_ip[] = "http://14.146.227.141:7001";
+static const char s_auth_bak_ip[] = "http://121.8.177.212:7001";
 
 static char s_school_id[SCHOOL_ID_LENGTH];
 static char s_domain[DOMAIN_LENGTH];
@@ -271,7 +274,7 @@ static size_t header_cb(const void* contents, const size_t size, const size_t nm
 
 static size_t write_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
-    http_resp_t* resp = userdata;
+    resp_t* resp = userdata;
     const size_t real_size = size * nmemb;
     char* ptr = realloc(resp->body_data, resp->body_size + real_size + 1);
 
@@ -332,46 +335,46 @@ static char* calc_md5(const char* data)
     return md5_str;
 }
 
-static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
+static network_status_t curl_err_msg_out(const CURLcode curl_code)
 {
     switch (curl_code)
     {
     case CURLE_COULDNT_RESOLVE_HOST:
         LOG_ERROR("curl 错误码: 6, 错误原因: DNS 解析错误");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     case CURLE_COULDNT_CONNECT:
         LOG_ERROR("curl 错误码: 7, 错误原因: 连接服务器失败");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     case CURLE_OPERATION_TIMEDOUT:
         LOG_ERROR("curl 错误码: 28, 错误原因: 操作超时");
-        return REQUEST_WARN;
+        return STATUS_WARN;
     case CURLE_HTTP_RETURNED_ERROR:
         LOG_ERROR("curl 错误码: 22, 错误原因: HTTP 状态码 ≥ 400");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     case CURLE_GOT_NOTHING:
         LOG_ERROR("curl 错误码: 52, 错误原因: 服务器返回空数据");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     case CURLE_URL_MALFORMAT:
         LOG_ERROR("curl 错误码: 3, 错误原因: URL 格式错误");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     case CURLE_WRITE_ERROR:
         LOG_ERROR("curl 错误码: 23, 错误原因: 写入数据失败");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     case CURLE_ABORTED_BY_CALLBACK:
         LOG_ERROR("curl 错误码: 42, 错误原因: 回调函数中止");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     default:
         LOG_ERROR("未知错误");
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     }
 }
 
-http_resp_t post(const char* url, const char* data)
+resp_t post(const char* url, const char* data)
 {
     LOG_VERBOSE("POST 地址: %s", url);
     LOG_VERBOSE("POST 数据: %s", data);
 
-    http_resp_t resp = {0};
+    resp_t resp = {0};
 
     char md5_hash_str[MAX_LEN] = {0};
     char ua[MAX_LEN] = {0};
@@ -384,7 +387,7 @@ http_resp_t post(const char* url, const char* data)
     if (!md5_hash)
     {
         LOG_ERROR("计算 MD5 失败");
-        resp.status = REQUEST_ERROR;
+        resp.status = STATUS_ERROR;
         return resp;
     }
 
@@ -424,19 +427,24 @@ http_resp_t post(const char* url, const char* data)
     if (curl == NULL)
     {
         LOG_ERROR("curl 初始化失败");
-        resp.status = REQUEST_INIT_ERROR;
+        resp.status = STATUS_INIT_ERROR;
         curl_slist_free_all(headers);
         return resp;
     }
     LOG_VERBOSE("curl 初始化完成, curl: %p", curl);
 
     LOG_VERBOSE("设置 curl 选项");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    // POST URL
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    // 连接超时时长
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3L);
+    // 总超时时长
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
 
 #ifdef __OPENWRT__
     curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
@@ -459,36 +467,36 @@ http_resp_t post(const char* url, const char* data)
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
 
-    if (resp_code == 302)
-    {
-        LOG_DEBUG("重定向, 响应码: 302");
-        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
-        resp.status = REQUEST_REDIRECT;
-        return resp;
-    }
     if (resp_code == 200)
     {
-        LOG_DEBUG("有响应体, 响应码: 200");
-        resp.status = REQUEST_HAVE_RES;
+        LOG_DEBUG("请求成功, 响应码: 200");
+        resp.http_code = HTTP_OK;
         return resp;
     }
     if (resp_code == 204)
     {
-        LOG_VERBOSE("无响应体, 响应码: 204");
-        resp.status = REQUEST_SUCCESS;
+        LOG_VERBOSE("无内容, 响应码: 204");
+        resp.http_code = HTTP_NO_CONTENT;
+        return resp;
+    }
+    if (resp_code == 302)
+    {
+        LOG_DEBUG("重定向, 响应码: 302");
+        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
+        resp.http_code = HTTP_FOUND;
         return resp;
     }
 
-    LOG_ERROR("HTTP 响应错误, 响应码: %ld", resp_code);
-    resp.status = REQUEST_ERROR;
+    LOG_ERROR("意外的 HTTP 响应码: %ld", resp_code);
+    resp.http_code = resp_code;
     return resp;
 }
 
-http_resp_t get(const char* url)
+resp_t get(const char* url, const bool connect_only)
 {
     LOG_VERBOSE("GET 地址: %s", url);
 
-    http_resp_t resp = {0};
+    resp_t resp = {0};
 
     char ua[MAX_LEN] = {0};
     char c_id[MAX_LEN] = {0};
@@ -515,16 +523,25 @@ http_resp_t get(const char* url)
     if (curl == NULL)
     {
         LOG_ERROR("curl 初始化失败");
-        resp.status = REQUEST_INIT_ERROR;
+        resp.status = STATUS_INIT_ERROR;
         curl_slist_free_all(headers);
         return resp;
     }
     LOG_VERBOSE("curl 初始化完成, curl = %p", curl);
 
     LOG_VERBOSE("设置 curl 选项");
+    // GET URL
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    // 连接超时时长
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3L);
+    // 总超时时长
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    // 是否跟随重定向 (当前否)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+    if (connect_only) // 判断是否仅连接 (检测网络状态用)
+    {
+        curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);
+    }
     if (tl_thread_idx > -1)
     {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -555,42 +572,74 @@ http_resp_t get(const char* url)
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
 
-    if (resp_code == 302)
-    {
-        LOG_DEBUG("重定向, 响应码: 302");
-        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
-        resp.status = REQUEST_REDIRECT;
-        return resp;
-    }
     if (resp_code == 200)
     {
-        LOG_DEBUG("有响应体, 响应码: 200");
-        resp.status = REQUEST_HAVE_RES;
+        LOG_DEBUG("请求成功, 响应码: 200");
+        resp.http_code = HTTP_OK;
         return resp;
     }
     if (resp_code == 204)
     {
-        LOG_VERBOSE("无响应体, 响应码: 204");
-        resp.status = REQUEST_SUCCESS;
+        LOG_VERBOSE("无内容, 响应码: 204");
+        resp.http_code = HTTP_NO_CONTENT;
         return resp;
     }
-    if (resp_code == 404)
+    if (resp_code == 301)
     {
-        LOG_VERBOSE("资源不存在, 响应码: 404");
-        resp.status = REQUEST_NOT_FOUND;
+        LOG_DEBUG("永久移动, 重定向, 响应码: 301");
+        resp.http_code = HTTP_MOVED_PERMANENTLY;
+        return resp;
+    }
+    if (resp_code == 302)
+    {
+        LOG_DEBUG("临时移动, 重定向, 响应码: 302");
+        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
+        resp.http_code = HTTP_FOUND;
         return resp;
     }
 
-    LOG_ERROR("HTTP 响应错误, 响应码: %ld", resp_code);
-    resp.status = REQUEST_ERROR;
+    LOG_ERROR("意外的 HTTP 响应码: %ld", resp_code);
+    resp.http_code = resp_code;
     return resp;
 }
 
-NetworkStatus check_network_status()
+resp_t check_network_status()
 {
-    const http_resp_t resp = get(s_generate_url);
-    if (resp.status == REQUEST_NOT_FOUND) return REQUEST_SUCCESS; // 404代表已连接至互联网
-    return resp.status;
+    resp_t resp = get(s_generate_url, true);
+
+    resp.status = STATUS_CONNECT_INTERNET;
+
+    if (resp.curl_code != CURLE_OK) // 主检测 URL 无法连通
+    {
+        LOG_WARN("主检测 URL 无法连通, 切换到备用 IP 地址 URL");
+        resp = get(s_generate_bak_url, true);
+
+        if (resp.curl_code != CURLE_OK) // 备用 IP URL 无法连通
+        {
+            LOG_ERROR("备用 IP 地址 URL 无法连通, 初步判定为无法连通外部互联网");
+            LOG_INFO("正在检测认证服务器连通性");
+
+            resp.status = STATUS_CONNECT_AUTH_SERVER;
+
+            resp = get(s_auth_ip, true);
+
+            if (resp.curl_code != CURLE_OK) // 认证服务器 1 无法连通
+            {
+                LOG_WARN("认证服务器 1 无法连通, 正在检测认证服务器 2 连通性");
+
+                resp = get(s_auth_bak_ip, true);
+
+                if (resp.curl_code != CURLE_OK) // 认证服务器 2 无法连通
+                {
+                    LOG_ERROR("认证服务器 2 无法连通, 建议检查外部网络连接情况");
+
+                    resp.status = STATUS_ERROR;
+                }
+            }
+        }
+    }
+
+    return resp;
 }
 
 static void get_school_ip_symbol()
@@ -635,9 +684,9 @@ static void get_school_ip_symbol()
     free(school_ip);
 }
 
-NetworkStatus get_last_location()
+network_status_t get_last_location()
 {
-    http_resp_t resp = {0};
+    resp_t resp = {0};
 
     uint8_t retry = 1;
     do
@@ -649,12 +698,12 @@ NetworkStatus get_last_location()
             resp.body_size = 0;
         }
         resp = get(s_generate_url); // 检测响应码
-        if (resp.status == REQUEST_NOT_FOUND) resp.status = REQUEST_SUCCESS; // 404 代表已连接至互联网
+        if (resp.status == REQUEST_NOT_FOUND) resp.status = STATUS_SUCCESS; // 404 代表已连接至互联网
         switch (resp.status)
         {
         case REQUEST_REDIRECT:
             break;
-        case REQUEST_SUCCESS:
+        case STATUS_SUCCESS:
             retry = 1;
             LOG_INFO("已连接至互联网");
             sleep_ms(10000, true);
@@ -664,7 +713,7 @@ NetworkStatus get_last_location()
             {
                 LOG_FATAL("超过最多重试次数");
                 if (resp.body_data) free(resp.body_data);
-                return REQUEST_ERROR;
+                return STATUS_ERROR;
             }
             LOG_WARN("非重定向, 响应码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", resp.status, retry);
             retry++;
@@ -694,7 +743,7 @@ NetworkStatus get_last_location()
     if (resp.status != REQUEST_HAVE_RES)
     {
         LOG_ERROR("跟随重定向后未获得认证页面, 状态: %d", resp.status);
-        return REQUEST_ERROR;
+        return STATUS_ERROR;
     }
 
     g_prog_status[tl_thread_idx].last_location_lock = true;
