@@ -55,24 +55,24 @@ static bool term()
     }
     LOG_VERBOSE("发送加密登出内容: %s", encrypt);
 
-    resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据
+    curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据
     uint8_t retry = 1;
-    while (result.status != STATUS_SUCCESS && result.status != REQUEST_HAVE_RES)
+    while (resp.status != STATUS_OK && resp.status != STATUS_NEED_AUTH && resp.http_code != HTTP_OK)
     {
         if (retry > 5)
         {
             LOG_FATAL("超过最多重试次数, 返回");
             free(encrypt);
-            if (result.body_data) free(result.body_data);
+            if (resp.body_data) free(resp.body_data);
             return false;
         }
-        LOG_ERROR("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx, result.status, retry);
+        LOG_ERROR("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx, resp.status, retry);
         retry++;
         sleep_ms(1000, true);
-        result = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据 (重试)
+        resp = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据 (重试)
     }
     free(encrypt);
-    if (result.body_data) free(result.body_data);
+    if (resp.body_data) free(resp.body_data);
 
     g_prog_status[tl_thread_idx].auth_cfg.auth_time = 0;
     g_prog_status[tl_thread_idx].runtime_status.is_authed = false;
@@ -96,17 +96,17 @@ static bool heartbeat()
     }
     LOG_VERBOSE("发送加密心跳内容: %s", encrypt);
 
-    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.keep_url, encrypt); // 向 keep_url 发送加密数据
+    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.keep_url, encrypt); // 向 keep_url 发送加密数据
     free(encrypt);
-    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
+    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
     {
         LOG_ERROR("心跳响应失败");
-        free(result.body_data);
+        free(resp.body_data);
         return false;
     }
 
-    char* decrypted_data = session_decrypt(result.body_data); // 解密响应内容
-    free(result.body_data);
+    char* decrypted_data = session_decrypt(resp.body_data); // 解密响应内容
+    free(resp.body_data);
     if (decrypted_data == NULL)
     {
         LOG_ERROR("解密心跳内容失败");
@@ -143,18 +143,18 @@ static bool login()
     }
     LOG_VERBOSE("发送加密登录内容: %s", encrypt);
 
-    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.auth_url, encrypt); // 向 auth_url 发送加密数据
+    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.auth_url, encrypt); // 向 auth_url 发送加密数据
     free(encrypt);
-    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
+    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
     {
         LOG_ERROR("登录响应失败");
-        free(result.body_data);
+        free(resp.body_data);
         return false;
     }
-    LOG_VERBOSE("登录响应内容: %s", result.body_data);
+    LOG_VERBOSE("登录响应内容: %s", resp.body_data);
 
-    char* decrypted_data = session_decrypt(result.body_data); // 解密响应内容
-    free(result.body_data);
+    char* decrypted_data = session_decrypt(resp.body_data); // 解密响应内容
+    free(resp.body_data);
     if (decrypted_data == NULL)
     {
         LOG_ERROR("解密登录响应内容失败");
@@ -233,18 +233,18 @@ static bool get_ticket()
     }
     LOG_VERBOSE("发送加密获取 ticket 内容: %s", encrypt);
 
-    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, encrypt); // 向 ticket_url 发送加密内容
+    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, encrypt); // 向 ticket_url 发送加密内容
     free(encrypt);
-    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL)
+    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
     {
         LOG_ERROR("获取 Ticket 响应失败");
-        free(result.body_data);
+        free(resp.body_data);
         return false;
     }
-    LOG_VERBOSE("获取 Ticket 响应内容: %s", result.body_data);
+    LOG_VERBOSE("获取 Ticket 响应内容: %s", resp.body_data);
 
-    char* decrypt = session_decrypt(result.body_data); // 解密响应内容
-    free(result.body_data);
+    char* decrypt = session_decrypt(resp.body_data); // 解密响应内容
+    free(resp.body_data);
     if (decrypt == NULL)
     {
         LOG_ERROR("解密 Ticket 内容失败");
@@ -267,7 +267,6 @@ static bool get_ticket()
 static bool is_uuid_text(const uint8_t* data, size_t length)
 {
     static const uint8_t hyphen_pos[] = {8, 13, 18, 23};
-    size_t i;
     unsigned hyphen_i = 0;
 
     if (data == NULL || length != 36)
@@ -275,7 +274,7 @@ static bool is_uuid_text(const uint8_t* data, size_t length)
         return false;
     }
 
-    for (i = 0; i < 36; i++)
+    for (size_t i = 0; i < 36; i++)
     {
         if (hyphen_i < 4 && i == hyphen_pos[hyphen_i])
         {
@@ -296,23 +295,20 @@ static bool is_uuid_text(const uint8_t* data, size_t length)
 
 static void uuid_to_upper(char* dst, const uint8_t* src)
 {
-    size_t i;
-    for (i = 0; i < 36; i++)
+    for (size_t i = 0; i < 36; i++)
     {
-        dst[i] = (char)toupper((unsigned char)src[i]);
+        dst[i] = (char)toupper(src[i]);
     }
     dst[36] = '\0';
 }
 
 static bool read_zsm_pascal_string(const uint8_t* data, size_t length, size_t* offset, const uint8_t** out, size_t* out_len)
 {
-    uint8_t str_len;
-
     if (data == NULL || offset == NULL || *offset >= length)
     {
         return false;
     }
-    str_len = data[*offset];
+    const uint8_t str_len = data[*offset];
     (*offset)++;
     if (*offset + str_len > length)
     {
@@ -331,7 +327,6 @@ static bool extract_algo_id_from_zsm(const bytes_t zsm, char* algo_id)
     const uint8_t* str2 = NULL;
     size_t str1_len = 0;
     size_t str2_len = 0;
-    size_t end;
 
     if (zsm.data == NULL || algo_id == NULL || zsm.length < 5)
     {
@@ -354,7 +349,7 @@ static bool extract_algo_id_from_zsm(const bytes_t zsm, char* algo_id)
         }
     }
 
-    end = zsm.length;
+    size_t end = zsm.length;
     while (end > 0)
     {
         const unsigned char c = zsm.data[end - 1];
@@ -462,18 +457,18 @@ static bool init_session()
         ticket_body = "";
         LOG_INFO("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
     }
-    const resp_t result = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
-    if (result.status != REQUEST_HAVE_RES || result.body_size == 0 || result.body_data == NULL) // 响应错误或无响应数据, 则返回 false
+    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
+    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL) // 响应错误或无响应数据, 则返回 false
     {
         LOG_ERROR("初始化会话失败");
-        free(result.body_data);
+        free(resp.body_data);
         return false;
     }
-    LOG_DEBUG("会话响应长度: %zu", result.body_size);
+    LOG_DEBUG("会话响应长度: %zu", resp.body_size);
     {
         const bytes_t zsm = {
-            .data = (uint8_t*)result.body_data,
-            .length = result.body_size
+            .data = (uint8_t*)resp.body_data,
+            .length = resp.body_size
         };
 
         LOG_DEBUG("开始初始化会话");
@@ -486,13 +481,13 @@ static bool init_session()
         {
             LOG_DEBUG("初始化会话失败");
             g_prog_status[tl_thread_idx].runtime_status.is_initialized = 0;
-            free(result.body_data);
+            free(resp.body_data);
             return false;
         }
     }
     LOG_DEBUG("初始化会话成功");
     g_prog_status[tl_thread_idx].runtime_status.is_initialized = 1;
-    free(result.body_data);
+    free(resp.body_data);
     return true;
 }
 
@@ -503,8 +498,8 @@ static AuthStatus auth()
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
 
-    const resp_t resp = get(g_prog_status[tl_thread_idx].last_location); // curl GET last_location 获取认证配置
-    if (resp.status != REQUEST_HAVE_RES || resp.body_size == 0 || resp.body_data == NULL) // 如果响应体没有内容 (非 200 响应码), 则返回
+    const curl_resp_t resp = get(g_prog_status[tl_thread_idx].last_location, false); // curl GET last_location 获取认证配置
+    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL) // 如果响应体没有内容 (非 200 响应码), 则返回
     {
         LOG_ERROR("响应体为空, 无法提取认证配置");
         return AUTH_FAILED;
@@ -663,9 +658,9 @@ static RunStatus run()
         return RUN_SUCCESS;
     }
 
-    switch (check_network_status()) // 检测网络状态
+    switch (check_network_status(true)) // 检测网络状态
     {
-    case STATUS_SUCCESS: // 返回响应成功 (204 响应码)
+    case STATUS_OK: // 正常联网
         retry_timeout = 1;
         retry_auth = 1;
         /**
@@ -710,7 +705,7 @@ static RunStatus run()
         }
         sleep_ms(1000, false);
         return RUN_SUCCESS;
-    case REQUEST_REDIRECT: // 返回重定向 (302 响应码)
+    case STATUS_NEED_AUTH: // 需要认证
         retry_timeout = 1;
         LOG_INFO("需要认证");
         if (g_prog_status[tl_thread_idx].runtime_status.is_initialized) // 进入认证流程的时候如果会话已经初始化, 重置认证配置参数
@@ -740,14 +735,14 @@ static RunStatus run()
             sleep_ms(retry_auth_time, true);
         }
         return RUN_SUCCESS;
-    case STATUS_WARN: // 返回警告, 会重试 (错误码 28, 响应超时)
+    case STATUS_ERROR: // 网络错误
         retry_auth = 1;
         if (retry_timeout > 5)
         {
             LOG_ERROR("超过最多重试次数");
             return RUN_FAILED;
         }
-        LOG_WARN("网络响应超时, 等待 10 秒后重试, 重试: 第 %" PRIu8 " 次, 最多 5 次",
+        LOG_WARN("网络错误, 等待 10 秒后重试, 重试: 第 %" PRIu8 " 次, 最多 5 次",
             retry_timeout);
         sleep_ms(10000, true);
         retry_timeout++;
@@ -755,7 +750,7 @@ static RunStatus run()
     default:
         retry_timeout = 1;
         retry_auth = 1;
-        LOG_ERROR("其它错误");
+        LOG_ERROR("网络错误");
         sleep_ms(5000, true);
         return RUN_FAILED;
     }
@@ -772,7 +767,7 @@ int dialer_app(void* arg)
         g_prog_status[tl_thread_idx].login_cfg.idx);
 
     refresh_states(); // 刷新数据 (algo_id, host_name, client_id, mac_addr)
-    if (get_last_location() == STATUS_ERROR) g_prog_status[tl_thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
+    if (get_last_location() == false) g_prog_status[tl_thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
 
     /**
      * 运行循环
@@ -835,37 +830,39 @@ void work()
      * 检测网络状态
      * 非重定向响应都会持续循环
      */
-    network_status_t status;
     uint8_t retry_network = 1;
-    do
+    bool quit = false;
+
+    while (quit == false)
     {
         if (g_need_exit)
         {
             break;
         }
-        status = check_network_status();
-        switch (status)
+        switch (check_network_status(true)) // 检查网络状态
         {
-        case STATUS_SUCCESS:
-            LOG_INFO("已连接到互联网");
+        case STATUS_OK:
+            // 正常连接到互联网
+            retry_network = 1;
+            LOG_INFO("已连接至互联网");
             sleep_ms(10000, true);
             break;
-        case STATUS_ERROR:
-        case STATUS_INIT_ERROR:
-            if (retry_network > 5)
-            {
-                LOG_FATAL("超过最多重试次数, 退出程序");
-                shut(1);
-            }
-            LOG_ERROR("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry_network);
-            retry_network++;
-            sleep_ms(5000, true);
+        case STATUS_NEED_AUTH:
+            // 需要认证
+            quit = true;
             break;
         default:
+            // 网络错误
+            if (retry_network > 5)
+            {
+                LOG_FATAL("超过最多重试次数");
+                shut(1);
+            }
+            LOG_WARN("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry_network);
+            retry_network++;
             sleep_ms(1000, true);
-            break;
         }
-    } while (status != REQUEST_REDIRECT && status != STATUS_SUCCESS);
+    }
 
     /**
      * 根据配置数创建相应数量的线程

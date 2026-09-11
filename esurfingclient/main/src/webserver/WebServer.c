@@ -52,17 +52,15 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
             // 获取联网状态
             if (mg_match(hm->uri, mg_str("/api/status/online"), NULL))
             {
-                const network_status_t status = check_network_status();
-                if (status == STATUS_SUCCESS)
+                switch (check_network_status(true))
                 {
+                case STATUS_OK:
                     mg_http_reply(c, 204, "", "");
-                }
-                else if (status == REQUEST_REDIRECT)
-                {
+                    break;
+                case STATUS_NEED_AUTH:
                     mg_http_reply(c, 302, "", "");
-                }
-                else
-                {
+                    break;
+                default:
                     mg_http_reply(c, 503, "", "");
                 }
             }

@@ -72,7 +72,7 @@ static uint8_t parse_channel_json(const cJSON* chn, uint8_t cfg_no)
 {
     if (chn == NULL)
     {
-        LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道 (Android)", cfg_no);
+        LOG_WARN("配置 %" PRIu8 " channel 参数不存在, 使用默认通道 3 (Android)", cfg_no);
         return 3;
     }
 
@@ -83,7 +83,7 @@ static uint8_t parse_channel_json(const cJSON* chn, uint8_t cfg_no)
         {
             return (uint8_t)value;
         }
-        LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", cfg_no);
+        LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 3 (Android)", cfg_no);
         return 3;
     }
 
@@ -112,7 +112,7 @@ static uint8_t parse_channel_json(const cJSON* chn, uint8_t cfg_no)
         }
     }
 
-    LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", cfg_no);
+    LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 3 (Android)", cfg_no);
     return 3;
 }
 
@@ -121,27 +121,27 @@ static void apply_channel_ua(login_cfg_t* cfg, uint8_t cfg_no)
     switch (cfg->chn)
     {
     case 1:
-        LOG_INFO("使用通道: Windows (暂未实现, 使用 Android 通道)");
+        LOG_INFO("使用通道 1: Windows (暂未实现, 使用 Android 通道)");
         snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
         break;
     case 2:
-        LOG_INFO("使用通道: Linux");
+        LOG_INFO("使用通道 2: Linux");
         snprintf(cfg->user_agent, USER_AGENT_LEN, LINUX_UA);
         break;
     case 3:
-        LOG_INFO("使用通道: Android");
+        LOG_INFO("使用通道 3: Android");
         snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
         break;
     case 4:
-        LOG_INFO("使用通道: iOS");
+        LOG_INFO("使用通道 4: iOS");
         snprintf(cfg->user_agent, USER_AGENT_LEN, IOS_UA);
         break;
     case 5:
-        LOG_INFO("使用通道: macOS");
+        LOG_INFO("使用通道 5: macOS");
         snprintf(cfg->user_agent, USER_AGENT_LEN, MACOS_UA);
         break;
     default:
-        LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 (Android)", cfg_no);
+        LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 3 (Android)", cfg_no);
         cfg->chn = 3;
         snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
         break;
