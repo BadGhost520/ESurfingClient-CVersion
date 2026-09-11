@@ -858,7 +858,7 @@ bool load_cfg()
         }
         fprintf(new_cfg, "%s", s_default_cfg);
         fclose(new_cfg);
-        LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启");
+        LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启", config_file);
         while (true)
         {
             if (g_need_exit)
