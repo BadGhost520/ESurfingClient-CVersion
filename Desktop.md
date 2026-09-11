@@ -1,9 +1,7 @@
 # Windows & Linux 环境使用教程 (版本 v2.0.1-r1)
 
-> [!WARNING]
-> 更新 v2 版本后此教程仅提供 v2 版本的教程
->
-> 如若需要 v1 版本的教程, 可自行前往 v1 分支查看
+> [!NOTE]
+> 教程版本: v2.0.7-r1
 
 ## v2 版本的使用十分简单, 跟着一步一步即可
 
@@ -118,7 +116,7 @@ sudo ./ESurfingClient-*-darwin-* -h
     {
       "username": "在这填账号",
       "password": "在这填密码",
-      "channel": "phone",
+      "channel": 3,
       "time_windows": []
     }
   ]
@@ -130,14 +128,14 @@ sudo ./ESurfingClient-*-darwin-* -h
 
 ### JSON 参数详解
 
-- enabled: 程序是否启动
-- log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
-- accounts: 账号数组
-- username: 账号
-- password: 密码
-- channel: 认证通道 (暂时没找到具体作用)
-- mark: 标记值 (高级功能, 非 OpenWrt 系统无效)
-- time_windows: 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
+- enabled(布尔值): 程序是否启动
+- log_lv(整形值, 有效范围 0-6): 日志等级, 等级越高日志显示内容越多, 数值为 0 时不输出任何日志
+- accounts(数组): 账号数组
+- username(字符串值): 账号
+- password(字符串值): 密码
+- channel(整形值, 有效范围 1-5): 认证通道
+- mark(字符串值): 标记值 (高级功能)
+- time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
 
 ## 五、重启程序 / 服务
 

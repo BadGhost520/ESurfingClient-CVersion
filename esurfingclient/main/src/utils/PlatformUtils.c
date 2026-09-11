@@ -68,7 +68,7 @@ static bool channel_str_eq(const char* a, const char* b)
 #endif
 }
 
-static uint8_t parse_channel_json(const cJSON* chn, uint8_t cfg_no)
+static uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
 {
     if (chn == NULL)
     {

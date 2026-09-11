@@ -111,12 +111,44 @@ return view.extend({
         
         self.logs_selected = self.renderLogs();
 
+        // 日志是否始终置底, 默认开启
+        self.log_autoscroll = true;
+
         self.log_panel = E('div', { id: 'log_panel', style: 'display: none' }, [
             E('h3', { style: 'margin-top: 0;' }, '日志查看'),
+
             E('div', { class: 'cbi-value' }, [
-                E('div', { class: 'cbi-value-field' }, self.logs_selected)
+                E('label', { class: 'cbi-value-title' }, '日志文件'),
+                E('div', { class: 'cbi-value-field' }, [
+                    self.logs_selected,
+                    ' ',
+                    E('button', {
+                        class: 'cbi-button cbi-button-action',
+                        click: function() { self.downloadLog(); }
+                    }, '下载')
+                ])
             ]),
-            E('div', { class: 'cbi-section' }, [
+
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '日志置底'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'checkbox',
+                        id: 'log-autoscroll-check',
+                        checked: self.log_autoscroll ? true : undefined,
+                        change: function(ev) {
+                            self.log_autoscroll = ev.target.checked;
+                            if (self.log_autoscroll) {
+                                self.scrollLogToBottom();
+                            }
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, '开启后日志有更新将会自动置底')
+                ])
+            ]),
+
+            // 日志内容区域
+            E('div', { class: 'cbi-section', style: 'margin-top: 10px;' }, [
                 E('textarea', {
                     id: 'log_content',
                     class: 'cbi-input-textarea',
@@ -134,6 +166,7 @@ return view.extend({
             E('div', { style: 'margin-left: 25px;'}, [
                 E('p', { class: 'desc' }, '用于方便地调整 ESurfing 程序的配置文件'),
                 E('p', { class: 'desc' }, '账号密码与原电信认证程序的账号密码相同'),
+                E('p', { class: 'desc' }, 'LuCI 版本: 1.0.0-r1'),
                 E('p', { class: 'desc' }, '> Powered by BadGhost')
             ]),
             E('div', { class: 'cbi-section' }, [
@@ -433,6 +466,30 @@ return view.extend({
         setTimeout(function() { self.renderTimeWindows(); }, 0);
     },
 
+    scrollLogToBottom: function() {
+        var log_area = document.getElementById('log_content');
+        if (log_area) {
+            log_area.scrollTop = log_area.scrollHeight;
+        }
+    },
+
+    downloadLog: function() {
+        var log_area = document.getElementById('log_content');
+        if (!log_area) return;
+        var select = document.getElementById('log_file');
+        var filename = (select && select.value) ? select.value : 'run.log';
+
+        var blob = new Blob([log_area.value || ''], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
     startLogAutoRefresh: function() {
         var self = this;
 
@@ -459,9 +516,17 @@ return view.extend({
 
         var textarea = document.getElementById('log_content');
         if (!textarea) return;
-        fs.read_direct('/var/log/esurfing/logs/' + document.getElementById('log_file').value)
+        var log_select = document.getElementById('log_file');
+        if (!log_select || !log_select.value) {
+            textarea.value = '请选择一个日志文件';
+            return;
+        }
+        fs.read_direct('/var/log/esurfing/logs/' + log_select.value)
         .then(function(data) {
             textarea.value = data || '暂无日志, 或客户端未启动';
+            if (self.log_autoscroll) {
+                self.scrollLogToBottom();
+            }
         })
         .catch(function() {
             textarea.value = '无法读取日志文件';
@@ -502,6 +567,7 @@ return view.extend({
         return E('select', {
             id: 'log_file',
             class: 'cbi-input-select',
+            style: 'width: auto; min-width: 200px; max-width: 400px;',
             value: 'run.log',
             change: function() {
                 self.refreshLogs();
@@ -552,6 +618,8 @@ return view.extend({
             self.accounts_panel.style.display = 'block';
             self.log_panel.style.display = 'none';
         } else if (tabName === 'tab3') {
+            var check = document.getElementById('log-autoscroll-check');
+            if (check) check.checked = self.log_autoscroll;
             self.showNotification('正在读取日志', 'info');
             self.currentTab = 'tab3';
             self.refreshLogs();

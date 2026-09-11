@@ -165,6 +165,7 @@ end
 <div style='margin-left: 25px;'>
     <p class='desc'>用于方便地调整 ESurfing 程序的配置文件</p>
     <p class='desc'>账号密码与原电信认证程序的账号密码相同</p>
+    <p class='desc'>LuCI 版本: 1.0.0-r1</p>
     <p class='desc' style='margin-bottom: 15px;'>> Powered by BadGhost</p>
 </div>
 
@@ -235,8 +236,10 @@ end
         <div class='cbi-tabcontainer' style='display: none;'>
             <h3 style='margin-top: 0; margin-bottom: 0;'>日志查看</h3>
             <div class='cbi-value'>
+                <label class='cbi-value-title'>日志文件</label>
                 <div class='cbi-value-field'>
-                    <select id='log_file_select' class='cbi-input-select'>
+                    <select id='log_file_select' class='cbi-input-select' style='width: auto; min-width: 200px; max-width: 400px;'>
+                        <%-- 原有的文件列表渲染逻辑保持不动 --%>
                         <%
                         local log_dir = "/var/log/esurfing/logs"
                         local files = {}
@@ -262,6 +265,15 @@ end
                         end
                         %>
                     </select>
+                    <button class='cbi-button cbi-button-action' onclick='downloadLog()'>下载</button>
+                </div>
+            </div>
+
+            <div class='cbi-value'>
+                <label class='cbi-value-title'>日志置底</label>
+                <div class='cbi-value-field'>
+                    <input type='checkbox' id='log-autoscroll-check' checked onchange='onLogAutoScrollChange()' />
+                    <div class='cbi-value-description'>开启后日志有更新将会自动置底</div>
                 </div>
             </div>
             <textarea id='log_content' class='cbi-input-textarea' readonly rows='20' style='font-family: monospace; width: 100%;'>
@@ -608,6 +620,44 @@ end
         });
     }
 
+    // 日志是否始终置底, 默认开启
+    var logAutoScroll = true;
+
+    // 滚动日志到底部
+    function scrollLogToBottom() {
+        var log_area = document.getElementById('log_content');
+        if (log_area) {
+            log_area.scrollTop = log_area.scrollHeight;
+        }
+    }
+
+    // 勾选框变化时
+    function onLogAutoScrollChange() {
+        var check = document.getElementById('log-autoscroll-check');
+        logAutoScroll = !!(check && check.checked);
+        if (logAutoScroll) {
+            scrollLogToBottom();
+        }
+    }
+
+    // 下载当前显示的日志
+    function downloadLog() {
+        var log_area = document.getElementById('log_content');
+        if (!log_area) return;
+        var select = document.getElementById('log_file_select');
+        var filename = (select && select.value) ? select.value : 'run.log';
+
+        var blob = new Blob([log_area.value || ''], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
     var logTimer = null;
 
     function startLogAutoRefresh() {
@@ -642,7 +692,12 @@ end
         .then(response => response.text())
         .then(data => {
             var log_area = document.getElementById('log_content');
-            if (log_area) log_area.value = data || '暂无日志, 或客户端未启动';
+            if (log_area) {
+                log_area.value = data || '暂无日志, 或客户端未启动';
+                if (logAutoScroll) {
+                    scrollLogToBottom();
+                }
+            }
         })
         .catch(err => showNotification('日志文件读取失败: ' + err, 'error'));
     }
@@ -761,6 +816,8 @@ end
             }
             currentTab = Array.from(tabs).indexOf(tab);
             if (currentTab == 2) {
+                var check = document.getElementById('log-autoscroll-check');
+                if (check) check.checked = logAutoScroll;
                 showNotification('正在读取日志', 'info');
                 loadLogContent();
                 startLogAutoRefresh();

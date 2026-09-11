@@ -35,6 +35,8 @@ jobs:
         run: |
           sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" luci-app-esurfingclient/Makefile
           sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" luci-app-esurfingclient/Makefile
+          sed -i "s/E('p', { class: 'desc' }, 'LuCI 版本.*/E('p', { class: 'desc' }, 'LuCI 版本: ${{ inputs.version }}-r${{ inputs.release }}'),/" luci-app-esurfingclient/luci/www/luci-static/resources/view/esurfingclient.js
+          sed -i "s%<p class='desc'>LuCI 版本.*%<p class='desc'>LuCI 版本: ${{ inputs.version }}-r${{ inputs.release }}</p>%" luci-app-esurfingclient/legacy-luci/usr/lib/lua/luci/view/esurfingclient.htm
 
       - name: 安装软件包 (最多重试 3 次)
         run: |

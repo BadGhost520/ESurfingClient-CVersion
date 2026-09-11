@@ -1,7 +1,7 @@
 # OpenWRT 环境使用教程
 
-> [!WARNING]
-> 仅提供 v2.0.2-r3 及以后的新教程
+> [!NOTE]
+> 教程版本: v2.0.7-r1
 
 ## 一、从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest) 下载对应架构的 ipk 包, (可选)下载 LuCI 包 
 
@@ -37,7 +37,7 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
     {
       "username": "账号",
       "password": "密码",
-      "channel": "phone",
+      "channel": 3,
       "mark": "",
       "time_windows": []
     }
@@ -47,14 +47,14 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 
 ### 参数详解
 
-- enabled: 程序是否启动
-- log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
-- accounts: 账号数组
-- username: 账号
-- password: 密码
-- channel: 认证通道 (暂时没找到具体作用)
-- mark: 标记值 (高级功能)
-- time_windows: 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
+- enabled(布尔值): 程序是否启动
+- log_lv(整形值, 0-6): 日志等级, 等级越高日志显示内容越多, 数值为 0 时不输出任何日志
+- accounts(数组): 账号数组
+- username(字符串值): 账号
+- password(字符串值): 密码
+- channel(整形值, 1-5): 认证通道
+- mark(字符串值): 标记值 (高级功能)
+- time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
 
 ### 2. 保存, 输入如下指令重启服务
 
