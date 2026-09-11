@@ -70,15 +70,15 @@
 
 # 文档
 
-[**Windows, Linux, macOS 环境**](Desktop.md)
+[**Windows, Linux, macOS 环境**](doc/Desktop.md)
 
-[**OpenWRT 环境**](OpenWRT.md)
+[**OpenWRT 环境**](doc/OpenWRT.md)
 
-[**OpenWRT 进阶 - 多拨**](OpenWRT_mwan3.md)
+[**OpenWRT 进阶 - 多拨**](doc/OpenWRT_mwan3.md)
 
-[**自行编译指南**](Compile.md)
+[**自行编译指南**](doc/Compile.md)
 
-[**Q&A**](Q&A.md)
+[**Q&A**](doc/Q&A.md)
 
 # 关于日志系统
 
