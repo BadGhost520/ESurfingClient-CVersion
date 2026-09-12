@@ -5,15 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ------------------------------------------------------------------
- * Algo Id: D755A536-B551-468C-BD87-322182B223D4 (SM4-variant ECB, Android)
- * Standard SM4 S-box + FK/CK constants, custom linear layer (L/L'),
- * ECB mode with PKCS7 padding (no IV).
- * Translated from IDA pseudocode + ARM64 asm (sub_20CC keyschedule /
- * sub_1FA0 round / sub_2304 ECB-encrypt / sub_255C ECB-decrypt).
- * Verified against the real .so via the unicorn emulator.
- * ------------------------------------------------------------------ */
-
 #define SM4_VARIANT_ECB_BLOCK_SIZE 16
 #define SM4_VARIANT_ECB_KEY_SIZE 16
 
@@ -48,7 +39,6 @@ static void sm4_variant_ecb_wr32be(uint8_t *p, uint32_t v)
     p[2] = (uint8_t)(v >> 8);  p[3] = (uint8_t)v;
 }
 
-/* keyschedule (sub_20CC). mode=1 encrypt (forward), mode=0 decrypt (reverse). */
 static void sm4_variant_ecb_keysched(const uint8_t key[16], uint32_t rk[32], int mode)
 {
     uint32_t K[4];
@@ -56,14 +46,14 @@ static void sm4_variant_ecb_keysched(const uint8_t key[16], uint32_t rk[32], int
         K[i] = sm4_variant_ecb_bswap32(((const uint32_t *)key)[i]) ^ SM4_VARIANT_ECB_FK[i];
     for (int i = 0; i < 32; ++i)
     {
-        uint32_t t = K[1] ^ K[2] ^ K[3] ^ SM4_VARIANT_ECB_CK[i];
-        uint32_t s0 = SM4_VARIANT_ECB_S[t >> 24], s1 = SM4_VARIANT_ECB_S[(t >> 16) & 0xFF],
+        const uint32_t t = K[1] ^ K[2] ^ K[3] ^ SM4_VARIANT_ECB_CK[i];
+        const uint32_t s0 = SM4_VARIANT_ECB_S[t >> 24], s1 = SM4_VARIANT_ECB_S[(t >> 16) & 0xFF],
                  s2 = SM4_VARIANT_ECB_S[(t >> 8) & 0xFF], s3 = SM4_VARIANT_ECB_S[t & 0xFF];
-        uint32_t w4 = (s0 << 24) | (s1 << 16);
-        uint32_t w1 = w4 | (s2 << 8);
-        uint32_t B = w1 | s3;
-        uint32_t e1 = ((B << 13) | (w4 >> 19)) & 0xFFFFFFFFu;
-        uint32_t e2 = ((B << 23) | (w1 >> 9)) & 0xFFFFFFFFu;
+        const uint32_t w4 = (s0 << 24) | (s1 << 16);
+        const uint32_t w1 = w4 | (s2 << 8);
+        const uint32_t B = w1 | s3;
+        const uint32_t e1 = ((B << 13) | (w4 >> 19)) & 0xFFFFFFFFu;
+        const uint32_t e2 = ((B << 23) | (w1 >> 9)) & 0xFFFFFFFFu;
         rk[i] = B ^ K[0] ^ e1 ^ e2;
         K[0] = K[1]; K[1] = K[2]; K[2] = K[3]; K[3] = rk[i];
     }
@@ -71,32 +61,31 @@ static void sm4_variant_ecb_keysched(const uint8_t key[16], uint32_t rk[32], int
     {
         for (int i = 0; i < 16; ++i)
         {
-            uint32_t t = rk[i];
+            const uint32_t t = rk[i];
             rk[i] = rk[31 - i];
             rk[31 - i] = t;
         }
     }
 }
 
-/* one 16-byte block (sub_1FA0, forward transform, same for enc/dec) */
-static void sm4_variant_ecb_block(uint32_t rk[32], const uint8_t in[16], uint8_t out[16])
+static void sm4_variant_ecb_block(const uint32_t rk[32], const uint8_t in[16], uint8_t out[16])
 {
     uint32_t X[4] = { sm4_variant_ecb_rd32be(in), sm4_variant_ecb_rd32be(in + 4),
                       sm4_variant_ecb_rd32be(in + 8), sm4_variant_ecb_rd32be(in + 12) };
     uint32_t store[32];
     for (int i = 0; i < 32; ++i)
     {
-        uint32_t t = X[1] ^ X[2] ^ X[3] ^ rk[i];
-        uint32_t s0 = SM4_VARIANT_ECB_S[t >> 24], s1 = SM4_VARIANT_ECB_S[(t >> 16) & 0xFF],
+        const uint32_t t = X[1] ^ X[2] ^ X[3] ^ rk[i];
+        const uint32_t s0 = SM4_VARIANT_ECB_S[t >> 24], s1 = SM4_VARIANT_ECB_S[(t >> 16) & 0xFF],
                  s2 = SM4_VARIANT_ECB_S[(t >> 8) & 0xFF], s3 = SM4_VARIANT_ECB_S[t & 0xFF];
-        uint32_t w4 = (s0 << 24) | (s1 << 16);
-        uint32_t w1 = w4 | (s2 << 8);
-        uint32_t B = w1 | s3;
-        uint32_t e0 = (s0 >> 6) | ((B & 0x3FFFFFFF) << 2);
-        uint32_t e1 = ((B << 24) | (w1 >> 8)) & 0xFFFFFFFFu;
-        uint32_t e2 = ((B << 10) | (w4 >> 22)) & 0xFFFFFFFFu;
-        uint32_t e3 = ((B << 18) | (w1 >> 14)) & 0xFFFFFFFFu;
-        uint32_t nx = B ^ X[0] ^ e1 ^ e0 ^ e2 ^ e3;
+        const uint32_t w4 = (s0 << 24) | (s1 << 16);
+        const uint32_t w1 = w4 | (s2 << 8);
+        const uint32_t B = w1 | s3;
+        const uint32_t e0 = (s0 >> 6) | ((B & 0x3FFFFFFF) << 2);
+        const uint32_t e1 = ((B << 24) | (w1 >> 8)) & 0xFFFFFFFFu;
+        const uint32_t e2 = ((B << 10) | (w4 >> 22)) & 0xFFFFFFFFu;
+        const uint32_t e3 = ((B << 18) | (w1 >> 14)) & 0xFFFFFFFFu;
+        const uint32_t nx = B ^ X[0] ^ e1 ^ e0 ^ e2 ^ e3;
         store[i] = nx;
         X[0] = X[1]; X[1] = X[2]; X[2] = X[3]; X[3] = nx;
     }
@@ -106,7 +95,6 @@ static void sm4_variant_ecb_block(uint32_t rk[32], const uint8_t in[16], uint8_t
     sm4_variant_ecb_wr32be(out + 12, store[28]);
 }
 
-/* sub_2304: ECB encrypt with PKCS7 pad */
 static uint8_t* sm4_variant_ecb_encrypt_raw(const uint8_t* key, const uint8_t* data,
                                             const size_t data_len, size_t* output_len)
 {
@@ -124,7 +112,6 @@ static uint8_t* sm4_variant_ecb_encrypt_raw(const uint8_t* key, const uint8_t* d
     return buf;
 }
 
-/* sub_255C: ECB decrypt + PKCS7 unpad */
 static uint8_t* sm4_variant_ecb_decrypt_raw(const uint8_t* key, const uint8_t* data,
                                             const size_t data_len, size_t* output_len)
 {

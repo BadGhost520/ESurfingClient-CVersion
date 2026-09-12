@@ -1,10 +1,12 @@
+#include "utils/simssl/evp.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 #include "NetClient.h"
 #include "States.h"
 
-#include <openssl/evp.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #ifdef __OPENWRT__

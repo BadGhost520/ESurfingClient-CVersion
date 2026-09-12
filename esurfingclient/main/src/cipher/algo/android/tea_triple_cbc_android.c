@@ -5,14 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ------------------------------------------------------------------
- * Algo Id: 35101415-A20F-4DFE-B00B-0B4F3B2F8C66 (Triple modified-TEA CBC, Android)
- * Three TEA layers (48-byte key), big-endian block/key handling,
- * CBC mode with 8-byte IV, zero-padded to multiple of 8 bytes.
- * Verified against the real .so via the unicorn emulator
- * (enc core sub_20E8 / dec core sub_23E0).
- * ------------------------------------------------------------------ */
-
 #define TEA_TRIPLE_CBC_KEY_SIZE 48
 #define TEA_TRIPLE_CBC_BLOCK_SIZE 8
 #define TEA_CBC_DELTA 0x61C88647u
@@ -27,7 +19,6 @@ static uint32_t tea_cbc_bswap32(uint32_t x)
     return ((x & 0xFF) << 24) | ((x & 0xFF00) << 8) | ((x >> 8) & 0xFF00) | (x >> 24);
 }
 
-/* one TEA layer, 32 rounds (encrypt side) */
 static void tea_cbc_enc_layer(uint32_t *v0, uint32_t *v1, const uint32_t k[4])
 {
     uint32_t a = *v0, b = *v1;
@@ -42,7 +33,6 @@ static void tea_cbc_enc_layer(uint32_t *v0, uint32_t *v1, const uint32_t k[4])
     *v1 = b;
 }
 
-/* one TEA layer, 32 rounds (decrypt side) */
 static void tea_cbc_dec_layer(uint32_t *v0, uint32_t *v1, const uint32_t k[4])
 {
     uint32_t a = *v0, b = *v1;
@@ -66,7 +56,6 @@ static void tea_cbc_load_key_layers(const uint8_t key[48], uint32_t k[3][4])
             k[layer][i] = tea_cbc_bswap32(((const uint32_t *)key)[layer * 4 + i]);
 }
 
-/* sub_20E8: CBC encrypt, layers k[2],k[1],k[0] (asm order), zero pad to 8 */
 static uint8_t* tea_cbc_encrypt_raw(const uint8_t* key, const uint8_t* iv, const uint8_t* data,
                                     const size_t data_len, size_t* output_len)
 {
@@ -94,7 +83,6 @@ static uint8_t* tea_cbc_encrypt_raw(const uint8_t* key, const uint8_t* iv, const
     return buf;
 }
 
-/* sub_23E0: CBC decrypt (reverse block order, layers k[0],k[1],k[2]) */
 static uint8_t* tea_cbc_decrypt_raw(const uint8_t* key, const uint8_t* iv, const uint8_t* data,
                                     const size_t data_len, size_t* output_len)
 {

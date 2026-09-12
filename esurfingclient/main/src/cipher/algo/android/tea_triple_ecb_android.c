@@ -5,13 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ------------------------------------------------------------------
- * Algo Id: 319FC5AB-EC0E-46B9-A252-2285F9DAE813 (Triple modified-TEA, Android)
- * Three TEA layers (48-byte key), big-endian block/key handling,
- * zero-padded to multiple of 8 bytes (ECB style, no IV).
- * Verified against the real .so via the unicorn emulator.
- * ------------------------------------------------------------------ */
-
 #define TEA_TRIPLE_KEY_SIZE 48
 #define TEA_TRIPLE_BLOCK_SIZE 8
 #define TEA_DELTA 0x61C88647u
@@ -25,7 +18,6 @@ static uint32_t tea_bswap32(uint32_t x)
     return ((x & 0xFF) << 24) | ((x & 0xFF00) << 8) | ((x >> 8) & 0xFF00) | (x >> 24);
 }
 
-/* one TEA layer, 32 rounds (encrypt side) */
 static void tea_enc_layer(uint32_t *v0, uint32_t *v1, const uint32_t k[4])
 {
     uint32_t a = *v0, b = *v1;
@@ -40,12 +32,11 @@ static void tea_enc_layer(uint32_t *v0, uint32_t *v1, const uint32_t k[4])
     *v1 = b;
 }
 
-/* one TEA layer, 32 rounds (decrypt side) */
 static void tea_dec_layer(uint32_t *v0, uint32_t *v1, const uint32_t k[4])
 {
     uint32_t a = *v0, b = *v1;
     uint32_t sum = 0xC6EF3720u;
-    uint32_t kidx = 0x28B7BD67u;   /* -31 * delta (from asm, NOT the IDA value) */
+    uint32_t kidx = 0x28B7BD67u;
     do
     {
         b -= (a ^ sum) + ((a << 4) ^ (a >> 5)) + k[(sum >> 11) & 3];

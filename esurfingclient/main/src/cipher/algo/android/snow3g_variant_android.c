@@ -5,14 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ------------------------------------------------------------------
- * Algo Id: 07E824B2-9E5C-4D1B-BBB0-5E07C251E4AA (SNOW3G-variant, Android)
- * SNOW3G-style stream cipher: 16 s-cells + FSM (two S-boxes),
- * 16 rounds key/iv mixing + 32 warmup rounds, then keystream XOR.
- * Zero-padded to multiple of 4 bytes (stream mode).
- * Verified against the real .so via the unicorn emulator.
- * ------------------------------------------------------------------ */
-
 #define SNOW3G_CELLS 22
 #define SNOW3G_KEY_SIZE 16
 #define SNOW3G_IV_SIZE 16
@@ -46,7 +38,6 @@ static uint32_t snow3g_sbox(uint32_t x)
          | ((uint32_t)SNOW3G_S0[(x >> 8) & 0xFF] << 8) | (uint32_t)SNOW3G_S1[x & 0xFF];
 }
 
-/* FSM step (sub_427C): reads ctx[0..4], writes ctx[0..1] */
 static uint32_t snow3g_fsm(uint32_t *c)
 {
     const uint32_t v1 = c[1];
@@ -69,7 +60,6 @@ static uint32_t snow3g_fsm(uint32_t *c)
     return v4;
 }
 
-/* keyschedule (sub_229C): 16 s-cells + 32 warmup rounds */
 static void snow3g_keyschedule(uint32_t *c, const uint8_t *key, const uint8_t *iv)
 {
     memset(c, 0, SNOW3G_CELLS * sizeof(uint32_t));
@@ -91,7 +81,6 @@ static void snow3g_keyschedule(uint32_t *c, const uint8_t *key, const uint8_t *i
         c[4] = (v14 >> 15) | (v13 << 16);
         c[5] = (v16 >> 15) | (v15 << 16);
         const uint32_t v18 = snow3g_fsm(c);
-        // const uint64_t v19_lo = ((uint64_t)c[11] << 32) | c[10];
         const uint64_t v19_hi = ((uint64_t)c[13] << 32) | c[12];
         const uint64_t v20    = ((uint64_t)c[20] << 32) | c[19];
         const uint32_t v15n   = c[9];
@@ -133,8 +122,7 @@ static void snow3g_keyschedule(uint32_t *c, const uint8_t *key, const uint8_t *i
     } while (--rounds);
 }
 
-/* keystream generate & xor (sub_20F8, same for enc/dec) */
-static void snow3g_generate(uint32_t *c, const uint8_t *in, int blocks, uint8_t *out)
+static void snow3g_generate(uint32_t *c, const uint8_t *in, const int blocks, uint8_t *out)
 {
     const uint32_t v4 = (c[15] >> 15) | (c[17] << 16);
     const uint32_t v5 = (c[11] >> 15) | (c[13] << 16);

@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 0)
-set(PROGRAM_VERSION_PATCH 7)
-set(PROGRAM_VERSION_RELEASE 2)
+set(PROGRAM_VERSION_PATCH 8)
+set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -37,7 +37,7 @@ endif ()
 
 if (WIN32)
     add_definitions(-DCURL_STATICLIB)
-    add_definitions(-DOPENSSL_NO_DYNAMIC_ENGINE)
+#    add_definitions(-DOPENSSL_NO_DYNAMIC_ENGINE)
 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
@@ -45,14 +45,14 @@ else ()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
     set(BUILD_SHARED_LIBS OFF)
-    set(OPENSSL_USE_STATIC_LIBS TRUE)
+#    set(OPENSSL_USE_STATIC_LIBS TRUE)
     set(CURL_USE_STATIC_LIBS TRUE)
 
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif ()
 
 find_package(CURL REQUIRED)
-find_package(OpenSSL REQUIRED)
+#find_package(OpenSSL REQUIRED)
 
 if (__OPENWRT__)
     add_executable(ESurfingClient
@@ -76,6 +76,7 @@ if (__OPENWRT__)
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
+            src/utils/simssl/evp.c
             src/utils/PlatformUtils.c
             src/utils/TimeControl.c
             src/utils/SimThread.c
@@ -111,6 +112,7 @@ else ()
             src/cipher/KeyData.c
             src/webserver/WebServer.c
             src/webserver/mongoose.c
+            src/utils/simssl/evp.c
             src/utils/PlatformUtils.c
             src/utils/TimeControl.c
             src/utils/SimProcess.c
@@ -146,7 +148,7 @@ target_include_directories(ESurfingClient PRIVATE
 if (WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-            OpenSSL::Crypto
+#            OpenSSL::Crypto
             ws2_32
             wldap32
             winmm
@@ -159,7 +161,7 @@ if (WIN32)
 else ()
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-            OpenSSL::Crypto
+#            OpenSSL::Crypto
             pthread
             dl
     )
@@ -170,7 +172,7 @@ else ()
         )
         if (__OPENWRT__)
             target_link_libraries(ESurfingClient PRIVATE
-                    OpenSSL::SSL
+#                    OpenSSL::SSL
             )
         endif ()
     endif ()
