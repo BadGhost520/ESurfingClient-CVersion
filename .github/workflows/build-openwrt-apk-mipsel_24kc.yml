@@ -1,4 +1,4 @@
-name: Build OpenWrt ramips_mt7621 APK
+name: Build OpenWrt mipsel_24kc APK
 
 permissions:
   contents: write
@@ -19,8 +19,8 @@ on:
         type: string
 
 env:
-  SDK_URL: "https://downloads.openwrt.org/releases/25.12.0/targets/ramips/mt7621"
-  SDK_NAME: "openwrt-sdk-25.12.0-ramips-mt7621_gcc-14.3.0_musl.Linux-x86_64"
+  SDK_URL: "https://downloads.openwrt.org/releases/25.12.5/targets/malta/le"
+  SDK_NAME: "openwrt-sdk-25.12.5-malta-le_gcc-14.3.0_musl.Linux-x86_64"
 
 jobs:
   build:
@@ -43,10 +43,10 @@ jobs:
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ 所有软件包已完成安装"
+              echo "所有软件包已完成安装"
               break
             fi
-            echo "❌ 尝试 $i 失败"
+            echo "尝试 $i 失败"
             sleep 3
           done
 
@@ -56,7 +56,7 @@ jobs:
         with:
           path: |
             ${{ env.SDK_NAME }}.tar.zst
-          key: openwrt-ramips_mt7621-apk-sdk-${{ inputs.sdk_version }}
+          key: openwrt-mipsel_24kc-apk-sdk-${{ inputs.sdk_version }}
 
       - name: 下载 SDK
         if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
@@ -79,7 +79,7 @@ jobs:
           path: |
             openwrt-sdk/staging_dir/
             openwrt-sdk/dl/
-          key: openwrt-ramips_mt7621-sdk-${{ inputs.sdk_version }}-${{ hashFiles('.configs/ramips_mt7621-apk.config') }}
+          key: openwrt-mipsel_24kc-sdk-${{ inputs.sdk_version }}-${{ hashFiles('.configs/mipsel_24kc-apk.config') }}
 
       - name: 准备构建配置
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
@@ -89,20 +89,11 @@ jobs:
           scripts/feeds update base
           scripts/feeds update packages
           
-          scripts/feeds install openssl
           scripts/feeds install curl
           
-          make defconfig
-          
-          cat ../.configs/ramips_mt7621-apk.config >> .config
+          cat ../.configs/mipsel_24kc-apk.config >> .config
 
           make defconfig
-
-      - name: 编译 libopenssl
-        if: steps.cache-openwrt.outputs.cache-hit != 'true'
-        run: |
-          cd openwrt-sdk
-          make package/openssl/compile -j$(nproc)
 
       - name: 编译 libcurl
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
@@ -120,11 +111,11 @@ jobs:
           
           make package/esurfingclient/compile -j$(nproc)
 
-          find bin/packages -name "esurfingclient*.apk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621.apk \;
+          find bin/packages -name "esurfingclient*.apk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mipsel_24kc.apk \;
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621-apk
-          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_ramips_mt7621.apk
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mipsel_24kc-apk
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mipsel_24kc.apk
           retention-days: 30

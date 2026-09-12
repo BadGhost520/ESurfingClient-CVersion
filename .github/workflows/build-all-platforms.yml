@@ -31,7 +31,7 @@ on:
           - openwrt-x86_64-apk
           - openwrt-arm64-ipk
           - openwrt-ramips_mt7621-ipk
-          - openwrt-ramips_mt7621-apk
+          - openwrt-mipsel_24kc-apk
           - openwrt-mediatek_filogic-ipk
           - openwrt-mediatek_filogic-apk
           - openwrt-qualcommax_ipq60xx-ipk
@@ -173,9 +173,9 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
-  openwrt-ramips_mt7621-apk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621-apk'
-    uses: ./.github/workflows/build-openwrt-apk-ramips_mt7621.yml
+  openwrt-mipsel_24kc-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mipsel_24kc-apk'
+    uses: ./.github/workflows/build-openwrt-apk-mipsel_24kc.yml
     secrets: inherit
     needs: get-version
     with:
@@ -237,7 +237,7 @@ jobs:
       - openwrt-qualcommax_ipq60xx-ipk
       - openwrt-luci-apk
       - openwrt-x86_64-apk
-      - openwrt-ramips_mt7621-apk
+      - openwrt-mipsel_24kc-apk
       - openwrt-mediatek_filogic-apk
       - openwrt-qualcommax_ipq60xx-apk
     runs-on: ubuntu-latest
