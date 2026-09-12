@@ -1,8 +1,8 @@
-#include "TimeControl.h"
-#include "States.h"
 #include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "utils/TimeControl.h"
 #include "utils/SimThread.h"
+#include "utils/Logger.h"
+#include "States.h"
 
 #include <stdint.h>
 #include <time.h>

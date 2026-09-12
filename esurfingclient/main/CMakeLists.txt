@@ -56,6 +56,12 @@ find_package(OpenSSL REQUIRED)
 
 if (__OPENWRT__)
     add_executable(ESurfingClient
+            src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
+            src/cipher/algo/linux/des_ecb_six_linux.c
+            src/cipher/algo/linux/desede_cbc_linux.c
+            src/cipher/algo/linux/mod_xtea_linux.c
+            src/cipher/algo/linux/aes_ecb_linux.c
+            src/cipher/algo/linux/aes_cbc_linux.c
             src/cipher/algo/android/desede_double_cbc_android.c
             src/cipher/algo/android/sm4_variant_cbc_android.c
             src/cipher/algo/android/sm4_variant_ecb_android.c
@@ -67,28 +73,28 @@ if (__OPENWRT__)
             src/cipher/algo/android/des_ecb_six_android.c
             src/cipher/algo/ios/lzma/LzmaDec.c
             src/cipher/algo/ios/ios_zsm.c
-            src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
-            src/cipher/algo/linux/des_ecb_six_linux.c
-            src/cipher/algo/linux/desede_cbc_linux.c
-            src/cipher/algo/linux/mod_xtea_linux.c
-            src/cipher/algo/linux/aes_ecb_linux.c
-            src/cipher/algo/linux/aes_cbc_linux.c
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
             src/utils/PlatformUtils.c
+            src/utils/TimeControl.c
             src/utils/SimThread.c
             src/utils/Shutdown.c
             src/utils/Logger.c
             src/utils/cJSON.c
             src/DialerClient.c
-            src/TimeControl.c
             src/NetClient.c
             src/States.c
             Main.c
     )
 else ()
     add_executable(ESurfingClient
+            src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
+            src/cipher/algo/linux/des_ecb_six_linux.c
+            src/cipher/algo/linux/desede_cbc_linux.c
+            src/cipher/algo/linux/mod_xtea_linux.c
+            src/cipher/algo/linux/aes_ecb_linux.c
+            src/cipher/algo/linux/aes_cbc_linux.c
             src/cipher/algo/android/desede_double_cbc_android.c
             src/cipher/algo/android/sm4_variant_cbc_android.c
             src/cipher/algo/android/sm4_variant_ecb_android.c
@@ -100,18 +106,13 @@ else ()
             src/cipher/algo/android/des_ecb_six_android.c
             src/cipher/algo/ios/lzma/LzmaDec.c
             src/cipher/algo/ios/ios_zsm.c
-            src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
-            src/cipher/algo/linux/des_ecb_six_linux.c
-            src/cipher/algo/linux/desede_cbc_linux.c
-            src/cipher/algo/linux/mod_xtea_linux.c
-            src/cipher/algo/linux/aes_ecb_linux.c
-            src/cipher/algo/linux/aes_cbc_linux.c
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
             src/webserver/WebServer.c
             src/webserver/mongoose.c
             src/utils/PlatformUtils.c
+            src/utils/TimeControl.c
             src/utils/SimProcess.c
             src/utils/SimThread.c
             src/utils/Shutdown.c
@@ -119,7 +120,6 @@ else ()
             src/utils/Logger.c
             src/utils/cJSON.c
             src/DialerClient.c
-            src/TimeControl.c
             src/NetClient.c
             src/States.c
             Main.c

@@ -1,12 +1,14 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/IosZsm.h"
+
 #include "utils/PlatformUtils.h"
+#include "utils/TimeControl.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
+
 #include "DialerClient.h"
 #include "NetClient.h"
 #include "States.h"
-#include "TimeControl.h"
 
 #include <ctype.h>
 #include <stdlib.h>
