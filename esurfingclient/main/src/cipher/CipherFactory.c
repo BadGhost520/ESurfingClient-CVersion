@@ -121,7 +121,8 @@ static cipher_interface_t* create_cipher_factory(const char* algo_id)
         LOG_DEBUG("命中 45433DCF-9ECA-4BE5-83F2-F92BA0B4F291");
         return create_aes_cbc_linux_cipher(
             key1_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291,
-            key2_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291
+            key2_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291,
+            iv_45433DCF_9ECA_4BE5_83F2_F92BA0B4F291
         );
     }
     // XTEA (Linux)
@@ -235,6 +236,110 @@ static cipher_interface_t* create_cipher_factory(const char* algo_id)
             iv_35101415_A20F_4DFE_B00B_0B4F3B2F8C66
         );
     }
+
+    // triple modified-TEA CBC (Windows)
+    if (strcmp(algo_id, "03F8A638-5C23-418B-972C-A2BA6927EF77") == 0)
+    {
+        LOG_DEBUG("命中 03F8A638-5C23-418B-972C-A2BA6927EF77");
+        return create_xtea_triple_cbc_windows_cipher(
+            key_03F8A638_5C23_418B_972C_A2BA6927EF77,
+            iv_03F8A638_5C23_418B_972C_A2BA6927EF77
+        );
+    }
+
+    // 3DES-CBC (Windows)
+    if (strcmp(algo_id, "054DDD03-911E-49F5-89D6-EFBF5055FBFF") == 0)
+    {
+        LOG_DEBUG("命中 054DDD03-911E-49F5-89D6-EFBF5055FBFF");
+        return create_desede_cbc_linux_cipher(
+            key_054DDD03_911E_49F5_89D6_EFBF5055FBFF,
+            key_054DDD03_911E_49F5_89D6_EFBF5055FBFF + 24,
+            iv_054DDD03_911E_49F5_89D6_EFBF5055FBFF,
+            iv_054DDD03_911E_49F5_89D6_EFBF5055FBFF
+        );
+    }
+
+    // AES-CBC (Windows)
+    if (strcmp(algo_id, "066474E5-503E-4B82-98C4-DF4483DAF0B5") == 0)
+    {
+        LOG_DEBUG("命中 066474E5-503E-4B82-98C4-DF4483DAF0B5");
+        return create_aes_cbc_linux_cipher(
+            key1_066474E5_503E_4B82_98C4_DF4483DAF0B5,
+            key2_066474E5_503E_4B82_98C4_DF4483DAF0B5,
+            iv_066474E5_503E_4B82_98C4_DF4483DAF0B5
+        );
+    }
+
+    // triple modified-TEA CBC (Windows)
+    if (strcmp(algo_id, "079637D7-A2A2-41CE-A50D-4CAD3B2334E7") == 0)
+    {
+        LOG_DEBUG("命中 079637D7-A2A2-41CE-A50D-4CAD3B2334E7");
+        return create_xtea_triple_cbc_windows_cipher(
+            key_079637D7_A2A2_41CE_A50D_4CAD3B2334E7,
+            iv_079637D7_A2A2_41CE_A50D_4CAD3B2334E7
+        );
+    }
+
+    // AES-ECB (Windows)
+    if (strcmp(algo_id, "083B005A-7ACA-419A-AC00-6929C0AADB55") == 0)
+    {
+        LOG_DEBUG("命中 083B005A-7ACA-419A-AC00-6929C0AADB55");
+        return create_aes_ecb_linux_cipher(
+            key1_083B005A_7ACA_419A_AC00_6929C0AADB55,
+            key2_083B005A_7ACA_419A_AC00_6929C0AADB55
+        );
+    }
+
+    // AES-ECB (Windows)
+    if (strcmp(algo_id, "08BDB042-5D25-4397-875F-357E9F7700C8") == 0)
+    {
+        LOG_DEBUG("命中 08BDB042-5D25-4397-875F-357E9F7700C8");
+        return create_aes_ecb_linux_cipher(
+            key1_08BDB042_5D25_4397_875F_357E9F7700C8,
+            key2_08BDB042_5D25_4397_875F_357E9F7700C8
+        );
+    }
+
+    // triple modified-TEA CBC (Windows)
+    if (strcmp(algo_id, "0A2375CB-1F91-4064-B00F-1CF3A1AF6E4A") == 0)
+    {
+        LOG_DEBUG("命中 0A2375CB-1F91-4064-B00F-1CF3A1AF6E4A");
+        return create_xtea_triple_cbc_windows_cipher(
+            key_0A2375CB_1F91_4064_B00F_1CF3A1AF6E4A,
+            iv_0A2375CB_1F91_4064_B00F_1CF3A1AF6E4A
+        );
+    }
+
+    // triple modified-TEA CBC (Windows)
+    if (strcmp(algo_id, "11734889-14D8-48FA-ACEC-36452CA3FE8D") == 0)
+    {
+        LOG_DEBUG("命中 11734889-14D8-48FA-ACEC-36452CA3FE8D");
+        return create_xtea_triple_cbc_windows_cipher(
+            key_11734889_14D8_48FA_ACEC_36452CA3FE8D,
+            iv_11734889_14D8_48FA_ACEC_36452CA3FE8D
+        );
+    }
+
+    // triple modified-TEA CBC (Windows)
+    if (strcmp(algo_id, "CF750526-3D99-44BE-A0DE-09DEADC97D52") == 0)
+    {
+        LOG_DEBUG("命中 CF750526-3D99-44BE-A0DE-09DEADC97D52");
+        return create_xtea_triple_cbc_windows_cipher(
+            key_CF750526_3D99_44BE_A0DE_09DEADC97D52,
+            iv_CF750526_3D99_44BE_A0DE_09DEADC97D52
+        );
+    }
+
+    // triple modified-TEA CBC (Windows)
+    if (strcmp(algo_id, "FC05D786-59A7-4469-B276-0D9B89EAD057") == 0)
+    {
+        LOG_DEBUG("命中 FC05D786-59A7-4469-B276-0D9B89EAD057");
+        return create_xtea_triple_cbc_windows_cipher(
+            key_FC05D786_59A7_4469_B276_0D9B89EAD057,
+            iv_FC05D786_59A7_4469_B276_0D9B89EAD057
+        );
+    }
+
     return NULL;
 }
 

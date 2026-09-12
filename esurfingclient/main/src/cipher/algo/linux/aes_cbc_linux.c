@@ -8,6 +8,7 @@
 typedef struct {
     uint8_t round_keys1[176];
     uint8_t round_keys2[176];
+    uint8_t iv[16];
 } aes_cbc_linux_ctx_t;
 
 static const uint8_t sbox[256] = {
@@ -198,15 +199,11 @@ static char* aes_cbc_encrypt(cipher_interface_t* self, const char* text)
     size_t padded_len = 0;
     uint8_t* padded = pad_2_multiple(input, len, 16, &padded_len);
     if (!padded) return NULL;
-    const uint8_t iv1[16] = {0};
     uint8_t* stage1 = s_malloc(16 + padded_len);
-    memcpy(stage1, iv1, 16);
-    cbc_encrypt(padded, stage1 + 16, padded_len, ctx->round_keys1, iv1);
-    const uint8_t iv2[16] = {0};
+    cbc_encrypt(padded, stage1 + 16, padded_len, ctx->round_keys1, ctx->iv);
     const size_t stage1_len = 16 + padded_len;
     uint8_t* stage2 = s_malloc(16 + stage1_len);
-    memcpy(stage2, iv2, 16);
-    cbc_encrypt(stage1, stage2 + 16, stage1_len, ctx->round_keys2, iv2);
+    cbc_encrypt(stage1, stage2 + 16, stage1_len, ctx->round_keys2, ctx->iv);
     char* hex = bytes_2_hex(stage2, 16 + stage1_len);
     s_free(padded);
     s_free(stage1);
@@ -258,9 +255,13 @@ static void aes_cbc_destroy(cipher_interface_t* self)
     s_free(self);
 }
 
-cipher_interface_t* create_aes_cbc_linux_cipher(const uint8_t* key1, const uint8_t* key2)
+cipher_interface_t* create_aes_cbc_linux_cipher(
+    const uint8_t* key1,
+    const uint8_t* key2,
+    const uint8_t* iv
+)
 {
-    if (!key1 || !key2) return NULL;
+    if (!key1 || !key2 || !iv) return NULL;
     cipher_interface_t* ci = s_calloc(1, sizeof(cipher_interface_t));
     aes_cbc_linux_ctx_t* ctx = s_calloc(1, sizeof(aes_cbc_linux_ctx_t));
     key_expansion(key1, ctx->round_keys1);

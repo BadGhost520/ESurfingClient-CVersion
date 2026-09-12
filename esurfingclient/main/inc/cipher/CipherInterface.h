@@ -80,7 +80,8 @@ extern cipher_interface_t* create_mod_xtea_linux_cipher(
 
 extern cipher_interface_t* create_aes_cbc_linux_cipher(
     const uint8_t* key1,
-    const uint8_t* key2);
+    const uint8_t* key2,
+    const uint8_t* iv);
 
 extern cipher_interface_t* create_aes_ecb_linux_cipher(
     const uint8_t* key1,
@@ -117,6 +118,10 @@ extern cipher_interface_t* create_desede_double_cbc_android_cipher(
 
 extern cipher_interface_t* create_des_ecb_six_android_cipher(
     const uint8_t* key);
+
+extern cipher_interface_t* create_xtea_triple_cbc_windows_cipher(
+    const uint8_t* key,
+     const uint8_t* iv);
 
 /**
  * 销毁加解密工厂
