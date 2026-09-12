@@ -37,7 +37,6 @@ endif ()
 
 if (WIN32)
     add_definitions(-DCURL_STATICLIB)
-#    add_definitions(-DOPENSSL_NO_DYNAMIC_ENGINE)
 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
@@ -45,14 +44,12 @@ else ()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
     set(BUILD_SHARED_LIBS OFF)
-#    set(OPENSSL_USE_STATIC_LIBS TRUE)
     set(CURL_USE_STATIC_LIBS TRUE)
 
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif ()
 
 find_package(CURL REQUIRED)
-#find_package(OpenSSL REQUIRED)
 
 if (__OPENWRT__)
     add_executable(ESurfingClient
@@ -148,7 +145,6 @@ target_include_directories(ESurfingClient PRIVATE
 if (WIN32)
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-#            OpenSSL::Crypto
             ws2_32
             wldap32
             winmm
@@ -161,7 +157,6 @@ if (WIN32)
 else ()
     target_link_libraries(ESurfingClient PRIVATE
             CURL::libcurl
-#            OpenSSL::Crypto
             pthread
             dl
     )
@@ -170,11 +165,6 @@ else ()
                 atomic
                 m
         )
-        if (__OPENWRT__)
-            target_link_libraries(ESurfingClient PRIVATE
-#                    OpenSSL::SSL
-            )
-        endif ()
     endif ()
 endif ()
 

@@ -1,4 +1,4 @@
-# Windows & Linux 环境使用教程 (版本 v2.0.1-r1)
+# Windows, Linux, MacOS 环境使用教程
 
 > [!NOTE]
 > 教程版本: v2.0.7-r1
@@ -81,6 +81,9 @@ badghost@badghostdeMac ~ %
 ```
 
 ### 2. Linux 在终端执行
+
+> [!WARNING]
+> 需要使用 systemd 管理服务的 Linux 系统才能使用
 
 ```shell
 # Linux Bash

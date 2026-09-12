@@ -1,4 +1,7 @@
-# 自行编译指南
+# 程序自行编译教程
+
+> [!NOTE]
+> 教程版本: v2.0.8-r1
 
 ### 我还是比较建议使用已有的 github action 来编译的
 
@@ -11,9 +14,9 @@
 
 ### 自行编译教程很简略, 因为过程完全可以按照 action 的步骤去做, 这里就不再细说
 
-## Windows
+# Windows
 
-### `简单一点` 就是在 Windows 使用 vcpkg 安装 mingw 包, 包括 curl 和 openssl 的
+### `简单一点` 就是在 Windows 使用 vcpkg 安装 mingw 包, 包括 curl 的
 
 ### 然后就使用 vcpkg 的 .cmake 配置来让 cmake 能找到这两个包就可以编译了
 
@@ -66,69 +69,7 @@ cat > toolchain-mingw64.cmake << 'EOF'
       EOF
 ```
 
-### 3. 使用指定配置编译安装 libopenssl
-
-```shell
-cd /tmp
-wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
-tar -xzf openssl-4.0.0.tar.gz
-cd openssl-4.0.0
-
-# 使用指定的配置去编译 libopenssl
-./Configure \
-    mingw64 \
-    --cross-compile-prefix=x86_64-w64-mingw32- \
-    --prefix=/usr/x86_64-w64-mingw32 \
-    --libdir=lib \
-    no-shared \
-    no-tests \
-    no-docs \
-    no-apps \
-    no-tls \
-    no-bf \
-    no-cast \
-    no-idea \
-    no-rc2 \
-    no-rc4 \
-    no-rc5 \
-    no-seed \
-    no-aria \
-    no-camellia \
-    no-sm2 \
-    no-sm3 \
-    no-mdc2 \
-    no-rmd160 \
-    no-whirlpool \
-    no-blake2 \
-    no-md4 \
-    no-dtls \
-    no-quic \
-    no-sctp \
-    no-srp \
-    no-zlib \
-    no-zstd \
-    no-brotli \
-    no-ktls \
-    no-rdrand \
-    no-asan \
-    no-msan \
-    no-ubsan \
-    no-trace \
-    no-egd \
-    no-krb5kdf \
-    no-scrypt \
-    no-x942kdf \
-    no-x963kdf \
-    no-srtp \
-    no-ocsp \
-    no-cms \
-    no-ts
-
-make -j$(nproc)
-sudo make install
-```
-
-### 4. 使用指定配置编译安装 libcurl 
+### 3. 使用指定配置编译安装 libcurl 
 
 ```shell
 cd /tmp
@@ -199,7 +140,7 @@ make -j$(nproc)
 sudo make install
 ```
 
-### 5. 编译本程序
+### 4. 编译本程序
 
 ```shell
 # 根据自身情况判断路径
@@ -215,11 +156,11 @@ cmake \
 cmake --build build --target ESurfingClient -j$(nproc)
 ```
 
-### 6. 然后在 build 目录就能找到 .exe 程序
+### 5. 然后在 build 目录就能找到 .exe 程序
 
-## Linux
+# Linux
 
-### Linux 的比较简单, 只需要手动编译可以被静态链接的 libopenssl 和 libcurl 即可
+### Linux 的比较简单, 只需要手动编译可以被静态链接的 libcurl 即可
 
 ### 1. 确保安装了以下软件包
 
@@ -236,65 +177,7 @@ sudo apt install build-essential \
          file
 ```
 
-### 2. 使用指定配置编译安装 libopenssl
-
-```shell
-cd /tmp
-wget https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz
-tar -xzf openssl-4.0.0.tar.gz
-cd openssl-4.0.0
-
-./Configure \
-    --prefix=/usr/local \
-    no-shared \
-    no-tests \
-    no-docs \
-    no-apps \
-    no-tls \
-    no-bf \
-    no-cast \
-    no-idea \
-    no-rc2 \
-    no-rc4 \
-    no-rc5 \
-    no-seed \
-    no-aria \
-    no-camellia \
-    no-sm2 \
-    no-sm3 \
-    no-mdc2 \
-    no-rmd160 \
-    no-whirlpool \
-    no-blake2 \
-    no-md4 \
-    no-dtls \
-    no-quic \
-    no-sctp \
-    no-srp \
-    no-zlib \
-    no-zstd \
-    no-brotli \
-    no-ktls \
-    no-rdrand \
-    no-asan \
-    no-msan \
-    no-ubsan \
-    no-trace \
-    no-egd \
-    no-krb5kdf \
-    no-scrypt \
-    no-x942kdf \
-    no-x963kdf \
-    no-srtp \
-    no-ocsp \
-    no-cms \
-    no-ts
-
-make -j$(nproc)
-sudo make install
-```
-
-### 3. 使用指定配置编译安装 libcurl
+### 2. 使用指定配置编译安装 libcurl
 
 ```shell
 cd /tmp
@@ -364,7 +247,7 @@ make -j$(nproc)
 sudo make install
 ```
 
-### 4. 编译本程序
+### 3. 编译本程序
 
 ```shell
 export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
@@ -379,9 +262,9 @@ cd build
 make -j$(nproc)
 ```
 
-### 5. 在当前目录就能找到编译出来的程序
+### 4. 在当前目录就能找到编译出来的程序
 
-## macOS
+# macOS
 
 > [!NOTE]
 > 和 Linux 的差不多
@@ -390,7 +273,7 @@ make -j$(nproc)
 > 
 > 具体可看相应的工作流
 
-## OpenWRT 主程序包
+# OpenWRT 主程序包
 
 ### OpenWRT 包的编译比较麻烦
 
@@ -424,29 +307,23 @@ sudo apt install -y build-essential \
 
 ```shell
 # 使用的镜像站: https://mirrors.sustech.edu.cn/openwrt/releases/
-# 示例 SDK 包面向架构: ramips_mt7621
+# 示例 SDK 包面向架构: mipsel_24kc
 cd /tmp
-wget https://mirrors.sustech.edu.cn/openwrt/releases/24.10.6/targets/ramips/mt7621/openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-tar -I zstd -xf openwrt-sdk-24.10.6-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+wget https://mirrors.sustech.edu.cn/openwrt/releases/24.10.8/targets/malta/le/openwrt-sdk-24.10.8-malta-le_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+tar -I zstd -xf openwrt-sdk-24.10.8-malta-le_gcc-13.3.0_musl.Linux-x86_64.tar.zst
 ```
 
 > [!NOTE]
-> 值得一提的是
-> 
-> 因为 OpenWRT 官方在 ipk 时期不支持 qualcommax_ipq60xx
-> 
-> 所以作者编译了一个用于编译 qualcommax_ipq60xx ipk 包的 SDK 包
-> 
-> 下载链接在这: [传送门](https://openlist.xylg.com:20001/d/openwrt-sdk-qualcommax-ipq60xx_gcc-13.3.0_musl.Linux-x86_64.tar.zst?sign=QexHFidwDY6AWxAu9ckCn1flR3R-DzoCKlviA-fOs6w=:0)
+> 如果需要编译 apk 包则需要下载 OpenWRT 25.12.x 及以上版本的 SDK 包
 
 ### 3. 更新 feeds 源
 
 > [!WARNING]
 > 做这一步之前, 如果有版本号要求的话
 > 
-> 检查 esurfingclient 目录下的 Makefile 文件
+> 检查 esurfingclient/main 目录下的 CMakeLists.txt 文件
 > 
-> 找到 PKG_VERSION 和 PKG_RELEASE
+> 找到 set(PROGRAM_VERSION_MAJOR x), set(PROGRAM_VERSION_MINOR x),set(PROGRAM_VERSION_PATCH x), set(PROGRAM_VERSION_RELEASE x) 三个选项
 > 
 > 修改成自己要的版本号, 否则包版本号默认是 1.0.0-1 
 
@@ -458,31 +335,16 @@ cd openwrt-sdk
 scripts/feeds update base
 scripts/feeds update packages
 
-scripts/feeds install openssl
 scripts/feeds install curl
 scripts/feeds install esurfingclient
 ```
 
-### 4-1. 修改编译配置 (没支持的架构)
-
-> [!WARNING]
-> 如果不想折腾作者没支持的架构的话
-> 
-> 可以前往 4-2 步
-
-```shell
-# 参考 openwrt_configs 目录的 *.config 文件, 勾选和取消勾选指定选项
-# 使用 '/' 可以查找对应选项的位置
-make menuconfig
-```
-
-### 4-2. 修改编译配置 (已支持的架构)
+### 4. 修改编译配置
 
 ```shell
 make defconfig
 
-# 根据要编译的架构判断使用哪个配置文件
-cat ../openwrt_configs/all.config >> .config
+cat ../openwrt-config/all.config >> .config
 
 make defconfig
 ```
@@ -490,9 +352,6 @@ make defconfig
 ### 5. 编译软件包
 
 ```shell
-# 编译 libopenssl 包
-make package/openssl/compile -j$(nproc)
-
 # 编译 libcurl 包
 make package/curl/compile -j$(nproc)
 
@@ -508,6 +367,6 @@ find bin/packages -name "esurfingclient*.apk" -exec cp {} ./ \;
 
 ### 6. 在 bin/packages 目录就能找到编译出来的包
 
-## OpenWRT LuCI
+# OpenWRT LuCI
 
 ### 与主程序编译差不多, 但更简单, 具体参考工作流

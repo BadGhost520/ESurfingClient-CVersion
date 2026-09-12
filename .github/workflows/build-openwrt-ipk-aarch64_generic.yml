@@ -94,7 +94,7 @@ jobs:
           
           scripts/feeds install curl
           
-          cat ../openwrt_configs/all.config >> .config
+          cat ../openwrt-config/all.config >> .config
 
           make defconfig
 
