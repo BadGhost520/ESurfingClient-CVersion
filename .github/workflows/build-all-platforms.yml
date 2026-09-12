@@ -28,13 +28,12 @@ on:
           - openwrt-luci-apk
           - openwrt-x86_64-ipk
           - openwrt-x86_64-apk
-          - openwrt-arm64-ipk
           - openwrt-mipsel_24kc-ipk
           - openwrt-mipsel_24kc-apk
-          - openwrt-mediatek_filogic-ipk
-          - openwrt-mediatek_filogic-apk
-          - openwrt-qualcommax_ipq60xx-ipk
-          - openwrt-qualcommax_ipq60xx-apk
+          - openwrt-aarch64_generic-ipk
+          - openwrt-aarch64_generic-apk
+          - openwrt-aarch64_cortex-a53-ipk
+          - openwrt-aarch64_cortex-a53-apk
 
 jobs:
   get-version:
@@ -148,16 +147,6 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
-  openwrt-arm64-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-arm64-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-arm64.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
-
   openwrt-mipsel_24kc-ipk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mipsel_24kc-ipk'
     uses: ./.github/workflows/build-openwrt-ipk-mipsel_24kc.yml
@@ -178,9 +167,9 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
-  openwrt-mediatek_filogic-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-mediatek_filogic.yml
+  openwrt-aarch64_cortex-a53-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_cortex-a53-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-aarch64_cortex-a53.yml
     secrets: inherit
     needs: get-version
     with:
@@ -188,9 +177,9 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
-  openwrt-mediatek_filogic-apk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mediatek_filogic-apk'
-    uses: ./.github/workflows/build-openwrt-apk-mediatek_filogic.yml
+  openwrt-aarch64_cortex-a53-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_cortex-a53-apk'
+    uses: ./.github/workflows/build-openwrt-apk-aarch64_cortex-a53.yml
     secrets: inherit
     needs: get-version
     with:
@@ -198,9 +187,9 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
-  openwrt-qualcommax_ipq60xx-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-qualcommax_ipq60xx-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-qualcommax_ipq60xx.yml
+  openwrt-aarch64_generic-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_generic-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-aarch64_generic.yml
     secrets: inherit
     needs: get-version
     with:
@@ -208,15 +197,15 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
-  openwrt-qualcommax_ipq60xx-apk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-qualcommax_ipq60xx-apk'
-    uses: ./.github/workflows/build-openwrt-apk-qualcommax_ipq60xx.yml
+  openwrt-aarch64_generic-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_generic-apk'
+    uses: ./.github/workflows/build-openwrt-apk-aarch64_generic.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
   release:
     needs:
@@ -225,16 +214,15 @@ jobs:
       - macos-x86_64
       - macos-arm64
       - openwrt-luci-ipk
-      - openwrt-x86_64-ipk
-      - openwrt-arm64-ipk
-      - openwrt-mipsel_24kc-ipk
-      - openwrt-mediatek_filogic-ipk
-      - openwrt-qualcommax_ipq60xx-ipk
       - openwrt-luci-apk
+      - openwrt-x86_64-ipk
       - openwrt-x86_64-apk
+      - openwrt-mipsel_24kc-ipk
       - openwrt-mipsel_24kc-apk
-      - openwrt-mediatek_filogic-apk
-      - openwrt-qualcommax_ipq60xx-apk
+      - openwrt-aarch64_cortex-a53-ipk
+      - openwrt-aarch64_cortex-a53-apk
+      - openwrt-aarch64_generic-ipk
+      - openwrt-aarch64_generic-apk
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:

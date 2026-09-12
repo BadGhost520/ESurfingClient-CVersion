@@ -1,4 +1,4 @@
-name: Build OpenWrt mediatek_filogic IPK
+name: Build OpenWrt aarch64_generic IPK
 
 permissions:
   contents: write
@@ -19,8 +19,9 @@ on:
         type: string
 
 env:
-  SDK_URL: "https://downloads.openwrt.org/releases/24.10.6/targets/mediatek/filogic"
-  SDK_NAME: "openwrt-sdk-24.10.6-mediatek-filogic_gcc-13.3.0_musl.Linux-x86_64"
+  SDK_URL: "https://downloads.openwrt.org/releases/24.10.8/targets/armsr/armv8"
+  SDK_NAME: "openwrt-sdk-24.10.8-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64"
+  ARCHITECTURE: "aarch64_generic"
 
 jobs:
   build:
@@ -43,10 +44,10 @@ jobs:
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ 所有软件包已完成安装"
+              echo "所有软件包已完成安装"
               break
             fi
-            echo "❌ 尝试 $i 失败"
+            echo "尝试 $i 失败"
             sleep 3
           done
 
@@ -56,7 +57,7 @@ jobs:
         with:
           path: |
             ${{ env.SDK_NAME }}.tar.zst
-          key: openwrt-mediatek_filogic-ipk-sdk-${{ inputs.sdk_version }}
+          key: openwrt-${{ env.ARCHITECTURE }}-ipk-sdk-${{ inputs.sdk_version }}
 
       - name: 下载 SDK
         if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
@@ -68,6 +69,8 @@ jobs:
           tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
           mv ${{ env.SDK_NAME }} openwrt-sdk
 
+      - name: 初始化 SDK
+        run: |
           cd openwrt-sdk
 
           make defconfig
@@ -79,7 +82,7 @@ jobs:
           path: |
             openwrt-sdk/staging_dir/
             openwrt-sdk/dl/
-          key: openwrt-mediatek_filogic-sdk-${{ inputs.sdk_version }}-${{ hashFiles('openwrt_configs/mediatek_filogic-ipk.config') }}
+          key: openwrt-${{ env.ARCHITECTURE }}-ipk-${{ inputs.sdk_version }}
 
       - name: 准备构建配置
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
@@ -89,20 +92,11 @@ jobs:
           scripts/feeds update base
           scripts/feeds update packages
           
-          scripts/feeds install openssl
           scripts/feeds install curl
           
-          make defconfig
-          
-          cat ../.configs/mediatek_filogic-ipk.config >> .config
+          cat ../openwrt_configs/all.config >> .config
 
           make defconfig
-
-      - name: 编译 libopenssl
-        if: steps.cache-openwrt.outputs.cache-hit != 'true'
-        run: |
-          cd openwrt-sdk
-          make package/openssl/compile -j$(nproc)
 
       - name: 编译 libcurl
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
@@ -120,11 +114,11 @@ jobs:
           
           make package/esurfingclient/compile -j$(nproc)
 
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk \;
+          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ env.ARCHITECTURE }}.ipk \;
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic-ipk
-          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_mediatek_filogic.ipk
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ env.ARCHITECTURE }}-ipk
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ env.ARCHITECTURE }}.ipk
           retention-days: 30
