@@ -82,7 +82,7 @@ jobs:
           path: |
             openwrt-sdk/staging_dir/
             openwrt-sdk/dl/
-          key: openwrt-${{ env.ARCHITECTURE }}-sdk-${{ inputs.sdk_version }}-${{ hashFiles(format('openwrt_configs/{0}-ipk.config', env.ARCHITECTURE)) }}
+          key: openwrt-${{ env.ARCHITECTURE }}-ipk-${{ inputs.sdk_version }}
 
       - name: 准备构建配置
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
