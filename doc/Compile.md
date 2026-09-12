@@ -471,7 +471,7 @@ scripts/feeds install esurfingclient
 > 可以前往 4-2 步
 
 ```shell
-# 参考 .configs 目录的 *.config 文件, 勾选和取消勾选指定选项
+# 参考 openwrt_configs 目录的 *.config 文件, 勾选和取消勾选指定选项
 # 使用 '/' 可以查找对应选项的位置
 make menuconfig
 ```
@@ -482,7 +482,7 @@ make menuconfig
 make defconfig
 
 # 根据要编译的架构判断使用哪个配置文件
-cat ../.configs/ramips_mt7621-ipk.config >> .config
+cat ../openwrt_configs/all.config >> .config
 
 make defconfig
 ```

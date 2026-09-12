@@ -11,9 +11,6 @@ on:
       full_version:
         required: true
         type: string
-      openssl_version:
-        required: true
-        type: string
       curl_version:
         required: true
         type: string
@@ -37,10 +34,10 @@ jobs:
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ 所有软件包已完成安装"
+              echo "所有软件包已完成安装"
               break
             fi
-            echo "❌ 尝试 $i 失败"
+            echo "尝试 $i 失败"
             sleep 3
           done
 
@@ -62,74 +59,6 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           EOF
-
-      - name: 获取 OpenSSL 缓存
-        id: cache-openssl
-        uses: actions/cache@v6
-        with:
-          path: |
-            /usr/x86_64-w64-mingw32/lib/libcrypto.a
-            /usr/x86_64-w64-mingw32/include/openssl
-          key: openssl-${{ inputs.openssl_version }}-mingw64-x86_64
-
-      - name: 构建 libOpenSSL 静态链接库
-        if: steps.cache-openssl.outputs.cache-hit != 'true'
-        run: |
-          cd /tmp
-          wget https://github.com/openssl/openssl/releases/download/openssl-${{ inputs.openssl_version }}/openssl-${{ inputs.openssl_version }}.tar.gz
-          tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
-          cd openssl-${{ inputs.openssl_version }}
-          
-          ./Configure mingw64 \
-            --cross-compile-prefix=x86_64-w64-mingw32- \
-            --prefix=/usr/x86_64-w64-mingw32 \
-            --libdir=lib \
-            no-shared \
-            no-tests \
-            no-docs \
-            no-apps \
-            no-tls \
-            no-bf \
-            no-cast \
-            no-idea \
-            no-rc2 \
-            no-rc4 \
-            no-rc5 \
-            no-seed \
-            no-aria \
-            no-camellia \
-            no-sm2 \
-            no-sm3 \
-            no-mdc2 \
-            no-rmd160 \
-            no-whirlpool \
-            no-blake2 \
-            no-md4 \
-            no-dtls \
-            no-quic \
-            no-sctp \
-            no-srp \
-            no-zlib \
-            no-zstd \
-            no-brotli \
-            no-ktls \
-            no-rdrand \
-            no-asan \
-            no-msan \
-            no-ubsan \
-            no-trace \
-            no-egd \
-            no-krb5kdf \
-            no-scrypt \
-            no-x942kdf \
-            no-x963kdf \
-            no-srtp \
-            no-ocsp \
-            no-cms \
-            no-ts
-          
-          make -j$(nproc)
-          make install
 
       - name: 获取 libcurl 缓存
         id: cache-curl

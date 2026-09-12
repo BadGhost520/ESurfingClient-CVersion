@@ -5,10 +5,9 @@ permissions:
   contents: write
 
 env:
-  OPENSSL_VERSION: "4.0.0"
   CURL_VERSION: "8.20.0"
-  OPENWRT_IPK_SDK_VERSION: "24.10.6"
-  OPENWRT_APK_SDK_VERSION: "25.12.0"
+  OPENWRT_IPK_SDK_VERSION: "24.10.8"
+  OPENWRT_APK_SDK_VERSION: "25.12.5"
   TAIL_WIND_LABS_VERSION: "v4.3.0"
 
 on:
@@ -30,7 +29,7 @@ on:
           - openwrt-x86_64-ipk
           - openwrt-x86_64-apk
           - openwrt-arm64-ipk
-          - openwrt-ramips_mt7621-ipk
+          - openwrt-mipsel_24kc-ipk
           - openwrt-mipsel_24kc-apk
           - openwrt-mediatek_filogic-ipk
           - openwrt-mediatek_filogic-apk
@@ -76,7 +75,6 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
-      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
@@ -87,7 +85,6 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
-      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
@@ -98,7 +95,6 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
-      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
@@ -109,7 +105,6 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
-      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
@@ -163,9 +158,9 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
 
-  openwrt-ramips_mt7621-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-ramips_mt7621-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-ramips_mt7621.yml
+  openwrt-mipsel_24kc-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mipsel_24kc-ipk'
+    uses: ./.github/workflows/build-openwrt-ipk-mipsel_24kc.yml
     secrets: inherit
     needs: get-version
     with:
@@ -232,7 +227,7 @@ jobs:
       - openwrt-luci-ipk
       - openwrt-x86_64-ipk
       - openwrt-arm64-ipk
-      - openwrt-ramips_mt7621-ipk
+      - openwrt-mipsel_24kc-ipk
       - openwrt-mediatek_filogic-ipk
       - openwrt-qualcommax_ipq60xx-ipk
       - openwrt-luci-apk
