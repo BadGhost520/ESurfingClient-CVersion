@@ -84,12 +84,10 @@ jobs:
 
           gen() {
             local suffix="$1"
-
             if [ "$INPUT" = "all" ]; then
               printf '%s' "$ALL"
               return
             fi
-
             if [[ "$INPUT" == openwrt-*-"$suffix" && "$INPUT" != openwrt-luci-* ]]; then
               local arch="${INPUT#openwrt-}"
               arch="${arch%-$suffix}"
@@ -100,8 +98,10 @@ jobs:
             fi
           }
 
-          IPK=$(gen ipk)
-          APK=$(gen apk)
+          # 关键：不论哪个分支，最后都过一遍 jq -c 压成单行
+          IPK=$(gen ipk | jq -c .)
+          APK=$(gen apk | jq -c .)
+
           echo "ipk_matrix=$IPK" >> "$GITHUB_OUTPUT"
           echo "apk_matrix=$APK" >> "$GITHUB_OUTPUT"
           echo "IPK 矩阵: $IPK"
@@ -186,7 +186,7 @@ jobs:
       target:       ${{ matrix.target }}
       architecture: ${{ matrix.architecture }}
       package_type: ipk
-  
+
   # OpenWRT APK
   openwrt-packages-apk:
     if: needs.get-version.outputs.apk_matrix != '[]'
