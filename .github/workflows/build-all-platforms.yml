@@ -26,14 +26,16 @@ on:
           - macos-arm64
           - openwrt-luci-ipk
           - openwrt-luci-apk
-          - openwrt-x86_64-ipk
-          - openwrt-x86_64-apk
-          - openwrt-mipsel_24kc-ipk
-          - openwrt-mipsel_24kc-apk
-          - openwrt-aarch64_generic-ipk
-          - openwrt-aarch64_generic-apk
           - openwrt-aarch64_cortex-a53-ipk
           - openwrt-aarch64_cortex-a53-apk
+          - openwrt-aarch64_cortex-a72-ipk
+          - openwrt-aarch64_cortex-a72-apk
+          - openwrt-aarch64_generic-ipk
+          - openwrt-aarch64_generic-apk
+          - openwrt-mipsel_24kc-ipk
+          - openwrt-mipsel_24kc-apk
+          - openwrt-x86_64-ipk
+          - openwrt-x86_64-apk
 
 jobs:
   get-version:
@@ -67,6 +69,7 @@ jobs:
           echo "Release: ${{ steps.version.outputs.release }}"
           echo "Full version: ${{ steps.version.outputs.full_version }}"
 
+# 桌面端
   windows-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
     uses: ./.github/workflows/build-desktop-x86_64-windows.yml
@@ -107,6 +110,7 @@ jobs:
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
+# LuCI
   openwrt-luci-ipk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-luci-ipk'
     uses: ./.github/workflows/build-openwrt-luci-ipk-all.yml
@@ -127,85 +131,136 @@ jobs:
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
 
-  openwrt-x86_64-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-x86_64.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
-
-  openwrt-x86_64-apk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-apk'
-    uses: ./.github/workflows/build-openwrt-apk-x86_64.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
-
-  openwrt-mipsel_24kc-ipk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mipsel_24kc-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-mipsel_24kc.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
-
-  openwrt-mipsel_24kc-apk:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mipsel_24kc-apk'
-    uses: ./.github/workflows/build-openwrt-apk-mipsel_24kc.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      release: ${{ needs.get-version.outputs.release }}
-      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
-
+# OpenWRT 插件包
   openwrt-aarch64_cortex-a53-ipk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_cortex-a53-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-aarch64_cortex-a53.yml
+    uses: ./.github/workflows/build-openwrt-packages.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+      target: "bcm27xx/bcm2710"
+      architecture: "aarch64_cortex-a53"
+      package_type: "ipk"
 
   openwrt-aarch64_cortex-a53-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_cortex-a53-apk'
-    uses: ./.github/workflows/build-openwrt-apk-aarch64_cortex-a53.yml
+    uses: ./.github/workflows/build-openwrt-packages.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+      target: "bcm27xx/bcm2710"
+      architecture: "aarch64_cortex-a53"
+      package_type: "apk"
+
+  openwrt-aarch64_cortex-a72-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_cortex-a72-ipk'
+    uses: ./.github/workflows/build-openwrt-packages.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+      target: "bcm27xx/bcm2711"
+      architecture: "aarch64_cortex-a72"
+      package_type: "ipk"
+
+  openwrt-aarch64_cortex-a72-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_cortex-a72-apk'
+    uses: ./.github/workflows/build-openwrt-packages.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+      target: "bcm27xx/bcm2711"
+      architecture: "aarch64_cortex-a72"
+      package_type: "apk"
 
   openwrt-aarch64_generic-ipk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_generic-ipk'
-    uses: ./.github/workflows/build-openwrt-ipk-aarch64_generic.yml
+    uses: ./.github/workflows/build-openwrt-packages.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+      target: "armsr/armv8"
+      architecture: "aarch64_generic"
+      package_type: "ipk"
 
   openwrt-aarch64_generic-apk:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-aarch64_generic-apk'
-    uses: ./.github/workflows/build-openwrt-apk-aarch64_generic.yml
+    uses: ./.github/workflows/build-openwrt-packages.yml
     secrets: inherit
     needs: get-version
     with:
       version: ${{ needs.get-version.outputs.version }}
       release: ${{ needs.get-version.outputs.release }}
       sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+      target: "armsr/armv8"
+      architecture: "aarch64_generic"
+      package_type: "apk"
+
+  openwrt-mipsel_24kc-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mipsel_24kc-ipk'
+    uses: ./.github/workflows/build-openwrt-packages.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+      target: "malta/le"
+      architecture: "mipsel_24kc"
+      package_type: "ipk"
+
+  openwrt-mipsel_24kc-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-mipsel_24kc-apk'
+    uses: ./.github/workflows/build-openwrt-packages.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+      target: "malta/le"
+      architecture: "mipsel_24kc"
+      package_type: "apk"
+
+  openwrt-x86_64-ipk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-ipk'
+    uses: ./.github/workflows/build-openwrt-packages.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+      target: "x86/64"
+      architecture: "x86_64"
+      package_type: "ipk"
+
+  openwrt-x86_64-apk:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'openwrt-x86_64-apk'
+    uses: ./.github/workflows/build-openwrt-packages.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      release: ${{ needs.get-version.outputs.release }}
+      sdk_version: ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+      target: "x86/64"
+      architecture: "x86_64"
+      package_type: "apk"
 
   release:
     needs:
@@ -215,14 +270,14 @@ jobs:
       - macos-arm64
       - openwrt-luci-ipk
       - openwrt-luci-apk
-      - openwrt-x86_64-ipk
-      - openwrt-x86_64-apk
-      - openwrt-mipsel_24kc-ipk
-      - openwrt-mipsel_24kc-apk
       - openwrt-aarch64_cortex-a53-ipk
       - openwrt-aarch64_cortex-a53-apk
       - openwrt-aarch64_generic-ipk
       - openwrt-aarch64_generic-apk
+      - openwrt-mipsel_24kc-ipk
+      - openwrt-mipsel_24kc-apk
+      - openwrt-x86_64-ipk
+      - openwrt-x86_64-apk
     runs-on: ubuntu-latest
     if: always() && !cancelled()
     steps:

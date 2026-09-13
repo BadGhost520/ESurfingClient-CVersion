@@ -1,4 +1,4 @@
-name: Build OpenWrt aarch64_cortex-a53 IPK
+name: Build OpenWrt packages
 
 permissions:
   contents: write
@@ -17,11 +17,15 @@ on:
       sdk_version:
         required: true
         type: string
-
-env:
-  SDK_URL: "https://downloads.openwrt.org/releases/24.10.8/targets/bcm27xx/bcm2710"
-  SDK_NAME: "openwrt-sdk-24.10.8-bcm27xx-bcm2710_gcc-13.3.0_musl.Linux-x86_64"
-  ARCHITECTURE: "aarch64_cortex-a53"
+      target:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+      package_type:
+        required: true
+        type: string
 
 jobs:
   build:
@@ -56,18 +60,22 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            ${{ env.SDK_NAME }}.tar.zst
-          key: openwrt-${{ env.ARCHITECTURE }}-ipk-sdk-${{ inputs.sdk_version }}
+            openwrt-sdk.tar.zst
+          key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-sdk-${{ inputs.sdk_version }}
 
       - name: 下载 SDK
         if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
         run: |
-          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}.tar.zst -O ${{ env.SDK_NAME }}.tar.zst
+          BASE="https://downloads.openwrt.org/releases/${{ inputs.sdk_version }}/targets/${{ inputs.target }}"
+          FILE=$(curl -s "$BASE/" | grep -oE 'openwrt-sdk-[^"<]+\.tar\.zst' | head -n1)
+          
+          wget -O openwrt-sdk.tar.zst "$BASE/$FILE"
 
       - name: 解压 SDK
         run: |
-          tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
-          mv ${{ env.SDK_NAME }} openwrt-sdk
+          mkdir -p openwrt-sdk
+          
+          tar --zstd -xf openwrt-sdk.tar.zst -C openwrt-sdk --strip-components=1
 
       - name: 初始化 SDK
         run: |
@@ -82,7 +90,7 @@ jobs:
           path: |
             openwrt-sdk/staging_dir/
             openwrt-sdk/dl/
-          key: openwrt-${{ env.ARCHITECTURE }}-ipk-${{ inputs.sdk_version }}
+          key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-${{ inputs.sdk_version }}
 
       - name: 准备构建配置
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
@@ -114,11 +122,11 @@ jobs:
           
           make package/esurfingclient/compile -j$(nproc)
 
-          find bin/packages -name "esurfingclient*.ipk" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ env.ARCHITECTURE }}.ipk \;
+          find bin/packages -name "esurfingclient*.${{ inputs.package_type }}" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ inputs.architecture }}.${{ inputs.package_type }} \;
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ env.ARCHITECTURE }}-ipk
-          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ env.ARCHITECTURE }}.ipk
+          name: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ inputs.architecture }}-${{ inputs.package_type }}
+          path: esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ inputs.architecture }}.${{ inputs.package_type }}
           retention-days: 30

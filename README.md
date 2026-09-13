@@ -1,19 +1,20 @@
 # ESurfingClient-CVersion > [最新版本](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest/)
 
-**根据 Rsplwe 大佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** 👍
+**根据 Rsplwe 佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** 👍
 
-**使用了 [cJSON](https://github.com/DaveGamble/cJSON), [mongoose](https://github.com/cesanta/mongoose), [curl](https://github.com/curl/curl), [openssl](https://github.com/openssl/openssl)(v2.0.8-r1 版本移除) 开源库**
+**使用了 [cJSON](https://github.com/DaveGamble/cJSON), [mongoose](https://github.com/cesanta/mongoose), [curl](https://github.com/curl/curl) 开源库**
 
 **优点是主程序文件超级小 (所有版本均是仅占用 200-300kB 左右的储存空间😋), 并且跨平台跨架构能力超强**
 
 **目前有支持 Windows, Linux, MacOS, OpenWRT 平台**
 
+**安卓平台可前往 [Ironjhin](https://github.com/Ironjhin) 制作的 [EsurfingClient_Android](https://github.com/Ironjhin/EsurfingClient_Android)**
+
 > [!WARNING]
 > 程序只负责在不同平台登录校园网
 > 
 > 不负责包括但不限于无视用户数限制登录等不合规操作
-
-> [!WARNING]
+>
 > 不要让我发现有人拿去做路由器贩卖喔
 
 > [!NOTE]
