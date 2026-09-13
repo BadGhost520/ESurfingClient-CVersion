@@ -42,7 +42,7 @@ jobs:
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
-          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev rsync wget ca-certificates unzip file zstd python3-setuptools swig"
+          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev rsync wget ca-certificates unzip file zstd python3-setuptools swig curl"
 
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
@@ -60,7 +60,7 @@ jobs:
         with:
           path: |
             openwrt-sdk.tar.zst
-          key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-sdk-${{ inputs.sdk_version }}
+          key: openwrt-${{ inputs.package_type }}-sdk-${{ inputs.sdk_version }}
 
       - name: 下载 SDK (最多重试 3 次)
         if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
@@ -101,11 +101,11 @@ jobs:
         run: |
           cd openwrt-sdk
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
-          find bin/packages -name "luci-app-esurfingclient*.${{ input.package_type }}" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ input.package_type }} \;
+          find bin/packages -name "luci-app-esurfingclient*.${{ inputs.package_type }}" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }} \;
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all-${{ input.package_type }}
-          path: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ input.package_type }}
+          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all-${{ inputs.package_type }}
+          path: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }}
           retention-days: 30
