@@ -1,4 +1,4 @@
-name: Build LuCI IPK
+name: Build OpenWRT LuCI packages
 
 permissions:
   contents: write
@@ -17,10 +17,12 @@ on:
       sdk_version:
         required: true
         type: string
-
-env:
-  SDK_URL: "https://downloads.openwrt.org/releases/24.10.6/targets/x86/64"
-  SDK_NAME: "openwrt-sdk-24.10.6-x86-64_gcc-13.3.0_musl.Linux-x86_64"
+      target:
+        required: true
+        type: string
+      package_type:
+        required: true
+        type: string
 
 jobs:
   build:
@@ -31,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: 更新 Makefile 版本号
+      - name: 更新版本号
         run: |
           sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" luci-app-esurfingclient/Makefile
           sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" luci-app-esurfingclient/Makefile
@@ -45,10 +47,10 @@ jobs:
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ 所有软件包已完成安装"
+              echo "所有软件包已完成安装"
               break
             fi
-            echo "❌ 尝试 $i 失败"
+            echo "尝试 $i 失败"
             sleep 3
           done
 
@@ -57,18 +59,30 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            ${{ env.SDK_NAME }}.tar.zst
-          key: openwrt-x86_64-ipk-sdk-${{ inputs.sdk_version }}
+            openwrt-sdk.tar.zst
+          key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-sdk-${{ inputs.sdk_version }}
 
-      - name: 下载 SDK
+      - name: 下载 SDK (最多重试 3 次)
         if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
         run: |
-          wget ${{ env.SDK_URL }}/${{ env.SDK_NAME }}.tar.zst -O ${{ env.SDK_NAME }}.tar.zst
+          BASE="https://downloads.openwrt.org/releases/${{ inputs.sdk_version }}/targets/${{ inputs.target }}"
+          FILE=$(curl -s "$BASE/" | grep -oE 'openwrt-sdk-[^"<]+\.tar\.zst' | head -n1)
+
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在下载 OpenWRT SDK 包"
+            if wget -O openwrt-sdk.tar.zst "$BASE/$FILE"; then
+              echo "OpenWRT SDK 包下载完成"
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
 
       - name: 解压 SDK
         run: |
-          tar -I zstd -xf ${{ env.SDK_NAME }}.tar.zst
-          mv ${{ env.SDK_NAME }} openwrt-sdk
+          mkdir -p openwrt-sdk
+
+          tar --zstd -xf openwrt-sdk.tar.zst -C openwrt-sdk --strip-components=1
 
       - name: 准备构建环境
         run: |
@@ -87,11 +101,11 @@ jobs:
         run: |
           cd openwrt-sdk
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
-          find bin/packages -name "luci-app-esurfingclient*.ipk" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk \;
+          find bin/packages -name "luci-app-esurfingclient*.${{ input.package_type }}" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ input.package_type }} \;
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
         with:
-          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all-ipk
-          path: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.ipk
+          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all-${{ input.package_type }}
+          path: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ input.package_type }}
           retention-days: 30

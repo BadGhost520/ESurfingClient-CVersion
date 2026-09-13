@@ -1,4 +1,4 @@
-name: Build OpenWrt packages
+name: Build OpenWRT packages
 
 permissions:
   contents: write
