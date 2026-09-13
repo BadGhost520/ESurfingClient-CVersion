@@ -46,34 +46,72 @@
 > 
 > 4 级信息级日志文件轮换后占用 100 kB 左右
 
+# [更新日志](UpdateLogs.md)
+
 # 目前支持的系统和架构
 
+<details>
+<summary>
+主程序插件包
+</summary>
+
+|  系统   |           架构            | 包管理器 |     理论最低支持版本      |        推荐版本         |
+|:-------:|:-------------------------:|:--------:|:-------------------------:|:-----------------------:|
+| Windows |          x86_64           |    /     |      Windows XP SP3       |       Windows 10	        |
+|  Linux  |          x86_64           |    /     |     Linux 内核 2.6.0      |     Linux 内核 4.14     |
+|  macOS  |          x86_64           |    /     |         macOS 12          |        macOS 13         |
+|  macOS  |          aarch64          |    /     |         macOS 13          |        macOS 14         |
+| OpenWrt |    aarch64_cortex-a53     | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |    aarch64_cortex-a72     | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |    aarch64_cortex-a76     | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |      aarch64_generic      | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |   arm_arm1176jzf-s_vfp    | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |      arm_arm926ej-s       | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt | arm_cortex-a15_neon-vfpv4 | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |    arm_cortex-a5_vfpv4    | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |       arm_cortex-a7       | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt | arm_cortex-a7_neon-vfpv4  | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |    arm_cortex-a7_vfpv4    | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |    arm_cortex-a8_vfpv3    | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |       arm_cortex-a9       | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |    arm_cortex-a9_neon     | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |  arm_cortex-a9_vfpv3-d16  | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |         arm_fa526         | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |        arm_xscale         | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |       armeb_xscale        | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |     i386_pentium-mmx      | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |       i386_pentium4       | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |    loongarch64_generic    | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |      mips64_mips64r2      | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |     mips64_octeonplus     | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |     mips64el_mips64r2     | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |         mips_24kc         | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |        mips_mips32        | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |        mipsel_24kc        | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |     mipsel_24kc_24kf      | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |        mipsel_74kc        | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |       mipsel_mips32       | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |      powerpc64_e5500      | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |       powerpc_464fp       | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |       powerpc_8548        | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |      riscv64_generic      | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+| OpenWrt |          x86_64           | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+
+</details>
+
+<details>
+<summary>
+OpenWRT LuCI 插件包
+</summary>
+
+|  系统   | 架构 | 包管理器 |     理论最低支持版本      |        推荐版本         |
+|:-------:|:----:|:--------:|:-------------------------:|:-----------------------:|
+| OpenWrt | All  | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 |
+
+</details>
+
 > [!NOTE]
-> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](doc/Targets.md)
-
-### 主程序
-
-|  系统   |        架构        | 包管理器 |  理论最低支持版本   |    推荐版本     |
-|:-------:|:------------------:|:--------:|:-------------------:|:---------------:|
-| Windows |       x86_64       |    /     |   Windows XP SP3    |   Windows 10	    |
-|  Linux  |       x86_64       |    /     |  Linux 内核 2.6.0   | Linux 内核 4.14 |
-|  macOS  |       x86_64       |    /     |      macOS 12       |    macOS 13     |
-|  macOS  |       arm64        |    /     |      macOS 13       |    macOS 14     |
-| OpenWrt |       x86_64       |   opkg   |    OpenWrt 15.05    | OpenWrt 19.07.0 |
-| OpenWrt |       x86_64       |   apk    | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-| OpenWrt |    mipsel_24kc     |   opkg   |    OpenWrt 15.05    | OpenWrt 19.07.0 |
-| OpenWrt |    mipsel_24kc     |   apk    | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-| OpenWrt | aarch64_cortex-a53 |   opkg   |    OpenWrt 15.05    | OpenWrt 19.07.0 |
-| OpenWrt | aarch64_cortex-a53 |   apk    | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-| OpenWrt |  aarch64_generic   |   opkg   |    OpenWrt 15.05    | OpenWrt 19.07.0 |
-| OpenWrt |  aarch64_generic   |   apk    | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
-
-### OpenWRT LuCI 插件包
-
-|  系统   | 架构 | 包管理器 |  理论最低支持版本   |    推荐版本     |
-|:-------:|:----:|:--------:|:-------------------:|:---------------:|
-| OpenWrt | All  |   opkg   |    OpenWrt 15.05    | OpenWrt 19.07.0 |
-| OpenWrt | All  |   apk    | OpenWrt 25.12.0-rc1 | OpenWrt 25.12.0 |
+> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](doc/OpenWRT_targets.md)
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
@@ -81,8 +119,6 @@
 > 务必要在 issue 中提供系统和 cpu 型号, 架构等信息
 >
 > OpenWRT 系统则需要提供目标平台
-
-# [更新日志](UpdateLogs.md)
 
 # 文档
 

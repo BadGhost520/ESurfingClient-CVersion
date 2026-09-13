@@ -1,4 +1,4 @@
-name: Build Desktop arm64 macOS Binary
+name: Build Desktop aarch64 macOS Binary
 
 permissions:
   contents: write
@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: /usr/local/opt/curl-built
-          key: curl-${{ inputs.curl_version }}-macos-arm64
+          key: curl-${{ inputs.curl_version }}-macos-aarch64
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
@@ -98,35 +98,27 @@ jobs:
 
           cmake --build build -j$(sysctl -n hw.logicalcpu)
 
-          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
+          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-aarch64
 
-          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64 || true
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-aarch64 || true
 
-          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-arm64
-
-      - name: 验证
-        run: |
-          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-arm64" ]; then
-            echo "✅ 构建成功"
-            echo "📏 文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-arm64 | cut -f1)"
-            file ESurfingClient-${{ inputs.full_version }}-darwin-arm64
-          else
-            echo "❌ 未找到二进制文件"
-            exit 1
-          fi
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-aarch64
 
       - name: 获取 web 处理缓存
         id: cache-web
         uses: actions/cache@v6
         with:
-          path: tailwindcss-macos-arm64
-          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-arm64
+          path: tailwindcss-macos-aarch64
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-aarch64
 
       - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
           wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-arm64
-          chmod +x tailwindcss-macos-arm64
+          
+          mv tailwindcss-macos-aarch64 tailwindcss-macos-aarch64
+          
+          chmod +x tailwindcss-macos-aarch64
 
       - name: 处理 web 文件
         run: |
@@ -136,7 +128,7 @@ jobs:
           wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
           wget -O portal/daisyui.mjs https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
           
-          ./tailwindcss-macos-arm64 -i portal/input.css -o portal/assets/css/output.css --minify
+          ./tailwindcss-macos-aarch64 -i portal/input.css -o portal/assets/css/output.css --minify
           rm portal/input.css
           rm portal/daisyui.mjs
           
@@ -152,11 +144,11 @@ jobs:
 
       - name: 打包成 tar.gz
         run: |
-          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-arm64 portal/
+          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-aarch64.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-aarch64 portal/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-${{ inputs.full_version }}-darwin-arm64
-          path: esurfingclient-${{ inputs.full_version }}-darwin-arm64.tar.gz
+          name: esurfingclient-${{ inputs.full_version }}-darwin-aarch64
+          path: esurfingclient-${{ inputs.full_version }}-darwin-aarch64.tar.gz
           retention-days: 30

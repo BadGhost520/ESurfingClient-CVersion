@@ -23,17 +23,77 @@ on:
           - windows-x86_64
           - linux-x86_64
           - macos-x86_64
-          - macos-arm64
+          - macos-aarch64
           - openwrt-luci-ipk
           - openwrt-luci-apk
           - openwrt-aarch64_cortex-a53-ipk
           - openwrt-aarch64_cortex-a53-apk
           - openwrt-aarch64_cortex-a72-ipk
           - openwrt-aarch64_cortex-a72-apk
+          - openwrt-aarch64_cortex-a76-ipk
+          - openwrt-aarch64_cortex-a76-apk
           - openwrt-aarch64_generic-ipk
           - openwrt-aarch64_generic-apk
+          - openwrt-arm_arm1176jzf-s_vfp-ipk
+          - openwrt-arm_arm1176jzf-s_vfp-apk
+          - openwrt-arm_arm926ej-s-ipk
+          - openwrt-arm_arm926ej-s-apk
+          - openwrt-arm_cortex-a15_neon-vfpv4-ipk
+          - openwrt-arm_cortex-a15_neon-vfpv4-apk
+          - openwrt-arm_cortex-a5_vfpv4-ipk
+          - openwrt-arm_cortex-a5_vfpv4-apk
+          - openwrt-arm_cortex-a7-ipk
+          - openwrt-arm_cortex-a7-apk
+          - openwrt-arm_cortex-a7_neon-vfpv4-ipk
+          - openwrt-arm_cortex-a7_neon-vfpv4-apk
+          - openwrt-arm_cortex-a7_vfpv4-ipk
+          - openwrt-arm_cortex-a7_vfpv4-apk
+          - openwrt-arm_cortex-a8_vfpv3-ipk
+          - openwrt-arm_cortex-a8_vfpv3-apk
+          - openwrt-arm_cortex-a9-ipk
+          - openwrt-arm_cortex-a9-apk
+          - openwrt-arm_cortex-a9_neon-ipk
+          - openwrt-arm_cortex-a9_neon-apk
+          - openwrt-arm_cortex-a9_vfpv3-d16-ipk
+          - openwrt-arm_cortex-a9_vfpv3-d16-apk
+          - openwrt-arm_fa526-ipk
+          - openwrt-arm_fa526-apk
+          - openwrt-arm_xscale-ipk
+          - openwrt-arm_xscale-apk
+          - openwrt-armeb_xscale-ipk
+          - openwrt-armeb_xscale-apk
+          - openwrt-i386_pentium-mmx-ipk
+          - openwrt-i386_pentium-mmx-apk
+          - openwrt-i386_pentium4-ipk
+          - openwrt-i386_pentium4-apk
+          - openwrt-loongarch64_generic-ipk
+          - openwrt-loongarch64_generic-apk
+          - openwrt-mips64_mips64r2-ipk
+          - openwrt-mips64_mips64r2-apk
+          - openwrt-mips64_octeonplus-ipk
+          - openwrt-mips64_octeonplus-apk
+          - openwrt-mips64el_mips64r2-ipk
+          - openwrt-mips64el_mips64r2-apk
+          - openwrt-mips_24kc-ipk
+          - openwrt-mips_24kc-apk
+          - openwrt-mips_mips32-ipk
+          - openwrt-mips_mips32-apk
           - openwrt-mipsel_24kc-ipk
           - openwrt-mipsel_24kc-apk
+          - openwrt-mipsel_24kc_24kf-ipk
+          - openwrt-mipsel_24kc_24kf-apk
+          - openwrt-mipsel_74kc-ipk
+          - openwrt-mipsel_74kc-apk
+          - openwrt-mipsel_mips32-ipk
+          - openwrt-mipsel_mips32-apk
+          - openwrt-powerpc64_e5500-ipk
+          - openwrt-powerpc64_e5500-apk
+          - openwrt-powerpc_464fp-ipk
+          - openwrt-powerpc_464fp-apk
+          - openwrt-powerpc_8548-ipk
+          - openwrt-powerpc_8548-apk
+          - openwrt-riscv64_generic-ipk
+          - openwrt-riscv64_generic-apk
           - openwrt-x86_64-ipk
           - openwrt-x86_64-apk
 
@@ -77,8 +137,38 @@ jobs:
           ALL='[
             {"target":"bcm27xx/bcm2710","architecture":"aarch64_cortex-a53"},
             {"target":"bcm27xx/bcm2711","architecture":"aarch64_cortex-a72"},
+            {"target":"bcm27xx/bcm2712","architecture":"aarch64_cortex-a76"},
             {"target":"armsr/armv8","architecture":"aarch64_generic"},
+            {"target":"bcm27xx/bcm2708","architecture":"arm_arm1176jzf-s_vfp"},
+            {"target":"at91/sam9x","architecture":"arm_arm926ej-s"},
+            {"target":"armsr/armv7","architecture":"arm_cortex-a15_neon-vfpv4"},
+            {"target":"at91/sama5","architecture":"arm_cortex-a5_vfpv4"},
+            {"target":"mediatek/mt7629","architecture":"arm_cortex-a7"},
+            {"target":"bcm27xx/bcm2709","architecture":"arm_cortex-a7_neon-vfpv4"},
+            {"target":"at91/sama7","architecture":"arm_cortex-a7_vfpv4"},
+            {"target":"omap/generic","architecture":"arm_cortex-a8_vfpv3"},
+            {"target":"bcm53xx/generic","architecture":"arm_cortex-a9"},
+            {"target":"imx/cortexa9","architecture":"arm_cortex-a9_neon"},
+            {"target":"mvebu/cortexa9","architecture":"arm_cortex-a9_vfpv3-d16"},
+            {"target":"gemini/generic","architecture":"arm_fa526"},
+            {"target":"kirkwood/generic","architecture":"arm_xscale"},
+            {"target":"ixp4xx/generic","architecture":"armeb_xscale"},
+            {"target":"x86/legacy","architecture":"i386_pentium-mmx"},
+            {"target":"x86/generic","architecture":"i386_pentium4"},
+            {"target":"loongarch64/generic","architecture":"loongarch64_generic"},
+            {"target":"malta/be64","architecture":"mips64_mips64r2"},
+            {"target":"octeon/generic","architecture":"mips64_octeonplus"},
+            {"target":"malta/le64","architecture":"mips64el_mips64r2"},
+            {"target":"ath79/generic","architecture":"mips_24kc"},
+            {"target":"bmips/bcm6318","architecture":"mips_mips32"},
             {"target":"malta/le","architecture":"mipsel_24kc"},
+            {"target":"pistachio/generic","architecture":"mipsel_24kc_24kf"},
+            {"target":"bcm47xx/mips74k","architecture":"mipsel_74kc"},
+            {"target":"bcm47xx/generic","architecture":"mipsel_mips32"},
+            {"target":"qoriq/generic","architecture":"powerpc64_e5500"},
+            {"target":"apm821xx/nand","architecture":"powerpc_464fp"},
+            {"target":"mpc85xx/p1010","architecture":"powerpc_8548"},
+            {"target":"d1/generic","architecture":"riscv64_generic"},
             {"target":"x86/64","architecture":"x86_64"}
           ]'
 
@@ -138,9 +228,9 @@ jobs:
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
-  macos-arm64:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-arm64'
-    uses: ./.github/workflows/build-desktop-arm64-macos.yml
+  macos-aarch64:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-aarch64'
+    uses: ./.github/workflows/build-desktop-aarch64-macos.yml
     secrets: inherit
     needs: get-version
     with:
@@ -210,7 +300,7 @@ jobs:
       - windows-x86_64
       - linux-x86_64
       - macos-x86_64
-      - macos-arm64
+      - macos-aarch64
       - openwrt-luci-ipk
       - openwrt-luci-apk
       - openwrt-packages-ipk
