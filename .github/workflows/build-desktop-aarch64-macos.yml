@@ -116,7 +116,7 @@ jobs:
         run: |
           wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-arm64
           
-          mv tailwindcss-macos-aarch64 tailwindcss-macos-aarch64
+          mv tailwindcss-macos-arm64 tailwindcss-macos-aarch64
           
           chmod +x tailwindcss-macos-aarch64
 
