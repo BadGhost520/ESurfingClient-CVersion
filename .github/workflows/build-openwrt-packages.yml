@@ -63,13 +63,21 @@ jobs:
             openwrt-sdk.tar.zst
           key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-sdk-${{ inputs.sdk_version }}
 
-      - name: 下载 SDK
+      - name: 下载 SDK (最多重试 3 次)
         if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
         run: |
           BASE="https://downloads.openwrt.org/releases/${{ inputs.sdk_version }}/targets/${{ inputs.target }}"
           FILE=$(curl -s "$BASE/" | grep -oE 'openwrt-sdk-[^"<]+\.tar\.zst' | head -n1)
           
-          wget -O openwrt-sdk.tar.zst "$BASE/$FILE"
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在下载 OpenWRT SDK 包"
+            if wget -O openwrt-sdk.tar.zst "$BASE/$FILE"; then
+              echo "OpenWRT SDK 包下载完成"
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
 
       - name: 解压 SDK
         run: |
