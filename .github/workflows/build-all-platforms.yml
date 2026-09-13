@@ -272,6 +272,8 @@ jobs:
       - openwrt-luci-apk
       - openwrt-aarch64_cortex-a53-ipk
       - openwrt-aarch64_cortex-a53-apk
+      - openwrt-aarch64_cortex-a72-ipk
+      - openwrt-aarch64_cortex-a72-apk
       - openwrt-aarch64_generic-ipk
       - openwrt-aarch64_generic-apk
       - openwrt-mipsel_24kc-ipk
