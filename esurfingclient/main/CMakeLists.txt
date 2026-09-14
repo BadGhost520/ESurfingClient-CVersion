@@ -40,6 +40,13 @@ if (WIN32)
 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib ${CMAKE_FIND_LIBRARY_SUFFIXES})
+elseif (ANDROID)
+    add_definitions(-DCURL_STATICLIB)
+
+    set(BUILD_SHARED_LIBS OFF)
+    set(CURL_USE_STATIC_LIBS TRUE)
+
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 else ()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
@@ -153,6 +160,10 @@ if (WIN32)
             secur32
             bcrypt
             iphlpapi
+    )
+elseif (ANDROID)
+    target_link_libraries(ESurfingClient PRIVATE
+            CURL::libcurl
     )
 else ()
     target_link_libraries(ESurfingClient PRIVATE
