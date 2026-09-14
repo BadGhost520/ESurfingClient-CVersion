@@ -6,9 +6,9 @@
 
 **优点是主程序文件超级小 (所有版本均是仅占用 200-300kB 左右的储存空间😋), 并且跨平台跨架构能力超强**
 
-**目前有支持 Windows, Linux, MacOS, OpenWRT 平台**
+**目前有支持 Windows, Linux, MacOS, OpenWRT, ~~Android(仅二进制文件)~~ 平台**
 
-**安卓平台可前往 [Ironjhin](https://github.com/Ironjhin) 制作的 [EsurfingClient_Android](https://github.com/Ironjhin/EsurfingClient_Android)**
+**安卓安装包可前往 [Ironjhin](https://github.com/Ironjhin) 制作的 [EsurfingClient_Android](https://github.com/Ironjhin/EsurfingClient_Android)**
 
 > [!WARNING]
 > 程序只负责在不同平台登录校园网
