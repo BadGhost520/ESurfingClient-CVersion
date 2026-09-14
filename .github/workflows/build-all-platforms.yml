@@ -24,6 +24,10 @@ on:
           - linux-x86_64
           - macos-x86_64
           - macos-aarch64
+          - android
+          - android-arm64-v8a
+          - android-armeabi-v7a
+          - android-x86_64
           - openwrt-luci-ipk
           - openwrt-luci-apk
           - openwrt-aarch64_cortex-a53-ipk
@@ -111,6 +115,7 @@ jobs:
       ipk_matrix: ${{ steps.matrix.outputs.ipk_matrix }}
       apk_matrix: ${{ steps.matrix.outputs.apk_matrix }}
       luci_matrix: ${{ steps.luci_matrix.outputs.luci_matrix }}
+      android_matrix: ${{ steps.android_matrix.outputs.android_matrix }}
     steps:
       - uses: actions/checkout@v7
 
@@ -228,6 +233,37 @@ jobs:
           echo "luci_matrix=$RESULT" >> "$GITHUB_OUTPUT"
           echo "LuCI 矩阵: $RESULT"
 
+      - name: 生成 Android 编译
+        id: android_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"abi":"arm64-v8a"},
+            {"abi":"armeabi-v7a"},
+            {"abi":"x86_64"}
+          ]'
+
+          case "$INPUT" in
+            all|android)
+              RESULT="$ALL"
+              ;;
+            android-*)
+              ABI="${INPUT#android-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ABI" '[.[] | select(.abi == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "android_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Android 矩阵: $RESULT"
+
   # 桌面端
   windows-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
@@ -268,6 +304,22 @@ jobs:
       full_version: ${{ needs.get-version.outputs.full_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+
+  # Android
+  android:
+    if: needs.get-version.outputs.android_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.android_matrix) }}
+    uses: ./.github/workflows/build-android-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      full_version:           ${{ needs.get-version.outputs.full_version }}
+      curl_version:           ${{ needs.get-version.outputs.curl_version }}
+      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      abi:                    ${{ matrix.abi }}
 
   # OpenWRT LuCI
   openwrt-luci:
@@ -328,6 +380,7 @@ jobs:
       - linux-x86_64
       - macos-x86_64
       - macos-aarch64
+      - android
       - openwrt-luci
       - openwrt-packages-ipk
       - openwrt-packages-apk
