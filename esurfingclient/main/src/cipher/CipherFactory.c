@@ -276,7 +276,10 @@ bool init_cipher(const char* algo_id)
 
 char* session_encrypt(const char* text)
 {
-    LOG_VERBOSE("要加密的文本:\n%s", text);
+    if (strstr(text, "userid") == NULL)
+    {
+        LOG_VERBOSE("要加密的文本:\n%s", text);
+    }
     cipher_interface_t* cipher = g_prog_status[tl_thread_idx].auth_cfg.cipher;
     return cipher->encrypt(cipher, text);
 }

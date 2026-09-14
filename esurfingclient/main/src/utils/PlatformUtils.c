@@ -1,6 +1,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
+
 #include "States.h"
 
 #include <curl/curl.h>
@@ -11,15 +12,23 @@
 #include <errno.h>
 #include <stdio.h>
 #include <time.h>
-#ifndef _WIN32
-#include <strings.h>
-#endif
 
 #ifdef _WIN32
 
 #include <sysinfoapi.h>
 #include <iphlpapi.h>
 
+#else
+
+#include <strings.h>
+
+#endif
+
+#ifdef __OPENWRT__
+static const char config_file[] = "/etc/config/esurfingclient";
+#else
+#define DIALER_CONFIG_FILE "ESurfingClient.json"
+static char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
 #endif
 
 #define WINDOWS_UA "CCTP/WinSVR5/1068"
@@ -28,13 +37,6 @@
 #define ANDROID_UA "CCTP/android11_64/2104"
 #define IOS_UA "CCTP/iOSdy/4023"
 #define MACOS_UA "CCTP/macdy/5019"
-
-#ifdef __OPENWRT__
-static const char config_file[] = "/etc/config/esurfingclient";
-#else
-#define DIALER_CONFIG_FILE "ESurfingClient.json"
-static char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
-#endif
 
 typedef struct
 {
@@ -519,7 +521,7 @@ void sleep_ms(const uint64_t ms, const bool can_stop)
         {
             if (tl_thread_idx > -1)
             {
-                if (g_prog_status[tl_thread_idx].runtime_status.is_running == false || g_prog_status[tl_thread_idx].runtime_status.is_need_reset)
+                if (g_prog_status[tl_thread_idx].runtime_status.is_running == false || g_prog_status[tl_thread_idx].runtime_status.is_need_reauth)
                 {
                     return;
                 }
@@ -688,7 +690,10 @@ char* create_xml_payload(const XmlChoose choose)
         return NULL;
     }
     LOG_DEBUG("创建 XML 完成");
-    LOG_VERBOSE("XML 内容为:\n%s", xml);
+    if (choose != LOGIN)
+    {
+        LOG_VERBOSE("XML 内容为:\n%s", xml);
+    }
     return xml;
 }
 
@@ -730,7 +735,9 @@ char* clean_CDATA(const char* text)
     return extract_between_tags(text, "<![CDATA[", "]]>");
 }
 
-bool save_cfg(char* configs_str)
+#ifndef __OPENWRT__
+
+bool save_cfg(const char* configs_str)
 {
     LOG_INFO("保存配置中");
     LOG_INFO("仅会保存第一个可用配置");
@@ -742,83 +749,34 @@ bool save_cfg(char* configs_str)
         return false;
     }
 
-    const cJSON* enabled = cJSON_GetObjectItem(configs, "enabled");
-    const cJSON* log_lv = cJSON_GetObjectItem(configs, "log_lv");
-
-    const cJSON* accounts = cJSON_GetObjectItem(configs, "accounts");
-    const cJSON* account = accounts ? cJSON_GetArrayItem(accounts, 0) : NULL;
-    if (account == NULL)
-    {
-        LOG_ERROR("配置中没有账号数据");
-        cJSON_Delete(configs);
-        return false;
-    }
-
-    const cJSON* username = cJSON_GetObjectItem(account, "username");
-    const cJSON* password = cJSON_GetObjectItem(account, "password");
-    const cJSON* channel = cJSON_GetObjectItem(account, "channel");
-    const cJSON* time_windows_item = cJSON_GetObjectItem(account, "time_windows");
-
-    // 保存前先校验 time_windows，避免把非法配置写盘
-    time_window_t tmp_windows[MAX_TIME_WINDOWS];
-    uint8_t tmp_window_count = 0;
-    if (parse_time_windows(time_windows_item, tmp_windows, &tmp_window_count) == false)
-    {
-        LOG_ERROR("time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]");
-        cJSON_Delete(configs);
-        return false;
-    }
+    char* configs_formatted = cJSON_Print(configs);
+    cJSON_Delete(configs);
 
     FILE* cfg_file = fopen(config_file, "w");
     if (!cfg_file)
     {
         LOG_ERROR("无法生成文件: %s", config_file);
-        cJSON_Delete(configs);
+        free(configs_formatted);
         return false;
     }
-    fprintf(cfg_file, "%s", configs_str);
+    fprintf(cfg_file, "%s", configs_formatted);
     fclose(cfg_file);
 
-    if (enabled)
-    {
-        g_prog_enabled = enabled->valueint;
-    }
-    if (log_lv)
-    {
-        set_logger_level(log_lv->valueint);
-    }
-    if (username)
-    {
-        snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", username->valuestring);
-    }
-    if (password)
-    {
-        snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", password->valuestring);
-    }
-    if (channel)
-    {
-        g_prog_status[0].login_cfg.chn = channel->valueint;
-    }
-
-    // 透传 time_windows 到内存，保持桌面端与配置一致
-    g_prog_status[0].login_cfg.has_time_control = tmp_window_count > 0;
-    g_prog_status[0].login_cfg.time_window_count = tmp_window_count;
-    memcpy(g_prog_status[0].login_cfg.time_windows, tmp_windows, sizeof(time_window_t) * tmp_window_count);
-  
-    g_prog_enabled = enabled->valueint;
-    set_logger_level(log_lv->valueint);
-    snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", username->valuestring);
-    snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", password->valuestring);
-    g_prog_status[0].login_cfg.chn = parse_channel_json(channel, 1);
-    apply_channel_ua(&g_prog_status[0].login_cfg, 1);
-
-    cJSON_Delete(configs);
+    free(configs_formatted);
 
     return true;
 }
 
+const char* get_config_file_path(void)
+{
+    return config_file;
+}
+
+#endif
+
 bool load_cfg()
 {
+    g_cfg_loaded = false;
 #ifndef __OPENWRT__
 
     char dir[PATH_MAX];
@@ -1140,6 +1098,8 @@ bool load_cfg()
     }
 
     g_prog_cnt = valid_cnt;
+
+    g_cfg_loaded = true;
 
     return true;
 }

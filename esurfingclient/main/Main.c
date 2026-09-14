@@ -1,5 +1,6 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Service.h"
+
 #include "States.h"
 
 #include <stdlib.h>
@@ -12,11 +13,11 @@ extern void work(void);
 
 static void PrintUsage()
 {
-    printf("参数:\n");
-    printf("  [nothing]     直接运行程序 (前台模式)\n");
-    printf("  --install     安装为系统服务 (需要管理员/root 权限)\n");
-    printf("  --uninstall   卸载系统服务 (需要管理员/root 权限)\n");
-    printf("  --help        显示此帮助信息\n");
+    printf("使用格式: ESurfingClient-*.exe [选项]\n");
+    printf("  [nothing]         直接运行程序 (前台模式)\n");
+    printf("  -i, --install     安装为系统服务 (需要管理员/root 权限)\n");
+    printf("  -u, --uninstall   卸载系统服务 (需要管理员/root 权限)\n");
+    printf("  -h, --help        显示此帮助信息\n");
 }
 
 #endif

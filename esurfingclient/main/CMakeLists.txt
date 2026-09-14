@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 0)
-set(PROGRAM_VERSION_PATCH 8)
-set(PROGRAM_VERSION_RELEASE 2)
+set(PROGRAM_VERSION_PATCH 9)
+set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -73,10 +73,10 @@ if (__OPENWRT__)
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
-            src/utils/simssl/evp.c
+            src/utils/sim/SimThread.c
+            src/utils/sim/SimEvp.c
             src/utils/PlatformUtils.c
             src/utils/TimeControl.c
-            src/utils/SimThread.c
             src/utils/Shutdown.c
             src/utils/Logger.c
             src/utils/cJSON.c
@@ -109,11 +109,11 @@ else ()
             src/cipher/KeyData.c
             src/webserver/WebServer.c
             src/webserver/mongoose.c
-            src/utils/simssl/evp.c
+            src/utils/sim/SimProcess.c
+            src/utils/sim/SimThread.c
+            src/utils/sim/SimEvp.c
             src/utils/PlatformUtils.c
             src/utils/TimeControl.c
-            src/utils/SimProcess.c
-            src/utils/SimThread.c
             src/utils/Shutdown.c
             src/utils/Service.c
             src/utils/Logger.c

@@ -211,3 +211,8 @@ void clean_logger()
     snprintf(new_file_name, sizeof(new_file_name), "%s%c%s.log", safe_str(s_logger_cfg.log_dir), SEP, safe_str(cur_tm));
     rename(s_logger_cfg.log_file, new_file_name);
 }
+
+const char* get_logger_dir(void)
+{
+    return safe_str(s_logger_cfg.log_dir);
+}

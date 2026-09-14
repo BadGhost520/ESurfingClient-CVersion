@@ -1,5 +1,5 @@
+#include "utils/sim/SimProcess.h"
 #include "utils/PlatformUtils.h"
-#include "utils/SimProcess.h"
 
 #include <stdio.h>
 #include <stdlib.h>

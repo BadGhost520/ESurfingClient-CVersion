@@ -1,4 +1,5 @@
-#include "utils/SimThread.h"
+#include "utils/sim/SimThread.h"
+
 #include <stdlib.h>
 
 #ifdef _WIN32

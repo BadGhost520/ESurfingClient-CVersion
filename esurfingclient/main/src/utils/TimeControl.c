@@ -1,6 +1,6 @@
 #include "utils/PlatformUtils.h"
 #include "utils/TimeControl.h"
-#include "utils/SimThread.h"
+#include "../../inc/utils/sim/SimThread.h"
 #include "utils/Logger.h"
 #include "States.h"
 
@@ -182,7 +182,7 @@ void time_control_sync(void)
             if (g_prog_status[i].runtime_status.is_time_disabled)
             {
                 g_prog_status[i].runtime_status.is_time_disabled = false;
-                g_prog_status[i].runtime_status.is_need_reset = false;
+                g_prog_status[i].runtime_status.is_need_reauth = false;
                 LOG_INFO("配置 %" PRIu8 " 已取消时间控制，恢复默认启用", cfg->idx);
             }
             continue;
@@ -194,14 +194,14 @@ void time_control_sync(void)
         if (in_window && was_disabled)
         {
             g_prog_status[i].runtime_status.is_time_disabled = false;
-            g_prog_status[i].runtime_status.is_need_reset = false;
+            g_prog_status[i].runtime_status.is_need_reauth = false;
             LOG_INFO("配置 %" PRIu8 " 已进入允许时段，等待线程守护启动", cfg->idx);
         }
         else if (in_window == false)
         {
             // 只要不在允许时段就持续请求下线，防止线程内部 reset/clean 清掉 is_need_reset 后继续运行
             g_prog_status[i].runtime_status.is_time_disabled = true;
-            g_prog_status[i].runtime_status.is_need_reset = true;
+            g_prog_status[i].runtime_status.is_need_reauth = true;
             if (was_disabled == false)
             {
                 LOG_INFO("配置 %" PRIu8 " 已离开允许时段，请求下线", cfg->idx);

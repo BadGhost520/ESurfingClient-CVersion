@@ -1,14 +1,49 @@
-#include "utils/PlatformUtils.h"
 #include "webserver/WebServer.h"
 #include "webserver/mongoose.h"
-#include "utils/SimThread.h"
+
+#include "utils/PlatformUtils.h"
+#include "../../inc/utils/sim/SimThread.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
+
 #include "NetClient.h"
 #include "States.h"
 
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifndef _WIN32
+#include <dirent.h>
+#include <strings.h>
+#endif
+
 static const char* listenAddr = "http://0.0.0.0:8888";
 static sim_thread_t* web_thread;
+
+/** @brief 日志文件列表最多返回的数量 */
+#define LOG_FILE_MAX 64
+/** @brief 单次读取日志文件的最大字节数 (超出时只返回末尾部分) */
+#define LOG_READ_MAX (256 * 1024)
+/** @brief 日志文件名缓冲区长度 */
+#define LOG_NAME_LEN 256
+
+/** @brief 日志文件的固定名字 (Logger.c s_file_name) */
+static const char log_current_name[] = "run.log";
+
+/** @brief 通用 API 响应头 */
+#define HEADER_JSON "Content-Type: application/json\r\nCache-Control: no-store\r\n"
+#define HEADER_TEXT "Content-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\n"
+#define HEADER_TEXT_TRUNCATED HEADER_TEXT "X-Log-Truncated: 1\r\n"
+
+/** @brief 日志文件信息 */
+typedef struct
+{
+    char name[LOG_NAME_LEN];
+    uint64_t size;
+    uint64_t mtime;
+    bool current;
+} log_file_entry_t;
 
 static const char* week_day_to_str(const int day)
 {
@@ -26,168 +61,538 @@ static void format_week_min(const uint16_t week_min, char* out)
     snprintf(out, TIME_WINDOW_STR_LEN, "%s %02d:%02d", week_day_to_str(day), hour, minute);
 }
 
+static int str_case_cmp(const char* a, const char* b)
+{
+#ifdef _WIN32
+    return _stricmp(a, b);
+#else
+    return strcasecmp(a, b);
+#endif
+}
+
+#ifdef _WIN32
+/**
+ * @brief 通过文件句柄获取文件大小与修改时间
+ * @note FindFirstFile 读取的是目录项, 正在被写入的日志文件 (run.log) 的大小与时间
+ *       可能还没有同步到目录项, 这里用句柄再取一次真实值
+ * @return 是否获取成功
+ */
+static bool win_stat_file(const char* path, uint64_t* size, uint64_t* mtime)
+{
+    HANDLE handle = CreateFileA(path, GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (handle == INVALID_HANDLE_VALUE) return false;
+
+    LARGE_INTEGER file_size;
+    BY_HANDLE_FILE_INFORMATION info;
+    const bool ok = GetFileSizeEx(handle, &file_size) != 0 &&
+        GetFileInformationByHandle(handle, &info) != 0;
+    CloseHandle(handle);
+    if (ok == false) return false;
+
+    if (size != NULL) *size = (uint64_t)file_size.QuadPart;
+    if (mtime != NULL)
+    {
+        const uint64_t file_time = ((uint64_t)info.ftLastWriteTime.dwHighDateTime << 32) |
+            (uint64_t)info.ftLastWriteTime.dwLowDateTime;
+        *mtime = file_time / 10000000ULL - 11644473600ULL;
+    }
+    return true;
+}
+#endif
+
+/**
+ * @brief 检查日志文件名是否安全 (禁止路径穿越)
+ * @param name 文件名
+ * @return 是否安全
+ */
+static bool is_safe_log_name(const char* name)
+{
+    if (name == NULL) return false;
+    const size_t len = strlen(name);
+    if (len == 0 || len >= LOG_NAME_LEN) return false;
+    if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) return false;
+    for (size_t i = 0; i < len; i++)
+    {
+        const unsigned char c = (unsigned char)name[i];
+        if (isalnum(c) == 0 && c != '.' && c != '_' && c != '-') return false;
+    }
+    return true;
+}
+
+/**
+ * @brief 读取日志目录中的文件列表
+ * @param out 输出数组
+ * @param max 数组容量
+ * @return 文件数量
+ */
+static int list_log_files(log_file_entry_t* out, const int max)
+{
+    const char* dir = get_logger_dir();
+    if (dir == NULL || dir[0] == '\0') return 0;
+
+    int count = 0;
+
+#ifdef _WIN32
+
+    char pattern[PATH_MAX];
+    const int pattern_len = snprintf(pattern, sizeof(pattern), "%s%c*", dir, SEP);
+    if (pattern_len <= 0 || (size_t)pattern_len >= sizeof(pattern)) return 0;
+
+    WIN32_FIND_DATAA find_data;
+    HANDLE handle = FindFirstFileA(pattern, &find_data);
+    if (handle == INVALID_HANDLE_VALUE) return 0;
+    do
+    {
+        if ((find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) continue;
+        if (count >= max) break;
+        if (is_safe_log_name(find_data.cFileName) == false) continue;
+
+        snprintf(out[count].name, sizeof(out[count].name), "%s", find_data.cFileName);
+        out[count].size = ((uint64_t)find_data.nFileSizeHigh << 32) | (uint64_t)find_data.nFileSizeLow;
+        // FILETIME (100 纳秒, 1601 起) -> Unix 时间戳 (秒, 1970 起)
+        const uint64_t file_time = ((uint64_t)find_data.ftLastWriteTime.dwHighDateTime << 32) |
+            (uint64_t)find_data.ftLastWriteTime.dwLowDateTime;
+        out[count].mtime = file_time / 10000000ULL - 11644473600ULL;
+        out[count].current = strcmp(find_data.cFileName, log_current_name) == 0;
+
+        char path[PATH_MAX];
+        const int path_len = snprintf(path, sizeof(path), "%s%c%s", dir, SEP, find_data.cFileName);
+        if (path_len > 0 && (size_t)path_len < sizeof(path))
+        {
+            win_stat_file(path, &out[count].size, &out[count].mtime);
+        }
+        count++;
+    } while (FindNextFileA(handle, &find_data) != 0);
+    FindClose(handle);
+
+#else
+
+    DIR* dir_handle = opendir(dir);
+    if (dir_handle == NULL) return 0;
+
+    char path[PATH_MAX];
+    struct dirent* entry;
+    while ((entry = readdir(dir_handle)) != NULL)
+    {
+        if (count >= max) break;
+        if (is_safe_log_name(entry->d_name) == false) continue;
+
+        const int path_len = snprintf(path, sizeof(path), "%s%c%s", dir, SEP, entry->d_name);
+        if (path_len <= 0 || (size_t)path_len >= sizeof(path)) continue;
+
+        struct stat st;
+        if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) continue;
+
+        snprintf(out[count].name, sizeof(out[count].name), "%s", entry->d_name);
+        out[count].size = (uint64_t)st.st_size;
+        out[count].mtime = (uint64_t)st.st_mtime;
+        out[count].current = strcmp(entry->d_name, log_current_name) == 0;
+        count++;
+    }
+    closedir(dir_handle);
+
+#endif
+
+    return count;
+}
+
+/** @brief 排序: 当前日志在最前, 其余按修改时间倒序 */
+static int cmp_log_files(const void* a, const void* b)
+{
+    const log_file_entry_t* left = (const log_file_entry_t*)a;
+    const log_file_entry_t* right = (const log_file_entry_t*)b;
+    if (left->current != right->current) return left->current ? -1 : 1;
+    if (left->mtime != right->mtime) return left->mtime > right->mtime ? -1 : 1;
+    return -str_case_cmp(left->name, right->name);
+}
+
+/**
+ * @brief 读取日志文件内容
+ * @param name 日志文件名
+ * @param out 输出内容 (需要 free)
+ * @param out_len 输出内容长度
+ * @param truncated 是否被截断
+ * @return 是否读取成功
+ */static bool read_log_file(const char* name, char** out, size_t* out_len, bool* truncated)
+{
+    const char* dir = get_logger_dir();
+    if (dir == NULL || dir[0] == '\0') return false;
+    if (is_safe_log_name(name) == false) return false;
+
+    char path[PATH_MAX];
+    const int path_len = snprintf(path, sizeof(path), "%s%c%s", dir, SEP, name);
+    if (path_len <= 0 || (size_t)path_len >= sizeof(path)) return false;
+
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) return false;
+
+    fseek(file, 0, SEEK_END);
+    const long file_size = ftell(file);
+    const size_t size = file_size > 0 ? (size_t)file_size : 0;
+
+    size_t want = size;
+    *truncated = false;
+    if (want > LOG_READ_MAX)
+    {
+        want = LOG_READ_MAX;
+        *truncated = true;
+        fseek(file, (long)(size - want), SEEK_SET);
+    }
+    else
+    {
+        fseek(file, 0, SEEK_SET);
+    }
+
+    char* buffer = malloc(want + 1);
+    if (buffer == NULL)
+    {
+        fclose(file);
+        LOG_ERROR("读取日志时分配内存失败");
+        return false;
+    }
+
+    const size_t read_len = fread(buffer, 1, want, file);
+    fclose(file);
+    buffer[read_len] = '\0';
+
+    // 截断时第一行通常是残行, 直接丢掉
+    if (*truncated)
+    {
+        char* first_break = strchr(buffer, '\n');
+        if (first_break != NULL) memmove(buffer, first_break + 1, strlen(first_break + 1) + 1);
+    }
+
+    *out = buffer;
+    *out_len = strlen(buffer);
+    return true;
+}
+
+/**
+ * @brief 处理 GET API 请求
+ * @return 是否已处理 (未处理时需要继续走静态文件逻辑)
+ */
+static bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
+{
+    // 根目录转发到 index.html
+    if (mg_match(hm->uri, mg_str("/"), NULL))
+    {
+        mg_http_reply(c, 302, "Location: /index.html\r\n", "");
+        return true;
+    }
+
+    // 获取认证状态
+    if (mg_match(hm->uri, mg_str("/api/status/auth"), NULL))
+    {
+        cJSON* auth = cJSON_CreateObject();
+        cJSON_AddBoolToObject(auth, "status", g_prog_status[0].runtime_status.is_authed);
+        char* status_str = cJSON_Print(auth);
+        mg_http_reply(c, 200, HEADER_JSON, "%s", status_str);
+        free(status_str);
+        cJSON_Delete(auth);
+        return true;
+    }
+
+    // 获取联网状态
+    if (mg_match(hm->uri, mg_str("/api/status/online"), NULL))
+    {
+        switch (check_network_status(true))
+        {
+        case STATUS_OK:
+            mg_http_reply(c, 204, "", "");
+            break;
+        case STATUS_NEED_AUTH:
+            mg_http_reply(c, 302, "", "");
+            break;
+        default:
+            mg_http_reply(c, 503, "", "");
+        }
+        return true;
+    }
+
+    // 获取程序运行信息
+    if (mg_match(hm->uri, mg_str("/api/status/sys"), NULL))
+    {
+        cJSON* info = cJSON_CreateObject();
+        cJSON_AddStringToObject(info, "version", PROGRAM_FULL_VERSION);
+        cJSON_AddNumberToObject(info, "uptime_ms", (double)(get_cur_tm_ms() - g_start_run_tm));
+        cJSON_AddNumberToObject(info, "log_level", get_logger_level());
+        cJSON_AddStringToObject(info, "log_dir", safe_str(get_logger_dir()));
+        cJSON_AddStringToObject(info, "config_file", safe_str(get_config_file_path()));
+        cJSON_AddBoolToObject(info, "program_enabled", g_prog_enabled);
+        cJSON_AddBoolToObject(info, "restart_pending", g_need_restart);
+        cJSON_AddNumberToObject(info, "account_count", g_prog_cnt);
+        cJSON_AddNumberToObject(info, "thread_count", g_prog_cnt);
+        char* info_str = cJSON_Print(info);
+        mg_http_reply(c, 200, HEADER_JSON, "%s", info_str);
+        free(info_str);
+        cJSON_Delete(info);
+        return true;
+    }
+
+    // 获取配置
+    if (mg_match(hm->uri, mg_str("/api/getConfigs"), NULL))
+    {
+        cJSON* configs = cJSON_CreateObject();
+
+        cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);
+        cJSON_AddNumberToObject(configs, "log_lv", get_logger_level());
+
+        cJSON* accounts = cJSON_CreateArray();
+        cJSON* account = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
+        cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
+        {
+            const char* channel_name = "android";
+            switch (g_prog_status[0].login_cfg.chn)
+            {
+            case 1:
+                channel_name = "windows";
+                break;
+            case 2:
+                channel_name = "linux";
+                break;
+            case 3:
+                channel_name = "android";
+                break;
+            case 4:
+                channel_name = "ios";
+                break;
+            case 5:
+                channel_name = "macos";
+                break;
+            default:
+                channel_name = "android";
+                break;
+            }
+            cJSON_AddStringToObject(account, "channel", channel_name);
+        }
+
+        cJSON* time_windows = cJSON_CreateArray();
+        for (uint8_t i = 0; i < g_prog_status[0].login_cfg.time_window_count; i++)
+        {
+            const time_window_t* win = &g_prog_status[0].login_cfg.time_windows[i];
+            char start_str[TIME_WINDOW_STR_LEN];
+            char end_str[TIME_WINDOW_STR_LEN];
+            format_week_min(win->start_week_min, start_str);
+            format_week_min(win->end_week_min, end_str);
+
+            cJSON* window_obj = cJSON_CreateObject();
+            cJSON_AddStringToObject(window_obj, "start", start_str);
+            cJSON_AddStringToObject(window_obj, "end", end_str);
+            cJSON_AddItemToArray(time_windows, window_obj);
+        }
+        cJSON_AddItemToObject(account, "time_windows", time_windows);
+
+        cJSON_AddItemToArray(accounts, account);
+        cJSON_AddItemToObject(configs, "accounts", accounts);
+
+        char* config_str = cJSON_Print(configs);
+
+        mg_http_reply(c, 200, HEADER_JSON, "%s", config_str);
+
+        free(config_str);
+        cJSON_Delete(configs);
+        return true;
+    }
+
+    // 获取日志文件列表 / 日志内容
+    if (mg_match(hm->uri, mg_str("/api/logs"), NULL))
+    {
+        char file_name[LOG_NAME_LEN];
+        const int name_len = mg_http_get_var(&hm->query, "file", file_name, sizeof(file_name));
+
+        // 带 file 参数: 返回文件内容
+        if (name_len > 0)
+        {
+            if (is_safe_log_name(file_name) == false)
+            {
+                mg_http_reply(c, 400, HEADER_TEXT, "非法的日志文件名\n");
+                return true;
+            }
+
+            char* content = NULL;
+            size_t content_len = 0;
+            bool truncated = false;
+            if (read_log_file(file_name, &content, &content_len, &truncated) == false)
+            {
+                mg_http_reply(c, 404, HEADER_TEXT, "日志文件不存在或已被轮转\n");
+                return true;
+            }
+
+            LOG_DEBUG("Web 读取日志文件 %s (%zu 字节%s)", file_name, content_len, truncated ? ", 已截断" : "");
+            mg_http_reply(c, 200, truncated ? HEADER_TEXT_TRUNCATED : HEADER_TEXT, "%s", content);
+            free(content);
+            return true;
+        }
+
+        // 不带参数: 返回文件列表
+        log_file_entry_t entries[LOG_FILE_MAX];
+        const int count = list_log_files(entries, LOG_FILE_MAX);
+        if (count > 1) qsort(entries, (size_t)count, sizeof(log_file_entry_t), cmp_log_files);
+
+        cJSON* root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "dir", safe_str(get_logger_dir()));
+        cJSON* files = cJSON_CreateArray();
+        for (int i = 0; i < count; i++)
+        {
+            cJSON* file = cJSON_CreateObject();
+            cJSON_AddStringToObject(file, "name", entries[i].name);
+            cJSON_AddNumberToObject(file, "size", (double)entries[i].size);
+            cJSON_AddNumberToObject(file, "mtime", (double)entries[i].mtime);
+            cJSON_AddBoolToObject(file, "current", entries[i].current);
+            cJSON_AddItemToArray(files, file);
+        }
+        cJSON_AddItemToObject(root, "files", files);
+
+        char* files_str = cJSON_Print(root);
+        mg_http_reply(c, 200, HEADER_JSON, "%s", files_str);
+        free(files_str);
+        cJSON_Delete(root);
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * @brief 处理 POST API 请求
+ * @return 是否已处理
+ */
+static bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
+{
+    // 从 Web 线程读取请求体
+    char* data = NULL;
+    if (hm->body.len > 0)
+    {
+        data = malloc(hm->body.len + 1);
+        if (data == NULL)
+        {
+            mg_http_reply(c, 500, "", "");
+            return true;
+        }
+        memcpy(data, hm->body.buf, hm->body.len);
+        data[hm->body.len] = '\0';
+    }
+
+    // 仅保存
+    if (mg_match(hm->uri, mg_str("/api/saveConfigs"), NULL))
+    {
+        if (data == NULL)
+        {
+            mg_http_reply(c, 400, "", "");
+            return true;
+        }
+        if (save_cfg(data))
+        {
+            mg_http_reply(c, 204, "", "");
+        }
+        else
+        {
+            mg_http_reply(c, 500, "", "");
+        }
+        free(data);
+        return true;
+    }
+
+    // 仅应用
+    if (mg_match(hm->uri, mg_str("/api/applyConfigs"), NULL))
+    {
+        if (data == NULL)
+        {
+            mg_http_reply(c, 400, "", "");
+            return true;
+        }
+
+        cJSON* operation_json = cJSON_Parse(data);
+        if (operation_json == NULL)
+        {
+            mg_http_reply(c, 500, "", "");
+            free(data);
+            return true;
+        }
+
+        const cJSON* apply = cJSON_GetObjectItem(operation_json, "apply");
+        if (apply != NULL && cJSON_IsBool(apply) && apply->valueint)
+        {
+            if (g_prog_status == NULL)
+            {
+                LOG_WARN("收到 Web 应用配置文件请求, 但程序尚未加载完成");
+                mg_http_reply(c, 503, "", "");
+            }
+            else
+            {
+                if (g_prog_status[0].runtime_status.is_authed == true)
+                {
+                    LOG_INFO("收到 Web 应用配置文件请求, 程序将重新加载配置文件并进行认证");
+                    g_cfg_loaded = false;
+                    g_prog_status[0].runtime_status.is_need_reauth = true;
+                    mg_http_reply(c, 204, "", "");
+                }
+            }
+        }
+        else
+        {
+            mg_http_reply(c, 500, "", "");
+        }
+
+        free(data);
+        cJSON_Delete(operation_json);
+        return true;
+    }
+
+    // 重新认证
+    if (mg_match(hm->uri, mg_str("/api/restartAuth"), NULL))
+    {
+        if (g_prog_status == NULL || g_cfg_loaded == false)
+        {
+            LOG_WARN("收到 Web 重新认证请求, 但程序尚未加载配置");
+            mg_http_reply(c, 503, "", "");
+        }
+        else
+        {
+            if (g_prog_status[0].runtime_status.is_authed == true)
+            {
+                LOG_INFO("收到 Web 重新认证请求, 认证线程将重新进行认证");
+                g_prog_status[0].runtime_status.is_need_reauth = true;
+                mg_http_reply(c, 204, "", "");
+            }
+        }
+
+        free(data);
+        return true;
+    }
+
+    free(data);
+
+    // 未知的 POST 路径
+    mg_http_reply(c, 404, HEADER_TEXT, "Not found\n");
+    return true;
+}
+
 static void fn(struct mg_connection *c, const int ev, void *ev_data)
 {
-    if (ev == MG_EV_HTTP_MSG)
+    if (ev != MG_EV_HTTP_MSG) return;
+
+    struct mg_http_message* hm = ev_data;
+
+    // GET 请求
+    if (mg_strcmp(hm->method, mg_str("GET")) == 0)
     {
-        struct mg_http_message* hm = ev_data;
+        // 命中 API 时直接返回, 避免静态文件处理重复发送响应
+        if (handle_api_get(c, hm)) return;
+
         struct mg_http_serve_opts opts = { .root_dir = "portal" };
-        // GET 请求
-        if (mg_strcmp(hm->method, mg_str("GET")) == 0)
-        {
-            // 根目录转发到 index.html
-            if (mg_match(hm->uri, mg_str("/"), NULL))
-            {
-                mg_http_reply(c, 302, "Location: /index.html\r\n", "");
-            }
-            // 获取认证状态
-            if (mg_match(hm->uri, mg_str("/api/status/auth"), NULL))
-            {
-                cJSON* auth = cJSON_CreateObject();
-                cJSON_AddBoolToObject(auth, "status", g_prog_status[0].runtime_status.is_authed);
-                char* status_str = cJSON_Print(auth);
-                mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", status_str);
-                free(status_str);
-            }
-            // 获取联网状态
-            if (mg_match(hm->uri, mg_str("/api/status/online"), NULL))
-            {
-                switch (check_network_status(true))
-                {
-                case STATUS_OK:
-                    mg_http_reply(c, 204, "", "");
-                    break;
-                case STATUS_NEED_AUTH:
-                    mg_http_reply(c, 302, "", "");
-                    break;
-                default:
-                    mg_http_reply(c, 503, "", "");
-                }
-            }
-            // 获取配置
-            if (mg_match(hm->uri, mg_str("/api/getConfigs"), NULL))
-            {
-                cJSON* configs = cJSON_CreateObject();
+        mg_http_serve_dir(c, hm, &opts);
+        return;
+    }
 
-                cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);
-                cJSON_AddNumberToObject(configs, "log_lv", get_logger_level());
-
-                cJSON* accounts = cJSON_CreateArray();
-                cJSON* account = cJSON_CreateObject();
-
-                cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
-                cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
-                {
-                    const char* channel_name = "phone";
-                    switch (g_prog_status[0].login_cfg.chn)
-                    {
-                    case 2:
-                        channel_name = "pc";
-                        break;
-                    case 4:
-                        channel_name = "ios";
-                        break;
-                    case 5:
-                        channel_name = "macos";
-                        break;
-                    default:
-                        channel_name = "phone";
-                        break;
-                    }
-                    cJSON_AddStringToObject(account, "channel", channel_name);
-                }
-
-                cJSON* time_windows = cJSON_CreateArray();
-                for (uint8_t i = 0; i < g_prog_status[0].login_cfg.time_window_count; i++)
-                {
-                    const time_window_t* win = &g_prog_status[0].login_cfg.time_windows[i];
-                    char start_str[TIME_WINDOW_STR_LEN];
-                    char end_str[TIME_WINDOW_STR_LEN];
-                    format_week_min(win->start_week_min, start_str);
-                    format_week_min(win->end_week_min, end_str);
-
-                    cJSON* window_obj = cJSON_CreateObject();
-                    cJSON_AddStringToObject(window_obj, "start", start_str);
-                    cJSON_AddStringToObject(window_obj, "end", end_str);
-                    cJSON_AddItemToArray(time_windows, window_obj);
-                }
-                cJSON_AddItemToObject(account, "time_windows", time_windows);
-
-                cJSON_AddItemToArray(accounts, account);
-                cJSON_AddItemToObject(configs, "accounts", accounts);
-
-                char* config_str = cJSON_Print(configs);
-
-                mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", config_str);
-
-                free(config_str);
-                cJSON_Delete(configs);
-            }
-            mg_http_serve_dir(c, hm, &opts);
-            return;
-        }
-        // POST 请求
-        if (mg_strcmp(hm->method, mg_str("POST")) == 0)
-        {
-            // 仅保存
-            if (mg_match(hm->uri, mg_str("/api/saveConfigs"), NULL))
-            {
-                struct mg_str* body = &hm->body;
-
-                if (body->len == 0)
-                {
-                    mg_http_reply(c, 400, "", "");
-                    return;
-                }
-
-                char* data = malloc(body->len + 1);
-                memcpy(data, body->buf, body->len);
-                data[body->len] = '\0';
-
-                if (save_cfg(data))
-                {
-                    mg_http_reply(c, 204, "", "");
-                }
-                else
-                {
-                    mg_http_reply(c, 500, "", "");
-                }
-
-                free(data);
-            }
-            // 仅应用
-            if (mg_match(hm->uri, mg_str("/api/applyConfigs"), NULL))
-            {
-                struct mg_str* body = &hm->body;
-
-                if (body->len == 0)
-                {
-                    mg_http_reply(c, 400, "", "");
-                    return;
-                }
-
-                char* data = malloc(body->len + 1);
-                memcpy(data, body->buf, body->len);
-                data[body->len] = '\0';
-
-                cJSON* operation_json = cJSON_Parse(data);
-
-                cJSON* apply = cJSON_GetObjectItem(operation_json, "apply");
-
-                if (apply->valueint)
-                {
-                    mg_http_reply(c, 204, "", "");
-                    g_need_restart = true;
-                }
-                else
-                {
-                    mg_http_reply(c, 500, "", "");
-                }
-
-                free(data);
-                cJSON_Delete(operation_json);
-            }
-        }
+    // POST 请求
+    if (mg_strcmp(hm->method, mg_str("POST")) == 0)
+    {
+        handle_api_post(c, hm);
     }
 }
 
@@ -276,7 +681,7 @@ static int web_server(void* arg)
 
     mg_http_listen(&mgr, listenAddr, fn, NULL);
     g_is_webserver_running = 1;
-    LOG_INFO("Web 服务器已启动 (Web 前端尚未完工), 后台访问地址: http://127.0.0.1:8888/");
+    LOG_INFO("Web 服务器已启动, 后台访问地址: http://127.0.0.1:8888/");
     while (g_is_webserver_running) mg_mgr_poll(&mgr, 1000);
     mg_mgr_free(&mgr);
     LOG_INFO("Web 服务器已停止");

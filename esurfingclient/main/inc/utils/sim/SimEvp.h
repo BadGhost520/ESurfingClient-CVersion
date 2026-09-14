@@ -1,5 +1,5 @@
-#ifndef SIMSSL_H
-#define SIMSSL_H
+#ifndef SIMEVP_H
+#define SIMEVP_H
 
 #include <stddef.h>
 
@@ -100,4 +100,4 @@ void simssl_des3_decrypt_block(const unsigned char key[24], const unsigned char 
 }
 #endif
 
-#endif /* SIMSSL_H */
+#endif /* SIMEVP_H */

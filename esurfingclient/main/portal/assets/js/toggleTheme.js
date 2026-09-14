@@ -1,29 +1,55 @@
+/**
+ * 主题切换 (亮色 / 暗色)
+ * 与 daisyUI 的 theme-controller 配合使用: 勾选时使用 synthwave, 否则使用 light
+ * 选择结果保存在 localStorage 中, 下次打开页面自动恢复
+ */
 (function () {
+  "use strict";
+
   const DEFAULT_THEME = "light";
   const CHECKED_THEME = "synthwave";
+  const STORAGE_KEY = "selectedTheme";
 
   const themeToggle = document.getElementById("themeToggle");
   const htmlElement = document.documentElement;
 
-  function loadTheme() {
-    const savedTheme = localStorage.getItem("selectedTheme");
-    if (savedTheme === CHECKED_THEME) {
-      themeToggle.checked = true;
-      htmlElement.setAttribute("data-theme", CHECKED_THEME);
-    } else {
-      themeToggle.checked = false;
-      htmlElement.setAttribute("data-theme", DEFAULT_THEME);
+  if (!themeToggle) return;
+
+  /** 应用主题到 <html> */
+  function applyTheme(theme) {
+    htmlElement.setAttribute("data-theme", theme === CHECKED_THEME ? CHECKED_THEME : DEFAULT_THEME);
+  }
+
+  /** 读取本地保存的主题 */
+  function readSavedTheme() {
+    try {
+      return localStorage.getItem(STORAGE_KEY);
+    } catch (error) {
+      // 隐私模式 / 禁用存储时忽略
+      return null;
     }
   }
 
-  function saveTheme(isChecked) {
-    const newTheme = isChecked ? CHECKED_THEME : DEFAULT_THEME;
-    htmlElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("selectedTheme", newTheme);
+  /** 保存主题 */
+  function saveTheme(theme) {
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch (error) {
+      // 忽略保存失败
+    }
   }
 
-  themeToggle.addEventListener("change", (e) => {
-    saveTheme(e.target.checked);
+  function loadTheme() {
+    const saved = readSavedTheme();
+    const theme = saved === CHECKED_THEME ? CHECKED_THEME : DEFAULT_THEME;
+    themeToggle.checked = theme === CHECKED_THEME;
+    applyTheme(theme);
+  }
+
+  themeToggle.addEventListener("change", (event) => {
+    const theme = event.target.checked ? CHECKED_THEME : DEFAULT_THEME;
+    applyTheme(theme);
+    saveTheme(theme);
   });
 
   loadTheme();

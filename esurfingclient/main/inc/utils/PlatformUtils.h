@@ -154,11 +154,17 @@ char* clean_CDATA(const char* text);
  * @brief 保存配置文件
  * @param configs_str 配置文件字符串
  */
-bool save_cfg(char* configs_str);
+bool save_cfg(const char* configs_str);
 
 /**
  * @brief 加载配置文件
  */
 bool load_cfg();
+
+/**
+ * @brief 获取配置文件路径
+ * @return 配置文件路径
+ */
+const char* get_config_file_path(void);
 
 #endif // ESURFINGCLIENT_PLATFORMUTILS_H

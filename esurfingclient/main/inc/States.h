@@ -2,7 +2,7 @@
 #define ESURFINGCLIENT_STATES_H
 
 #include "cipher/CipherInterface.h"
-#include "utils/SimThread.h"
+#include "utils/sim/SimThread.h"
 
 #include <setjmp.h>
 #include <stdbool.h>
@@ -117,8 +117,8 @@ typedef struct
     bool is_running;
     /** @brief 认证状态 */
     bool is_authed;
-    /** @brief 需要重置 */
-    bool is_need_reset;
+    /** @brief 需要重新认证 */
+    bool is_need_reauth;
     /** @brief 时间控制禁用中 (仅内存状态, 不落盘) */
     bool is_time_disabled;
 } runtime_status_t;
@@ -176,6 +176,9 @@ extern bool g_prog_enabled;
 
 /** @brief 需要重启 */
 extern bool g_need_restart;
+
+/** @brief 配置文件加载状态 */
+extern bool g_cfg_loaded;
 
 /** @brief 刷新状态函数 */
 void refresh_states();

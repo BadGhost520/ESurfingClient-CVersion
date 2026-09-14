@@ -1,7 +1,7 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include "utils/simssl/evp.h"
+#include "utils/sim/SimEvp.h"
 
 #include <stdint.h>
 #include <stdlib.h>

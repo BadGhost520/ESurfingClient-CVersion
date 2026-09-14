@@ -621,11 +621,11 @@ static void clean()
     // 否则线程守护会立刻把刚下线的账号重新拉起来。
     const bool time_disabled = g_prog_status[tl_thread_idx].runtime_status.is_time_disabled;
 
-    if (g_prog_status[tl_thread_idx].runtime_status.is_initialized) // 如果已经初始化会话, 则进入
+    if (g_prog_status[tl_thread_idx].runtime_status.is_initialized == true) // 如果已经初始化会话, 则进入
     {
-        if (g_prog_status[tl_thread_idx].runtime_status.is_authed) // 如果已经认证, 则进入
+        if (g_prog_status[tl_thread_idx].runtime_status.is_authed == true) // 如果已经认证, 则进入
         {
-            LOG_DEBUG("配置 %" PRIu8 " 登出, 下标: %" PRId8,
+            LOG_INFO("配置 %" PRIu8 " 登出, 下标: %" PRId8,
                 g_prog_status[tl_thread_idx].login_cfg.idx,
                 tl_thread_idx);
             term(); // 登出
@@ -653,9 +653,9 @@ static RunStatus run()
     // 到点下线后不应再发送心跳包，也不应继续认证或重试。
     if (g_prog_status[tl_thread_idx].runtime_status.is_time_disabled)
     {
-        g_prog_status[tl_thread_idx].runtime_status.is_need_reset = true;
+        g_prog_status[tl_thread_idx].runtime_status.is_need_reauth = true;
     }
-    if (g_prog_status[tl_thread_idx].runtime_status.is_need_reset)
+    if (g_prog_status[tl_thread_idx].runtime_status.is_need_reauth)
     {
         return RUN_SUCCESS;
     }
@@ -780,16 +780,16 @@ int dialer_app(void* arg)
     while (g_prog_status[tl_thread_idx].runtime_status.is_running)
     {
         const RunStatus run_status = run();
-        if (run_status == RUN_FAILED || g_prog_status[tl_thread_idx].runtime_status.is_need_reset) // 如果 run 函数返回 RUN_FAILED 或需要重置, 则退出循环
+        // 如果 run 函数返回 RUN_FAILED 或需要重置, 则退出循环
+        if (run_status == RUN_FAILED)
         {
-            if (run_status == RUN_FAILED)
-            {
-                LOG_ERROR("线程出现错误, 正在退出");
-            }
-            else if (g_prog_status[tl_thread_idx].runtime_status.is_need_reset)
-            {
-                LOG_INFO("线程需要重置, 正在退出");
-            }
+            LOG_ERROR("线程出现错误, 正在退出");
+            g_prog_status[tl_thread_idx].runtime_status.is_running = false;
+            break;
+        }
+        if (g_prog_status[tl_thread_idx].runtime_status.is_need_reauth)
+        {
+            LOG_INFO("线程需要重置, 正在退出");
             g_prog_status[tl_thread_idx].runtime_status.is_running = false;
             break;
         }
@@ -917,7 +917,7 @@ void work()
                 LOG_WARN("认证时间超过 172200000 毫秒 (1 天 23 时 50 分), 为避免被远程服务器踢下线, 正在重新进行认证");
                 for (uint8_t j = 0; j < g_prog_cnt; j++)
                 {
-                    g_prog_status[j].runtime_status.is_need_reset = true;
+                    g_prog_status[j].runtime_status.is_need_reauth = true;
                     uint8_t retry_wte = 1;
                     while (g_prog_status[j].runtime_status.is_authed)
                     {
@@ -953,6 +953,19 @@ void work()
                 }
 
                 LOG_INFO("由于线程守护已开启，将会重新启动认证线程 %" PRIu8, i);
+                if (g_cfg_loaded == false)
+                {
+                    LOG_WARN("配置文件未完成加载, 令所有线程退出并加载");
+                    for (uint8_t j = 0; j < g_prog_cnt; j++)
+                    {
+                        g_prog_status[j].runtime_status.is_running = true;
+                        while (g_prog_status[j].runtime_status.is_authed == true)
+                        {
+                            sleep_ms(100, true);
+                        }
+                    }
+                    load_cfg();
+                }
                 g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
                 uint8_t retry_ct = 1;
                 while (g_prog_status[i].thread == NULL)

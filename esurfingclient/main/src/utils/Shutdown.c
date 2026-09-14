@@ -20,6 +20,16 @@ extern bool get_service_mode();
 
 void shut(const int8_t exit_code)
 {
+    // 关闭流程只允许进入一次
+    // (Web 端触发的重启与信号/错误触发的关闭可能同时发生)
+    static volatile bool shutting_down = false;
+    if (shutting_down)
+    {
+        LOG_WARN("程序已在关闭流程中, 忽略重复的关闭请求");
+        return;
+    }
+    shutting_down = true;
+
     LOG_INFO("主程序正在关闭");
     g_need_exit = true;
 

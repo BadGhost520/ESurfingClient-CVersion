@@ -88,4 +88,10 @@ bool init_logger();
  */
 void clean_logger();
 
+/**
+ * @brief 获取日志目录 (未初始化时返回空字符串)
+ * @return 日志目录
+ */
+const char* get_logger_dir(void);
+
 #endif //ESURFINGCLIENT_LOGGER_H
