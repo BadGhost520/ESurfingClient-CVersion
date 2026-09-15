@@ -30,9 +30,9 @@ bool g_need_restart = false;
 
 bool g_cfg_loaded = false;
 
-long g_conn_timeout = 3;
+long g_conn_timeout = 7;
 
-long g_op_timeout = 5;
+long g_op_timeout = 10;
 
 static void reset_host_name()
 {
