@@ -350,34 +350,37 @@ static network_status_t curl_err_msg_out(const CURLcode curl_code)
 {
     switch (curl_code)
     {
-    case CURLE_COULDNT_RESOLVE_HOST:
-        LOG_ERROR("curl 错误码: 6, 错误原因: DNS 解析错误");
-        return STATUS_ERROR;
-    case CURLE_COULDNT_CONNECT:
-        LOG_ERROR("curl 错误码: 7, 错误原因: 连接服务器失败");
-        return STATUS_ERROR;
-    case CURLE_OPERATION_TIMEDOUT:
-        LOG_ERROR("curl 错误码: 28, 错误原因: 操作超时");
-        return STATUS_ERROR;
-    case CURLE_HTTP_RETURNED_ERROR:
-        LOG_ERROR("curl 错误码: 22, 错误原因: HTTP 状态码 ≥ 400");
-        return STATUS_ERROR;
-    case CURLE_GOT_NOTHING:
-        LOG_ERROR("curl 错误码: 52, 错误原因: 服务器返回空数据");
-        return STATUS_ERROR;
     case CURLE_URL_MALFORMAT:
-        LOG_ERROR("curl 错误码: 3, 错误原因: URL 格式错误");
-        return STATUS_ERROR;
+        LOG_ERROR("curl 错误码: 3, 错误信息: URL 格式错误");
+        break;
+    case CURLE_COULDNT_RESOLVE_HOST:
+        LOG_ERROR("curl 错误码: 6, 错误信息: DNS 解析错误");
+        break;
+    case CURLE_COULDNT_CONNECT:
+        LOG_ERROR("curl 错误码: 7, 错误信息: 连接服务器失败");
+        break;
+    case CURLE_HTTP_RETURNED_ERROR:
+        LOG_ERROR("curl 错误码: 22, 错误信息: HTTP 状态码 ≥ 400");
+        break;
     case CURLE_WRITE_ERROR:
-        LOG_ERROR("curl 错误码: 23, 错误原因: 写入数据失败");
-        return STATUS_ERROR;
+        LOG_ERROR("curl 错误码: 23, 错误信息: 写入数据失败");
+        break;
+    case CURLE_OPERATION_TIMEDOUT:
+        LOG_ERROR("curl 错误码: 28, 错误信息: 操作超时");
+        break;
     case CURLE_ABORTED_BY_CALLBACK:
-        LOG_ERROR("curl 错误码: 42, 错误原因: 回调函数中止");
-        return STATUS_ERROR;
+        LOG_ERROR("curl 错误码: 42, 错误信息: 回调函数中止");
+        break;
+    case CURLE_GOT_NOTHING:
+        LOG_ERROR("curl 错误码: 52, 错误信息: 服务器返回空数据");
+        break;
+    case CURLE_RECV_ERROR:
+        LOG_ERROR("curl 错误码: 56, 错误信息: 接收数据时失败");
+        break;
     default:
         LOG_ERROR("未知错误");
-        return STATUS_ERROR;
     }
+    return STATUS_ERROR;
 }
 
 static void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, const char *url, const char *func_name)
