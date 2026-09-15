@@ -44,8 +44,8 @@ static char s_generate_url[][URL_LENGTH] = {
     "http://connect.rom.miui.com/generate_204",
     "http://connectivitycheck.platform.hicloud.com/generate_204",
     "http://wifi.vivo.com.cn/generate_204",
-    "http://connectivitycheck.gstatic.com/generate_204",
-    "http://www.google-analytics.com/generate_204"
+    "http://edge-http.microsoft.com/captiveportal/generate_204",
+    "http://connectivitycheck.gstatic.com/generate_204"
 };
 
 static uint8_t s_generate_idx = 0;
@@ -381,9 +381,7 @@ static network_status_t curl_err_msg_out(const CURLcode curl_code)
     }
 }
 
-static void log_curl_error(CURL *curl, CURLcode code, const char *errbuf,
-                    const char *url, const char *func_name,
-                    long connect_timeout, long total_timeout)
+static void log_curl_error(CURL *curl, CURLcode code, const char *errbuf, const char *url, const char *func_name)
 {
     LOG_DEBUG("[%s] curl 请求失败: %s", func_name, curl_easy_strerror(code));
     LOG_DEBUG("[%s] URL: %s", func_name, url ? url : "(null)");
@@ -403,20 +401,20 @@ static void log_curl_error(CURL *curl, CURLcode code, const char *errbuf,
 
         LOG_DEBUG("[%s] 实际连接耗时: %.3f 秒", func_name, connect_time);
         LOG_DEBUG("[%s] 实际总耗时:   %.3f 秒", func_name, total_time);
-        LOG_DEBUG("[%s] 设置连接超时: %ld 秒", func_name, connect_timeout);
-        LOG_DEBUG("[%s] 设置总超时:   %ld 秒", func_name, total_timeout);
+        LOG_DEBUG("[%s] 设置连接超时: %ld 秒", func_name, g_conn_timeout);
+        LOG_DEBUG("[%s] 设置总超时:   %ld 秒", func_name, g_op_timeout);
 
         // 特别针对超时错误进行原因分析
         if (code == CURLE_OPERATION_TIMEDOUT) {
             // 判断实际连接耗时是否已接近或超过设置的连接超时
-            if (connect_timeout > 0 && connect_time >= (double)connect_timeout * 0.9) {
+            if (g_conn_timeout > 0 && connect_time >= (double)g_conn_timeout * 0.9) {
                 LOG_DEBUG("[%s] 结论: 连接阶段超时（CURLOPT_CONNECTTIMEOUT = %ld 秒）",
-                          func_name, connect_timeout);
+                          func_name, g_conn_timeout);
             }
             // 否则，判断总耗时是否已接近或超过设置的总超时
-            else if (total_timeout > 0 && total_time >= (double)total_timeout * 0.9) {
+            else if (g_op_timeout > 0 && total_time >= (double)g_op_timeout * 0.9) {
                 LOG_DEBUG("[%s] 结论: 总超时（CURLOPT_TIMEOUT = %ld 秒）",
-                          func_name, total_timeout);
+                          func_name, g_op_timeout);
             }
             else {
                 LOG_DEBUG("[%s] 结论: 超时原因不明确，实际耗时未明显逼近设定阈值，"
@@ -515,7 +513,7 @@ curl_resp_t post(const char* url, const char* data)
     if (curl_code != CURLE_OK)
     {
         // 先输出调试信息（此时 curl 句柄仍然有效）
-        log_curl_error(curl, curl_code, errbuf, url, "post", 3L, 5L);
+        log_curl_error(curl, curl_code, errbuf, url, "post");
         // 再清理资源
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
@@ -630,7 +628,7 @@ curl_resp_t get(const char* url, const bool connect_only)
     if (curl_code != CURLE_OK)
     {
         // 先输出调试信息（此时 curl 句柄仍然有效）
-        log_curl_error(curl, curl_code, errbuf, url, "get", 3L, 5L);
+        log_curl_error(curl, curl_code, errbuf, url, "get");
         // 再清理资源
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
