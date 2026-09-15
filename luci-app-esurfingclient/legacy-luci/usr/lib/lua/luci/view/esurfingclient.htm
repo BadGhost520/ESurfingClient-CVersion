@@ -63,7 +63,7 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
     return
 end
 
-local config_json = '{"enabled":false,"log_lv":4,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
+local config_json = '{"enabled":false,"log_lv":4,"conn_timeout":3,"op_timeout":5,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
 local file = io.open("/etc/config/esurfingclient", "r")
 if file then
     local content = file:read("*a")
@@ -207,6 +207,20 @@ end
                         <option value='6'>6 - 全部</option>
                     </select>
                     <div class='cbi-value-description'>日志的详细程度</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='conn_timeout'>连接超时</label>
+                <div class='cbi-value-field'>
+                    <input type='number' id='conn_timeout' class='cbi-input-text' name='conn_timeout' min='1' step='1' />
+                    <div class='cbi-value-description'>连接阶段的超时时长 (单位: 秒)</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='op_timeout'>操作超时</label>
+                <div class='cbi-value-field'>
+                    <input type='number' id='op_timeout' class='cbi-input-text' name='op_timeout' min='1' step='1' />
+                    <div class='cbi-value-description'>单次请求的总超时时长 (单位: 秒)</div>
                 </div>
             </div>
         </div>
@@ -550,6 +564,8 @@ end
         config = {
             enabled: false,
             log_lv: 4,
+            conn_timeout: 3,
+            op_timeout: 5,
             accounts: [{
                 username: '',
                 password: '',
@@ -830,6 +846,12 @@ end
         });
     });
 
+    // 超时参数兜底, 非正数或非法值一律用默认值 (与后端 g_conn_timeout / g_op_timeout 一致)
+    function normalizeTimeout(value, fallback) {
+        var timeout = parseInt(value, 10);
+        return (isNaN(timeout) || timeout <= 0) ? fallback : timeout;
+    }
+
     // 启用复选框事件
     var enabled = document.getElementById('enabled');
 
@@ -850,10 +872,31 @@ end
         }
     });
 
+    // 连接超时输入事件
+    var conn_timeout = document.getElementById('conn_timeout');
+
+    conn_timeout.addEventListener('change', function(e) {
+        config.conn_timeout = normalizeTimeout(e.target.value, 3);
+        e.target.value = config.conn_timeout;
+    });
+
+    // 操作超时输入事件
+    var op_timeout = document.getElementById('op_timeout');
+
+    op_timeout.addEventListener('change', function(e) {
+        config.op_timeout = normalizeTimeout(e.target.value, 5);
+        e.target.value = config.op_timeout;
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
         showNotification('正在读取配置文件', 'info');
         enabled.checked = config.enabled;
         log_lv.value = config.log_lv;
+        // 旧配置文件可能缺少超时参数, 这里补齐默认值, 避免输入框显示空值
+        config.conn_timeout = normalizeTimeout(config.conn_timeout, 3);
+        config.op_timeout = normalizeTimeout(config.op_timeout, 5);
+        conn_timeout.value = config.conn_timeout;
+        op_timeout.value = config.op_timeout;
         renderTable();
         showNotification('读取配置文件完成', 'succ');
     });

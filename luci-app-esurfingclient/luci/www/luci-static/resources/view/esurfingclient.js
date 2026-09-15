@@ -43,6 +43,8 @@ return view.extend({
         self.config = self.config || {
             enabled: false,
             log_lv: 0,
+            conn_timeout: 3,
+            op_timeout: 5,
             accounts: []
         };
         
@@ -83,6 +85,42 @@ return view.extend({
                         E('option', { value: 6, selected: self.config.log_lv === 6 ? true : undefined }, '6 - 全部')
                     ]),
                     E('div', { class: 'cbi-value-description' }, '日志的详细程度')
+                ])
+            ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '连接超时'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'number',
+                        id: 'conn_timeout',
+                        class: 'cbi-input-text',
+                        min: 1,
+                        step: 1,
+                        value: self.config.conn_timeout,
+                        change: function(ev) {
+                            self.config.conn_timeout = self.normalizeTimeout(ev.target.value, 3);
+                            ev.target.value = self.config.conn_timeout;
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, '连接阶段的超时时长 (单位: 秒)')
+                ])
+            ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '操作超时'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'number',
+                        id: 'op_timeout',
+                        class: 'cbi-input-text',
+                        min: 1,
+                        step: 1,
+                        value: self.config.op_timeout,
+                        change: function(ev) {
+                            self.config.op_timeout = self.normalizeTimeout(ev.target.value, 5);
+                            ev.target.value = self.config.op_timeout;
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, '单次请求的总超时时长 (单位: 秒)')
                 ])
             ])
         ]);
@@ -178,6 +216,12 @@ return view.extend({
         ];
     },
 
+    // 超时参数兜底, 非正数或非法值一律用默认值 (与后端 g_conn_timeout / g_op_timeout 一致)
+    normalizeTimeout: function(value, fallback) {
+        var timeout = parseInt(value, 10);
+        return (isNaN(timeout) || timeout <= 0) ? fallback : timeout;
+    },
+
     loadConfig: function() {
         var self = this;
 
@@ -190,6 +234,9 @@ return view.extend({
                 } catch(e) {
                     self.config = {};
                 }
+                // 旧配置文件可能缺少超时参数, 这里补齐默认值, 避免输入框显示空值
+                self.config.conn_timeout = self.normalizeTimeout(self.config.conn_timeout, 3);
+                self.config.op_timeout = self.normalizeTimeout(self.config.op_timeout, 5);
                 self.showNotification('读取配置文件成功', 'success');
                 return self.config;
             })
@@ -197,6 +244,8 @@ return view.extend({
                 self.config = {
                     enabled: false,
                     log_lv: 0,
+                    conn_timeout: 3,
+                    op_timeout: 5,
                     accounts: [
                         {
                             username: '加载失败',
@@ -731,6 +780,8 @@ return view.extend({
                     self.config = {
                         enabled: false,
                         log_lv: 4,
+                        conn_timeout: 3,
+                        op_timeout: 5,
                         accounts: [
                             {
                                 username: '',

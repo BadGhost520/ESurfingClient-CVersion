@@ -338,6 +338,8 @@ static bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
 
         cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);
         cJSON_AddNumberToObject(configs, "log_lv", get_logger_level());
+        cJSON_AddNumberToObject(configs, "conn_timeout", (double)g_conn_timeout);
+        cJSON_AddNumberToObject(configs, "op_timeout", (double)g_op_timeout);
 
         cJSON* accounts = cJSON_CreateArray();
         cJSON* account = cJSON_CreateObject();
@@ -515,22 +517,34 @@ static bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
         }
 
         const cJSON* apply = cJSON_GetObjectItem(operation_json, "apply");
-        if (apply != NULL && cJSON_IsBool(apply) && apply->valueint)
+        if (apply)
         {
-            if (g_prog_status == NULL)
+            if (cJSON_IsBool(apply))
             {
-                LOG_WARN("收到 Web 应用配置文件请求, 但程序尚未加载完成");
-                mg_http_reply(c, 503, "", "");
+                if (g_prog_status == NULL)
+                {
+                    LOG_WARN("收到 Web 应用配置文件请求, 但程序尚未加载完成, 拒绝操作");
+                    mg_http_reply(c, 403, "", "");
+                }
+                else
+                {
+                    if (g_prog_status[0].runtime_status.is_authed == true)
+                    {
+                        LOG_INFO("收到 Web 应用配置文件请求, 程序将重新加载配置文件并进行认证");
+                        g_cfg_loaded = false;
+                        g_prog_status[0].runtime_status.is_need_reauth = true;
+                        mg_http_reply(c, 204, "", "");
+                    }
+                    else
+                    {
+                        LOG_WARN("收到 Web 应用配置文件请求, 但没有线程在认证, 拒绝操作");
+                        mg_http_reply(c, 403, "", "");
+                    }
+                }
             }
             else
             {
-                if (g_prog_status[0].runtime_status.is_authed == true)
-                {
-                    LOG_INFO("收到 Web 应用配置文件请求, 程序将重新加载配置文件并进行认证");
-                    g_cfg_loaded = false;
-                    g_prog_status[0].runtime_status.is_need_reauth = true;
-                    mg_http_reply(c, 204, "", "");
-                }
+                mg_http_reply(c, 500, "", "");
             }
         }
         else
@@ -548,7 +562,7 @@ static bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
     {
         if (g_prog_status == NULL || g_cfg_loaded == false)
         {
-            LOG_WARN("收到 Web 重新认证请求, 但程序尚未加载配置");
+            LOG_WARN("收到 Web 重新认证请求, 但程序尚未加载配置, 拒绝操作");
             mg_http_reply(c, 503, "", "");
         }
         else
@@ -558,6 +572,11 @@ static bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                 LOG_INFO("收到 Web 重新认证请求, 认证线程将重新进行认证");
                 g_prog_status[0].runtime_status.is_need_reauth = true;
                 mg_http_reply(c, 204, "", "");
+            }
+            else
+            {
+                LOG_WARN("收到 Web 重新认证请求, 但没有线程在认证, 拒绝操作");
+                mg_http_reply(c, 403, "", "");
             }
         }
 

@@ -26,19 +26,29 @@
 #define SCHOOL_ID_LENGTH 8
 #define DOMAIN_LENGTH 16
 #define AREA_LENGTH 8
+#define URL_LENGTH 64
 
 #define REQ_CONTENT_TYPE "Content-Type: application/x-www-form-urlencoded"
 #define REQ_ACCEPT "Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*"
-#define GENERATE_URL "http://connect.rom.miui.com/generate_204"
 #define GENERATE_BAK_URL "http://1.1.1.1"
-#define AUTH_IP "http://14.146.227.141:7001"
-#define AUTH_BAK_IP "http://121.8.177.212:7001"
+#define AUTH_URL "http://14.146.227.141:7001"
+#define AUTH_BAK_URL "http://121.8.177.212:7001"
 
-static char s_school_id[SCHOOL_ID_LENGTH];
-static char s_domain[DOMAIN_LENGTH];
-static char s_area[AREA_LENGTH];
+static char s_school_id[SCHOOL_ID_LENGTH] = {0};
+static char s_domain[DOMAIN_LENGTH] = {0};
+static char s_area[AREA_LENGTH] = {0};
 
-static _Thread_local char s_request_url[LOCATION_LEN];
+static _Thread_local char s_request_url[LOCATION_LEN] = {0};
+
+static char s_generate_url[][URL_LENGTH] = {
+    "http://connect.rom.miui.com/generate_204",
+    "http://connectivitycheck.platform.hicloud.com/generate_204",
+    "http://wifi.vivo.com.cn/generate_204",
+    "http://connectivitycheck.gstatic.com/generate_204",
+    "http://www.google-analytics.com/generate_204"
+};
+
+static uint8_t s_generate_idx = 0;
 
 static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
 {
@@ -371,12 +381,58 @@ static network_status_t curl_err_msg_out(const CURLcode curl_code)
     }
 }
 
+static void log_curl_error(CURL *curl, CURLcode code, const char *errbuf,
+                    const char *url, const char *func_name,
+                    long connect_timeout, long total_timeout)
+{
+    LOG_DEBUG("[%s] curl 请求失败: %s", func_name, curl_easy_strerror(code));
+    LOG_DEBUG("[%s] URL: %s", func_name, url ? url : "(null)");
+    LOG_DEBUG("[%s] CURLcode: %d", func_name, code);
+
+    if (errbuf && errbuf[0] != '\0') {
+        LOG_DEBUG("[%s] 错误详情: %s", func_name, errbuf);
+    }
+
+    if (curl) {
+        double connect_time = 0.0;
+        double total_time = 0.0;
+        // 获取连接阶段实际耗时（秒，double 类型）
+        curl_easy_getinfo(curl, CURLINFO_CONNECT_TIME, &connect_time);
+        // 获取整个请求实际总耗时（秒，double 类型）
+        curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total_time);
+
+        LOG_DEBUG("[%s] 实际连接耗时: %.3f 秒", func_name, connect_time);
+        LOG_DEBUG("[%s] 实际总耗时:   %.3f 秒", func_name, total_time);
+        LOG_DEBUG("[%s] 设置连接超时: %ld 秒", func_name, connect_timeout);
+        LOG_DEBUG("[%s] 设置总超时:   %ld 秒", func_name, total_timeout);
+
+        // 特别针对超时错误进行原因分析
+        if (code == CURLE_OPERATION_TIMEDOUT) {
+            // 判断实际连接耗时是否已接近或超过设置的连接超时
+            if (connect_timeout > 0 && connect_time >= (double)connect_timeout * 0.9) {
+                LOG_DEBUG("[%s] 结论: 连接阶段超时（CURLOPT_CONNECTTIMEOUT = %ld 秒）",
+                          func_name, connect_timeout);
+            }
+            // 否则，判断总耗时是否已接近或超过设置的总超时
+            else if (total_timeout > 0 && total_time >= (double)total_timeout * 0.9) {
+                LOG_DEBUG("[%s] 结论: 总超时（CURLOPT_TIMEOUT = %ld 秒）",
+                          func_name, total_timeout);
+            }
+            else {
+                LOG_DEBUG("[%s] 结论: 超时原因不明确，实际耗时未明显逼近设定阈值，"
+                          "请检查网络稳定性或服务器响应", func_name);
+            }
+        }
+    }
+}
+
 curl_resp_t post(const char* url, const char* data)
 {
-    LOG_VERBOSE("POST 地址: %s", url);
-    LOG_VERBOSE("POST 数据: %s", data);
+    LOG_DEBUG("POST 地址: %s", url);
+    LOG_DEBUG("POST 数据: %s", data);
 
     curl_resp_t resp = {0};
+    char errbuf[CURL_ERROR_SIZE] = {0};
 
     char md5_hash_str[MAX_LEN] = {0};
     char ua[MAX_LEN] = {0};
@@ -404,14 +460,14 @@ curl_resp_t post(const char* url, const char* data)
 
     LOG_VERBOSE("POST 添加头 %s", md5_hash_str);
     LOG_VERBOSE("POST 添加头 %s", REQ_CONTENT_TYPE);
-    LOG_VERBOSE("POST 添加头 %s", ua);
+    LOG_DEBUG("POST 添加头 %s", ua);
     LOG_VERBOSE("POST 添加头 %s", REQ_ACCEPT);
     LOG_VERBOSE("POST 添加头 %s", c_id);
-    LOG_VERBOSE("POST 添加头 %s", a_id);
+    LOG_DEBUG("POST 添加头 %s", a_id);
     LOG_VERBOSE("POST 添加头 %s", cdc_sid);
     LOG_VERBOSE("POST 添加头 %s", cdc_d);
     LOG_VERBOSE("POST 添加头 %s", cdc_a);
-    LOG_VERBOSE("下标: %" PRId8, tl_thread_idx);
+    LOG_VERBOSE("线程下标: %" PRId8, tl_thread_idx);
 
     struct curl_slist* headers = NULL;
 
@@ -439,9 +495,11 @@ curl_resp_t post(const char* url, const char* data)
     // POST URL
     curl_easy_setopt(curl, CURLOPT_URL, url);
     // 连接超时时长
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, g_conn_timeout);
     // 总超时时长
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, g_op_timeout);
+
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
@@ -456,6 +514,9 @@ curl_resp_t post(const char* url, const char* data)
     const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
+        // 先输出调试信息（此时 curl 句柄仍然有效）
+        log_curl_error(curl, curl_code, errbuf, url, "post", 3L, 5L);
+        // 再清理资源
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         resp.status = curl_err_msg_out(curl_code);
@@ -479,7 +540,7 @@ curl_resp_t post(const char* url, const char* data)
     }
     if (resp_code == 204)
     {
-        LOG_VERBOSE("无内容, 响应码: 204");
+        LOG_DEBUG("无内容, 响应码: 204");
         resp.http_code = HTTP_NO_CONTENT;
         resp.status = STATUS_OK;
         return resp;
@@ -487,7 +548,7 @@ curl_resp_t post(const char* url, const char* data)
     if (resp_code == 302)
     {
         LOG_DEBUG("重定向, 响应码: 302");
-        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
+        if (tl_thread_idx > -1) LOG_DEBUG("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
         resp.http_code = HTTP_FOUND;
         resp.status = STATUS_OK;
         return resp;
@@ -501,9 +562,10 @@ curl_resp_t post(const char* url, const char* data)
 
 curl_resp_t get(const char* url, const bool connect_only)
 {
-    LOG_VERBOSE("GET 地址: %s", url);
+    LOG_DEBUG("GET 地址: %s", url);
 
     curl_resp_t resp = {0};
+    char errbuf[CURL_ERROR_SIZE] = {0};
 
     char ua[MAX_LEN] = {0};
     char c_id[MAX_LEN] = {0};
@@ -516,7 +578,7 @@ curl_resp_t get(const char* url, const bool connect_only)
         snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
         snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
 
-        LOG_VERBOSE("GET 添加头 %s", ua);
+        LOG_DEBUG("GET 添加头 %s", ua);
         LOG_VERBOSE("GET 添加头 %s", REQ_ACCEPT);
         LOG_VERBOSE("GET 添加头 %s", c_id);
         LOG_VERBOSE("线程下标: %" PRId8, tl_thread_idx);
@@ -540,11 +602,13 @@ curl_resp_t get(const char* url, const bool connect_only)
     // GET URL
     curl_easy_setopt(curl, CURLOPT_URL, url);
     // 连接超时时长
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, g_conn_timeout);
     // 总超时时长
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, g_op_timeout);
     // 是否跟随重定向 (当前否)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     if (connect_only) // 判断是否仅连接 (检测网络状态用)
     {
         curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);
@@ -565,6 +629,9 @@ curl_resp_t get(const char* url, const bool connect_only)
     const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
+        // 先输出调试信息（此时 curl 句柄仍然有效）
+        log_curl_error(curl, curl_code, errbuf, url, "get", 3L, 5L);
+        // 再清理资源
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         resp.status = curl_err_msg_out(curl_code);
@@ -603,7 +670,7 @@ curl_resp_t get(const char* url, const bool connect_only)
     if (resp_code == 302)
     {
         LOG_DEBUG("临时移动, 重定向, 响应码: 302");
-        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
+        if (tl_thread_idx > -1) LOG_DEBUG("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
         resp.http_code = HTTP_FOUND;
         resp.status = STATUS_NEED_AUTH;
         return resp;
@@ -627,7 +694,16 @@ network_status_t check_network_status(const bool connect_only)
      * 其他则是非正常状态
      */
 
-    resp = get(GENERATE_URL, connect_only);
+    LOG_DEBUG("请求第 %" PRIu8 " 个 URL", s_generate_idx + 1);
+    resp = get(s_generate_url[s_generate_idx], connect_only);
+    if (s_generate_idx < 5)
+    {
+        s_generate_idx++;
+    }
+    if (s_generate_idx >= 5)
+    {
+        s_generate_idx = 0;
+    }
 
     conn_status = CONNECT_INTERNET;
 
@@ -660,7 +736,7 @@ network_status_t check_network_status(const bool connect_only)
 
             conn_status = CONNECT_AUTH_SERVER;
 
-            resp = get(AUTH_IP, connect_only);
+            resp = get(AUTH_URL, connect_only);
 
             if (resp.curl_code != CURLE_OK) // 认证服务器 1 无法连通
             {
@@ -673,7 +749,7 @@ network_status_t check_network_status(const bool connect_only)
 
                 LOG_WARN("认证服务器 1 无法连通, 正在检测认证服务器 2 连通性");
 
-                resp = get(AUTH_BAK_IP, connect_only);
+                resp = get(AUTH_BAK_URL, connect_only);
 
                 conn_status = CONNECT_AUTH_SERVER;
 

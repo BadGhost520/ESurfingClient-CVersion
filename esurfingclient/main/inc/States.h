@@ -96,8 +96,6 @@ typedef struct
     uint32_t mark;
     /** @brief 是否使用自定义标记值 */
     bool use_cus_mark;
-    // /** @brief 自启状态 */
-    // bool auto_start;
     /** @brief 一周时间窗口列表 */
     time_window_t time_windows[MAX_TIME_WINDOWS];
     /** @brief 有效时间窗口数量 */
@@ -179,6 +177,12 @@ extern bool g_need_restart;
 
 /** @brief 配置文件加载状态 */
 extern bool g_cfg_loaded;
+
+/** @brief 连接超时时长 */
+extern long g_conn_timeout;
+
+/** @brief 总操作超时时长 */
+extern long g_op_timeout;
 
 /** @brief 刷新状态函数 */
 void refresh_states();

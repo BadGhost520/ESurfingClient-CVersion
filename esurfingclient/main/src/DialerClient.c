@@ -123,7 +123,17 @@ static bool heartbeat()
         LOG_ERROR("心跳内容解析失败");
         return false;
     }
-    g_prog_status[tl_thread_idx].auth_cfg.keep_retry = str2uint64(parsed_interval); // 将字符串时间转成 uint64_t 时间
+
+    const uint64_t tmp_retry = str2uint64(parsed_interval); // 将字符串时间转成 uint64_t 时间
+    if (tmp_retry < (unsigned long)g_op_timeout * 5)
+    {
+        g_prog_status[tl_thread_idx].auth_cfg.keep_retry = tmp_retry;
+    }
+    else
+    {
+        g_prog_status[tl_thread_idx].auth_cfg.keep_retry = tmp_retry - g_op_timeout * 5;
+    }
+
     free(parsed_interval);
     return true;
 }
@@ -210,7 +220,17 @@ static bool login()
         LOG_ERROR("解析 KeepRetry 失败");
         return false;
     }
-    g_prog_status[tl_thread_idx].auth_cfg.keep_retry = str2uint64(parsed_keep_retry); // 将字符串时间转成 uint64_t 时间
+
+    const uint64_t tmp_retry = str2uint64(parsed_keep_retry); // 将字符串时间转成 uint64_t 时间
+    if (tmp_retry < (unsigned long)g_op_timeout * 5)
+    {
+        g_prog_status[tl_thread_idx].auth_cfg.keep_retry = tmp_retry;
+    }
+    else
+    {
+        g_prog_status[tl_thread_idx].auth_cfg.keep_retry = tmp_retry - g_op_timeout * 5;
+    }
+
     free(parsed_keep_retry);
     LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[tl_thread_idx].auth_cfg.keep_retry);
     return true;

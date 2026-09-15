@@ -59,6 +59,20 @@ function normalizeChannel(raw) {
     }
 }
 
+/**
+ * 归一化超时参数 (秒)
+ * 数字输入框清空后会取到 '' 或 NaN, 非正数一律按默认值处理
+ * (后端 load_cfg 遇到非法值也会回退到默认值, 这里保持一致)
+ * @param {*} raw 原始取值
+ * @param {number} fallback 默认值
+ * @returns {number} 正整数秒数
+ */
+function normalizeTimeout(raw, fallback) {
+    const timeout = Math.floor(Number(raw));
+    if (!Number.isFinite(timeout) || timeout <= 0) return fallback;
+    return timeout;
+}
+
 /** 星期 */
 const WEEK_DAYS = [
     { value: 'mon', text: '周一' },
@@ -91,6 +105,12 @@ const TOAST_CLASS = {
 /** 后端最多支持的时间段数量 (States.h MAX_TIME_WINDOWS) */
 const MAX_TIME_WINDOWS = 16;
 
+/** 默认连接超时 (秒, 与后端 g_conn_timeout 保持一致) */
+const DEFAULT_CONN_TIMEOUT = 3;
+
+/** 默认操作超时 (秒, 与后端 g_op_timeout 保持一致) */
+const DEFAULT_OP_TIMEOUT = 5;
+
 /** 状态轮询间隔 (毫秒) */
 const STATUS_INTERVAL = 5000;
 
@@ -102,6 +122,8 @@ function defaultConfigs() {
     return {
         enabled: false,
         log_lv: 4,
+        conn_timeout: DEFAULT_CONN_TIMEOUT,
+        op_timeout: DEFAULT_OP_TIMEOUT,
         accounts: [
             {
                 username: '',
@@ -311,7 +333,7 @@ const api = {
     async applyConfigs() {
         const response = await request('POST', '/api/applyConfigs', {
             json: { apply: true },
-            allow: [204, 400, 500]
+            allow: [204, 400, 403, 500, 503]
         });
         return response.status;
     },
@@ -360,10 +382,11 @@ async function restartAuthRequest() {
         return true;
     } catch (error) {
         if (error.status === 404) {
-            notify.warning('后端未提供重新认证接口, 请重启程序后重试');
-        } else if (error.status === 0 && String(error.message).includes('超时')) {
-            // 旧版后端没有这个接口时会直接不回应
-            notify.warning('后端没有响应 (可能是旧版后端未提供该接口), 请重启程序后重试');
+            notify.error('后端未提供重新认证接口');
+        } else if (error.status === 403) {
+            notify.error('没有正在认证的线程');
+        } else if (error.status === 503) {
+            notify.error('程序未加载完成');
         } else {
             notify.error('重新认证失败: ' + error.message);
         }
@@ -552,6 +575,9 @@ document.addEventListener('alpine:init', () => {
                 enabled: !!configs.enabled,
                 // 下拉框取到的值是字符串, 这里必须转成数字, 否则后端会当成 0 (关闭日志)
                 log_lv: Number(configs.log_lv) || 0,
+                // 数字输入框同样可能取到字符串或空值, 统一兜底成正整数秒
+                conn_timeout: normalizeTimeout(configs.conn_timeout, DEFAULT_CONN_TIMEOUT),
+                op_timeout: normalizeTimeout(configs.op_timeout, DEFAULT_OP_TIMEOUT),
                 accounts: [
                     {
                         username: String(account.username || ''),
@@ -628,12 +654,18 @@ document.addEventListener('alpine:init', () => {
                     this.waitForRestart();
                     return true;
                 }
-                notify.error(code === 400 ? '应用失败: 请求内容为空' : '应用失败: 后端拒绝该操作');
                 return false;
             } catch (error) {
                 if (error.status === 404) {
-                    notify.warning('后端未提供应用接口, 请手动重启程序');
-                } else {
+                    notify.error('后端未提供应用接口');
+                } else if (error.status === 400) {
+                    notify.error('应用失败: 请求内容为空');
+                } else if (error.status === 403) {
+                    notify.error('应用失败: 没有线程正在认证');
+                } else if (error.status === 500) {
+                    notify.error('应用失败: JSON 内容错误');
+                }
+                else {
                     notify.error('应用失败: ' + error.message);
                 }
                 return false;
@@ -1046,6 +1078,10 @@ function normalizeConfigs(raw) {
     configs.enabled = !!raw.enabled;
     const level = Number(raw.log_lv);
     configs.log_lv = Number.isFinite(level) ? Math.min(Math.max(level, 0), 6) : 4;
+
+    // 后端可能返回缺失或非法的超时参数, 这里同样兜底, 避免输入框显示空值
+    configs.conn_timeout = normalizeTimeout(raw.conn_timeout, DEFAULT_CONN_TIMEOUT);
+    configs.op_timeout = normalizeTimeout(raw.op_timeout, DEFAULT_OP_TIMEOUT);
 
     const accounts = Array.isArray(raw.accounts) ? raw.accounts : [];
     const account = accounts[0] || {};

@@ -692,7 +692,7 @@ char* create_xml_payload(const XmlChoose choose)
     LOG_DEBUG("创建 XML 完成");
     if (choose != LOGIN)
     {
-        LOG_VERBOSE("XML 内容为:\n%s", xml);
+        LOG_DEBUG("XML 内容为:\n%s", xml);
     }
     return xml;
 }
@@ -851,16 +851,6 @@ bool load_cfg()
         }
     }
 
-    const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
-    if (log_lv && cJSON_IsNumber(log_lv))
-    {
-        set_logger_level(log_lv->valueint);
-    }
-    else
-    {
-        LOG_WARN("log_lv 参数不存在, 使用默认等级 (INFO)");
-    }
-
     const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
     if (enabled == NULL)
     {
@@ -889,6 +879,58 @@ bool load_cfg()
         }
     }
     g_prog_enabled = true;
+
+    const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
+    if (log_lv)
+    {
+        if (cJSON_IsNumber(log_lv))
+        {
+            set_logger_level(log_lv->valueint);
+        }
+        else
+        {
+            LOG_WARN("log_lv 参数不正确, 使用默认参数 (INFO)");
+        }
+    }
+    else
+    {
+        LOG_WARN("log_lv 参数不存在, 使用默认参数 (INFO)");
+    }
+
+    const cJSON* conn_timeout = cJSON_GetObjectItem(cfg_json, "conn_timeout");
+    if (conn_timeout)
+    {
+        if (cJSON_IsNumber(conn_timeout))
+        {
+            g_conn_timeout = conn_timeout->valueint;
+        }
+        else
+        {
+            LOG_WARN("conn_timeout 参数不正确, 使用默认参数 (3s)");
+        }
+    }
+    else
+    {
+        LOG_WARN("conn_timeout 参数不存在, 使用默认参数 (3s)");
+    }
+
+
+    const cJSON* op_timeout = cJSON_GetObjectItem(cfg_json, "op_timeout");
+    if (op_timeout)
+    {
+        if (cJSON_IsNumber(op_timeout))
+        {
+            g_op_timeout = op_timeout->valueint;
+        }
+        else
+        {
+            LOG_WARN("op_timeout 参数不正确, 使用默认参数 (5s)");
+        }
+    }
+    else
+    {
+        LOG_WARN("op_timeout 参数不存在, 使用默认参数 (5s)");
+    }
 
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (accounts == NULL || cJSON_IsArray(accounts) == false || cJSON_GetArraySize(accounts) == 0)

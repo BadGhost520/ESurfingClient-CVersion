@@ -30,6 +30,10 @@ bool g_need_restart = false;
 
 bool g_cfg_loaded = false;
 
+long g_conn_timeout = 3;
+
+long g_op_timeout = 5;
+
 static void reset_host_name()
 {
     auth_cfg_t* auth_cfg = &g_prog_status[tl_thread_idx].auth_cfg;

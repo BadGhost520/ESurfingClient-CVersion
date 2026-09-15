@@ -321,6 +321,18 @@
               </select>
               <span class="label">日志的详细程度</span>
             </fieldset>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">连接超时</legend>
+              <input type="number" class="input" min="1" step="1"
+                     x-model.number="$store.main.configs.conn_timeout" />
+              <span class="label">连接阶段的超时时长 (单位: 秒)</span>
+            </fieldset>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">操作超时</legend>
+              <input type="number" class="input" min="1" step="1"
+                     x-model.number="$store.main.configs.op_timeout" />
+              <span class="label">单次请求的总超时时长 (单位: 秒)</span>
+            </fieldset>
           </div>
         </div>
       </div>
