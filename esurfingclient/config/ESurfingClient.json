@@ -1,8 +1,8 @@
 {
   "enabled": false,
   "log_lv":  4,
-  "conn_timeout": 3,
-  "op_timeout":   5,
+  "conn_timeout": 7,
+  "op_timeout":   10,
   "accounts": [
     {
       "username": "",
