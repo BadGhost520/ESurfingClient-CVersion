@@ -44,7 +44,6 @@ static char s_generate_url[][URL_LENGTH] = {
     "http://connect.rom.miui.com/generate_204",
     "http://connectivitycheck.platform.hicloud.com/generate_204",
     "http://wifi.vivo.com.cn/generate_204",
-    "http://edge-http.microsoft.com/captiveportal/generate_204",
     "http://connectivitycheck.gstatic.com/generate_204"
 };
 
@@ -694,11 +693,11 @@ network_status_t check_network_status(const bool connect_only)
 
     LOG_DEBUG("请求第 %" PRIu8 " 个 URL", s_generate_idx + 1);
     resp = get(s_generate_url[s_generate_idx], connect_only);
-    if (s_generate_idx < 5)
+    if (s_generate_idx < 4)
     {
         s_generate_idx++;
     }
-    if (s_generate_idx >= 5)
+    if (s_generate_idx >= 4)
     {
         s_generate_idx = 0;
     }
