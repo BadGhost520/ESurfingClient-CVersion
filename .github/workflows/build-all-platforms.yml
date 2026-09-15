@@ -433,5 +433,16 @@ jobs:
           files: master-latest.zip
           draft: false
           prerelease: true
+          body: |
+            # 这里是预发布版本下载
+            
+            **能在这里下载最新编译的包, 可以尝鲜, 尝试新功能**
+            
+            > [!WARNING]
+            > 不一定稳定, 仅供尝鲜!
+            
+            ### 全部包的下载 ☞ [吱吱吱](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/download/master-latest/master-latest.zip)
+            
+            ### 最新正式版下载链接 ☞ [吱吱吱](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
