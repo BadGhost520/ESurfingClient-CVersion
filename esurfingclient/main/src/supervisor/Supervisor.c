@@ -420,6 +420,8 @@ static void child_schedule_restart(child_t* child, const int exit_code)
     LOG_INFO("%s 将在 %" PRIu64 " 毫秒后重新拉起", name, delay);
 }
 
+#ifndef _WIN32
+
 static child_t* child_find(const child_handle_t handle)
 {
     for (int i = 0; i < s_child_count; i++)
@@ -431,8 +433,6 @@ static child_t* child_find(const child_handle_t handle)
     }
     return NULL;
 }
-
-#ifndef _WIN32
 
 static void supervisor_reap()
 {

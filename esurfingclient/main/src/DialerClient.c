@@ -857,13 +857,21 @@ int dialer_app(void* arg)
     return exit_code;
 }
 
-/** @brief 等待认证时机的返回值 */
+/**
+ * @brief 等待认证时机的返回值
+ *
+ * 成员名避开 WAIT_FAILED / WAIT_TIMEOUT 这类:
+ * Windows 的 <windows.h> 定义了同名的宏 (WAIT_FAILED 是 ((DWORD)0xFFFFFFFF)),
+ * 而本文件经 NetClient.h -> curl.h -> winsock2.h 会把 windows.h 带进来,
+ * 于是枚举成员被宏替换掉, 编译报 "expected identifier before '(' token"。
+ * Linux 上不会 —— 这个坑只在 Windows 构建时出现。
+ */
 typedef enum
 {
     /** @brief 网络已进入需要认证的状态 */
     WAIT_READY = 0,
     /** @brief 重试次数用尽 */
-    WAIT_FAILED = 1,
+    WAIT_RETRY_EXHAUSTED = 1,
     /** @brief 收到退出请求 */
     WAIT_EXIT = 2,
     /** @brief 允许时段关闭, 应当回到主循环等待 */
@@ -931,7 +939,7 @@ static WaitResult wait_need_auth()
             if (retry_network > 5)
             {
                 LOG_FATAL("超过最多重试次数");
-                return WAIT_FAILED;
+                return WAIT_RETRY_EXHAUSTED;
             }
             LOG_WARN("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry_network);
             retry_network++;
@@ -1036,7 +1044,7 @@ static int work_auth()
         {
             const WaitResult wait_result = wait_need_auth();
 
-            if (wait_result == WAIT_FAILED) shut(1);
+            if (wait_result == WAIT_RETRY_EXHAUSTED) shut(1);
             if (wait_result == WAIT_EXIT) break;
             if (wait_result == WAIT_TIME_CLOSED) continue;
 
@@ -1168,7 +1176,7 @@ void work()
     /**
      * 检测网络状态, 进入需要认证的状态后才继续
      */
-    if (wait_need_auth() == WAIT_FAILED) shut(1);
+    if (wait_need_auth() == WAIT_RETRY_EXHAUSTED) shut(1);
 
     // 等待期间收到退出请求
     if (g_stop_requested) shut(0);
