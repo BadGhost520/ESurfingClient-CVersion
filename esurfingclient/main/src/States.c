@@ -10,6 +10,10 @@ jmp_buf g_exit_jmp;
 
 uint64_t g_start_run_tm = 0;
 
+prog_role_t g_prog_role = ROLE_STANDALONE;
+
+uint8_t g_prog_account = 0;
+
 int8_t g_prog_cnt = 0;
 
 _Thread_local int8_t tl_thread_idx = -1;

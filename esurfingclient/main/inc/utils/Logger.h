@@ -26,6 +26,12 @@ typedef struct {
     FILE*       file_handle;
     size_t      max_lines;
     size_t      cur_lines;
+    /** @brief 当前持有的日志文件设备号 (Windows 为卷序列号) */
+    uint64_t    file_dev;
+    /** @brief 当前持有的日志文件 inode (Windows 为文件索引) */
+    uint64_t    file_ino;
+    /** @brief 距上次文件身份复检已写入的行数 */
+    size_t      lines_since_check;
 } log_cfg_t;
 
 #define LOG_VERBOSE(fmt, ...) \

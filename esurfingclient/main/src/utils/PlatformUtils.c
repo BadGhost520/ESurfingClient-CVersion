@@ -954,7 +954,14 @@ bool load_cfg()
     int8_t valid_cnt = 0;
 
 #ifdef __OPENWRT__
-    LOG_INFO("OpenWRT 环境, 会尝试加载所有有效配置");
+    if (g_prog_account != 0)
+    {
+        LOG_INFO("OpenWRT 环境, 本次仅使用配置 %" PRIu8, g_prog_account);
+    }
+    else
+    {
+        LOG_INFO("OpenWRT 环境, 会尝试加载所有有效配置");
+    }
 
     prog_status_t* new_prog_status = realloc(g_prog_status, sizeof(prog_status_t) * cnt);
     if (new_prog_status)
@@ -1066,10 +1073,26 @@ bool load_cfg()
 
 #else
 
-    LOG_INFO("非 OpenWRT 环境, 仅会尝试加载第一个有效配置");
+    if (g_prog_account != 0)
+    {
+        LOG_INFO("非 OpenWRT 环境, 将尝试加载配置 %" PRIu8, g_prog_account);
+    }
+    else
+    {
+        LOG_INFO("非 OpenWRT 环境, 仅会尝试加载第一个有效配置");
+    }
 
     for (uint8_t i = 0; i < cnt; i++)
     {
+        /**
+         * 指定了 --account 时只加载对应序号的配置,
+         * 未指定时保持原有行为 (取第一个有效配置)
+         */
+        if (g_prog_account != 0 && i + 1 != g_prog_account)
+        {
+            continue;
+        }
+
         const cJSON* account = cJSON_GetArrayItem(accounts, i);
 
         const cJSON* usr = cJSON_GetObjectItem(account, "username");
@@ -1118,7 +1141,8 @@ bool load_cfg()
         LOG_DEBUG("使用 UA: %s", g_prog_status[0].login_cfg.user_agent);
         LOG_DEBUG("当前使用下标: 0");
 
-        g_prog_status[0].login_cfg.idx = 1;
+        // 记真实序号: 首个配置可能不可用而被跳过, 写死 1 会让日志报错配置号
+        g_prog_status[0].login_cfg.idx = i + 1;
         LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
         valid_cnt++;
         break;
@@ -1127,6 +1151,55 @@ bool load_cfg()
 #endif
 
     cJSON_Delete(cfg_json);
+
+    /**
+     * 指定了 --account 时只保留该序号的配置
+     *
+     * 挑选必须放在全部配置加载完成之后:
+     * 自动标记值是按"可用配置"的顺序算出来的 (0x100 + valid_i * 0x100),
+     * 若在遍历时就跳过其它配置, valid_i 会从头计数, 标记值就会全部错位
+     */
+    if (g_prog_account != 0)
+    {
+        int8_t pick = -1;
+        for (uint8_t i = 0; i < valid_cnt; i++)
+        {
+            if (g_prog_status[i].login_cfg.idx == g_prog_account)
+            {
+                pick = (int8_t)i;
+                break;
+            }
+        }
+
+        if (pick < 0)
+        {
+            LOG_FATAL("配置 %" PRIu8 " 不存在或该配置不可用, 请检查配置文件", g_prog_account);
+            while (true)
+            {
+                if (g_need_exit)
+                {
+                    return false;
+                }
+                sleep_ms(10000, true);
+            }
+        }
+
+        if (pick != 0)
+        {
+            g_prog_status[0] = g_prog_status[pick];
+        }
+
+        valid_cnt = 1;
+
+        // 单账号进程用不到其余配置的空间, 按实际情况回收
+        prog_status_t* shrunk = realloc(g_prog_status, sizeof(prog_status_t));
+        if (shrunk != NULL)
+        {
+            g_prog_status = shrunk;
+        }
+
+        LOG_INFO("仅加载配置 %" PRIu8 ", 标记值: 0x%x", g_prog_account, g_prog_status[0].login_cfg.mark);
+    }
 
     if (valid_cnt == 0)
     {

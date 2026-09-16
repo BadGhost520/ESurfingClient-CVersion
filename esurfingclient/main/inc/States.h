@@ -35,6 +35,19 @@
 #define LOCATION_LEN 512
 #define LAST_LOCATION_LEN 1024
 
+/** @brief 程序角色 */
+typedef enum
+{
+    /** @brief 单进程模式 (未指定 --role, 保持原有行为) */
+    ROLE_STANDALONE = 0,
+    /** @brief 守护进程 */
+    ROLE_SUPERVISOR = 1,
+    /** @brief 认证进程 */
+    ROLE_AUTH = 2,
+    /** @brief Web 服务进程 */
+    ROLE_WEB = 3
+} prog_role_t;
+
 /** @brief 认证配置 */
 typedef struct
 {
@@ -147,6 +160,12 @@ extern jmp_buf g_exit_jmp;
 
 /** @brief 程序开始运行时间 */
 extern uint64_t g_start_run_tm;
+
+/** @brief 当前程序角色 */
+extern prog_role_t g_prog_role;
+
+/** @brief 当前进程负责的配置序号 (配置文件中的原始下标, 从 1 开始, 0 表示未指定) */
+extern uint8_t g_prog_account;
 
 /** @brief 适配器数 */
 extern int8_t g_prog_cnt;
