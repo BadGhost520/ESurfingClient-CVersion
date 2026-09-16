@@ -10,12 +10,17 @@
 #include "NetClient.h"
 #include "States.h"
 
+#ifndef __OPENWRT__
+#include "control/Control.h"
+#endif
+
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 #ifndef __OPENWRT__
 extern bool start_web_server();
+extern bool start_web_server_remote();
 #endif
 
 #ifdef _WIN32
@@ -949,6 +954,19 @@ static int work_auth()
      */
     g_prog_status[0].thread_id = sim_thread_cur_id();
 
+#ifndef __OPENWRT__
+
+    /**
+     * 启动控制通道, 供 Web 进程查询状态与下发动作.
+     * 端口被占用不算致命: 认证本身不需要它, 降级为不提供远程控制即可
+     */
+    if (control_server_start(g_control_port) == false)
+    {
+        LOG_WARN("控制通道启动失败, 本实例将不提供远程控制");
+    }
+
+#endif
+
     /**
      * 认证循环
      * dialer_app 内部已处理登录/心跳/登出/重试, 这里只决定"什么时候再跑一轮":
@@ -1004,6 +1022,20 @@ static int work_auth()
             return auth_code;
         }
 
+        /**
+         * Web 端请求"应用新配置"时会把 g_cfg_loaded 置为 false,
+         * 这里重新加载. 配置里若已经没有本实例负责的账号, load_cfg 会失败并让进程退出,
+         * 由外部监管者按 respawn 策略处理
+         */
+        if (g_cfg_loaded == false)
+        {
+            LOG_INFO("配置已变更, 重新加载");
+            if (load_cfg() == false) shut(1);
+
+            network_ready = false; // 换过配置后重新做网络检测
+            continue;
+        }
+
         LOG_INFO("配置 %" PRIu8 " 需要重新认证, 重新开始认证流程", g_prog_status[0].login_cfg.idx);
     }
 
@@ -1011,16 +1043,65 @@ static int work_auth()
     return 0;
 }
 
+#ifndef __OPENWRT__
+
+/**
+ * @brief Web 进程主流程
+ *
+ * 只提供网页服务, 不参与认证:
+ * - 配置由本进程自己读, 因此 /api/getConfigs 一类的接口两种模式下走的是同一段代码
+ * - 认证状态与"重新认证 / 应用新配置"通过控制通道交给认证进程
+ * - 不启动线程守护与时间控制线程
+ * @return 进程退出码
+ */
+static int work_web()
+{
+    g_thread_keep_alive = true;
+
+    g_prog_status = calloc(1, sizeof(prog_status_t));
+    init_shutdown_hook();
+
+    if (init_logger() == false) return 1;
+
+    print_banner();
+
+    if (load_cfg() == false) shut(1);
+
+    LOG_INFO("以 Web 进程运行, 展示配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
+
+    if (start_web_server_remote() == false) shut(1);
+
+    // Web 服务在独立线程里跑, 主线程只等退出
+    while (g_need_exit == false)
+    {
+        sleep_ms(1000, false);
+    }
+
+    LOG_INFO("Web 进程退出");
+    return 0;
+}
+
+#endif
+
 void work()
 {
     /**
-     * 认证进程走单独的流程
-     * 守护进程与 Web 进程尚未实现, 已在参数校验阶段拦下
+     * 各角色走各自的流程
+     * 守护进程尚未实现, 已在参数校验阶段拦下
      */
     if (g_prog_role == ROLE_AUTH)
     {
         exit(work_auth());
     }
+
+#ifndef __OPENWRT__
+
+    if (g_prog_role == ROLE_WEB)
+    {
+        exit(work_web());
+    }
+
+#endif
 
     g_thread_keep_alive = true;
 

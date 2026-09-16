@@ -5,6 +5,7 @@
 #include "../../inc/utils/sim/SimThread.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
+#include "control/Control.h"
 
 #include "NetClient.h"
 #include "States.h"
@@ -18,8 +19,72 @@
 #include <strings.h>
 #endif
 
-static const char* listenAddr = "http://0.0.0.0:8888";
 static sim_thread_t* web_thread;
+
+/**
+ * @brief 认证状态是否就在本进程里
+ *
+ * - 单进程模式: Web 服务与认证逻辑同进程, 直接读 g_prog_status
+ * - Web 进程 (--role web): 认证状态在另一个进程里, 通过控制通道查询
+ *
+ * 只有"运行时状态"要跨进程; 配置两个进程各读各的文件, 因此
+ * /api/getConfigs 之类的接口两种模式下走的是同一段代码
+ */
+static bool s_local_state = true;
+
+/**
+ * @brief 查询认证状态
+ * @param out 是否已认证
+ * @return 是否查询成功 (Web 进程连不上认证进程时为 false)
+ */
+static bool query_is_authed(bool* out)
+{
+    if (s_local_state)
+    {
+        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
+        *out = g_prog_status[0].runtime_status.is_authed;
+        return true;
+    }
+
+    control_status_t status;
+    if (control_query_status(&status) == false) return false;
+
+    *out = status.is_authed;
+    return true;
+}
+
+/**
+ * @brief 请求重新认证
+ * @return 是否成功
+ */
+static bool request_restart_auth()
+{
+    if (s_local_state)
+    {
+        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
+        g_prog_status[0].runtime_status.is_need_reauth = true;
+        return true;
+    }
+
+    return control_restart_auth();
+}
+
+/**
+ * @brief 请求重新加载配置并重新认证
+ * @return 是否成功
+ */
+static bool request_apply_config()
+{
+    if (s_local_state)
+    {
+        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
+        g_cfg_loaded = false;
+        g_prog_status[0].runtime_status.is_need_reauth = true;
+        return true;
+    }
+
+    return control_apply_config();
+}
 
 /** @brief 日志文件列表最多返回的数量 */
 #define LOG_FILE_MAX 64
@@ -285,8 +350,13 @@ static bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
     // 获取认证状态
     if (mg_match(hm->uri, mg_str("/api/status/auth"), NULL))
     {
+        bool is_authed = false;
+        const bool reachable = query_is_authed(&is_authed);
+
         cJSON* auth = cJSON_CreateObject();
-        cJSON_AddBoolToObject(auth, "status", g_prog_status[0].runtime_status.is_authed);
+        cJSON_AddBoolToObject(auth, "status", is_authed);
+        // 认证进程不可达时额外标出来, 前端可据此提示 (不认这个字段的前端会忽略它)
+        cJSON_AddBoolToObject(auth, "reachable", reachable);
         char* status_str = cJSON_Print(auth);
         mg_http_reply(c, 200, HEADER_JSON, "%s", status_str);
         free(status_str);
@@ -528,17 +598,28 @@ static bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                 }
                 else
                 {
-                    if (g_prog_status[0].runtime_status.is_authed == true)
+                    bool is_authed = false;
+                    const bool reachable = query_is_authed(&is_authed);
+
+                    if (reachable == false)
                     {
-                        LOG_INFO("收到 Web 应用配置文件请求, 程序将重新加载配置文件并进行认证");
-                        g_cfg_loaded = false;
-                        g_prog_status[0].runtime_status.is_need_reauth = true;
-                        mg_http_reply(c, 204, "", "");
+                        LOG_WARN("收到 Web 应用配置文件请求, 但认证进程不可达");
+                        mg_http_reply(c, 503, "", "");
                     }
-                    else
+                    else if (is_authed == false)
                     {
                         LOG_WARN("收到 Web 应用配置文件请求, 但没有线程在认证, 拒绝操作");
                         mg_http_reply(c, 403, "", "");
+                    }
+                    else if (request_apply_config() == false)
+                    {
+                        LOG_WARN("收到 Web 应用配置文件请求, 但下发到认证进程失败");
+                        mg_http_reply(c, 503, "", "");
+                    }
+                    else
+                    {
+                        LOG_INFO("收到 Web 应用配置文件请求, 程序将重新加载配置文件并进行认证");
+                        mg_http_reply(c, 204, "", "");
                     }
                 }
             }
@@ -567,16 +648,28 @@ static bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
         }
         else
         {
-            if (g_prog_status[0].runtime_status.is_authed == true)
+            bool is_authed = false;
+            const bool reachable = query_is_authed(&is_authed);
+
+            if (reachable == false)
             {
-                LOG_INFO("收到 Web 重新认证请求, 认证线程将重新进行认证");
-                g_prog_status[0].runtime_status.is_need_reauth = true;
-                mg_http_reply(c, 204, "", "");
+                LOG_WARN("收到 Web 重新认证请求, 但认证进程不可达");
+                mg_http_reply(c, 503, "", "");
             }
-            else
+            else if (is_authed == false)
             {
                 LOG_WARN("收到 Web 重新认证请求, 但没有线程在认证, 拒绝操作");
                 mg_http_reply(c, 403, "", "");
+            }
+            else if (request_restart_auth() == false)
+            {
+                LOG_WARN("收到 Web 重新认证请求, 但下发到认证进程失败");
+                mg_http_reply(c, 503, "", "");
+            }
+            else
+            {
+                LOG_INFO("收到 Web 重新认证请求, 认证线程将重新进行认证");
+                mg_http_reply(c, 204, "", "");
             }
         }
 
@@ -698,16 +791,30 @@ static int web_server(void* arg)
     mg_log_set_fn(logFn, NULL);
     mg_mgr_init(&mgr);
 
-    mg_http_listen(&mgr, listenAddr, fn, NULL);
+    // 监听地址由 --web-listen 决定, 默认只监听回环
+    char listen_addr[WEB_LISTEN_LEN + 8];
+    snprintf(listen_addr, sizeof(listen_addr), "http://%s", safe_str(g_web_listen));
+
+    if (mg_http_listen(&mgr, listen_addr, fn, NULL) == NULL)
+    {
+        LOG_FATAL("Web 服务监听失败: %s (端口可能已被占用)", listen_addr);
+        mg_mgr_free(&mgr);
+        return 1;
+    }
+
     g_is_webserver_running = 1;
-    LOG_INFO("Web 服务器已启动, 后台访问地址: http://127.0.0.1:8888/");
+    LOG_INFO("Web 服务器已启动, 访问地址: %s", listen_addr);
     while (g_is_webserver_running) mg_mgr_poll(&mgr, 1000);
     mg_mgr_free(&mgr);
     LOG_INFO("Web 服务器已停止");
     return 0;
 }
 
-bool start_web_server()
+/**
+ * @brief 启动 Web 服务线程
+ * @return 是否启动成功
+ */
+static bool start_web_thread()
 {
     web_thread = sim_thread_create(web_server, (void*)(intptr_t)-2);
 
@@ -724,6 +831,22 @@ bool start_web_server()
         retry++;
     }
     return true;
+}
+
+bool start_web_server()
+{
+    s_local_state = true;
+    return start_web_thread();
+}
+
+bool start_web_server_remote()
+{
+    control_set_port(g_control_port);
+    s_local_state = false;
+
+    LOG_INFO("Web 进程模式: 认证状态通过控制通道 127.0.0.1:%" PRIu16 " 获取", g_control_port);
+
+    return start_web_thread();
 }
 
 void stop_web_server()

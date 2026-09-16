@@ -35,6 +35,16 @@
 #define LOCATION_LEN 512
 #define LAST_LOCATION_LEN 1024
 
+#define WEB_LISTEN_LEN 64
+
+/**
+ * @brief Web 服务默认监听地址
+ *
+ * 默认只监听回环: /api/getConfigs 会返回明文账号密码, 而服务本身没有鉴权,
+ * 监听 0.0.0.0 等于把这些暴露给整个局域网
+ */
+#define DEFAULT_WEB_LISTEN "127.0.0.1:8888"
+
 /** @brief 程序角色 */
 typedef enum
 {
@@ -166,6 +176,12 @@ extern prog_role_t g_prog_role;
 
 /** @brief 当前进程负责的配置序号 (配置文件中的原始下标, 从 1 开始, 0 表示未指定) */
 extern uint8_t g_prog_account;
+
+/** @brief 控制通道端口 */
+extern uint16_t g_control_port;
+
+/** @brief Web 服务监听地址 (形如 127.0.0.1:8888) */
+extern char g_web_listen[WEB_LISTEN_LEN];
 
 /** @brief 适配器数 */
 extern int8_t g_prog_cnt;

@@ -114,6 +114,7 @@ else ()
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
+            src/control/Control.c
             src/webserver/WebServer.c
             src/webserver/mongoose.c
             src/utils/sim/SimProcess.c

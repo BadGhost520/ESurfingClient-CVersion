@@ -324,7 +324,15 @@ static char* get_thread_str()
     {
         return "Main";
     }
-    return "WebServer";
+    if (tl_thread_idx == -2)
+    {
+        return "WebServer";
+    }
+    if (tl_thread_idx == -3)
+    {
+        return "Control";
+    }
+    return "Other";
 }
 
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)

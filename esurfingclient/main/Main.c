@@ -1,5 +1,6 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Service.h"
+#include "control/Control.h"
 
 #include "States.h"
 
@@ -22,10 +23,14 @@ static void PrintUsage()
 {
     printf("使用格式: ESurfingClient [选项]\n");
     printf("  [nothing]            直接运行程序 (前台模式)\n");
-    printf("  -r, --role <角色>     指定程序角色: auth (认证进程)\n");
-    printf("                       (supervisor 守护进程与 web 网页进程尚未实现)\n");
+    printf("  -r, --role <角色>     指定程序角色: auth (认证进程) / web (网页进程)\n");
+    printf("                       (supervisor 守护进程尚未实现)\n");
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
+#ifndef __OPENWRT__
+    printf("  --control-port <端口> 控制通道端口 (默认 %d; 认证进程监听, Web 进程连接)\n", CONTROL_DEFAULT_PORT);
+    printf("  --web-listen <地址>   Web 服务监听地址 (默认 %s)\n", DEFAULT_WEB_LISTEN);
+#endif
 #if !defined(__OPENWRT__) && !defined(__ANDROID__)
     printf("  -i, --install        安装为系统服务 (需要管理员/root 权限)\n");
     printf("  -u, --uninstall      卸载系统服务 (需要管理员/root 权限)\n");
@@ -77,6 +82,45 @@ static bool parse_account(const char* str, uint8_t* idx)
     return true;
 }
 
+#ifndef __OPENWRT__
+
+/**
+ * @brief 解析端口 (1 - 65535)
+ * @param str 端口文本
+ * @param port 解析结果
+ * @return 是否解析成功
+ */
+static bool parse_port(const char* str, uint16_t* port)
+{
+    char* end = NULL;
+    const long value = strtol(str, &end, 10);
+
+    if (end == NULL || end == str || *end != '\0') return false;
+    if (value < 1 || value > 65535) return false;
+
+    *port = (uint16_t)value;
+    return true;
+}
+
+/**
+ * @brief 校验监听地址是否合法 (形如 127.0.0.1:8888)
+ * @param str 地址文本
+ * @return 是否合法
+ */
+static bool check_listen_addr(const char* str)
+{
+    if (str == NULL || str[0] == '\0') return false;
+    if (strlen(str) >= WEB_LISTEN_LEN) return false;
+
+    const char* colon = strrchr(str, ':');
+    if (colon == NULL || colon == str) return false;
+
+    uint16_t port = 0;
+    return parse_port(colon + 1, &port);
+}
+
+#endif  // !__OPENWRT__ (控制通道与 Web 监听地址只存在于非 OpenWrt 构建)
+
 /**
  * @brief 校验角色与序号的组合是否合法
  * @return 0 合法, 其它值作为退出码返回
@@ -103,15 +147,24 @@ static int check_args()
     }
 
     /**
-     * 守护进程与 Web 进程尚未实现.
+     * 守护进程尚未实现.
      * 这里直接拒绝, 而不是悄悄按单进程模式跑 —— 否则使用者会误以为进程已经拆开了
      */
-    if (g_prog_role == ROLE_SUPERVISOR || g_prog_role == ROLE_WEB)
+    if (g_prog_role == ROLE_SUPERVISOR)
     {
-        fprintf(stderr, "[ERROR] 角色 %s 尚未实现, 目前只支持 auth\n",
-            g_prog_role == ROLE_SUPERVISOR ? "supervisor" : "web");
+        fprintf(stderr, "[ERROR] 角色 supervisor 尚未实现, 目前支持 auth 与 web\n");
         return 1;
     }
+
+#ifdef __OPENWRT__
+
+    if (g_prog_role == ROLE_WEB)
+    {
+        fprintf(stderr, "[ERROR] OpenWRT 版本不包含 Web 服务, 不能以 web 角色运行\n");
+        return 1;
+    }
+
+#endif
 
     if (g_prog_role == ROLE_AUTH && g_prog_account == 0)
     {
@@ -196,6 +249,45 @@ static int parse_args(const int argc, char* argv[])
             s_list_accounts = true;
             continue;
         }
+
+#ifndef __OPENWRT__
+
+        if (strcmp(arg, "--control-port") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                fprintf(stderr, "[ERROR] %s 缺少端口\n", arg);
+                PrintUsage();
+                return 1;
+            }
+            if (parse_port(argv[++i], &g_control_port) == false)
+            {
+                fprintf(stderr, "[ERROR] 控制端口无效 (应为 1 - 65535): %s\n", argv[i]);
+                PrintUsage();
+                return 1;
+            }
+            continue;
+        }
+
+        if (strcmp(arg, "--web-listen") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                fprintf(stderr, "[ERROR] %s 缺少监听地址\n", arg);
+                PrintUsage();
+                return 1;
+            }
+            if (check_listen_addr(argv[++i]) == false)
+            {
+                fprintf(stderr, "[ERROR] 监听地址无效 (应形如 127.0.0.1:8888): %s\n", argv[i]);
+                PrintUsage();
+                return 1;
+            }
+            snprintf(g_web_listen, sizeof(g_web_listen), "%s", argv[i]);
+            continue;
+        }
+
+#endif
 
         fprintf(stderr, "[ERROR] 未知参数: %s\n", arg);
         PrintUsage();

@@ -1,5 +1,6 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
+#include "control/Control.h"
 #include "States.h"
 
 #include <ctype.h>
@@ -13,6 +14,10 @@ uint64_t g_start_run_tm = 0;
 prog_role_t g_prog_role = ROLE_STANDALONE;
 
 uint8_t g_prog_account = 0;
+
+uint16_t g_control_port = CONTROL_DEFAULT_PORT;
+
+char g_web_listen[WEB_LISTEN_LEN] = DEFAULT_WEB_LISTEN;
 
 int8_t g_prog_cnt = 0;
 

@@ -11,6 +11,7 @@
 #ifndef __OPENWRT__
 extern void restart_process();
 extern void stop_web_server();
+#include "control/Control.h"
 #endif
 
 #ifdef _WIN32
@@ -34,6 +35,8 @@ void shut(const int8_t exit_code)
     g_need_exit = true;
 
 #ifndef __OPENWRT__
+    control_server_stop(); // 先停止接受控制请求
+
     if (g_is_webserver_running)
     {
         LOG_INFO("关闭 Web 服务器");

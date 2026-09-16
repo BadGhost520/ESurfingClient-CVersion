@@ -782,13 +782,20 @@ static bool s_list_only = false;
 /**
  * @brief 处理无法继续的配置问题
  *
- * 正常运行时挂起等待人工处理: 配置没填好时反复重启只会刷屏,
+ * 单进程模式下挂起等待人工处理: 配置没填好时反复重启只会刷屏,
  * 等用户改完配置手动重启即可。
- * 列举账号时直接返回, 由调用方返回失败
+ *
+ * 以下情况直接返回失败, 由调用方退出:
+ * - 列举账号: init 脚本调用, 挂起会卡住开机
+ * - 认证进程 / Web 进程: 有外部监管者, 退出后按 respawn 策略处理,
+ *   崩掉比挂住更容易被发现 (挂住的进程监管者是不会重启的)
  */
 static void cfg_halt()
 {
-    if (s_list_only) return;
+    if (s_list_only || g_prog_role == ROLE_AUTH || g_prog_role == ROLE_WEB)
+    {
+        return;
+    }
 
     while (true)
     {
