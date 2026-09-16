@@ -171,7 +171,7 @@ static void supervisor_install_signals()
  * @param exec_path 自身可执行文件路径
  * @param account_arg 配置序号文本缓冲
  * @param control_arg 控制端口文本缓冲
- * @param argv 输出参数数组 (至少 10 个元素)
+ * @param argv 输出参数数组 (至少 12 个元素)
  */
 static void child_build_argv(const child_t* child, char* exec_path,
                              char* account_arg, char* control_arg, char** argv)
@@ -201,17 +201,66 @@ static void child_build_argv(const child_t* child, char* exec_path,
     argv[n++] = "--web-listen";
     argv[n++] = g_web_listen;
 
-    // 令牌由监管者生成, 认证与 Web 子进程必须拿到同一个
+#ifdef _WIN32
+    /**
+     * 令牌由监管者生成, 认证与 Web 子进程必须拿到同一个。
+     *
+     * Windows 上只能走命令行: 想让 CreateProcessA 带上自定义环境变量,
+     * 得自己拼一整块环境块并与现有环境合并, 而本机没有 Windows 可验证。
+     * POSIX 上改用环境变量下发, 原因见 child_build_env()
+     */
     if (g_control_token[0] != '\0')
     {
         argv[n++] = "--control-token";
         argv[n++] = g_control_token;
     }
+#endif
 
     argv[n] = NULL;
 }
 
 #ifndef _WIN32
+
+extern char** environ;
+
+/**
+ * @brief 组装子进程的环境变量, 把控制通道令牌塞进去
+ *
+ * 令牌不走命令行是有原因的: Linux 上 /proc/<PID>/cmdline 是**全局可读**的,
+ * 同机其它用户 ps 一下就能拿到令牌。环境变量对应的 /proc/<PID>/environ
+ * 只有属主和 root 可读, 能把暴露面收窄一个数量级。
+ *
+ * 新环境数组必须在 fork **之前**准备好: setenv() 内部会 malloc,
+ * 而 fork 之后只允许调用 async-signal-safe 的函数 ——
+ * 与上面"子进程里不能打日志"是同一个原因。
+ *
+ * @param token_env 存放 "ESURFING_CONTROL_TOKEN=<令牌>" 的缓冲
+ * @param token_env_len 缓冲长度
+ * @return 环境数组 (调用方负责 free); 没有令牌或分配失败时返回 NULL,
+ *         此时调用方退回继承当前环境
+ */
+static char** child_build_env(char* token_env, const size_t token_env_len)
+{
+    if (g_control_token[0] == '\0') return NULL;
+
+    snprintf(token_env, token_env_len, "ESURFING_CONTROL_TOKEN=%s", g_control_token);
+
+    size_t count = 0;
+    while (environ[count] != NULL) count++;
+
+    // 多一个装令牌, 多一个放结尾的 NULL
+    char** envp = malloc((count + 2) * sizeof(char*));
+    if (envp == NULL)
+    {
+        LOG_WARN("环境数组分配失败, 令牌改走继承的环境 (子进程可能拿不到令牌)");
+        return NULL;
+    }
+
+    for (size_t i = 0; i < count; i++) envp[i] = environ[i];
+    envp[count] = token_env;
+    envp[count + 1] = NULL;
+    return envp;
+}
 
 static bool child_spawn(child_t* child)
 {
@@ -227,10 +276,16 @@ static bool child_spawn(child_t* child)
     char* argv[12];
     child_build_argv(child, exec_path, account_arg, control_arg, argv);
 
+    // 令牌走环境变量下发 (见 child_build_env 的说明)
+    char token_env[CONTROL_TOKEN_LEN + 32];
+    char** envp = child_build_env(token_env, sizeof(token_env));
+    char** child_env = (envp != NULL) ? envp : environ;
+
     const pid_t pid = fork();
     if (pid < 0)
     {
         LOG_ERROR("fork 失败: %s", strerror(errno));
+        free(envp);
         return false;
     }
 
@@ -251,9 +306,11 @@ static bool child_spawn(child_t* child)
         prctl(PR_SET_PDEATHSIG, SIGTERM);
 #endif
 
-        execv(exec_path, argv);
+        execve(exec_path, argv, child_env);
         _exit(127);
     }
+
+    free(envp);
 
     child->handle = pid;
     child->running = true;

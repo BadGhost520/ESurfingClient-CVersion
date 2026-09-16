@@ -312,6 +312,32 @@ static int parse_args(const int argc, char* argv[])
     return ARG_CONTINUE;
 }
 
+/**
+ * @brief 从环境变量补上控制通道令牌
+ *
+ * POSIX 上监管者是用环境变量下发令牌的, 不走命令行 ——
+ * /proc/<PID>/cmdline 是全局可读的, 令牌放那里同机其它用户 ps 一下就看到了;
+ * 环境变量对应的 /proc/<PID>/environ 只有属主和 root 可读。
+ *
+ * 显式给的 --control-token 优先, 这里只在没给的时候兜底。
+ * (Windows 上监管者仍然走命令行, 原因见 Supervisor.c 的 child_build_argv)
+ */
+static void load_control_token_env()
+{
+    if (g_control_token[0] != '\0') return;
+
+    const char* env_token = getenv(CONTROL_TOKEN_ENV);
+    if (env_token == NULL || env_token[0] == '\0') return;
+
+    if (strlen(env_token) >= CONTROL_TOKEN_LEN)
+    {
+        fprintf(stderr, "[ERROR] 环境变量 %s 过长, 已忽略\n", CONTROL_TOKEN_ENV);
+        return;
+    }
+
+    snprintf(g_control_token, sizeof(g_control_token), "%s", env_token);
+}
+
 int main(const int argc, char *argv[])
 {
     g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间
@@ -334,6 +360,9 @@ int main(const int argc, char *argv[])
     {
         return arg_result;
     }
+
+    // 令牌也可以由监管者通过环境变量下发 (不暴露在命令行里)
+    load_control_token_env();
 
     if (s_list_accounts == true)
     {

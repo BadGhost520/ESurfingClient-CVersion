@@ -42,6 +42,14 @@
 #define CONTROL_TOKEN_LEN 33
 
 /**
+ * @brief 下发控制通道令牌用的环境变量名
+ *
+ * 监管者优先用环境变量把令牌交给子进程, 而不是命令行参数 ——
+ * /proc/<PID>/cmdline 全局可读, 令牌放那里等于公开
+ */
+#define CONTROL_TOKEN_ENV "ESURFING_CONTROL_TOKEN"
+
+/**
  * @brief Web 服务默认监听地址
  *
  * 默认只监听回环: /api/getConfigs 会返回明文账号密码, 而服务本身没有鉴权,
