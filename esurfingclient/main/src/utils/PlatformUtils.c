@@ -831,6 +831,10 @@ static bool s_list_only = false;
  * 单进程模式下挂起等待人工处理: 配置没填好时反复重启只会刷屏,
  * 等用户改完配置手动重启即可。
  *
+ * 挂起期间必须仍然能被 Ctrl+C / 关窗口 / 服务停止打断 —— 有专门的回归用例
+ * 盯着这一点 (test-windows-runtime.sh 第 8 节), 因为漏掉时会表现成
+ * "程序假死 + 日志不落盘", 只能去任务管理器杀进程。
+ *
  * 以下情况直接返回失败, 由调用方退出:
  * - 列举账号: init 脚本调用, 挂起会卡住开机
  * - 认证 / Web / 监管进程: 它们都在外部监管者 (procd / systemd / SCM) 之下,
@@ -850,6 +854,17 @@ static void cfg_halt()
     while (true)
     {
         if (g_need_exit) return;
+
+        /**
+         * 信号处理函数现在只置 g_stop_requested (不再直接调 shut() —— 那里面的
+         * join / 打日志 / rename / exit 都不是 async-signal-safe 的),
+         * 而 g_need_exit 只有 shut() 会置。单进程模式下 shut() 要等 load_cfg()
+         * 返回之后才调用, 所以这里只等 g_need_exit 的话会永远等不到:
+         * Ctrl+C 毫无反应, 关窗口被系统强杀, 日志也就不会被改名。
+         * 返回后由调用方 (work() 里的 shut(1)) 走正常关闭流程。
+         */
+        if (g_stop_requested) return;
+
         sleep_ms(10000, true);
     }
 }
