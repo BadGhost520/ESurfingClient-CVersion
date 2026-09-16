@@ -3,6 +3,8 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 
+#include "control/Control.h"
+
 #include "States.h"
 
 #include <signal.h>
@@ -45,8 +47,19 @@ typedef volatile sig_atomic_t stop_flag_t;
 #define SUPERVISOR_BACKOFF_MAX_MS 60000
 
 /** @brief 停止子进程时的等待上限 */
+/** @brief 其余子进程的停止宽限期 */
 #define SUPERVISOR_STOP_WEB_MS 5000
+
+/** @brief 认证进程的停止宽限期 (它要跑完登出, 给得宽一些) */
 #define SUPERVISOR_STOP_AUTH_MS 15000
+
+/**
+ * @brief 请求都送不出去时的等待时间
+ *
+ * 送不出请求就说明子进程根本收不到"请退出", 它不可能自己退出, 干等整个宽限期
+ * 只是白拖时间 —— 服务模式下原来是 Web 5 秒 + 认证 15 秒, 整整 20 秒
+ */
+#define SUPERVISOR_STOP_NO_GRACE_MS 1000
 
 /** @brief 主循环轮询间隔 */
 #define SUPERVISOR_TICK_MS 200
@@ -72,6 +85,8 @@ typedef struct
     child_kind_t kind;
     /** @brief 负责的配置序号 (仅认证进程有意义) */
     uint8_t account;
+    /** @brief 本子进程的控制端口 (停止时用来请它优雅退出) */
+    uint16_t control_port;
     /** @brief 是否正在运行 */
     bool running;
     /** @brief 连续重启次数 */
@@ -177,7 +192,7 @@ static void child_build_argv(const child_t* child, char* exec_path,
                              char* account_arg, char* control_arg, char** argv)
 {
     snprintf(account_arg, 8, "%" PRIu8, child->account);
-    snprintf(control_arg, 8, "%" PRIu16, g_control_port);
+    snprintf(control_arg, 8, "%" PRIu16, child->control_port);
 
     int n = 0;
     argv[n++] = exec_path;
@@ -559,6 +574,42 @@ static void child_stop(child_t* child, const uint32_t grace_ms)
 
 #else
 
+/**
+ * @brief 把"请优雅退出"这个请求送到子进程
+ *
+ * 两条路, 按可靠性排序:
+ *
+ * 1. 控制通道 (首选)。它走回环 TCP, 不依赖控制台, 服务模式 / 控制台模式
+ *    行为一致。认证子进程收到后置 g_stop_requested, 主循环退出、dialer_app
+ *    跑完 clean() —— 登出就在这里发生。
+ *
+ * 2. 控制台事件 (退路)。只在前台运行时有效: 监管者和子进程共用一个控制台。
+ *    **服务由 SCM 启动时没有控制台, 这个 API 必然失败** —— 这正是原来
+ *    服务模式下子进程被强杀、登出不会发生的原因。
+ *
+ * @return 是否成功把请求送了出去 (送不出去时调用方不该干等)
+ */
+static bool child_ask_stop(const child_t* child, const char* name)
+{
+    if (child->kind == CHILD_AUTH)
+    {
+        control_set_port(child->control_port);
+        if (control_request_shutdown())
+        {
+            LOG_DEBUG("已通过控制通道请求 %s 退出 (端口 %" PRIu16 ")", name, child->control_port);
+            return true;
+        }
+    }
+
+    if (GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, GetProcessId(child->handle)) != 0)
+    {
+        LOG_DEBUG("已向 %s 发送控制台事件", name);
+        return true;
+    }
+
+    return false;
+}
+
 static void child_stop(child_t* child, const uint32_t grace_ms)
 {
     if (child->running == false) return;
@@ -568,17 +619,16 @@ static void child_stop(child_t* child, const uint32_t grace_ms)
 
     LOG_INFO("正在停止 %s ...", name);
 
-    /**
-     * Windows 没有 SIGTERM。用控制台事件让它走一遍正常的关闭流程
-     * (子进程装了 SetConsoleCtrlHandler, 收到 CTRL_BREAK 会调用 shut())。
-     * 服务模式下没有控制台, 这一步会失败, 那就只能直接结束进程
-     */
-    if (GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, GetProcessId(child->handle)) == 0)
+    const bool asked = child_ask_stop(child, name);
+    if (asked == false)
     {
-        LOG_DEBUG("%s 无法接收控制台事件, 将直接结束进程", name);
+        LOG_WARN("%s 既没有控制通道也不接收控制台事件, 无法请求优雅退出 (即将强制结束)", name);
     }
 
-    if (WaitForSingleObject(child->handle, grace_ms) == WAIT_OBJECT_0)
+    // 请求都没送出去就不必等满宽限期: 它不可能自己退出
+    const uint32_t wait_ms = asked ? grace_ms : SUPERVISOR_STOP_NO_GRACE_MS;
+
+    if (WaitForSingleObject(child->handle, wait_ms) == WAIT_OBJECT_0)
     {
         CloseHandle(child->handle);
         child->handle = CHILD_HANDLE_INVALID;
@@ -587,7 +637,7 @@ static void child_stop(child_t* child, const uint32_t grace_ms)
         return;
     }
 
-    LOG_WARN("%s 在 %" PRIu32 " 毫秒内没有退出, 强制结束", name, grace_ms);
+    LOG_WARN("%s 在 %" PRIu32 " 毫秒内没有退出, 强制结束", name, wait_ms);
     TerminateProcess(child->handle, 1);
     WaitForSingleObject(child->handle, 5000);
     CloseHandle(child->handle);
@@ -638,6 +688,25 @@ static void supervisor_shutdown()
  * @brief 按配置里的可用账号构建子进程表
  * @return 是否至少构建出一个子进程
  */
+/**
+ * @brief 算出某个子进程该用哪个控制端口
+ *
+ * 每个认证进程一个端口: 它们都要开控制服务, 共用一个端口的话只有先绑上的那个
+ * 能开成, 其余会打"控制通道启动失败"并降级为不可远程控制 —— 那样监管者也就
+ * 没法请它们优雅退出了。
+ * Web 进程不用开服务, 它连的是第一个认证进程的端口。
+ * @param kind 子进程类型
+ * @param index 该子进程在表里的下标
+ * @return 端口
+ */
+static uint16_t child_control_port(const child_kind_t kind, const int index)
+{
+    const uint32_t port = (uint32_t)g_control_port + (kind == CHILD_AUTH ? (uint32_t)index : 0);
+
+    // 端口号是 16 位, 账号特别多时回绕, 不能让它溢出成一个非法值
+    return (uint16_t)(port > 0xFFFFu ? (port - 0x10000u) : port);
+}
+
 static bool supervisor_build_children()
 {
     if (g_prog_cnt <= 0)
@@ -650,11 +719,13 @@ static bool supervisor_build_children()
 
     for (uint8_t i = 0; i < g_prog_cnt && s_child_count < SUPERVISOR_MAX_CHILDREN; i++)
     {
-        child_t* child = &s_children[s_child_count++];
+        child_t* child = &s_children[s_child_count];
         memset(child, 0, sizeof(*child));
         child->handle = CHILD_HANDLE_INVALID;
         child->kind = CHILD_AUTH;
         child->account = g_prog_status[i].login_cfg.idx;
+        child->control_port = child_control_port(CHILD_AUTH, s_child_count);
+        s_child_count++;
     }
 
     if (s_child_count >= SUPERVISOR_MAX_CHILDREN)
@@ -663,10 +734,12 @@ static bool supervisor_build_children()
         return s_child_count > 0;
     }
 
-    child_t* web_child = &s_children[s_child_count++];
+    child_t* web_child = &s_children[s_child_count];
     memset(web_child, 0, sizeof(*web_child));
     web_child->handle = CHILD_HANDLE_INVALID;
     web_child->kind = CHILD_WEB;
+    web_child->control_port = child_control_port(CHILD_WEB, s_child_count);
+    s_child_count++;
 
     return true;
 }

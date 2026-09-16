@@ -14,11 +14,12 @@
  *   {"cmd":"status"}         {"ok":true,"data":{...}}
  *   {"cmd":"restart_auth"}   {"ok":true}
  *   {"cmd":"apply_config"}   {"ok":true}
+ *   {"cmd":"shutdown"}       {"ok":true}
  *
  * 刻意不放配置读写: 两个进程读同一份配置文件, Web 进程保存配置也直接写文件,
  * 通道只负责"运行时状态"与"动作", 这样协议面最小、也最不容易出错。
  *
- * 只监听回环地址, 不做鉴权: 能连上本机回环端口的进程与本进程权限相同。
+ * 只监听回环地址, 鉴权靠监管者下发的令牌。
  */
 
 /** @brief 默认控制端口 */
@@ -80,5 +81,19 @@ bool control_restart_auth(void);
  * @return 是否下发成功
  */
 bool control_apply_config(void);
+
+/**
+ * @brief 请求认证进程优雅退出 (监管者停止子进程时用)
+ *
+ * 为什么需要它: Windows 上没有 SIGTERM, 监管者原本靠 GenerateConsoleCtrlEvent
+ * 发 CTRL_BREAK。但那个 API 要求调用方与目标在同一个控制台, 而**服务由 SCM
+ * 启动时根本没有控制台**, 于是这一路必然失败, 只能 TerminateProcess 强杀 ——
+ * 认证子进程跑不到 clean(), 也就不会登出。
+ *
+ * 控制通道走的是回环 TCP, 不依赖控制台, 三种场景 (服务 / 控制台 / POSIX)
+ * 行为一致, 因此作为首选路径; 发不出去时监管者再退回原来的办法。
+ * @return 是否下发成功 (子进程没监听控制端口时为 false)
+ */
+bool control_request_shutdown(void);
 
 #endif //ESURFINGCLIENT_CONTROL_H

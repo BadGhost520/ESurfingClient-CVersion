@@ -257,6 +257,17 @@ static void ctl_dispatch(const char* request, char* reply, const size_t reply_le
             ctl_reply_result(reply, reply_len, true, NULL);
         }
     }
+    else if (strcmp(cmd, "shutdown") == 0)
+    {
+        /**
+         * 只置标志, 不在这里调 shut(): 本函数就跑在控制服务线程上,
+         * 而 shut() 会 control_server_stop() 去 join 这条线程 —— 自己等自己。
+         * 主循环看到 g_stop_requested 后退出, 由 dialer_app 跑完 clean() (含登出)
+         */
+        LOG_INFO("控制通道收到退出请求, 本进程将正常关闭");
+        g_stop_requested = 1;
+        ctl_reply_result(reply, reply_len, true, NULL);
+    }
     else
     {
         ctl_reply_result(reply, reply_len, false, "unknown cmd");
@@ -504,5 +515,12 @@ bool control_apply_config(void)
 {
     char reply[CONTROL_MSG_MAX];
     if (ctl_client_request("apply_config", reply, sizeof(reply)) == false) return false;
+    return ctl_reply_ok(reply);
+}
+
+bool control_request_shutdown(void)
+{
+    char reply[CONTROL_MSG_MAX];
+    if (ctl_client_request("shutdown", reply, sizeof(reply)) == false) return false;
     return ctl_reply_ok(reply);
 }
