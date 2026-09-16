@@ -12,6 +12,7 @@
 
 #ifndef __OPENWRT__
 #include "control/Control.h"
+#include "supervisor/Supervisor.h"
 #endif
 
 #include <ctype.h>
@@ -1095,6 +1096,11 @@ void work()
     }
 
 #ifndef __OPENWRT__
+
+    if (g_prog_role == ROLE_SUPERVISOR)
+    {
+        exit(work_supervisor());
+    }
 
     if (g_prog_role == ROLE_WEB)
     {

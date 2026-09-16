@@ -34,6 +34,16 @@ void shut(const int8_t exit_code)
     LOG_INFO("主程序正在关闭");
     g_need_exit = true;
 
+    /**
+     * 监管进程的收尾是"先停子进程再退出", 而且它自己装了信号处理,
+     * 所以这里只置退出标志, 具体的关闭顺序交给 work_supervisor() 处理。
+     * (Windows 服务收到 SCM 的停止请求时也是走这里)
+     */
+    if (g_prog_role == ROLE_SUPERVISOR)
+    {
+        return;
+    }
+
 #ifndef __OPENWRT__
     control_server_stop(); // 先停止接受控制请求
 

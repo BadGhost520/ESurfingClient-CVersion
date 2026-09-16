@@ -1,6 +1,7 @@
 #include "utils/Shutdown.h"
 #include "utils/Service.h"
 #include "utils/Logger.h"
+#include "supervisor/Supervisor.h"
 
 #include <setjmp.h>
 #include <stdlib.h>
@@ -94,6 +95,13 @@ int service_install()
         return -1;
     }
 
+    /**
+     * 服务以监管进程启动: 认证与 Web 各自独立进程, 互相不受影响
+     * 路径可能含空格, 必须加引号
+     */
+    char szBinPath[MAX_PATH + 32];
+    snprintf(szBinPath, sizeof(szBinPath), "\"%s\" %s", szPath, SUPERVISOR_ARG);
+
     SC_HANDLE hService = CreateService(
         hSCManager,
         SERVICE_NAME,
@@ -102,7 +110,7 @@ int service_install()
         SERVICE_WIN32_OWN_PROCESS,
         SERVICE_AUTO_START,
         SERVICE_ERROR_NORMAL,
-        szPath,
+        szBinPath,
         NULL, NULL, NULL, NULL, NULL
     );
 
@@ -259,7 +267,7 @@ int service_install()
         "After=network.target\n\n"
         "[Service]\n"
         "Type=simple\n"
-        "ExecStart=%s\n"
+        "ExecStart=%s " SUPERVISOR_ARG "\n"
         "Restart=on-failure\n"
         "RestartSec=5\n"
         "StartLimitBurst=3\n"
@@ -412,6 +420,8 @@ int service_install()
         "    <key>ProgramArguments</key>\n"
         "    <array>\n"
         "        <string>%s</string>\n"
+        "        <string>--role</string>\n"
+        "        <string>supervisor</string>\n"
         "    </array>\n"
         "    <key>RunAtLoad</key>\n"
         "    <true/>\n"

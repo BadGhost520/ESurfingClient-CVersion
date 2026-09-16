@@ -65,6 +65,15 @@ char* get_adapters_json();
 bool get_exec_dir(char* dir_array);
 
 /**
+ * @brief 获取程序可执行文件的完整路径
+ *
+ * 监管者 fork 之后要用它 exec 出子进程, 因此必须是不依赖 cwd 的绝对路径
+ * @param path_array 路径缓冲 (至少 PATH_MAX 字节)
+ * @return 是否获取成功
+ */
+bool get_exec_path(char* path_array);
+
+/**
  * @brief XML 解析
  * @param xml_data XML 数据
  * @param tag 提取标志

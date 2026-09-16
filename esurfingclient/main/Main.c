@@ -23,8 +23,7 @@ static void PrintUsage()
 {
     printf("使用格式: ESurfingClient [选项]\n");
     printf("  [nothing]            直接运行程序 (前台模式)\n");
-    printf("  -r, --role <角色>     指定程序角色: auth (认证进程) / web (网页进程)\n");
-    printf("                       (supervisor 守护进程尚未实现)\n");
+    printf("  -r, --role <角色>     程序角色: supervisor (监管) / auth (认证) / web (网页)\n");
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
 #ifndef __OPENWRT__
@@ -147,20 +146,14 @@ static int check_args()
     }
 
     /**
-     * 守护进程尚未实现.
-     * 这里直接拒绝, 而不是悄悄按单进程模式跑 —— 否则使用者会误以为进程已经拆开了
+     * 监管进程与 Web 进程都只存在于非 OpenWrt 构建:
+     * OpenWrt 上由 procd 每账号起一个实例, 不需要监管者
      */
-    if (g_prog_role == ROLE_SUPERVISOR)
-    {
-        fprintf(stderr, "[ERROR] 角色 supervisor 尚未实现, 目前支持 auth 与 web\n");
-        return 1;
-    }
-
 #ifdef __OPENWRT__
 
-    if (g_prog_role == ROLE_WEB)
+    if (g_prog_role == ROLE_WEB || g_prog_role == ROLE_SUPERVISOR)
     {
-        fprintf(stderr, "[ERROR] OpenWRT 版本不包含 Web 服务, 不能以 web 角色运行\n");
+        fprintf(stderr, "[ERROR] OpenWRT 版本不包含 Web 服务与监管进程, 只能用 auth 角色\n");
         return 1;
     }
 

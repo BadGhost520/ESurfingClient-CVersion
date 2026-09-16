@@ -108,6 +108,20 @@ static bool open_log_file()
     s_logger_cfg.file_handle = fopen(s_logger_cfg.log_file, "a");
     if (s_logger_cfg.file_handle == NULL) return false;
 
+#ifndef _WIN32
+    /**
+     * 设成 exec 时自动关闭:
+     * 监管者 fork 出子进程时会继承这里的句柄, 而子进程自己还要再开一份,
+     * 不关掉的话子进程会一直白占着一个 fd
+     * (Windows 侧用 CreateProcess 且不继承句柄, 无需处理)
+     */
+    const int fd = fileno(s_logger_cfg.file_handle);
+    if (fd >= 0)
+    {
+        fcntl(fd, F_SETFD, FD_CLOEXEC);
+    }
+#endif
+
     s_logger_cfg.cur_lines = 0;
     s_logger_cfg.lines_since_check = 0;
     s_logger_cfg.file_dev = 0;

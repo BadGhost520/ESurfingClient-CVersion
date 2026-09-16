@@ -377,16 +377,15 @@ static bool apply_time_windows(const cJSON* item, login_cfg_t* cfg)
     return true;
 }
 
-bool get_exec_dir(char* dir_array)
+bool get_exec_path(char* path_array)
 {
+    if (path_array == NULL) return false;
+
 #ifdef _WIN32
     char path[MAX_PATH];
     const DWORD len_d = GetModuleFileNameA(NULL, path, MAX_PATH);
     if (len_d == 0 || len_d >= MAX_PATH) return false;
-    char* last = strrchr(path, SEP);
-    if (!last) return false;
-    *last = '\0';
-    const uint16_t len = snprintf(dir_array, PATH_MAX, "%s", safe_str(path));
+    const uint16_t len = snprintf(path_array, PATH_MAX, "%s", safe_str(path));
     if ((size_t)len >= PATH_MAX) return false;
     return true;
 #elif __linux__
@@ -394,10 +393,7 @@ bool get_exec_dir(char* dir_array)
     const ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (len <= 0 || len >= (ssize_t)sizeof(path)) return false;
     path[len] = '\0';
-    char* last = strrchr(path, '/');
-    if (!last) return false;
-    *last = '\0';
-    const uint16_t n = snprintf(dir_array, PATH_MAX, "%s", path);
+    const uint16_t n = snprintf(path_array, PATH_MAX, "%s", path);
     if ((size_t)n >= PATH_MAX) return false;
     return true;
 #elif defined(__APPLE__)
@@ -406,17 +402,32 @@ bool get_exec_dir(char* dir_array)
     if (_NSGetExecutablePath(path, &size) != 0) return false;
     char* resolved = realpath(path, NULL);
     if (!resolved) return false;
-    char* last = strrchr(resolved, '/');
-    if (!last) { free(resolved); return false; }
-    *last = '\0';
-    const uint16_t n = snprintf(dir_array, PATH_MAX, "%s", resolved);
+    const uint16_t n = snprintf(path_array, PATH_MAX, "%s", resolved);
     free(resolved);
     if ((size_t)n >= PATH_MAX) return false;
     return true;
 #else
-    (void)dir_array;
+    (void)path_array;
     return false;
 #endif
+}
+
+bool get_exec_dir(char* dir_array)
+{
+    char path[PATH_MAX];
+    if (get_exec_path(path) == false) return false;
+
+    char* last = strrchr(path, '/');
+#ifdef _WIN32
+    char* last_win = strrchr(path, '\\');
+    if (last_win != NULL && (last == NULL || last_win > last)) last = last_win;
+#endif
+    if (last == NULL) return false;
+    *last = '\0';
+
+    const uint16_t len = snprintf(dir_array, PATH_MAX, "%s", path);
+    if ((size_t)len >= PATH_MAX) return false;
+    return true;
 }
 
 char* xml_parser(const char* xml_data, const char* tag)
