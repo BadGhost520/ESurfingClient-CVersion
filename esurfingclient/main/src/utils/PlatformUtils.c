@@ -776,23 +776,53 @@ const char* get_config_file_path(void)
 
 #endif
 
+/** @brief 是否处于"只列举账号"模式 */
+static bool s_list_only = false;
+
+/**
+ * @brief 处理无法继续的配置问题
+ *
+ * 正常运行时挂起等待人工处理: 配置没填好时反复重启只会刷屏,
+ * 等用户改完配置手动重启即可。
+ * 列举账号时直接返回, 由调用方返回失败
+ */
+static void cfg_halt()
+{
+    if (s_list_only) return;
+
+    while (true)
+    {
+        if (g_need_exit) return;
+        sleep_ms(10000, true);
+    }
+}
+
 bool load_cfg()
 {
     g_cfg_loaded = false;
+
+    /**
+     * 桌面分支直接写 g_prog_status[0], 这里保证至少有一格可用
+     * (OpenWrt 分支后面会按配置数重新分配)
+     */
+    if (g_prog_status == NULL)
+    {
+        g_prog_status = calloc(1, sizeof(prog_status_t));
+        if (g_prog_status == NULL)
+        {
+            LOG_FATAL("分配内存失败");
+            cfg_halt();
+            return false;
+        }
+    }
 #ifndef __OPENWRT__
 
     char dir[PATH_MAX];
     if (get_exec_dir(dir) == false)
     {
         LOG_ERROR("获取可执行文件路径失败, 请检查权限后重启");
-        while (true)
-        {
-            if (g_need_exit)
-            {
-                return false;
-            }
-            sleep_ms(10000, true);
-        }
+        cfg_halt();
+        return false;
     }
     snprintf(config_file, PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE), "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
 
@@ -807,26 +837,14 @@ bool load_cfg()
         if (!new_cfg)
         {
             LOG_FATAL("无法生成文件: %s, 请检查权限后重启", config_file);
-            while (true)
-            {
-                if (g_need_exit)
-                {
-                    return false;
-                }
-                sleep_ms(10000, true);
-            }
+            cfg_halt();
+            return false;
         }
         fprintf(new_cfg, "%s", s_default_cfg);
         fclose(new_cfg);
         LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启", config_file);
-        while (true)
-        {
-            if (g_need_exit)
-            {
-                return false;
-            }
-            sleep_ms(10000, true);
-        }
+        cfg_halt();
+        return false;
     }
 
     fseek(cfg_file, 0, SEEK_END);
@@ -843,42 +861,24 @@ bool load_cfg()
     if (!cfg_json)
     {
         LOG_FATAL("JSON 解析失败, 请检查后重启");
-        while (true)
-        {
-            if (g_need_exit)
-            {
-                return false;
-            }
-            sleep_ms(10000, true);
-        }
+        cfg_halt();
+        return false;
     }
 
     const cJSON* enabled = cJSON_GetObjectItem(cfg_json, "enabled");
     if (enabled == NULL)
     {
         LOG_WARN("enabled 参数不存在, 请填写后重启程序");
-        while (true)
-        {
-            if (g_need_exit)
-            {
-                return false;
-            }
-            g_prog_enabled = false;
-            sleep_ms(10000, true);
-        }
+        g_prog_enabled = false;
+        cfg_halt();
+        return false;
     }
     if (cJSON_IsFalse(enabled))
     {
         LOG_WARN("配置文件中禁用了程序启动, 请开启后重启程序");
-        while (true)
-        {
-            if (g_need_exit)
-            {
-                return false;
-            }
-            g_prog_enabled = false;
-            sleep_ms(10000, true);
-        }
+        g_prog_enabled = false;
+        cfg_halt();
+        return false;
     }
     g_prog_enabled = true;
 
@@ -939,14 +939,8 @@ bool load_cfg()
     {
         LOG_FATAL("没有找到账号数据, 请添加后重启程序");
         cJSON_Delete(cfg_json);
-        while (true)
-        {
-            if (g_need_exit)
-            {
-                return false;
-            }
-            sleep_ms(10000, true);
-        }
+        cfg_halt();
+        return false;
     }
 
     const uint8_t cnt = cJSON_GetArraySize(accounts);
@@ -1174,14 +1168,8 @@ bool load_cfg()
         if (pick < 0)
         {
             LOG_FATAL("配置 %" PRIu8 " 不存在或该配置不可用, 请检查配置文件", g_prog_account);
-            while (true)
-            {
-                if (g_need_exit)
-                {
-                    return false;
-                }
-                sleep_ms(10000, true);
-            }
+            cfg_halt();
+            return false;
         }
 
         if (pick != 0)
@@ -1204,14 +1192,8 @@ bool load_cfg()
     if (valid_cnt == 0)
     {
         LOG_FATAL("无可用配置, 请检查后重启程序");
-        while (true)
-        {
-            if (g_need_exit)
-            {
-                return false;
-            }
-            sleep_ms(10000, true);
-        }
+        cfg_halt();
+        return false;
     }
 
     g_prog_cnt = valid_cnt;
@@ -1219,4 +1201,43 @@ bool load_cfg()
     g_cfg_loaded = true;
 
     return true;
+}
+
+int list_accounts()
+{
+    /**
+     * stdout 要留给账号列表, 日志只写文件.
+     * 必须在 init_logger 之前设置: 初始化过程本身也会往控制台打日志
+     */
+    set_logger_console(false);
+
+    if (init_logger() == false)
+    {
+        fprintf(stderr, "[ERROR] 日志系统初始化失败\n");
+        return -1;
+    }
+
+    /**
+     * 复用 load_cfg 的整套校验:
+     * 列举出来的账号与真正会被加载的必须完全一致, 否则 init 脚本会起出跑不起来的实例
+     */
+    s_list_only = true;
+    const bool loaded = load_cfg();
+    s_list_only = false;
+
+    if (loaded == false)
+    {
+        // 配置有问题时 load_cfg 已经把原因写进日志了
+        return -1;
+    }
+
+    for (uint8_t i = 0; i < g_prog_cnt; i++)
+    {
+        printf("%" PRIu8 "\n", g_prog_status[i].login_cfg.idx);
+    }
+    fflush(stdout);
+
+    // 这里不调用 clean_logger: 它会把 run.log 改名收尾,
+    // 而多实例下 run.log 是所有进程共用的, 每次列举都改名会破坏其它实例的写入
+    return g_prog_cnt;
 }

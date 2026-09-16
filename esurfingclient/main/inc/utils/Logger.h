@@ -100,4 +100,12 @@ void clean_logger();
  */
 const char* get_logger_dir(void);
 
+/**
+ * @brief 设置是否同时把日志输出到控制台
+ *
+ * 列举账号时 stdout 要留给账号列表, 不能被日志内容污染
+ * @param enabled 是否输出到控制台
+ */
+void set_logger_console(bool enabled);
+
 #endif //ESURFINGCLIENT_LOGGER_H

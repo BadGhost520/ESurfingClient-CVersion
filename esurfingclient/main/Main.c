@@ -12,6 +12,9 @@ extern void work(void);
 /** @brief 参数解析结果, 该值表示继续运行, 其它值直接作为退出码返回 */
 #define ARG_CONTINUE (-1)
 
+/** @brief 是否只列举可用账号 */
+static bool s_list_accounts = false;
+
 /**
  * @brief 显示帮助信息
  */
@@ -22,6 +25,7 @@ static void PrintUsage()
     printf("  -r, --role <角色>     指定程序角色: auth (认证进程)\n");
     printf("                       (supervisor 守护进程与 web 网页进程尚未实现)\n");
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
+    printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
 #if !defined(__OPENWRT__) && !defined(__ANDROID__)
     printf("  -i, --install        安装为系统服务 (需要管理员/root 权限)\n");
     printf("  -u, --uninstall      卸载系统服务 (需要管理员/root 权限)\n");
@@ -79,6 +83,25 @@ static bool parse_account(const char* str, uint8_t* idx)
  */
 static int check_args()
 {
+    /**
+     * 列举账号是一个独立的查询动作, 由 init 脚本调用,
+     * 与角色/序号组合在一起语义不清, 直接拒绝
+     */
+    if (s_list_accounts == true)
+    {
+        if (g_prog_role != ROLE_STANDALONE)
+        {
+            fprintf(stderr, "[ERROR] --list-accounts 不能与 --role 一起使用\n");
+            return 1;
+        }
+        if (g_prog_account != 0)
+        {
+            fprintf(stderr, "[ERROR] --list-accounts 不能与 --account 一起使用\n");
+            return 1;
+        }
+        return 0;
+    }
+
     /**
      * 守护进程与 Web 进程尚未实现.
      * 这里直接拒绝, 而不是悄悄按单进程模式跑 —— 否则使用者会误以为进程已经拆开了
@@ -168,6 +191,12 @@ static int parse_args(const int argc, char* argv[])
             continue;
         }
 
+        if (strcmp(arg, "--list-accounts") == 0)
+        {
+            s_list_accounts = true;
+            continue;
+        }
+
         fprintf(stderr, "[ERROR] 未知参数: %s\n", arg);
         PrintUsage();
         return 1;
@@ -193,6 +222,11 @@ int main(const int argc, char *argv[])
     if (arg_result != ARG_CONTINUE)
     {
         return arg_result;
+    }
+
+    if (s_list_accounts == true)
+    {
+        return list_accounts() < 0 ? 1 : 0;
     }
 
 #ifdef _WIN32

@@ -46,6 +46,9 @@ static log_cfg_t s_logger_cfg = {
     .lines_since_check = 0
 };
 
+/** @brief 是否同时把日志输出到控制台 */
+static bool s_console_enabled = true;
+
 static const char* get_level_str(const LogLevel lv)
 {
     switch (lv)
@@ -255,6 +258,8 @@ static bool get_log_dir(char* out)
 
 static void write_2_console(const char* msg)
 {
+    if (s_console_enabled == false) return;
+
     printf("%s", msg);
     fflush(stdout);
 }
@@ -432,4 +437,9 @@ void clean_logger()
 const char* get_logger_dir(void)
 {
     return safe_str(s_logger_cfg.log_dir);
+}
+
+void set_logger_console(const bool enabled)
+{
+    s_console_enabled = enabled;
 }
