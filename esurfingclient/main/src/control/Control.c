@@ -291,6 +291,7 @@ static int ctl_server_app(void* arg)
 {
     (void)arg;
     tl_thread_idx = TL_IDX_CONTROL;
+    tl_thread_name = "control"; // 日志里标成本线程, 不要把标签交给魔术数字去猜
 
     LOG_INFO("控制通道服务线程已启动");
 

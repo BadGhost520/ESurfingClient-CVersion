@@ -266,6 +266,7 @@ static int time_control_app(void* arg)
 {
     (void)arg;
     tl_thread_idx = -1;
+    tl_thread_name = "time"; // 这是个独立线程, 不能因为 tl_thread_idx 是 -1 就叫它 Main
 
     LOG_INFO("时间控制线程已启动");
 

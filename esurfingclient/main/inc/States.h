@@ -223,6 +223,15 @@ extern int8_t g_prog_cnt;
 /** @brief 线程独立下标 */
 extern _Thread_local int8_t tl_thread_idx;
 
+/**
+ * @brief 线程自己在入口处声明的名字, 用于日志的第二段
+ *
+ * 不用 tl_thread_idx 去"猜"标签: 那几个魔术数字 (-1/-2/-3) 既表示角色又表示
+ * 是不是工作线程, 于是时间控制线程因为设了 -1 就在日志里自称 Main。
+ * 线程自己声明名字最直白, 也不会再串。
+ */
+extern _Thread_local const char* tl_thread_name;
+
 /** @brief 认证线程状态 */
 extern prog_status_t* g_prog_status;
 

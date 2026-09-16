@@ -786,6 +786,7 @@ static void logFn(const char ch, void *param)
 static int web_server(void* arg)
 {
     tl_thread_idx = (int8_t)(intptr_t)arg;
+    tl_thread_name = "web"; // 日志里标成本线程, 不要把标签交给魔术数字去猜
     struct mg_mgr mgr;
     mg_log_level = MG_LL_VERBOSE;
     mg_log_set_fn(logFn, NULL);

@@ -31,6 +31,8 @@ int8_t g_prog_cnt = 0;
 
 _Thread_local int8_t tl_thread_idx = -1;
 
+_Thread_local const char* tl_thread_name = NULL;
+
 prog_status_t* g_prog_status;
 
 char g_school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
