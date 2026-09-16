@@ -22,6 +22,11 @@
 
 #include <strings.h>
 
+#ifdef __APPLE__
+// get_exec_path() 用的 _NSGetExecutablePath() 在这个头里
+#include <mach-o/dyld.h>
+#endif
+
 #endif
 
 #ifdef __OPENWRT__
