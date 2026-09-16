@@ -283,8 +283,16 @@ static bool child_spawn(child_t* child)
     memset(&pi, 0, sizeof(pi));
     si.cb = sizeof(si);
 
-    // 不继承句柄: 子进程的日志由它自己打开
-    if (CreateProcessA(exec_path, cmdline, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0)
+    /**
+     * CREATE_NEW_PROCESS_GROUP 是必须的:
+     * 子进程要单独成组, 下面 child_stop() 里的
+     * GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT) 才有办法把"停止"送到它。
+     * 否则 Windows 上只能硬杀, 认证子进程就没有时间跑完登出
+     *
+     * 不继承句柄: 子进程的日志由它自己打开
+     */
+    if (CreateProcessA(exec_path, cmdline, NULL, NULL, FALSE,
+                       CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi) == 0)
     {
         LOG_ERROR("CreateProcess 失败 (错误码 %lu)", (unsigned long)GetLastError());
         return false;

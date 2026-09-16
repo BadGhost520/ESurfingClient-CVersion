@@ -798,12 +798,16 @@ static bool s_list_only = false;
  *
  * 以下情况直接返回失败, 由调用方退出:
  * - 列举账号: init 脚本调用, 挂起会卡住开机
- * - 认证进程 / Web 进程: 有外部监管者, 退出后按 respawn 策略处理,
- *   崩掉比挂住更容易被发现 (挂住的进程监管者是不会重启的)
+ * - 认证 / Web / 监管进程: 它们都在外部监管者 (procd / systemd / SCM) 之下,
+ *   退出后按 respawn 或重启策略处理。挂住的进程监管者是不会重启的,
+ *   那样只会看起来"服务在跑"却什么都不干
  */
 static void cfg_halt()
 {
-    if (s_list_only || g_prog_role == ROLE_AUTH || g_prog_role == ROLE_WEB)
+    if (s_list_only ||
+        g_prog_role == ROLE_AUTH ||
+        g_prog_role == ROLE_WEB ||
+        g_prog_role == ROLE_SUPERVISOR)
     {
         return;
     }

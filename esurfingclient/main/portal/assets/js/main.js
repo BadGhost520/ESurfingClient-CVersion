@@ -305,7 +305,8 @@ const api = {
         return response.json();
     },
 
-    /** 认证状态: { status: boolean } */
+    /** 认证状态: { status: boolean, reachable: boolean }
+     *  reachable 为 false 表示认证进程没在跑 (拆分多进程后才会出现) */
     async authStatus() {
         const response = await request('GET', '/api/status/auth');
         return response.json();
@@ -512,8 +513,15 @@ document.addEventListener('alpine:init', () => {
         async updateAuthStatus() {
             try {
                 const data = await api.authStatus();
-                this.authStatusOk = !!(data && data.status);
-                this.authStatusText = this.authStatusOk ? '已认证' : '未认证';
+                if (data && data.reachable === false) {
+                    // 拆分多进程后, 认证进程可能没在跑。
+                    // 这时不是"未认证", 而是根本查不到, 要区分开免得误导
+                    this.authStatusOk = null;
+                    this.authStatusText = '认证进程未运行';
+                } else {
+                    this.authStatusOk = !!(data && data.status);
+                    this.authStatusText = this.authStatusOk ? '已认证' : '未认证';
+                }
             } catch (error) {
                 this.authStatusOk = null;
                 this.authStatusText = '未知认证状态';
