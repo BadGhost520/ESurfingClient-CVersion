@@ -297,6 +297,13 @@ static void write_2_file(const char* msg, const size_t len)
     }
 }
 
+/**
+ * @brief 获取当前线程在日志里显示的标识
+ *
+ * 用配置序号而不是数组下标: 每个认证进程里数组下标都是 0,
+ * 只有配置序号才能区分不同进程负责的账号
+ * @return 标识字符串
+ */
 static char* get_thread_str()
 {
     for (uint8_t i = 0; i < g_prog_cnt; i++)
@@ -304,7 +311,7 @@ static char* get_thread_str()
         if (sim_thread_cur_id() == g_prog_status[i].thread_id)
         {
             static char str[4];
-            snprintf(str, sizeof(str), "%" PRIu8, i);
+            snprintf(str, sizeof(str), "%" PRIu8, g_prog_status[i].login_cfg.idx);
             return str;
         }
     }

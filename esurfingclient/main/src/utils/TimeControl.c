@@ -215,6 +215,53 @@ void time_control_sync(void)
  *
  * 每次醒来先按当前时间校正状态，再计算所有账号中“最近的下一次切换”并睡眠。
  */
+/**
+ * @brief 计算下一次需要重新校正时间控制状态前可以睡多久
+ *
+ * 正常情况会精确落在窗口边界上, 但最多只睡 MAX_SLEEP_SLICE_MS:
+ * 设备休眠或系统时间跳变后, 也能在切片时间内纠正过来
+ * @return 毫秒数 (没有启用时间控制的账号时返回一个短暂的轮询间隔)
+ */
+uint64_t time_control_wait_ms(void)
+{
+    if (g_prog_status == NULL || g_prog_cnt <= 0)
+    {
+        return 1000;
+    }
+
+    const int64_t now_week_ms = get_current_week_ms();
+    uint64_t next_delay = (uint64_t)-1;
+
+    for (uint8_t i = 0; i < g_prog_cnt; i++)
+    {
+        const login_cfg_t* cfg = &g_prog_status[i].login_cfg;
+        if (cfg->has_time_control == false)
+        {
+            continue;
+        }
+
+        const uint64_t delay = compute_next_event_delay_ms(cfg, now_week_ms);
+        if (delay != (uint64_t)-1 && delay < next_delay)
+        {
+            next_delay = delay;
+        }
+    }
+
+    // 没有时间控制账号, 短暂轮询即可, 便于保存配置后较快感知变化
+    if (next_delay == (uint64_t)-1)
+    {
+        return 1000;
+    }
+
+    if (next_delay == 0)
+    {
+        // 避免极端情况下忙等
+        next_delay = 1;
+    }
+
+    return next_delay > MAX_SLEEP_SLICE_MS ? MAX_SLEEP_SLICE_MS : next_delay;
+}
+
 static int time_control_app(void* arg)
 {
     (void)arg;
@@ -231,42 +278,7 @@ static int time_control_app(void* arg)
     while (g_thread_keep_alive && g_need_exit == false)
     {
         time_control_sync();
-
-        const int64_t now_week_ms = get_current_week_ms();
-        uint64_t next_delay = (uint64_t)-1;
-
-        for (uint8_t i = 0; i < g_prog_cnt; i++)
-        {
-            const login_cfg_t* cfg = &g_prog_status[i].login_cfg;
-            if (cfg->has_time_control == false)
-            {
-                continue;
-            }
-
-            const uint64_t delay = compute_next_event_delay_ms(cfg, now_week_ms);
-            if (delay != (uint64_t)-1 && delay < next_delay)
-            {
-                next_delay = delay;
-            }
-        }
-
-        if (next_delay == (uint64_t)-1)
-        {
-            // 没有时间控制账号，短暂睡眠后继续检查，便于保存配置后能较快感知变化
-            sleep_ms(1000, true);
-            continue;
-        }
-
-        if (next_delay == 0)
-        {
-            // 避免极端情况下忙等
-            next_delay = 1;
-        }
-
-        // 精确睡到下一个边界，但最多只睡 MAX_SLEEP_SLICE_MS 就重新校正一次：
-        // 正常情况最后一段会精确落在边界上；休眠/时间跳变时也能在切片时间内纠正。
-        const uint64_t slice = next_delay > MAX_SLEEP_SLICE_MS ? MAX_SLEEP_SLICE_MS : next_delay;
-        sleep_ms(slice, true);
+        sleep_ms(time_control_wait_ms(), true);
     }
 
     LOG_INFO("时间控制线程已退出");

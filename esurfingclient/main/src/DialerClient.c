@@ -797,14 +797,25 @@ int dialer_app(void* arg)
      * 正在运行且不需要重置时保持循环
      * 如果不运行, 或者需要重置时退出循环
      */
+    int exit_code = 0;
     while (g_prog_status[tl_thread_idx].runtime_status.is_running)
     {
+        /**
+         * 认证进程里没有独立的时间控制线程, 由本线程自己校正时间窗口
+         * 单进程模式下由时间控制线程统一校正, 这里不重复做
+         */
+        if (g_prog_role == ROLE_AUTH)
+        {
+            time_control_sync();
+        }
+
         const RunStatus run_status = run();
         // 如果 run 函数返回 RUN_FAILED 或需要重置, 则退出循环
         if (run_status == RUN_FAILED)
         {
             LOG_ERROR("线程出现错误, 正在退出");
             g_prog_status[tl_thread_idx].runtime_status.is_running = false;
+            exit_code = 1; // 认证进程据此退出, 交给外部监管者重新拉起
             break;
         }
         if (g_prog_status[tl_thread_idx].runtime_status.is_need_reauth)
@@ -819,11 +830,198 @@ int dialer_app(void* arg)
      * 线程退出时的操作
      */
     clean(); // 清除参数
+    return exit_code;
+}
+
+/** @brief 等待认证时机的返回值 */
+typedef enum
+{
+    /** @brief 网络已进入需要认证的状态 */
+    WAIT_READY = 0,
+    /** @brief 重试次数用尽 */
+    WAIT_FAILED = 1,
+    /** @brief 收到退出请求 */
+    WAIT_EXIT = 2,
+    /** @brief 允许时段关闭, 应当回到主循环等待 */
+    WAIT_TIME_CLOSED = 3
+} WaitResult;
+
+/**
+ * @brief 打印程序信息
+ */
+static void print_banner()
+{
+    LOG_INFO("-------------------------------------------------------------------");
+    LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
+    LOG_INFO(" - 本程序由 BadGhost (鬼鬼) 制作, 遵循 Apache-2.0 开源协议");
+    LOG_INFO(" - 项目地址: https://github.com/BadGhost520/ESurfingClient-CVersion");
+    LOG_INFO(" - 制作不易, 赞助鬼鬼, 让鬼鬼更好地去维护更新这个项目罢~");
+    LOG_INFO("-------------------------------------------------------------------");
+}
+
+/**
+ * @brief 等待网络进入需要认证的状态
+ *
+ * 已联网时按 10 秒一次轮询, 网络错误时按 1 秒一次重试, 最多 5 次
+ * @return 等待结果
+ */
+static WaitResult wait_need_auth()
+{
+    uint8_t retry_network = 1;
+
+    while (g_need_exit == false)
+    {
+        /**
+         * 认证进程里顺带看住时间窗口:
+         * 允许时段可能在等待网络的过程中关闭, 这时要交回主循环去等待,
+         * 而不是继续把网络轮询做完
+         */
+        if (g_prog_role == ROLE_AUTH)
+        {
+            time_control_sync();
+            if (g_prog_status[0].runtime_status.is_time_disabled)
+            {
+                return WAIT_TIME_CLOSED;
+            }
+        }
+
+        switch (check_network_status(true)) // 检查网络状态
+        {
+        case STATUS_OK:
+            // 正常连接到互联网
+            retry_network = 1;
+            LOG_INFO("已连接至互联网");
+            sleep_ms(10000, true);
+            break;
+        case STATUS_NEED_AUTH:
+            // 需要认证
+            return WAIT_READY;
+        default:
+            // 网络错误
+            if (retry_network > 5)
+            {
+                LOG_FATAL("超过最多重试次数");
+                return WAIT_FAILED;
+            }
+            LOG_WARN("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry_network);
+            retry_network++;
+            sleep_ms(1000, true);
+        }
+    }
+
+    return WAIT_EXIT;
+}
+
+/**
+ * @brief 认证进程主流程
+ *
+ * 一个进程只负责一个配置 (由 --account 指定), 与单进程模式的区别:
+ * - 不启动 Web 服务器
+ * - 不启动线程守护: 认证失败直接退出, 由外部监管者 (procd / systemd / 服务管理器) 重新拉起.
+ *   崩溃回环保护交给监管者, 比这里的无限重启可靠
+ * - 时间控制由认证线程自己在循环里校正, 不需要单独的定时线程
+ * @return 进程退出码
+ */
+static int work_auth()
+{
+    g_thread_keep_alive = true;
+
+    g_prog_status = calloc(1, sizeof(prog_status_t));
+    init_shutdown_hook();
+
+    if (init_logger() == false) return 1;
+
+    print_banner();
+
+    if (load_cfg() == false) shut(1);
+
+    if (g_prog_cnt != 1)
+    {
+        LOG_FATAL("认证进程需要且只需要一个配置, 当前加载了 %" PRId8 " 个, 请检查 --account", g_prog_cnt);
+        shut(1);
+    }
+
+    LOG_INFO("以认证进程运行, 负责配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
+
+    /**
+     * 记下本进程的线程 ID, 让日志能标出这是哪个账号的进程
+     * 必须放在 load_cfg 之后: 日志标识用的是配置序号
+     */
+    g_prog_status[0].thread_id = sim_thread_cur_id();
+
+    /**
+     * 认证循环
+     * dialer_app 内部已处理登录/心跳/登出/重试, 这里只决定"什么时候再跑一轮":
+     * - 不在允许时段: 不做任何网络动作, 等下一次时间窗口
+     * - 需要重新认证: 立刻重来
+     * - 认证失败: 进程退出, 交给外部监管者
+     */
+    bool network_ready = false;
+
+    while (g_need_exit == false)
+    {
+        time_control_sync();
+
+        if (g_prog_status[0].runtime_status.is_time_disabled)
+        {
+            /**
+             * 不在允许时段, 此时没有会话需要登出.
+             * 必须把这两个标志复位, 否则 sleep_ms 会因为 is_need_reauth 立刻返回造成忙等
+             */
+            g_prog_status[0].runtime_status.is_running = true;
+            g_prog_status[0].runtime_status.is_need_reauth = false;
+            network_ready = false; // 换到下一个允许时段后重新做一次网络检测
+
+            const uint64_t wait_ms = time_control_wait_ms();
+            LOG_INFO("配置 %" PRIu8 " 不在允许时段, 等待 %" PRIu64 " 毫秒后重新检查",
+                g_prog_status[0].login_cfg.idx, wait_ms);
+            sleep_ms(wait_ms, true);
+            continue;
+        }
+
+        /**
+         * 启动时先等网络进入需要认证的状态 (与单进程模式一致).
+         * 等待过程中若允许时段关闭, wait_need_auth 会把控制权交回来
+         */
+        if (network_ready == false)
+        {
+            const WaitResult wait_result = wait_need_auth();
+
+            if (wait_result == WAIT_FAILED) shut(1);
+            if (wait_result == WAIT_EXIT) break;
+            if (wait_result == WAIT_TIME_CLOSED) continue;
+
+            network_ready = true;
+        }
+
+        const int auth_code = dialer_app((void*)(intptr_t)0);
+
+        if (g_need_exit) break;
+
+        if (auth_code != 0)
+        {
+            LOG_ERROR("配置 %" PRIu8 " 认证失败, 进程退出, 由外部监管者重新拉起", g_prog_status[0].login_cfg.idx);
+            return auth_code;
+        }
+
+        LOG_INFO("配置 %" PRIu8 " 需要重新认证, 重新开始认证流程", g_prog_status[0].login_cfg.idx);
+    }
+
+    LOG_INFO("认证进程退出");
     return 0;
 }
 
 void work()
 {
+    /**
+     * 认证进程走单独的流程
+     * 守护进程与 Web 进程尚未实现, 已在参数校验阶段拦下
+     */
+    if (g_prog_role == ROLE_AUTH)
+    {
+        exit(work_auth());
+    }
+
     g_thread_keep_alive = true;
 
     g_prog_status = calloc(1, sizeof(prog_status_t)); // 初始化 g_prog_status 指针并分配 1 个空间
@@ -832,12 +1030,7 @@ void work()
 
     if (init_logger() == false) return; // 初始化日志系统
 
-    LOG_INFO("-------------------------------------------------------------------");
-    LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
-    LOG_INFO(" - 本程序由 BadGhost (鬼鬼) 制作, 遵循 Apache-2.0 开源协议");
-    LOG_INFO(" - 项目地址: https://github.com/BadGhost520/ESurfingClient-CVersion");
-    LOG_INFO(" - 制作不易, 赞助鬼鬼, 让鬼鬼更好地去维护更新这个项目罢~");
-    LOG_INFO("-------------------------------------------------------------------");
+    print_banner();
 
 #ifndef __OPENWRT__
     if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
@@ -849,42 +1042,9 @@ void work()
     if (time_control_init() == false) shut(1); // 启动时间控制定时线程
 
     /**
-     * 检测网络状态
-     * 非重定向响应都会持续循环
+     * 检测网络状态, 进入需要认证的状态后才继续
      */
-    uint8_t retry_network = 1;
-    bool quit = false;
-
-    while (quit == false)
-    {
-        if (g_need_exit)
-        {
-            break;
-        }
-        switch (check_network_status(true)) // 检查网络状态
-        {
-        case STATUS_OK:
-            // 正常连接到互联网
-            retry_network = 1;
-            LOG_INFO("已连接至互联网");
-            sleep_ms(10000, true);
-            break;
-        case STATUS_NEED_AUTH:
-            // 需要认证
-            quit = true;
-            break;
-        default:
-            // 网络错误
-            if (retry_network > 5)
-            {
-                LOG_FATAL("超过最多重试次数");
-                shut(1);
-            }
-            LOG_WARN("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry_network);
-            retry_network++;
-            sleep_ms(1000, true);
-        }
-    }
+    if (wait_need_auth() == WAIT_FAILED) shut(1);
 
     /**
      * 根据配置数创建相应数量的线程

@@ -19,8 +19,9 @@ static void PrintUsage()
 {
     printf("使用格式: ESurfingClient [选项]\n");
     printf("  [nothing]            直接运行程序 (前台模式)\n");
-    printf("  -r, --role <角色>     指定程序角色: supervisor (守护) / auth (认证) / web (网页)\n");
-    printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始)\n");
+    printf("  -r, --role <角色>     指定程序角色: auth (认证进程)\n");
+    printf("                       (supervisor 守护进程与 web 网页进程尚未实现)\n");
+    printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
 #if !defined(__OPENWRT__) && !defined(__ANDROID__)
     printf("  -i, --install        安装为系统服务 (需要管理员/root 权限)\n");
     printf("  -u, --uninstall      卸载系统服务 (需要管理员/root 权限)\n");
@@ -78,15 +79,22 @@ static bool parse_account(const char* str, uint8_t* idx)
  */
 static int check_args()
 {
-#ifdef __OPENWRT__
-
-    if (g_prog_role == ROLE_WEB)
+    /**
+     * 守护进程与 Web 进程尚未实现.
+     * 这里直接拒绝, 而不是悄悄按单进程模式跑 —— 否则使用者会误以为进程已经拆开了
+     */
+    if (g_prog_role == ROLE_SUPERVISOR || g_prog_role == ROLE_WEB)
     {
-        fprintf(stderr, "[ERROR] OpenWRT 版本不包含 Web 服务, 不能以 web 角色运行\n");
+        fprintf(stderr, "[ERROR] 角色 %s 尚未实现, 目前只支持 auth\n",
+            g_prog_role == ROLE_SUPERVISOR ? "supervisor" : "web");
         return 1;
     }
 
-#endif
+    if (g_prog_role == ROLE_AUTH && g_prog_account == 0)
+    {
+        fprintf(stderr, "[ERROR] --role auth 必须配合 --account 指定负责的配置序号\n");
+        return 1;
+    }
 
     if (g_prog_account != 0 && g_prog_role != ROLE_AUTH && g_prog_role != ROLE_STANDALONE)
     {
