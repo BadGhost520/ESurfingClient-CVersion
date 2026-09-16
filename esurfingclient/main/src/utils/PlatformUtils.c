@@ -530,7 +530,7 @@ void sleep_ms(const uint64_t ms, const bool can_stop)
     {
         uint64_t elapsed = 0;
 
-        while (elapsed < ms && g_thread_keep_alive)
+        while (elapsed < ms && g_thread_keep_alive && g_stop_requested == 0)
         {
             if (tl_thread_idx > -1)
             {

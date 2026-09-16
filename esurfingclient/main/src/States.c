@@ -19,6 +19,12 @@ uint16_t g_control_port = CONTROL_DEFAULT_PORT;
 
 char g_web_listen[WEB_LISTEN_LEN] = DEFAULT_WEB_LISTEN;
 
+int g_main_argc = 0;
+
+char** g_main_argv = NULL;
+
+volatile sig_atomic_t g_stop_requested = 0;
+
 int8_t g_prog_cnt = 0;
 
 _Thread_local int8_t tl_thread_idx = -1;

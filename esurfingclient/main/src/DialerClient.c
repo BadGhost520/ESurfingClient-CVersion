@@ -804,7 +804,7 @@ int dialer_app(void* arg)
      * 如果不运行, 或者需要重置时退出循环
      */
     int exit_code = 0;
-    while (g_prog_status[tl_thread_idx].runtime_status.is_running)
+    while (g_prog_status[tl_thread_idx].runtime_status.is_running && g_stop_requested == 0)
     {
         /**
          * 认证进程里没有独立的时间控制线程, 由本线程自己校正时间窗口
@@ -875,7 +875,7 @@ static WaitResult wait_need_auth()
 {
     uint8_t retry_network = 1;
 
-    while (g_need_exit == false)
+    while (g_need_exit == false && g_stop_requested == 0)
     {
         /**
          * 认证进程里顺带看住时间窗口:
@@ -977,7 +977,7 @@ static int work_auth()
      */
     bool network_ready = false;
 
-    while (g_need_exit == false)
+    while (g_need_exit == false && g_stop_requested == 0)
     {
         time_control_sync();
 
@@ -1015,7 +1015,11 @@ static int work_auth()
 
         const int auth_code = dialer_app((void*)(intptr_t)0);
 
-        if (g_need_exit) break;
+        /**
+         * 收到退出请求 (信号只置了标志): dialer_app 的循环会随之退出,
+         * 正常返回并跑完 clean() —— 登出就在这里发生
+         */
+        if (g_need_exit || g_stop_requested) break;
 
         if (auth_code != 0)
         {
@@ -1041,6 +1045,7 @@ static int work_auth()
     }
 
     LOG_INFO("认证进程退出");
+    shut(0); // 停控制通道、收尾日志, 不会返回
     return 0;
 }
 
@@ -1073,12 +1078,13 @@ static int work_web()
     if (start_web_server_remote() == false) shut(1);
 
     // Web 服务在独立线程里跑, 主线程只等退出
-    while (g_need_exit == false)
+    while (g_need_exit == false && g_stop_requested == 0)
     {
         sleep_ms(1000, false);
     }
 
     LOG_INFO("Web 进程退出");
+    shut(0); // 停 Web 服务线程、收尾日志, 不会返回
     return 0;
 }
 
@@ -1133,6 +1139,9 @@ void work()
      */
     if (wait_need_auth() == WAIT_FAILED) shut(1);
 
+    // 等待期间收到退出请求
+    if (g_stop_requested) shut(0);
+
     /**
      * 根据配置数创建相应数量的线程
      */
@@ -1166,7 +1175,7 @@ void work()
     sleep_ms(5000, false);
     LOG_INFO("线程守护开启");
     uint64_t check_time = 0;
-    while (g_thread_keep_alive)
+    while (g_thread_keep_alive && g_stop_requested == 0)
     {
         if (check_time > 299999)
         {
@@ -1256,6 +1265,10 @@ void work()
         check_time += 10;
     }
     LOG_INFO("线程守护已关闭");
+
+    // 收到退出请求: 走正常的关闭流程 (停子线程与 Web 服务、收尾日志、退出)
+    if (g_stop_requested) shut(0);
+
     while (g_thread_keep_alive == false
 #ifdef _WIN32
         && get_service_mode() == false

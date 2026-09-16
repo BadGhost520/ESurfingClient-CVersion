@@ -5,6 +5,7 @@
 #include "utils/sim/SimThread.h"
 
 #include <setjmp.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -182,6 +183,20 @@ extern uint16_t g_control_port;
 
 /** @brief Web 服务监听地址 (形如 127.0.0.1:8888) */
 extern char g_web_listen[WEB_LISTEN_LEN];
+
+/** @brief 主函数收到的参数个数 (重启时要原样带上) */
+extern int g_main_argc;
+
+/** @brief 主函数收到的参数 (重启时要原样带上) */
+extern char** g_main_argv;
+
+/**
+ * @brief 收到退出请求
+ *
+ * 只由信号处理函数置位: 那里不能做 join / 打日志 / rename / exit 这些
+ * 不是 async-signal-safe 的事, 真正的关闭动作由各角色的主循环来做
+ */
+extern volatile sig_atomic_t g_stop_requested;
 
 /** @brief 适配器数 */
 extern int8_t g_prog_cnt;

@@ -297,6 +297,10 @@ int main(const int argc, char *argv[])
 {
     g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间
 
+    // 记下来: 重启进程时要原样带上这些参数, 否则重启后会变成另一个角色
+    g_main_argc = argc;
+    g_main_argv = argv;
+
 #ifdef _WIN32
 
     system("chcp 65001 >nul");

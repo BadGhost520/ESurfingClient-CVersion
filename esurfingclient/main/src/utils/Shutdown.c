@@ -60,6 +60,7 @@ void shut(const int8_t exit_code)
         g_thread_keep_alive = false;
     }
     time_control_stop(); // 等待时间控制定时线程退出
+
     LOG_INFO("清理资源中");
     LOG_DEBUG("关闭线程");
     for (uint8_t i = 0; i < g_prog_cnt; i++)
@@ -69,9 +70,10 @@ void shut(const int8_t exit_code)
         if (g_prog_status[i].thread != NULL)
         {
             sim_thread_join(g_prog_status[i].thread, &result_code);
-            LOG_DEBUG("认证线程退出, 退出码: %d", result_code);
+            LOG_DEBUG("认证线程 %" PRIu8 " 退出, 退出码: %d", i, result_code);
         }
     }
+
     LOG_INFO("退出程序, 退出码: %" PRIu8, exit_code);
     clean_logger();
 
@@ -93,63 +95,32 @@ void shut(const int8_t exit_code)
 }
 
 #ifdef _WIN32
-// Windows 控制台事件处理
+/**
+ * Windows 控制台事件处理
+ *
+ * 只置标志: 这个处理函数跑在系统另起的线程上, 而且随时可能被强杀,
+ * 在这里做 join / 打日志 / rename / exit 都不安全。
+ * 真正的关闭动作由各角色的主循环看到标志后执行
+ */
 static BOOL WINAPI console_handler(const DWORD ctrlType)
 {
-    switch(ctrlType)
-    {
-    case CTRL_C_EVENT:
-        LOG_DEBUG("接收到 CTRL+C 信号");
-        shut(0);
-        return TRUE;
-    case CTRL_BREAK_EVENT:
-        LOG_DEBUG("接收到 CTRL+BREAK 信号");
-        shut(0);
-        return TRUE;
-    case CTRL_CLOSE_EVENT:
-        LOG_DEBUG("接收到窗口关闭信号");
-        shut(0);
-        return TRUE;
-    case CTRL_LOGOFF_EVENT:
-        LOG_DEBUG("接收到用户注销信号");
-        shut(0);
-        return TRUE;
-    case CTRL_SHUTDOWN_EVENT:
-        LOG_DEBUG("接收到系统关机信号");
-        shut(0);
-        return TRUE;
-    default:
-        LOG_DEBUG("接收到未知控制台事件: %lu", ctrlType);
-        return FALSE;
-    }
+    (void)ctrlType;
+    g_stop_requested = 1;
+    return TRUE;
 }
 
 #else
-// Linux/Unix 信号处理
+/**
+ * Linux/Unix 信号处理
+ *
+ * 只置标志: 信号处理函数里不能做 join 线程、打日志、rename、exit
+ * 这些不是 async-signal-safe 的事 (原来这里直接调 shut(), 有死锁风险)。
+ * 真正的关闭动作由各角色的主循环看到标志后执行
+ */
 static void signal_handler(const int sig)
 {
-    switch(sig)
-    {
-    case SIGINT:
-        LOG_DEBUG("接收到 SIGINT 信号 (Ctrl+C)");
-        shut(0);
-        break;
-    case SIGTERM:
-        LOG_DEBUG("接收到 SIGTERM 信号 (Terminate request)");
-        shut(0);
-        break;
-    case SIGHUP:
-        LOG_DEBUG("接收到 SIGHUP 信号 (终端断开)");
-        shut(0);
-        break;
-    case SIGQUIT:
-        LOG_DEBUG("接收到 SIGQUIT 信号 (Quit request)");
-        shut(0);
-        break;
-    default:
-        LOG_DEBUG("接收到未处理的信号: %d", sig);
-        shut(0);
-    }
+    (void)sig;
+    g_stop_requested = 1;
 }
 
 #endif

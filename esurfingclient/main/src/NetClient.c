@@ -836,7 +836,7 @@ bool get_last_location()
 
     while (quit == false)
     {
-        if (g_need_exit)
+        if (g_need_exit || g_stop_requested)
         {
             return false;
         }

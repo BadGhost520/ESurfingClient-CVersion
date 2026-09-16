@@ -658,5 +658,7 @@ int work_supervisor()
     LOG_INFO("监管进程收到退出请求");
     supervisor_shutdown();
 
+    // 监管者是 run.log 收尾改名的那一方 (认证/Web 子进程都会跳过改名)
+    clean_logger();
     return 0;
 }
