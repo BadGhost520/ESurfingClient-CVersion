@@ -784,6 +784,19 @@ static RunStatus run()
     }
 }
 
+/**
+ * @brief 监管进程是否已经不在了
+ *
+ * 只在被监管的角色下判断: 单进程模式的父进程是终端或服务管理器,
+ * 它们退出并不意味着本程序该退出。
+ * Linux 上子进程登记了 PR_SET_PDEATHSIG, 内核会直接通知, 这里恒为 false
+ */
+static bool supervisor_gone()
+{
+    if (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB) return false;
+    return parent_process_alive() == false;
+}
+
 int dialer_app(void* arg)
 {
     tl_thread_idx = (int8_t)(intptr_t)arg; // 领取线程下标参数
@@ -806,6 +819,11 @@ int dialer_app(void* arg)
     int exit_code = 0;
     while (g_prog_status[tl_thread_idx].runtime_status.is_running && g_stop_requested == 0)
     {
+        if (supervisor_gone())
+        {
+            LOG_WARN("监管进程已退出, 本进程一并退出");
+            break;
+        }
         /**
          * 认证进程里没有独立的时间控制线程, 由本线程自己校正时间窗口
          * 单进程模式下由时间控制线程统一校正, 这里不重复做
@@ -877,6 +895,12 @@ static WaitResult wait_need_auth()
 
     while (g_need_exit == false && g_stop_requested == 0)
     {
+        if (supervisor_gone())
+        {
+            LOG_WARN("监管进程已退出, 本进程一并退出");
+            return WAIT_EXIT;
+        }
+
         /**
          * 认证进程里顺带看住时间窗口:
          * 允许时段可能在等待网络的过程中关闭, 这时要交回主循环去等待,
@@ -979,6 +1003,12 @@ static int work_auth()
 
     while (g_need_exit == false && g_stop_requested == 0)
     {
+        if (supervisor_gone())
+        {
+            LOG_WARN("监管进程已退出, 本进程一并退出");
+            break;
+        }
+
         time_control_sync();
 
         if (g_prog_status[0].runtime_status.is_time_disabled)
@@ -1080,6 +1110,7 @@ static int work_web()
     // Web 服务在独立线程里跑, 主线程只等退出
     while (g_need_exit == false && g_stop_requested == 0)
     {
+        if (supervisor_gone()) break;
         sleep_ms(1000, false);
     }
 

@@ -28,6 +28,7 @@ static void PrintUsage()
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
 #ifndef __OPENWRT__
     printf("  --control-port <端口> 控制通道端口 (默认 %d; 认证进程监听, Web 进程连接)\n", CONTROL_DEFAULT_PORT);
+    printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 监管者会自动生成并下发)\n");
     printf("  --web-listen <地址>   Web 服务监听地址 (默认 %s)\n", DEFAULT_WEB_LISTEN);
 #endif
 #if !defined(__OPENWRT__) && !defined(__ANDROID__)
@@ -280,6 +281,24 @@ static int parse_args(const int argc, char* argv[])
             continue;
         }
 
+        if (strcmp(arg, "--control-token") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                fprintf(stderr, "[ERROR] %s 缺少令牌\n", arg);
+                PrintUsage();
+                return 1;
+            }
+            if (argv[i + 1][0] == '\0' || strlen(argv[i + 1]) >= CONTROL_TOKEN_LEN)
+            {
+                fprintf(stderr, "[ERROR] 令牌长度无效 (应为 1 - %d 个字符)\n", CONTROL_TOKEN_LEN - 1);
+                PrintUsage();
+                return 1;
+            }
+            snprintf(g_control_token, sizeof(g_control_token), "%s", argv[++i]);
+            continue;
+        }
+
 #endif
 
         fprintf(stderr, "[ERROR] 未知参数: %s\n", arg);
@@ -300,6 +319,9 @@ int main(const int argc, char *argv[])
     // 记下来: 重启进程时要原样带上这些参数, 否则重启后会变成另一个角色
     g_main_argc = argc;
     g_main_argv = argv;
+
+    // 记下启动时的父进程号: 被监管的子进程靠它判断监管者是否还活着
+    record_parent_pid();
 
 #ifdef _WIN32
 

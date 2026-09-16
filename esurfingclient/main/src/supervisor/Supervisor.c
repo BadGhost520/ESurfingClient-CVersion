@@ -200,6 +200,14 @@ static void child_build_argv(const child_t* child, char* exec_path,
     argv[n++] = control_arg;
     argv[n++] = "--web-listen";
     argv[n++] = g_web_listen;
+
+    // 令牌由监管者生成, 认证与 Web 子进程必须拿到同一个
+    if (g_control_token[0] != '\0')
+    {
+        argv[n++] = "--control-token";
+        argv[n++] = g_control_token;
+    }
+
     argv[n] = NULL;
 }
 
@@ -216,7 +224,7 @@ static bool child_spawn(child_t* child)
 
     char account_arg[8];
     char control_arg[8];
-    char* argv[10];
+    char* argv[12];
     child_build_argv(child, exec_path, account_arg, control_arg, argv);
 
     const pid_t pid = fork();
@@ -266,7 +274,7 @@ static bool child_spawn(child_t* child)
 
     char account_arg[8];
     char control_arg[8];
-    char* argv[10];
+    char* argv[12];
     child_build_argv(child, exec_path, account_arg, control_arg, argv);
 
     // Windows 需要一整条命令行字符串, 可执行文件路径可能含空格, 必须加引号
@@ -618,6 +626,18 @@ int work_supervisor()
     LOG_INFO(" - 以监管进程运行: 认证与 Web 各起独立进程");
 
     if (load_cfg() == false) return 1;
+
+    /**
+     * 生成一次性令牌下发给子进程:
+     * 控制通道只监听回环, 但本机其它进程同样连得上。有了令牌,
+     * 无关进程就没法通过通道下发"重新认证 / 应用新配置"这类动作
+     */
+    unsigned char token_bytes[16];
+    get_rand_bytes(token_bytes, sizeof(token_bytes));
+    for (size_t i = 0; i < sizeof(token_bytes); i++)
+    {
+        snprintf(g_control_token + i * 2, 3, "%02x", token_bytes[i]);
+    }
 
     if (supervisor_build_children() == false) return 1;
 

@@ -38,6 +38,9 @@
 
 #define WEB_LISTEN_LEN 64
 
+/** @brief 控制通道令牌长度 (32 位十六进制 + 结尾) */
+#define CONTROL_TOKEN_LEN 33
+
 /**
  * @brief Web 服务默认监听地址
  *
@@ -183,6 +186,14 @@ extern uint16_t g_control_port;
 
 /** @brief Web 服务监听地址 (形如 127.0.0.1:8888) */
 extern char g_web_listen[WEB_LISTEN_LEN];
+
+/**
+ * @brief 控制通道令牌 (空字符串表示不校验)
+ *
+ * 控制通道只监听回环, 但本机其它进程同样连得上。监管者会给子进程下发一个
+ * 一次性令牌, 通道据此拒绝无关进程下发的动作
+ */
+extern char g_control_token[CONTROL_TOKEN_LEN];
 
 /** @brief 主函数收到的参数个数 (重启时要原样带上) */
 extern int g_main_argc;

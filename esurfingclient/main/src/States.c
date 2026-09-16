@@ -19,6 +19,8 @@ uint16_t g_control_port = CONTROL_DEFAULT_PORT;
 
 char g_web_listen[WEB_LISTEN_LEN] = DEFAULT_WEB_LISTEN;
 
+char g_control_token[CONTROL_TOKEN_LEN] = {0};
+
 int g_main_argc = 0;
 
 char** g_main_argv = NULL;

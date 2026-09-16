@@ -183,6 +183,24 @@ static void ctl_reply_result(char* reply, const size_t reply_len, const bool ok,
 }
 
 /**
+ * @brief 校验请求令牌
+ *
+ * 控制通道只监听回环, 但本机其它进程同样连得上;
+ * 没配令牌时不做校验 (手工单独起进程的场景)
+ * @param req 请求对象
+ * @return 令牌是否正确
+ */
+static bool ctl_check_token(const cJSON* req)
+{
+    if (g_control_token[0] == '\0') return true;
+
+    const cJSON* item = cJSON_GetObjectItem(req, "token");
+    if (item == NULL || cJSON_IsString(item) == false) return false;
+
+    return strcmp(item->valuestring, g_control_token) == 0;
+}
+
+/**
  * @brief 处理一条请求并生成应答
  * @param request 请求报文
  * @param reply 输出缓冲
@@ -194,6 +212,14 @@ static void ctl_dispatch(const char* request, char* reply, const size_t reply_le
     if (req == NULL)
     {
         ctl_reply_result(reply, reply_len, false, "bad json");
+        return;
+    }
+
+    if (ctl_check_token(req) == false)
+    {
+        LOG_WARN("控制通道收到令牌不匹配的请求, 已拒绝");
+        ctl_reply_result(reply, reply_len, false, "bad token");
+        cJSON_Delete(req);
         return;
     }
 
@@ -333,7 +359,8 @@ bool control_server_start(const uint16_t port)
         return false;
     }
 
-    LOG_INFO("控制通道已启动, 监听 127.0.0.1:%" PRIu16, s_server_port);
+    LOG_INFO("控制通道已启动, 监听 127.0.0.1:%" PRIu16 "%s", s_server_port,
+        g_control_token[0] != '\0' ? " (需要令牌)" : " (未设令牌, 本机任意进程都可下发动作)");
     return true;
 }
 
@@ -365,13 +392,24 @@ void control_set_port(const uint16_t port)
 
 /**
  * @brief 连接控制通道并发出一条请求
- * @param request 请求报文 (需自带换行)
+ * @param cmd 命令名
  * @param reply 应答缓冲
  * @param reply_len 缓冲长度
  * @return 是否成功拿到应答
  */
-static bool ctl_client_request(const char* request, char* reply, const size_t reply_len)
+static bool ctl_client_request(const char* cmd, char* reply, const size_t reply_len)
 {
+    char request[CONTROL_MSG_MAX];
+
+    if (g_control_token[0] != '\0')
+    {
+        snprintf(request, sizeof(request), "{\"cmd\":\"%s\",\"token\":\"%s\"}\n", cmd, g_control_token);
+    }
+    else
+    {
+        snprintf(request, sizeof(request), "{\"cmd\":\"%s\"}\n", cmd);
+    }
+
     if (ctl_net_init() == false) return false;
 
     const ctl_sock_t sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -427,7 +465,7 @@ bool control_query_status(control_status_t* out)
     if (out == NULL) return false;
 
     char reply[CONTROL_MSG_MAX];
-    if (ctl_client_request("{\"cmd\":\"status\"}\n", reply, sizeof(reply)) == false) return false;
+    if (ctl_client_request("status", reply, sizeof(reply)) == false) return false;
 
     cJSON* root = cJSON_Parse(reply);
     if (root == NULL) return false;
@@ -457,13 +495,13 @@ bool control_query_status(control_status_t* out)
 bool control_restart_auth(void)
 {
     char reply[CONTROL_MSG_MAX];
-    if (ctl_client_request("{\"cmd\":\"restart_auth\"}\n", reply, sizeof(reply)) == false) return false;
+    if (ctl_client_request("restart_auth", reply, sizeof(reply)) == false) return false;
     return ctl_reply_ok(reply);
 }
 
 bool control_apply_config(void)
 {
     char reply[CONTROL_MSG_MAX];
-    if (ctl_client_request("{\"cmd\":\"apply_config\"}\n", reply, sizeof(reply)) == false) return false;
+    if (ctl_client_request("apply_config", reply, sizeof(reply)) == false) return false;
     return ctl_reply_ok(reply);
 }

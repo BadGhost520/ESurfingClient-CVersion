@@ -74,6 +74,27 @@ bool get_exec_dir(char* dir_array);
 bool get_exec_path(char* path_array);
 
 /**
+ * @brief 记下启动时的父进程号
+ *
+ * 必须在程序一开始就调用: 父进程可能在启动后立刻就没了
+ */
+void record_parent_pid(void);
+
+/**
+ * @brief 父进程是否还在 (供被监管的子进程自查)
+ *
+ * 监管者被强杀时子进程不该留下来变成孤儿。判据是"当前父进程号是否还是启动时那个":
+ * 不能简单地看是不是被过继给了 init (PID 1) —— 用 setsid 之类方式主动脱离终端的
+ * 进程, 父进程本来就可能是 1, 那样会被误判成孤儿。
+ *
+ * Linux 上子进程另外登记了 PR_SET_PDEATHSIG, 父进程一死内核立刻发信号,
+ * 这里只是兜底。
+ * Windows 没有等价机制 (要彻底解决得用 Job Object), 恒返回 true。
+ * @return 父进程是否还在
+ */
+bool parent_process_alive(void);
+
+/**
  * @brief XML 解析
  * @param xml_data XML 数据
  * @param tag 提取标志
