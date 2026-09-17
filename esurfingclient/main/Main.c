@@ -23,12 +23,12 @@ static void PrintUsage()
 {
     printf("使用格式: ESurfingClient [选项]\n");
     printf("  [nothing]            直接运行程序 (前台模式)\n");
-    printf("  -r, --role <角色>     程序角色: supervisor (监管) / auth (认证) / web (网页)\n");
+    printf("  -r, --role <角色>     程序角色: supervisor (守护) / auth (认证) / web (网页)\n");
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
 #ifndef __OPENWRT__
     printf("  --control-port <端口> 控制通道端口 (默认 %d; 认证进程监听, Web 进程连接)\n", CONTROL_DEFAULT_PORT);
-    printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 监管者会自动生成并下发)\n");
+    printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 守护进程会自动生成并下发)\n");
     printf("  --web-listen <地址>   Web 服务监听地址 (默认 %s)\n", DEFAULT_WEB_LISTEN);
 #endif
 #if !defined(__OPENWRT__) && !defined(__ANDROID__)
@@ -154,7 +154,7 @@ static int check_args()
 
     if (g_prog_role == ROLE_WEB || g_prog_role == ROLE_SUPERVISOR)
     {
-        fprintf(stderr, "[ERROR] OpenWRT 版本不包含 Web 服务与监管进程, 只能用 auth 角色\n");
+        fprintf(stderr, "[ERROR] OpenWRT 版本不包含 Web 服务与守护进程, 只能用 auth 角色\n");
         return 1;
     }
 

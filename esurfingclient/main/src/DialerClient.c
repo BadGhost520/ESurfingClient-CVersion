@@ -846,7 +846,7 @@ int dialer_app(void* arg)
 
         if (supervisor_gone())
         {
-            LOG_WARN("监管进程已退出, 本进程一并退出");
+            LOG_WARN("守护进程已退出, 本进程一并退出");
             break;
         }
         /**
@@ -911,9 +911,9 @@ static void print_banner()
 {
     LOG_INFO("-------------------------------------------------------------------");
     LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
-    LOG_INFO(" - 本程序由 BadGhost (鬼鬼) 制作, 遵循 Apache-2.0 开源协议");
+    LOG_INFO(" - 本程序由 BadGhost 制作, 遵循 Apache-2.0 开源协议");
     LOG_INFO(" - 项目地址: https://github.com/BadGhost520/ESurfingClient-CVersion");
-    LOG_INFO(" - 制作不易, 赞助鬼鬼, 让鬼鬼更好地去维护更新这个项目罢~");
+
     LOG_INFO("-------------------------------------------------------------------");
 }
 
@@ -936,7 +936,7 @@ static WaitResult wait_need_auth()
 
         if (supervisor_gone())
         {
-            LOG_WARN("监管进程已退出, 本进程一并退出");
+            LOG_WARN("守护进程已退出, 本进程一并退出");
             return WAIT_EXIT;
         }
 
@@ -1113,7 +1113,7 @@ static int work_auth()
     {
         if (supervisor_gone())
         {
-            LOG_WARN("监管进程已退出, 本进程一并退出");
+            LOG_WARN("守护进程已退出, 本进程一并退出");
             break;
         }
 

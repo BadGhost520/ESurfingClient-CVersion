@@ -654,7 +654,7 @@ static void child_stop(child_t* child, const uint32_t grace_ms)
  */
 static void supervisor_shutdown()
 {
-    LOG_INFO("监管进程正在停止子进程");
+    LOG_INFO("守护进程正在停止子进程");
 
     // 先停 Web: 不再接受新的控制请求, 它也没有需要收尾的会话
     for (int i = 0; i < s_child_count; i++)
@@ -677,7 +677,7 @@ static void supervisor_shutdown()
         }
     }
 
-    LOG_INFO("监管进程已停止全部子进程");
+    LOG_INFO("守护进程已停止全部子进程");
 }
 
 /* ------------------------------------------------------------------
@@ -737,7 +737,7 @@ static bool supervisor_build_children()
 
     if (s_child_count >= SUPERVISOR_MAX_CHILDREN)
     {
-        LOG_WARN("账号数超过监管上限 (%d), 多余的账号不会启动", SUPERVISOR_MAX_CHILDREN - 1);
+        LOG_WARN("账号数超过上限 (%d), 多余的账号不会启动", SUPERVISOR_MAX_CHILDREN - 1);
         return s_child_count > 0;
     }
 
@@ -760,7 +760,7 @@ int work_supervisor()
     if (init_logger() == false) return 1;
 
     LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
-    LOG_INFO(" - 以监管进程运行: 认证与 Web 各起独立进程");
+    LOG_INFO(" - 以守护进程运行: 认证与 Web 各起独立进程");
 
     if (load_cfg() == false) return 1;
 
@@ -811,7 +811,7 @@ int work_supervisor()
         return 1;
     }
 
-    LOG_INFO("监管进程已就绪, 共 %d 个子进程 (认证 %" PRId8 " 个 + Web 1 个)", started, g_prog_cnt);
+    LOG_INFO("守护进程已就绪, 共 %d 个子进程 (认证 %" PRId8 " 个 + Web 1 个)", started, g_prog_cnt);
 
     /**
      * 主循环: 回收退出的子进程 -> 到点重新拉起 -> 睡一小会儿
@@ -829,7 +829,7 @@ int work_supervisor()
         sleep_ms(SUPERVISOR_TICK_MS, true);
     }
 
-    LOG_INFO("监管进程收到退出请求");
+    LOG_INFO("守护进程收到退出请求");
     supervisor_shutdown();
 
     // 监管者是 run.log 收尾改名的那一方 (认证/Web 子进程都会跳过改名)

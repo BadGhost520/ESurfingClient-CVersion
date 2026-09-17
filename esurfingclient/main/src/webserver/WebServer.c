@@ -765,12 +765,8 @@ static void logFn(const char ch, void *param)
             case '2':
                 LOG_WEB_INFO(file, file_line, "%s", msg);
                 break;
-            case '3':
-            case '4':
-                LOG_WEB_VERBOSE(file, file_line, "%s", msg);
-                break;
             default:
-                LOG_WARN("未知等级的 Web 日志: %s", msg);
+                LOG_WEB_VERBOSE(file, file_line, "%s", msg);
             }
             free(file);
             free(file_line_str);
