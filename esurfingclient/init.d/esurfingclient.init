@@ -6,6 +6,10 @@ STOP=10
 USE_PROCD=1
 PROG=/usr/bin/esurfingclient
 
+# 日志位置与程序里的一致 (Logger.c 的 get_log_dir)
+LOG_DIR=/var/log/esurfing/logs
+LOG_FILE="$LOG_DIR/run.log"
+
 # 等待默认路由就绪
 wait_network() {
   local i=0
@@ -17,12 +21,50 @@ wait_network() {
   return 1
 }
 
+# 把上一轮运行的 run.log 归档成 <时间戳>.log
+#
+# 为什么要在 init 脚本里做这件事:
+#   桌面上"退出时把 run.log 改名"是守护进程 (单进程模式/监管进程) 干的 ——
+#   clean_logger() 里 AUTH 与 WEB 角色故意不改名, 因为 run.log 是所有进程共用的,
+#   改名只能由一方来做。而 --list-accounts 也刻意不调用 clean_logger。
+#
+#   可是 OpenWrt 上【根本没有守护进程】: procd 只跑 --role auth 实例,
+#   于是没有任何人改名, run.log 就一直追加下去 (实测确认过)。
+#   procd + 本脚本在 OpenWrt 上就是那个"守护进程", 所以归档由这里负责。
+#
+# 放在【启动前】而不是停止后, 有两个好处:
+#   - 此刻没有实例在写 (restart/reload 时 procd 已经停掉了旧的)
+#   - 上次若是被强杀的 (没走到收尾) 也能归档, 停止后归档就漏了这种
+# procd 自己 respawn 拉起实例时不走 start_service, 那种情况下不归档 ——
+# 与桌面端"守护进程不退出就不改名"的行为一致。
+archive_previous_log() {
+  [ -s "$LOG_FILE" ] || return 0
+
+  local ts target n
+  ts="$(date +%Y%m%d-%H%M%S)"
+  target="$LOG_DIR/$ts.log"
+
+  # 同一秒内重复启动也不能覆盖已有的归档
+  n=1
+  while [ -e "$target" ]; do
+      target="$LOG_DIR/$ts-$n.log"
+      n=$((n + 1))
+  done
+
+  if mv "$LOG_FILE" "$target" 2>/dev/null; then
+      echo "esurfingclient: 上一轮的日志已归档为 ${target##*/}"
+  fi
+}
+
 boot() {
   sleep 5
   start
 }
 
 start_service() {
+  # 先把上一轮的日志归档, 再起新实例
+  archive_previous_log
+
   if ! wait_network; then
       echo "esurfingclient: timeout waiting for network"
       return 1

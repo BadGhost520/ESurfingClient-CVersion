@@ -512,6 +512,11 @@ void clean_logger()
      * 多进程下 run.log 是所有进程共用的, 退出时的重命名只能由一个进程来做:
      * 否则先退出的进程会把文件改名, 其它进程会继续往一个已改名的文件里写.
      * 因此认证/Web 进程只关闭自己的句柄, 改名交给守护进程 (或单进程模式)
+     *
+     * ⚠️ OpenWrt 上【没有】守护进程: procd 只跑 --role auth 实例, 而
+     *    --list-accounts 也刻意不调用本函数 —— 于是没人改名, run.log 会一直追加。
+     *    那边由 init 脚本在启动前归档 (archive_previous_log), procd + init 脚本
+     *    在 OpenWrt 上就是那个"守护进程"。改动这里时别忘了那一处。
      */
     const bool need_rename = (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB);
 
