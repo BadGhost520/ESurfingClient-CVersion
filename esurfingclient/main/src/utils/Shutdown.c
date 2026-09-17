@@ -2,6 +2,7 @@
 #include "utils/TimeControl.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
+#include "utils/Watchdog.h"
 
 #include "States.h"
 
@@ -30,6 +31,12 @@ void shut(const int8_t exit_code)
         return;
     }
     shutting_down = true;
+
+    /**
+     * 关闭流程一开始就停掉看门狗: 接下来主循环不再打卡,
+     * 不停的话它会把正常退出误判成卡死, 还会盖掉真正的退出原因
+     */
+    watchdog_stop();
 
     LOG_INFO("主程序正在关闭");
     g_need_exit = true;

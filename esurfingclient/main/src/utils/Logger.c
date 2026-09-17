@@ -396,6 +396,36 @@ static void get_thread_str(char* buf, const size_t len)
     snprintf(buf, len, "main");
 }
 
+/**
+ * @brief 不走常规日志流程, 直接往日志文件写一行
+ *
+ * 给看门狗用: 判定卡死时主线程可能正卡在某个调用里, 而常规的 log_out 会去
+ * 判断轮转、可能还要建目录之类, 不该在那种状态下做。这里只做一次 write, 失败也不管。
+ *
+ * 格式与常规日志保持一致 (时间戳 / 进程标识 / 线程 / 级别 / 文件:行), 这样
+ * 解析日志的工具不用为它开特例。
+ * @param text 要写出的内容 (会自动补换行)
+ */
+void log_raw_line(const char* text)
+{
+    if (!s_logger_cfg.file_handle) return;
+
+    char ts[32];
+    char proc_str[64];
+    char line_buf[LOG_LINE_MAX];
+
+    get_fmt_time(ts, CONSOLE_FORMAT);
+    get_proc_str(proc_str, sizeof(proc_str));
+
+    const int len = snprintf(line_buf, sizeof(line_buf),
+        "[%s] [%s] [%s] [%s] [Watchdog.c:0] %s\n",
+        safe_str(ts), proc_str, "watchdog", get_level_str(LOG_LEVEL_FATAL), safe_str(text));
+    if (len <= 0) return;
+
+    const size_t size = ((size_t)len < sizeof(line_buf)) ? (size_t)len : sizeof(line_buf) - 1;
+    write_2_file(line_buf, size);
+}
+
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
 {
     if (level > s_logger_cfg.lv) return;

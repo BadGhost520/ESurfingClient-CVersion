@@ -72,6 +72,16 @@ log_out(LOG_LEVEL_ERROR, file, line, fmt, ##__VA_ARGS__)
 void log_out(LogLevel level, const char* file, uint32_t line, const char* fmt, ...);
 
 /**
+ * @brief 不走常规日志流程, 直接往日志文件写一行
+ *
+ * 给看门狗用: 判定卡死时主线程可能正卡在某个调用里, 常规的 log_out 会去
+ * 判断轮转、可能要建目录, 都不该在那种状态下做。这里只做一次 write。
+ * 格式与常规日志一致, 解析日志的工具不用为它开特例。
+ * @param text 要写出的内容 (会自动补换行)
+ */
+void log_raw_line(const char* text);
+
+/**
  * @brief 获取当前日志等级
  * @return 日志等级
  */

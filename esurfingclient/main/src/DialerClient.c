@@ -5,6 +5,7 @@
 #include "utils/TimeControl.h"
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
+#include "utils/Watchdog.h"
 
 #include "DialerClient.h"
 #include "NetClient.h"
@@ -797,6 +798,24 @@ static bool supervisor_gone()
     return parent_process_alive() == false;
 }
 
+/**
+ * @brief 算看门狗的打卡预算: 接下来一轮里最长会阻塞多久
+ *
+ * 一轮里最耗时的是几次带超时的网络请求 (取门户 / ticket / 登录 / 心跳重试),
+ * 所以按配置里的连接与操作超时算出来, 再给几倍余量和一点固定宽限。
+ * 超时配得越大预算就越大, 不会把正常的慢网络误判成卡死。
+ * @return 预算毫秒数
+ */
+static uint32_t watchdog_budget_ms()
+{
+    const uint64_t one_op_ms = (uint64_t)(g_conn_timeout + g_op_timeout) * 1000ULL;
+
+    // 6 次请求的余量: 认证流程里最坏情况会连着做好几次
+    const uint64_t budget = one_op_ms * 6ULL + 10000ULL;
+
+    return (uint32_t)(budget > UINT32_MAX ? UINT32_MAX : budget);
+}
+
 int dialer_app(void* arg)
 {
     tl_thread_idx = (int8_t)(intptr_t)arg; // 领取线程下标参数
@@ -819,6 +838,12 @@ int dialer_app(void* arg)
     int exit_code = 0;
     while (g_prog_status[tl_thread_idx].runtime_status.is_running && g_stop_requested == 0)
     {
+        /**
+         * 打卡: 本轮里最长会阻塞多久由 run() 决定 (几次带超时的网络请求),
+         * 预算按配置的超时算出来, 见 watchdog_budget_ms()
+         */
+        watchdog_pet(watchdog_budget_ms());
+
         if (supervisor_gone())
         {
             LOG_WARN("监管进程已退出, 本进程一并退出");
@@ -853,6 +878,7 @@ int dialer_app(void* arg)
     /**
      * 线程退出时的操作
      */
+    watchdog_stop(); // 关闭流程里主循环不再打卡, 别把它当成卡死
     clean(); // 清除参数
     return exit_code;
 }
@@ -903,6 +929,11 @@ static WaitResult wait_need_auth()
 
     while (g_need_exit == false && g_stop_requested == 0)
     {
+        /**
+         * 打卡: 本轮的阻塞点是 check_network_status(), 预算同样按超时算
+         */
+        watchdog_pet(watchdog_budget_ms());
+
         if (supervisor_gone())
         {
             LOG_WARN("监管进程已退出, 本进程一并退出");
@@ -1001,6 +1032,17 @@ static int work_auth()
 #endif
 
     /**
+     * 启动看门狗
+     *
+     * 外部监管者只能看到"进程退出了没有": 进程卡死 (死锁 / 无超时的阻塞调用 /
+     * 绕不出来的死循环) 时它照样活着, 监管者永远不会重启它。
+     * OpenWrt 上尤其明显 —— 那边连监管进程都没有, 只有 procd 在看进程在不在。
+     *
+     * 放在配置加载之后: 打卡预算要用配置里的网络超时来算
+     */
+    watchdog_start();
+
+    /**
      * 认证循环
      * dialer_app 内部已处理登录/心跳/登出/重试, 这里只决定"什么时候再跑一轮":
      * - 不在允许时段: 不做任何网络动作, 等下一次时间窗口
@@ -1032,6 +1074,13 @@ static int work_auth()
             const uint64_t wait_ms = time_control_wait_ms();
             LOG_INFO("配置 %" PRIu8 " 不在允许时段, 等待 %" PRIu64 " 毫秒后重新检查",
                 g_prog_status[0].login_cfg.idx, wait_ms);
+
+            /**
+             * 这是全流程里最长的合法静默 (可能几小时), 必须把预算说清楚,
+             * 否则会被看门狗当成卡死误杀
+             */
+            watchdog_pet(wait_ms > UINT32_MAX ? UINT32_MAX : (uint32_t)wait_ms);
+
             sleep_ms(wait_ms, true);
             continue;
         }
