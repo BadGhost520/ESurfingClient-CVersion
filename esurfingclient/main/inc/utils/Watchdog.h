@@ -50,4 +50,13 @@ void watchdog_stop(void);
  */
 void watchdog_pet(uint32_t budget_ms);
 
+/**
+ * @brief 按配置的网络超时打一次卡 (发起网络请求前调用)
+ *
+ * 所有网络请求都走 NetClient 的 get() / post(), 那两个函数在真正发起请求前
+ * 会调用本函数 —— 这样每一次可能长时间阻塞的网络调用都被逐个覆盖,
+ * 不必去猜"一轮循环最多会做几次请求" (那种猜法一旦猜小就会误杀)。
+ */
+void watchdog_pet_network(void);
+
 #endif //ESURFINGCLIENT_WATCHDOG_H

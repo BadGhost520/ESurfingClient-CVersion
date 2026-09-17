@@ -1,0 +1,22 @@
+# 行尾策略
+#
+# 这里只钉"必须是 LF"的文件, 其余交给 core.autocrlf 自己去管。
+# 把整个仓库都钉成 LF 会把 Windows 工作区里所有文件改写一遍, 没必要。
+
+# OpenWrt 的 init 脚本必须是 LF。
+#
+# core.autocrlf=true 时, 这个文件在 Windows 上检出会变成 CRLF, 而带 \r 的
+# #!/bin/sh 脚本在路由器上根本跑不起来 (报 "not found" —— 解释器路径后面
+# 跟着一个 \r, 内核找不到这个解释器)。
+# 它平时在 Windows 工作区里是 LF, 很难注意到这个问题, 直到某次重新检出。
+esurfingclient/init.d/*.init text eol=lf
+
+# 其它 shell 脚本同理。仓库里目前没有, 先把规矩定下来。
+*.sh text eol=lf
+
+# 图片按二进制处理, 免得被当成文本做行尾转换或生成无意义的 diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

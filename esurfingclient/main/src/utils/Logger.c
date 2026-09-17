@@ -13,10 +13,64 @@
 #include <io.h>
 #else
 #include <unistd.h>
+#include <pthread.h>
 #endif
 
 static const char s_file_name[] = "run.log";
 static const char s_rotate_file_name[] = ".rotate.log";
+
+/* ------------------------------------------------------------------
+ * 进程内互斥
+ *
+ * 跨进程的原子性靠"一次 write 到 O_APPEND 的 fd", 那部分不需要锁。
+ * 但 s_logger_cfg 这份【内存状态】在进程内是多线程共享的:
+ * 一个线程在 write_2_file 里刚判完 file_handle 非空、正要 fileno(),
+ * 另一个线程可能在 rotate() 里把它 fclose 掉了 —— 那就是 use-after-free,
+ * 轻则崩溃, 重则把日志行写进一个已被复用的 fd (别人的 socket / 文件)。
+ *
+ * rotate() 不是罕见路径: 行数到阈值会走, 别的进程轮转过时也会走,
+ * 而 OpenWrt 上多个账号共写同一份 run.log, 后者经常发生。
+ *
+ * ⚠️ log_raw_line() 【不能】用这把锁: 它是看门狗判定卡死时用的,
+ *    那时主线程很可能正卡在持有本锁的调用里, 去抢锁等于一起卡住。
+ *    它只做一次 write, 本来就够安全。
+ * ------------------------------------------------------------------ */
+#ifdef _WIN32
+static INIT_ONCE s_log_lock_once = INIT_ONCE_STATIC_INIT;
+static CRITICAL_SECTION s_log_lock;
+
+static BOOL CALLBACK log_lock_init(PINIT_ONCE once, PVOID param, PVOID* ctx)
+{
+    (void)once;
+    (void)param;
+    (void)ctx;
+    InitializeCriticalSection(&s_log_lock);
+    return TRUE;
+}
+
+static void logger_lock(void)
+{
+    InitOnceExecuteOnce(&s_log_lock_once, log_lock_init, NULL, NULL);
+    EnterCriticalSection(&s_log_lock);
+}
+
+static void logger_unlock(void)
+{
+    LeaveCriticalSection(&s_log_lock);
+}
+#else
+static pthread_mutex_t s_log_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void logger_lock(void)
+{
+    pthread_mutex_lock(&s_log_lock);
+}
+
+static void logger_unlock(void)
+{
+    pthread_mutex_unlock(&s_log_lock);
+}
+#endif
 
 /**
  * @brief 单条日志的最大长度
@@ -461,10 +515,18 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
     const size_t final_size = ((size_t)final_len < sizeof(final_msg)) ? (size_t)final_len : sizeof(final_msg) - 1;
 
     write_2_console(final_msg);
+
+    /**
+     * 从这里到 rotate() 结束必须串行: 句柄的判空、取 fd、写、计数、轮转里的
+     * fclose 都动同一份内存状态, 两个线程交叉就会 use-after-free (见上面互斥的说明)。
+     * 格式化那一段放在锁外, 尽量缩短持锁时间。
+     */
+    logger_lock();
     write_2_file(final_msg, final_size);
     s_logger_cfg.cur_lines++;
     s_logger_cfg.lines_since_check++;
     rotate();
+    logger_unlock();
 }
 
 LogLevel get_logger_level()
@@ -520,18 +582,30 @@ void clean_logger()
      */
     const bool need_rename = (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB);
 
+    /**
+     * 关句柄这一段也要与写日志串行: 否则某个线程可能刚判完句柄非空,
+     * 这里就把它 fclose 掉了 —— 与 rotate() 里那个窗口是同一类问题
+     */
+    logger_lock();
+
     if (!s_logger_cfg.file_handle)
     {
+        logger_unlock();
         fprintf(stderr, "[ERROR] 日志系统未启动\n");
         return;
     }
     fclose(s_logger_cfg.file_handle);
     s_logger_cfg.file_handle = NULL;
 
-    if (need_rename == false) return;
+    if (need_rename == false)
+    {
+        logger_unlock();
+        return;
+    }
 
     if (strlen(s_logger_cfg.log_file) == 0)
     {
+        logger_unlock();
         fprintf(stderr, "[ERROR] 日志路径为空\n");
         return;
     }
@@ -540,6 +614,8 @@ void clean_logger()
     char new_file_name[PATH_MAX];
     snprintf(new_file_name, sizeof(new_file_name), "%s%c%s.log", safe_str(s_logger_cfg.log_dir), SEP, safe_str(cur_tm));
     rename(s_logger_cfg.log_file, new_file_name);
+
+    logger_unlock();
 }
 
 const char* get_logger_dir(void)

@@ -701,10 +701,17 @@ static void supervisor_shutdown()
  */
 static uint16_t child_control_port(const child_kind_t kind, const int index)
 {
-    const uint32_t port = (uint32_t)g_control_port + (kind == CHILD_AUTH ? (uint32_t)index : 0);
+    uint32_t port = (uint32_t)g_control_port + (kind == CHILD_AUTH ? (uint32_t)index : 0);
 
-    // 端口号是 16 位, 账号特别多时回绕, 不能让它溢出成一个非法值
-    return (uint16_t)(port > 0xFFFFu ? (port - 0x10000u) : port);
+    /**
+     * 端口号是 16 位, 账号特别多时可能越界, 所以回绕 —— 但要【避开 0】:
+     * 0 在 bind 里的意思是"让内核随便挑一个", 传 0 出去监管者自己却仍按 0 去连,
+     * 必然连不上, 那个子进程就只能被硬杀 (跑不到 clean(), 也就不会登出)。
+     * 下面这个写法把任意值映射到 1..65535。
+     */
+    port = ((port - 1u) % 65535u) + 1u;
+
+    return (uint16_t)port;
 }
 
 static bool supervisor_build_children()
@@ -756,6 +763,15 @@ int work_supervisor()
     LOG_INFO(" - 以监管进程运行: 认证与 Web 各起独立进程");
 
     if (load_cfg() == false) return 1;
+
+    /**
+     * 这里的失败路径刻意【不】调 clean_logger()。
+     *
+     * 它会做两件事: 关句柄 (exit() 本来也会关) 和把 run.log 改名归档。
+     * 而配置有问题时监管者会被反复重启 (systemd/procd/SCM 的重启策略),
+     * 每次都归档就会在日志目录里堆一堆只有横幅的垃圾文件。
+     * 不退化成重启循环的话, 下一次正常退出时的归档会把日志一起收走。
+     */
 
     /**
      * 生成一次性令牌下发给子进程:

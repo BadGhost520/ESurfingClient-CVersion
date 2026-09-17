@@ -26,6 +26,9 @@
  */
 #define WATCHDOG_MIN_BUDGET_MS 1000
 
+/** @brief 网络请求打卡在"连接超时 + 操作超时"之外再留的余量 */
+#define WATCHDOG_NET_MARGIN_MS 10000
+
 /**
  * @brief 启动后给主循环的启动宽限
  *
@@ -50,6 +53,18 @@ static volatile uint32_t s_pet_seq = 0;
 static volatile uint32_t s_budget_ms = 0;
 static volatile bool s_running = false;
 static sim_thread_t* s_thread = NULL;
+
+/**
+ * @brief 当前线程是不是看门狗自己
+ *
+ * 必须有这个标记: 本线程的循环也要睡眠, 而 sleep_ms() 现在会按睡眠时长打卡 ——
+ * 那等于看门狗给自己打卡, 序号每个 tick 都在变, 判定分支永远走"有新打卡"这一边,
+ * watchdog_fire 就成了不可达代码。表现是"装了看门狗但卡死依然没人管",
+ * 而且不报任何错。
+ *
+ * 用线程局部变量而不是全局量: 只有本线程该被排除, 其它线程照常打卡。
+ */
+static _Thread_local bool tl_in_watchdog = false;
 
 /**
  * @brief 判定卡死后的动作
@@ -85,6 +100,7 @@ static void watchdog_fire(const uint32_t budget_ms, const uint64_t overdue_ms)
 static int watchdog_app(void* arg)
 {
     (void)arg;
+    tl_in_watchdog = true; // 本线程的睡眠不算"主循环在动", 见 tl_in_watchdog 的说明
     tl_thread_idx = -1;
     tl_thread_name = "watchdog";
 
@@ -127,6 +143,16 @@ static int watchdog_app(void* arg)
         const uint64_t now = get_cur_tm_ms();
         if (now > deadline)
         {
+            /**
+             * 动手前再确认一次。
+             *
+             * 从上面那次检查到现在, 另一线程可能已经进了 shut() —— 它会
+             * watchdog_stop() 把 s_running 置假, 但【取消不了已经越过检查的这一次】。
+             * 不复查的话, 一次正常关闭会被写成"看门狗判定卡死", 而且跳过 clean_logger()
+             * (日志就不改名了)。
+             */
+            if (s_running == false || g_need_exit || g_stop_requested) return 0;
+
             watchdog_fire(budget_ms, now - expected_by);
         }
     }
@@ -160,6 +186,16 @@ bool watchdog_start(void)
 
 void watchdog_stop(void)
 {
+    /**
+     * ⚠️ 本函数【不是】线程安全的: 先判 s_running 再置假, 两个线程同时进来
+     *    会各自去 join 同一条线程。
+     *
+     * 目前不会发生, 因为:
+     *   - 看门狗只在认证进程里启动, 而那边 dialer_app 与 shut() 都跑在主线程上, 是顺序执行的
+     *   - shut() 本身有 shutting_down 把关, 关闭流程只会被一个线程走完
+     * 但将来若出现"从 SCM 线程调 shut() 且该进程启动了看门狗"的组合, 就会踩到。
+     * 到那时要给这里补一把真正的锁 —— 用 volatile 标志假冒是不行的。
+     */
     if (s_running == false) return;
 
     s_running = false;
@@ -176,9 +212,27 @@ void watchdog_pet(uint32_t budget_ms)
 {
     if (s_running == false) return;
 
+    // 看门狗自己不算数 (它一打卡, 判定就永远走"有新打卡"这一边)
+    if (tl_in_watchdog) return;
+
     if (budget_ms < WATCHDOG_MIN_BUDGET_MS) budget_ms = WATCHDOG_MIN_BUDGET_MS;
 
     // 先写预算再自增序号, 顺序不能反 (见 s_pet_seq 的说明)
     s_budget_ms = budget_ms;
     s_pet_seq++;
+}
+
+void watchdog_pet_network(void)
+{
+    if (s_running == false) return;
+    if (tl_in_watchdog) return;
+
+    /**
+     * 一次网络请求最长就是连接超时 + 操作超时, 再加一点余量。
+     * 逐个请求地覆盖, 而不是估"一轮循环最多几次请求" —— 后者只要估小一次
+     * 就会把正常的慢请求误判成卡死 (而误杀比漏报严重得多)。
+     */
+    const uint64_t budget = (uint64_t)(g_conn_timeout + g_op_timeout) * 1000ULL + WATCHDOG_NET_MARGIN_MS;
+
+    watchdog_pet((uint32_t)(budget > UINT32_MAX ? UINT32_MAX : budget));
 }

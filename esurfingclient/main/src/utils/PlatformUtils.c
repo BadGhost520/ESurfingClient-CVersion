@@ -1,6 +1,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
+#include "utils/Watchdog.h"
 
 #include "States.h"
 
@@ -560,6 +561,19 @@ void get_rand_bytes(uint8_t* buf, const size_t len)
 void sleep_ms(const uint64_t ms, const bool can_stop)
 {
     if (ms == 0) return;
+
+    /**
+     * 睡眠是最常见的"长时间没动静", 但它【不是卡死】—— 它本身就是在声明
+     * "我会安静这么久"。所以在这里打卡, 预算就是这次睡眠的时长。
+     *
+     * 这一处不能省: 认证失败后的退避会睡 60 秒到 30 分钟 (见 DialerClient.c 的
+     * table[]), 不打卡的话看门狗会把它当成卡死, 于是"认证失败 -> 退避 ->
+     * 被杀 -> 重启 -> 再失败"变成杀循环。
+     *
+     * 注意它与网络请求处的打卡是配套的: 这里可能把预算改小 (睡 1 秒),
+     * 而紧接着的网络请求会自己再打一次卡把预算调回来, 所以不会误杀。
+     */
+    watchdog_pet(ms > UINT32_MAX ? UINT32_MAX : (uint32_t)ms);
 
     if (can_stop)
     {

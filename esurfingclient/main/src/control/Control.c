@@ -59,8 +59,19 @@ static uint16_t s_client_port = CONTROL_DEFAULT_PORT;
 #ifdef _WIN32
 static bool ctl_net_init()
 {
+    /**
+     * WSAStartup 是带引用计数的, 每调一次都要有对应的 WSACleanup。
+     * 每次请求都调它的话计数只增不减 (Web 进程每刷一次页面就调一次),
+     * 属于记账式泄漏。初始化一次就够, 进程退出时由系统统一回收。
+     */
+    static bool s_wsa_ready = false;
+    if (s_wsa_ready) return true;
+
     WSADATA wsa;
-    return WSAStartup(MAKEWORD(2, 2), &wsa) == 0;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return false;
+
+    s_wsa_ready = true;
+    return true;
 }
 #else
 static bool ctl_net_init()

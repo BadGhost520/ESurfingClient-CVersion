@@ -3,6 +3,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 #include "NetClient.h"
+#include "utils/Watchdog.h"
 #include "States.h"
 
 #include <string.h>
@@ -513,6 +514,7 @@ curl_resp_t post(const char* url, const char* data)
 #endif
 
     LOG_VERBOSE("执行 CURL");
+    watchdog_pet_network(); // 打卡: 下面这句最长会阻塞"连接超时 + 操作超时"
     const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {
@@ -628,6 +630,7 @@ curl_resp_t get(const char* url, const bool connect_only)
     }
 
     LOG_VERBOSE("执行 CURL");
+    watchdog_pet_network(); // 打卡: 下面这句最长会阻塞"连接超时 + 操作超时"
     const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
     {

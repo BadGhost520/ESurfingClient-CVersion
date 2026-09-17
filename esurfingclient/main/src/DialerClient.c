@@ -798,24 +798,6 @@ static bool supervisor_gone()
     return parent_process_alive() == false;
 }
 
-/**
- * @brief 算看门狗的打卡预算: 接下来一轮里最长会阻塞多久
- *
- * 一轮里最耗时的是几次带超时的网络请求 (取门户 / ticket / 登录 / 心跳重试),
- * 所以按配置里的连接与操作超时算出来, 再给几倍余量和一点固定宽限。
- * 超时配得越大预算就越大, 不会把正常的慢网络误判成卡死。
- * @return 预算毫秒数
- */
-static uint32_t watchdog_budget_ms()
-{
-    const uint64_t one_op_ms = (uint64_t)(g_conn_timeout + g_op_timeout) * 1000ULL;
-
-    // 6 次请求的余量: 认证流程里最坏情况会连着做好几次
-    const uint64_t budget = one_op_ms * 6ULL + 10000ULL;
-
-    return (uint32_t)(budget > UINT32_MAX ? UINT32_MAX : budget);
-}
-
 int dialer_app(void* arg)
 {
     tl_thread_idx = (int8_t)(intptr_t)arg; // 领取线程下标参数
@@ -839,10 +821,14 @@ int dialer_app(void* arg)
     while (g_prog_status[tl_thread_idx].runtime_status.is_running && g_stop_requested == 0)
     {
         /**
-         * 打卡: 本轮里最长会阻塞多久由 run() 决定 (几次带超时的网络请求),
-         * 预算按配置的超时算出来, 见 watchdog_budget_ms()
+         * 打卡: 只作为兜底。
+         *
+         * 真正精确的打卡在两个地方 —— sleep_ms() 里 (每次睡眠按自己的时长打卡)
+         * 和 NetClient 的 get()/post() 里 (每次网络请求按连接+操作超时打卡)。
+         * 所有可能长时间阻塞的操作都从这两处过, 所以这里只要保证"一轮里
+         * 没被覆盖到的部分不会拖太久"就够了。
          */
-        watchdog_pet(watchdog_budget_ms());
+        watchdog_pet_network();
 
         if (supervisor_gone())
         {
@@ -930,9 +916,9 @@ static WaitResult wait_need_auth()
     while (g_need_exit == false && g_stop_requested == 0)
     {
         /**
-         * 打卡: 本轮的阻塞点是 check_network_status(), 预算同样按超时算
+         * 打卡: 只作为兜底 (精确的打卡在 sleep_ms 与 get/post 里, 见 dialer_app)
          */
-        watchdog_pet(watchdog_budget_ms());
+        watchdog_pet_network();
 
         if (supervisor_gone())
         {
@@ -1026,7 +1012,13 @@ static int work_auth()
      */
     if (control_server_start(g_control_port) == false)
     {
-        LOG_WARN("控制通道启动失败, 本实例将不提供远程控制");
+        /**
+         * 说清后果: 控制服务起不来, 监管者停止本进程时就只能用强杀的办法,
+         * 那样跑不到 clean(), 也就不会登出 —— 账号会停在服务端在线状态。
+         * 最常见的原因是端口被别的程序占了 (监管者按 g_control_port + 账号下标分配)
+         */
+        LOG_WARN("控制通道启动失败 (端口 %" PRIu16 " 可能被占用), 本实例将不提供远程控制, "
+                 "停止时也无法被请求优雅退出 (会被直接结束, 不会登出)", g_control_port);
     }
 
 #endif
@@ -1075,12 +1067,7 @@ static int work_auth()
             LOG_INFO("配置 %" PRIu8 " 不在允许时段, 等待 %" PRIu64 " 毫秒后重新检查",
                 g_prog_status[0].login_cfg.idx, wait_ms);
 
-            /**
-             * 这是全流程里最长的合法静默 (可能几小时), 必须把预算说清楚,
-             * 否则会被看门狗当成卡死误杀
-             */
-            watchdog_pet(wait_ms > UINT32_MAX ? UINT32_MAX : (uint32_t)wait_ms);
-
+            // 这是全流程里最长的合法静默 (可能几小时), sleep_ms 会按这个时长打卡
             sleep_ms(wait_ms, true);
             continue;
         }
