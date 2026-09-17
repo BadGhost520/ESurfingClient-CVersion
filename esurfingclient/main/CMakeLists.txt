@@ -85,6 +85,7 @@ if (__OPENWRT__)
             src/utils/PlatformUtils.c
             src/utils/TimeControl.c
             src/utils/Watchdog.c
+            src/utils/LogoutState.c
             src/utils/Shutdown.c
             src/utils/Logger.c
             src/utils/cJSON.c
@@ -125,6 +126,7 @@ else ()
             src/utils/PlatformUtils.c
             src/utils/TimeControl.c
             src/utils/Watchdog.c
+            src/utils/LogoutState.c
             src/utils/Shutdown.c
             src/utils/Service.c
             src/utils/Logger.c

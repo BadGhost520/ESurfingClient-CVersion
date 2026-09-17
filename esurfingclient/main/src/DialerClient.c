@@ -6,6 +6,7 @@
 #include "utils/Shutdown.h"
 #include "utils/Logger.h"
 #include "utils/Watchdog.h"
+#include "utils/LogoutState.h"
 
 #include "DialerClient.h"
 #include "NetClient.h"
@@ -85,6 +86,9 @@ static bool term()
 
     g_prog_status[tl_thread_idx].auth_cfg.auth_time = 0;
     g_prog_status[tl_thread_idx].runtime_status.is_authed = false;
+
+    // 已经登出了, 存档没用了 (留着的话下次启动会白发一次无用的请求)
+    logout_state_clear(g_prog_status[tl_thread_idx].login_cfg.idx);
     return true;
 }
 
@@ -638,6 +642,16 @@ static AuthStatus auth()
 
     g_prog_status[tl_thread_idx].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");
+
+    /**
+     * 把"以后要登出所需要的现场"存下来。
+     *
+     * 存下来之后, 即使进程被强杀 (断电 / 看门狗 / 端口撞车), 下次启动也能
+     * 先把这次会话登出掉 —— 否则账号会挂在服务端在线, 下次只能一直刷
+     * "已连接至互联网", 等服务器把它踢下线。登出成功时会把存档删掉。
+     */
+    logout_state_save(&g_prog_status[tl_thread_idx]);
+
     sleep_ms(5000, false);
     return AUTH_SUCCESS;
 }
@@ -968,6 +982,50 @@ static WaitResult wait_need_auth()
 }
 
 /**
+ * @brief 补做上次没来得及做的登出
+ *
+ * 进程被强杀 (断电 / 看门狗判定卡死 / 控制端口被占只能硬杀) 时跑不到 clean(),
+ * 会话会留在服务端在线状态。上次登录时把登出需要的现场存了档, 这里读回来、
+ * 重建加解密工厂、补发一次 term 请求。
+ *
+ * 尽力而为: 客户端 IP 可能已经变了 (DHCP 重新分配), 那种情况登出会失败 ——
+ * 那就交给服务器超时把会话踢掉。无论成败都清掉存档, 否则每次启动都会白发一次
+ * 注定失败的请求。
+ */
+static void logout_previous_session()
+{
+    if (logout_state_load(&g_prog_status[0]) == false) return;
+
+    LOG_WARN("上次退出时没来得及登出 (会话可能还挂在服务端在线), 先补一次登出");
+
+    /**
+     * term() / init_cipher() 都按 tl_thread_idx 取状态。认证进程就一个账号、
+     * 下标是 0, 而走到这里时 tl_thread_idx 还是初值 -1 —— 不设就会写到
+     * g_prog_status[-1] 上
+     */
+    tl_thread_idx = 0;
+
+    if (init_cipher(g_prog_status[0].auth_cfg.algo_id))
+    {
+        if (term())
+        {
+            LOG_INFO("补登出完成, 会话已从服务端释放");
+        }
+        else
+        {
+            LOG_WARN("补登出失败 (客户端 IP 可能已经变了), 交给服务器超时下线");
+        }
+        destroy_cipher_factory();
+    }
+    else
+    {
+        LOG_WARN("恢复加解密工厂失败, 无法补登出");
+    }
+
+    logout_state_clear(g_prog_status[0].login_cfg.idx);
+}
+
+/**
  * @brief 认证进程主流程
  *
  * 一个进程只负责一个配置 (由 --account 指定), 与单进程模式的区别:
@@ -1033,6 +1091,14 @@ static int work_auth()
      * 放在配置加载之后: 打卡预算要用配置里的网络超时来算
      */
     watchdog_start();
+
+    /**
+     * 先把上次没做完的登出补上, 再走正常流程
+     *
+     * 必须排在网络检测之前: 会话还挂在服务端时, 网络检测会认为"已连接至互联网"
+     * 而一直空转, 要等服务器把会话踢下线才能重新认证
+     */
+    logout_previous_session();
 
     /**
      * 认证循环

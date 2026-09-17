@@ -74,6 +74,15 @@ bool get_exec_dir(char* dir_array);
 bool get_exec_path(char* path_array);
 
 /**
+ * @brief 取配置文件的完整路径
+ *
+ * OpenWrt 上是 /etc/config/esurfingclient, 桌面分支是程序目录下的 ESurfingClient.json。
+ * 注意桌面分支要等 load_cfg() 跑过才有值。
+ * @return 配置文件的完整路径
+ */
+const char* get_config_path(void);
+
+/**
  * @brief 记下启动时的父进程号
  *
  * 必须在程序一开始就调用: 父进程可能在启动后立刻就没了

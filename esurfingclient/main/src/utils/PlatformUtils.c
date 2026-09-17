@@ -883,10 +883,14 @@ static void cfg_halt()
     }
 }
 
+const char* get_config_path(void)
+{
+    return config_file;
+}
+
 bool load_cfg()
 {
     g_cfg_loaded = false;
-
     /**
      * 桌面分支直接写 g_prog_status[0], 这里保证至少有一格可用
      * (OpenWrt 分支后面会按配置数重新分配)
