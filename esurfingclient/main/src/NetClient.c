@@ -385,13 +385,13 @@ static network_status_t curl_err_msg_out(const CURLcode curl_code)
 
 static void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, const char *url, const char *func_name)
 {
-    LOG_DEBUG("[%s] curl 请求失败: %s", func_name, curl_easy_strerror(code));
-    LOG_DEBUG("[%s] URL: %s", func_name, url ? url : "(null)");
-    LOG_DEBUG("[%s] CURLcode: %d", func_name, code);
+    LOG_ERROR("[%s] curl 请求失败: %s", func_name, curl_easy_strerror(code));
+    LOG_INFO("[%s] URL: %s", func_name, url ? url : "(null)");
+    LOG_INFO("[%s] CURLcode: %d", func_name, code);
 
     if (errbuf && errbuf[0] != '\0')
     {
-        LOG_DEBUG("[%s] 错误详情: %s", func_name, errbuf);
+        LOG_INFO("[%s] 错误详情: %s", func_name, errbuf);
     }
 
     if (curl)
@@ -403,10 +403,10 @@ static void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, 
         // 获取整个请求实际总耗时 (秒, double 类型)
         curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total_time);
 
-        LOG_DEBUG("[%s] 实际连接耗时: %.3f 秒", func_name, connect_time);
-        LOG_DEBUG("[%s] 实际总耗时:   %.3f 秒", func_name, total_time);
-        LOG_DEBUG("[%s] 连接超时时长: %ld 秒", func_name, g_conn_timeout);
-        LOG_DEBUG("[%s] 总超时时长:   %ld 秒", func_name, g_op_timeout);
+        LOG_INFO("[%s] 实际连接耗时: %.3f 秒", func_name, connect_time);
+        LOG_INFO("[%s] 实际总耗时:   %.3f 秒", func_name, total_time);
+        LOG_INFO("[%s] 连接超时时长: %ld 秒", func_name, g_conn_timeout);
+        LOG_INFO("[%s] 总超时时长:   %ld 秒", func_name, g_op_timeout);
 
         // 特别针对超时错误进行原因分析
         if (code == CURLE_OPERATION_TIMEDOUT)
@@ -414,16 +414,16 @@ static void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, 
             // 判断实际连接耗时是否已接近或超过设置的连接超时
             if (g_conn_timeout > 0 && connect_time >= (double)g_conn_timeout * 0.9)
             {
-                LOG_DEBUG("[%s] 结论: 连接阶段超时 (CURLOPT_CONNECTTIMEOUT = %ld 秒)", func_name, g_conn_timeout);
+                LOG_INFO("[%s] 结论: 连接时间超时 (CURLOPT_CONNECTTIMEOUT = %ld 秒)", func_name, g_conn_timeout);
             }
             // 否则, 判断总耗时是否已接近或超过设置的总超时
             else if (g_op_timeout > 0 && total_time >= (double)g_op_timeout * 0.9)
             {
-                LOG_DEBUG("[%s] 结论: 总超时 (CURLOPT_TIMEOUT = %ld 秒)", func_name, g_op_timeout);
+                LOG_INFO("[%s] 结论: 总操作时间超时 (CURLOPT_TIMEOUT = %ld 秒)", func_name, g_op_timeout);
             }
             else
             {
-                LOG_DEBUG("[%s] 结论: 超时原因不明确, 实际耗时未明显逼近设定阈值, 请检查网络稳定性或服务器响应", func_name);
+                LOG_INFO("[%s] 结论: 超时原因不明确, 实际耗时未明显逼近设定阈值, 请检查网络稳定性或服务器响应", func_name);
             }
         }
     }

@@ -6,6 +6,11 @@
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$/esurfingclient/main">
     <contentRoot DIR="$PROJECT_DIR$" />
   </component>
+  <component name="CidrRootsConfiguration">
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/TEMP" />
+    </excludeRoots>
+  </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
     <entry key="Project Default">
       <profile-state>
