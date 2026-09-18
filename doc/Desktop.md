@@ -1,7 +1,7 @@
 # Windows, Linux, MacOS 环境使用教程
 
 > [!NOTE]
-> 教程版本: v2.0.7-r1
+> 教程版本: v2.1.0-r3
 
 ## v2 版本的使用十分简单, 跟着一步一步即可
 
@@ -42,29 +42,22 @@ sudo ./ESurfingClient-*-darwin-*
 ```
 
 > [!NOTE]
-> 运行之后会在用户所在目录生成一个 ESurfingClient.json 配置文件
+> 首次运行会在程序所在目录生成 ESurfingClient.json 配置文件和 logs 日志目录
 > 
-> 何为用户所在目录, 如下所示
+> 注意是"程序所在目录", 而不是执行命令时所在的目录
 > 
-> 或者使用 pwd 指令查看
+> 比如在 `C:\Users\bad_g` 下执行 `D:\Tools\ESurfingClient.exe`, 配置文件会生成在 `D:\Tools` 里面, 可以用 pwd 指令查看当前目录来对比
+> 
+> 所以 Windows 用双击执行是最方便的, 双击时程序目录和当前目录正好是同一个
 
-```shell
-# Windows CMD
-C:\Users\bad_g>
-# Windows PowerShell
-PS C:\Users\bad_g>
-```
-```shell
-# Linux Bash
-badghost@BadGhost:~$
-```
-```shell
-# macOS Zsh
-badghost@badghostdeMac ~ %
-```
-
-> [!NOTE]
-> 所以 Windows 用双击执行是最方便的
+> [!TIP]
+> 程序自带网页界面, 默认地址 http://127.0.0.1:8888 , 运行起来之后用浏览器打开即可
+> 
+> 在上面能看实时认证状态, 也能直接填账号密码, 比手改 JSON 省事
+> 
+> 网页文件在程序旁边的 portal 目录里, 别把它删了或者单独把主程序挪走
+> 
+> 默认只监听本机, 局域网里的其它设备访问不了; 确实需要的话加参数 `--web-listen 0.0.0.0:8888` (接口没有鉴权, 谨慎使用)
 
 ## 三、各个系统的执行方式 (以自启服务的形式运行)
 
@@ -106,6 +99,15 @@ sudo ./ESurfingClient-*-darwin-* -u
 # 帮助 (无权限要求)
 sudo ./ESurfingClient-*-darwin-* -h
 ```
+
+> [!NOTE]
+> v2.1.0 起安装服务后跑的是多进程: 一个监管进程看住认证进程和网页进程
+> 
+> 任一子进程退出都会按退避自动重新拉起, 一个进程出问题不会牵连另一个
+> 
+> 所以服务管理器里看到的是监管进程, 停止服务时会把子进程一起有序关掉, 认证进程退出前会先登出
+> 
+> 只是临时用一下的话可以不装服务, 按 `步骤二` 前台运行就够了, 行为完全一样
 
 ## 四、修改生成的 ESurfingClient.json
 

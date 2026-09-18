@@ -1,7 +1,7 @@
 # OpenWRT 环境使用教程
 
 > [!NOTE]
-> 教程版本: v2.0.7-r1
+> 教程版本: v2.1.0-r3
 
 ## 一、从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest) 下载对应架构的 ipk 包, (可选)下载 LuCI 包 
 
@@ -66,6 +66,11 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 /etc/init.d/esurfingclient enable
 ```
 
+> [!NOTE]
+> v2.1.0 起每个账号会起一个独立的认证进程, 一个账号出问题不会影响其它账号
+> 
+> 停止或重启服务时, 认证进程会先登出再退出, 不会把账号丢在服务端在线状态
+
 ## 四、启动服务 (LuCI 方式)
 
 ### 1. 重新登录 OpenWRT 后台
@@ -88,6 +93,20 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 ### 4. 右下角保存并应用
 
 ### 5. 欧克
+
+## 附: 日志与归档文件
+
+> [!NOTE]
+> 每次启动服务时, 上一轮的 run.log 会被归档成 `<时间戳>.log` 放在同一个目录里
+> 
+> 所以 `/var/log/esurfing/logs` 下的文件会随着重启变多, 这是正常的, LuCI 的日志页面可以切换查看
+
+> [!NOTE]
+> 程序会在 `/etc/config/` 下生成 `esurfingclient.<序号>.logout`
+> 
+> 它的用途是: 万一程序被强杀或者设备直接断电, 下次启动时会先补一次登出, 免得账号一直卡在服务端在线, 要等服务器踢下线才能重新认证
+> 
+> 正常退出时会自动删掉, 不需要手动处理, 也不用去改它
 
 ## 卸载软件包
 

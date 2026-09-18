@@ -684,6 +684,32 @@ static bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
     return true;
 }
 
+/**
+ * @brief 网页文件所在目录
+ *
+ * 必须按【程序所在目录】拼绝对路径, 不能写成相对路径 "portal":
+ * 那样它会相对于进程的当前工作目录, 而配置文件是按程序目录找的, 两者不一致。
+ * 把程序放进 /usr/local/bin 再从别处启动 (教程里就这么建议的) 时,
+ * 网页文件会找不到, 打开页面只有 404。
+ * @return 目录路径
+ */
+static const char* web_root_dir(void)
+{
+    static char dir[PATH_MAX] = "";
+
+    if (dir[0] != '\0') return dir;
+
+    char exec_dir[PATH_MAX];
+    if (get_exec_dir(exec_dir) == false)
+    {
+        LOG_WARN("无法获取程序所在目录, 网页文件将按当前目录下的 portal 查找");
+        return "portal";
+    }
+
+    snprintf(dir, sizeof(dir), "%s%cportal", safe_str(exec_dir), SEP);
+    return dir;
+}
+
 static void fn(struct mg_connection *c, const int ev, void *ev_data)
 {
     if (ev != MG_EV_HTTP_MSG) return;
@@ -696,7 +722,7 @@ static void fn(struct mg_connection *c, const int ev, void *ev_data)
         // 命中 API 时直接返回, 避免静态文件处理重复发送响应
         if (handle_api_get(c, hm)) return;
 
-        struct mg_http_serve_opts opts = { .root_dir = "portal" };
+            struct mg_http_serve_opts opts = { .root_dir = web_root_dir() };
         mg_http_serve_dir(c, hm, &opts);
         return;
     }
