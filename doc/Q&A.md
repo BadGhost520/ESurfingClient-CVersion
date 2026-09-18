@@ -13,7 +13,7 @@ Q: 除了广东地区的电信校园网可以用吗?
 
 <details>
 <summary>
-Q: 为什么我会出现 URL 格式错误的报错并且认证不了? (参考日志)
+Q: 为什么我会出现 "curl 错误码: 3, 错误原因: URL 格式错误" 报错并且认证不了? (参考日志)
 </summary>
 
 ```text
@@ -31,9 +31,24 @@ Q: 为什么我会出现 URL 格式错误的报错并且认证不了? (参考日
 
 <details>
 <summary>
-Q: 为什么在使用 opkg 管理器的版本里推荐 19.07.0 这个版本
+Q: 为什么在使用 opkg 管理器的版本里推荐 19.07.0 这个版本?
 </summary>
 
-**A: 因为它是开始使用 LuCI2 的第一个版本**
+**A: 因为它是开始使用 LuCI2 的第一个版本, 更现代化**
+
+</details>
+
+<details>
+<summary>
+Q: 为什么会出现 "curl 错误码: 6, 错误信息: DNS 解析错误" 的问题?
+</summary>
+
+```text
+# 一段日志
+[xxxx-xx-xx xx:xx:xx] [auth#x pid=xxx] [main] [ERROR] [NetClient.c:357] curl 错误码: 6, 错误信息: DNS 解析错误
+[xxxx-xx-xx xx:xx:xx] [auth#x pid=xxx] [main] [WARN] [NetClient.c:725] 主检测 URL 无法连通, 切换到备用 IP 地址 URL
+```
+
+**A: 如果连续出现这两条日志但是不断网的话, 则是正常的网络波动, 会切换至备用检测地址检测, 若是断网, 则需要检查校园网的物理连接情况**
 
 </details>

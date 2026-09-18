@@ -117,6 +117,8 @@ sudo ./ESurfingClient-*-darwin-* -h
 {
   "enabled": true,
   "log_lv": 4,
+  "conn_timeout": 7,
+  "op_timeout": 10,
   "accounts": [
     {
       "username": "在这填账号",
@@ -130,17 +132,6 @@ sudo ./ESurfingClient-*-darwin-* -h
 
 > [!NOTE]
 > 别忘了改 `enabled` 参数
-
-### JSON 参数详解
-
-- enabled(布尔值): 程序是否启动
-- log_lv(整形值, 有效范围 0-6): 日志等级, 等级越高日志显示内容越多, 数值为 0 时不输出任何日志
-- accounts(数组): 账号数组
-- username(字符串值): 账号
-- password(字符串值): 密码
-- channel(整形值, 有效范围 1-5): 认证通道
-- mark(字符串值): 标记值 (高级功能)
-- time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
 
 ## 五、重启程序 / 服务
 
@@ -182,3 +173,16 @@ sudo launchctl list | grep main
 
 > [!TIP]
 > 建议查看日志以确定程序运行情况
+
+## 附 1: JSON 参数详解
+
+- enabled(布尔值): 程序是否启动
+- log_lv(整形值, 有效范围 0-6): 日志等级, 等级越高日志显示内容越多, 数值为 0 时不输出任何日志
+- conn_timeout(整形值): 自定义 CURL 连接超时时长
+- op_timeout(整形值): 自定义 CURL 总操作超时时长
+- accounts(数组): 账号数组
+- username(字符串值): 账号
+- password(字符串值): 密码
+- channel(整形值, 有效范围 1-5): 认证通道
+- mark(字符串值): 标记值 (高级功能)
+- time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断

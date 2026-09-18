@@ -33,6 +33,8 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 {
   "enabled": true,
   "log_lv": 4,
+  "conn_timeout": 7,
+  "op_timeout":   10,
   "accounts": [
     {
       "username": "账号",
@@ -44,17 +46,6 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
   ]
 }
 ```
-
-### 参数详解
-
-- enabled(布尔值): 程序是否启动
-- log_lv(整形值, 0-6): 日志等级, 等级越高日志显示内容越多, 数值为 0 时不输出任何日志
-- accounts(数组): 账号数组
-- username(字符串值): 账号
-- password(字符串值): 密码
-- channel(整形值, 1-5): 认证通道
-- mark(字符串值): 标记值 (高级功能)
-- time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
 
 ### 2. 保存, 输入如下指令重启服务
 
@@ -79,22 +70,24 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 
 ### 3. 填写认证信息
 
-### 参数详解
-
-- enabled: 程序是否启动
-- log_lv: 日志等级, 1-6级, 等级越高日志显示内容越多
-- accounts: 账号数组
-- username: 账号
-- password: 密码
-- channel: 认证通道 (暂时没找到具体作用)
-- mark: 标记值 (高级功能)
-- time_windows: 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
-
 ### 4. 右下角保存并应用
 
 ### 5. 欧克
 
-## 附: 日志与归档文件
+## 附 1: 参数详解
+
+- enabled(布尔值): 程序是否启动
+- log_lv(整形值, 有效范围 0-6): 日志等级, 等级越高日志显示内容越多, 数值为 0 时不输出任何日志
+- conn_timeout(整形值): 自定义 CURL 连接超时时长
+- op_timeout(整形值): 自定义 CURL 总操作超时时长
+- accounts(数组): 账号数组
+- username(字符串值): 账号
+- password(字符串值): 密码
+- channel(整形值, 有效范围 1-5): 认证通道
+- mark(字符串值): 标记值 (高级功能)
+- time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
+
+## 附 2: 日志与归档文件
 
 > [!NOTE]
 > 每次启动服务时, 上一轮的 run.log 会被归档成 `<时间戳>.log` 放在同一个目录里
@@ -102,13 +95,13 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 > 所以 `/var/log/esurfing/logs` 下的文件会随着重启变多, 这是正常的, LuCI 的日志页面可以切换查看
 
 > [!NOTE]
-> 程序会在 `/etc/config/` 下生成 `esurfingclient.<序号>.logout`
+> 登录成功时程序会在 `/etc/config/` 下生成 `esurfingclient.<序号>.logout`
 > 
 > 它的用途是: 万一程序被强杀或者设备直接断电, 下次启动时会先补一次登出, 免得账号一直卡在服务端在线, 要等服务器踢下线才能重新认证
 > 
 > 正常退出时会自动删掉, 不需要手动处理, 也不用去改它
 
-## 卸载软件包
+## 附 3: 卸载软件包
 
 ```shell
 # opkg 包管理器
@@ -117,7 +110,7 @@ opkg remove luci-app-esurfingclient esurfingclient
 apk del luci-app-esurfingclient esurfingclient
 ```
 
-## 程序服务类指令
+## 附 4: 程序服务类指令
 
 ```shell
 # 服务状态

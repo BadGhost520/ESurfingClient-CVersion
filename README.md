@@ -8,12 +8,14 @@
 
 **目前有支持 Windows, Linux, MacOS, OpenWRT, ~~Android(仅二进制文件)~~ 平台**
 
-**安卓安装包可前往 [Ironjhin](https://github.com/Ironjhin) 制作的 [EsurfingClient_Android](https://github.com/Ironjhin/EsurfingClient_Android)**
+**安卓安装包和安卓面具模块版可前往 [Ironjhin](https://github.com/Ironjhin) 制作的 [EsurfingClient_Android](https://github.com/Ironjhin/EsurfingClient_Android)**
 
 > [!WARNING]
 > 程序只负责在不同平台登录校园网
 > 
 > 不负责包括但不限于无视用户数限制登录等不合规操作
+>
+> 仅供学习参考
 >
 > 不要让我发现有人拿去做路由器贩卖喔
 
@@ -44,7 +46,7 @@
 >
 > 旧数据, 新数据待测
 > 
-> 4 级信息级日志文件轮换后占用 100 kB 左右
+> 4 级信息级日志文件轮换后占用 111 kB 左右
 
 # [更新日志](UpdateLogs.md)
 
