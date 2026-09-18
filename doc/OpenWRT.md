@@ -1,7 +1,7 @@
 # OpenWRT 环境使用教程
 
 > [!NOTE]
-> 教程版本: v2.1.0-r3
+> 教程版本: v2.1.0-r4
 
 ## 一、从 [Release](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest) 下载对应架构的 ipk 包, (可选)下载 LuCI 包 
 
