@@ -1,9 +1,10 @@
 #include "utils/sim/SimEvp.h"
 
 #include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
-#include "NetClient.h"
 #include "utils/Watchdog.h"
+#include "utils/Logger.h"
+
+#include "NetClient.h"
 #include "States.h"
 
 #include <string.h>

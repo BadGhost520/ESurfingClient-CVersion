@@ -1,7 +1,9 @@
+#include "utils/sim/SimThread.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/TimeControl.h"
-#include "../../inc/utils/sim/SimThread.h"
 #include "utils/Logger.h"
+
 #include "States.h"
 
 #include <stdint.h>

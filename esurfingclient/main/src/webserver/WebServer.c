@@ -1,22 +1,24 @@
 #include "webserver/WebServer.h"
 #include "webserver/mongoose.h"
 
+#include "control/Control.h"
+
+#include "utils/sim/SimThread.h"
+
 #include "utils/PlatformUtils.h"
-#include "../../inc/utils/sim/SimThread.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
-#include "control/Control.h"
 
 #include "NetClient.h"
 #include "States.h"
 
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifndef _WIN32
-#include <dirent.h>
 #include <strings.h>
+#include <dirent.h>
 #endif
 
 static sim_thread_t* web_thread;

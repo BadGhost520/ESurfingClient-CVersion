@@ -1,6 +1,7 @@
+#include "control/Control.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Service.h"
-#include "control/Control.h"
 
 #include "States.h"
 

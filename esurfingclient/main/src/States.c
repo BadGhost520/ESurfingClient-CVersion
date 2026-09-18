@@ -1,6 +1,7 @@
+#include "control/Control.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
-#include "control/Control.h"
 #include "States.h"
 
 #include <ctype.h>

@@ -1,9 +1,10 @@
 #include "control/Control.h"
 
+#include "utils/sim/SimThread.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 #include "utils/cJSON.h"
-#include "utils/sim/SimThread.h"
 
 #include "States.h"
 

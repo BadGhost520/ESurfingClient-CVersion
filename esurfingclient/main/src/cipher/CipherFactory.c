@@ -1,6 +1,8 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/KeyData.h"
+
 #include "utils/Logger.h"
+
 #include "States.h"
 
 #include <stdlib.h>

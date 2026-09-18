@@ -1,8 +1,8 @@
-#include "utils/Watchdog.h"
+#include "utils/sim/SimThread.h"
 
 #include "utils/PlatformUtils.h"
+#include "utils/Watchdog.h"
 #include "utils/Logger.h"
-#include "utils/sim/SimThread.h"
 
 #include "States.h"
 

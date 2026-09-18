@@ -1,7 +1,8 @@
+#include "supervisor/Supervisor.h"
+
 #include "utils/Shutdown.h"
 #include "utils/Service.h"
 #include "utils/Logger.h"
-#include "supervisor/Supervisor.h"
 
 #include <setjmp.h>
 #include <stdlib.h>

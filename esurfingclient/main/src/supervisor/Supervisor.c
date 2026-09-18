@@ -1,16 +1,16 @@
 #include "supervisor/Supervisor.h"
 
+#include "control/Control.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
-
-#include "control/Control.h"
 
 #include "States.h"
 
 #include <signal.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #ifdef _WIN32
 

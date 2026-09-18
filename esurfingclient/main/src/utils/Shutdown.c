@@ -1,8 +1,8 @@
 #include "utils/PlatformUtils.h"
 #include "utils/TimeControl.h"
 #include "utils/Shutdown.h"
-#include "utils/Logger.h"
 #include "utils/Watchdog.h"
+#include "utils/Logger.h"
 
 #include "States.h"
 

@@ -3,17 +3,21 @@
 
 #include <sys/stat.h>
 #include <string.h>
-#include <stdlib.h>
 #include <stdarg.h>
-#include <fcntl.h>
 #include <errno.h>
 
 #ifdef _WIN32
 #include <windows.h>
+#include <stdlib.h>
 #include <io.h>
 #else
-#include <unistd.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <fcntl.h>
+#endif
+
+#ifndef EEXIST
+#define EEXIST 17
 #endif
 
 static const char s_file_name[] = "run.log";

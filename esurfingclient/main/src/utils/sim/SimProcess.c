@@ -1,11 +1,12 @@
 #include "utils/sim/SimProcess.h"
+
 #include "utils/PlatformUtils.h"
-#include "utils/Logger.h" // PATH_MAX 的兜底定义在这里
+#include "utils/Logger.h"
+
 #include "States.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 
 #ifdef _WIN32
 #include <windows.h>
