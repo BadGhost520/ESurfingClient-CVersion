@@ -24,14 +24,6 @@
 static const char s_file_name[] = "run.log";
 static const char s_rotate_file_name[] = ".rotate.log";
 
-/**
- * @brief 配置文件里没写 log_dir 时用的默认值
- *
- * 与 config/ESurfingClient.json 里的一致: 基目录就是程序所在目录,
- * 日志放在它下面的 logs 里
- */
-#define DEFAULT_LOG_DIR "./"
-
 /** @brief 日志所在的子目录名 (基目录下的这一层) */
 static const char s_log_sub_dir[] = "logs";
 

@@ -9,6 +9,14 @@
 #define PATH_MAX 260
 #endif
 
+/**
+ * @brief 配置文件里没写 log_dir 时用的默认值
+ *
+ * 与 config/ESurfingClient.json 里的一致: 基目录就是程序所在目录,
+ * 日志放在它下面的 logs 里 (补全配置时也要用这个值)
+ */
+#define DEFAULT_LOG_DIR "./"
+
 typedef enum {
     LOG_LEVEL_NONE = 0,
     LOG_LEVEL_FATAL = 1,

@@ -105,11 +105,11 @@ const TOAST_CLASS = {
 /** 后端最多支持的时间段数量 (States.h MAX_TIME_WINDOWS) */
 const MAX_TIME_WINDOWS = 16;
 
-/** 默认连接超时 (秒, 与后端 g_conn_timeout 保持一致) */
-const DEFAULT_CONN_TIMEOUT = 3;
+/** 默认连接超时 (秒, 与后端 States.h 的 DEFAULT_CONN_TIMEOUT 保持一致) */
+const DEFAULT_CONN_TIMEOUT = 7;
 
-/** 默认操作超时 (秒, 与后端 g_op_timeout 保持一致) */
-const DEFAULT_OP_TIMEOUT = 5;
+/** 默认操作超时 (秒, 与后端 States.h 的 DEFAULT_OP_TIMEOUT 保持一致) */
+const DEFAULT_OP_TIMEOUT = 10;
 
 /** 默认 Web 服务端口 (与后端 States.h 的 DEFAULT_WEB_PORT 保持一致) */
 const DEFAULT_WEB_PORT = 8888;

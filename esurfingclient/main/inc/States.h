@@ -47,6 +47,15 @@
  */
 #define CONTROL_TOKEN_ENV "ESURFING_CONTROL_TOKEN"
 
+/** @brief 连接超时默认值 (秒) */
+#define DEFAULT_CONN_TIMEOUT 7
+
+/** @brief 总操作超时默认值 (秒) */
+#define DEFAULT_OP_TIMEOUT 10
+
+/** @brief 默认认证通道 (3 = Android) */
+#define DEFAULT_CHANNEL 3
+
 /** @brief Web 服务默认端口 (配置文件 web_port 的默认值) */
 #define DEFAULT_WEB_PORT 8888
 

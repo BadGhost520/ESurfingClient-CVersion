@@ -52,9 +52,9 @@ bool g_need_restart = false;
 
 bool g_cfg_loaded = false;
 
-long g_conn_timeout = 7;
+long g_conn_timeout = DEFAULT_CONN_TIMEOUT;
 
-long g_op_timeout = 10;
+long g_op_timeout = DEFAULT_OP_TIMEOUT;
 
 static void reset_host_name()
 {
