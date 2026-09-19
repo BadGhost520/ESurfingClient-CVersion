@@ -110,6 +110,7 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 > 
 > - 它是日志的**基目录**, 日志放在它下面的 `logs` 里
 > - 不写 (或者写 `"."` / `"./"`) 时用默认值 `/var/log/esurfing`, 也就是日志在 `/var/log/esurfing/logs` 下
+>   (随包安装的默认配置里 `log_dir` 就是 `"./"`, 所以开箱即是 `/var/log/esurfing/logs`)
 > - 相对路径按 `/var/log/esurfing` 解析 (程序装在只读的 `/usr/bin` 里, 不按程序目录)
 > - 想换地方就填绝对路径, 比如 `/tmp/esurfing` (日志在 `/tmp/esurfing/logs`) 或者 U 盘上的目录
 > 
