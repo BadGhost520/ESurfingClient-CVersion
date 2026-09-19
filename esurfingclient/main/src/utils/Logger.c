@@ -767,10 +767,13 @@ bool set_logger_dir(const char* dir)
 
     /**
      * OpenWrt 上日志目录是写死的 (见 s_fixed_dir), 配置里写了也不生效。
-     * 说一句免得用户以为是程序没读配置, 但只到 DEBUG: 那边的配置本来就可能是
-     * 从桌面端抄过去的, 每次都 WARN 会把日志刷满
+     * 只有用户真写了别的目录才提一句: 配置模板里本来就带着 "./", 每次都报会刷屏
      */
-    LOG_DEBUG("OpenWrt 下日志目录固定为 %s%clogs, 忽略配置里的 %s", s_fixed_dir, SEP, safe_str(dir));
+    if (strcmp(dir, ".") != 0 && strcmp(dir, DEFAULT_LOG_DIR) != 0)
+    {
+        LOG_INFO("OpenWrt 下日志目录固定为 %s%clogs, 配置里的 log_dir (%s) 不生效",
+            s_fixed_dir, SEP, safe_str(dir));
+    }
     return false;
 
 #else
@@ -808,12 +811,27 @@ bool set_logger_dir(const char* dir)
     }
 
     /**
+     * 解析出来的目录与现在用的一致 (默认配置里的 "./" 就是程序所在目录):
+     * 记下配置的原文就行, 不必把句柄关掉再打开一次 —— 那一下不但没必要,
+     * 换目录那一行日志也会跟着多出来
+     */
+    if (strcmp(new_dir, s_logger_cfg.log_dir) == 0)
+    {
+        snprintf(s_cfg_log_dir, sizeof(s_cfg_log_dir), "%s", dir);
+        return true;
+    }
+
+    /**
      * 换目录这一段必须整体在锁里
      *
      * 中间有一小会儿 file_handle 是空的 (要先关掉旧文件才能改名, Windows 上
      * 更不能重命名一个还开着的文件)。不加锁的话别的线程正好在这一刻写日志,
      * 就会拿到"日志系统未打开"并丢掉那一行。持锁之后那些写日志的线程只是等
      * 一小会儿, 醒来看到的已经是新目录的句柄了
+     *
+     * ⚠️ 唯一绕开这把锁的是 log_raw_line() (看门狗卡死时用的), 它在换目录的这一
+     *    瞬间可能读到已经被关掉的旧句柄 —— 与 rotate() 里那个窗口是同一类问题,
+     *    那边同样是明知故犯 (见文件开头关于互斥的说明)
      */
     logger_lock();
 
