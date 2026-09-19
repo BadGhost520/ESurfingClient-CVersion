@@ -29,16 +29,17 @@ static const char s_log_sub_dir[] = "logs";
 
 #ifdef __OPENWRT__
 /**
- * @brief OpenWrt 上写死的日志基目录
+ * @brief OpenWrt 上的默认日志基目录
  *
- * OpenWrt 分支不看配置里的 log_dir: /var/log 是 tmpfs (重启即清, 也不磨损闪存),
- * 而 /usr 是只读的 squashfs, 小容量设备写别处还容易把空间占满。
- * 日志实际落在 <本目录>/logs 下, 也就是 /var/log/esurfing/logs。
+ * 配置里的 log_dir 在 OpenWrt 上同样生效 (想把日志放到 U 盘或别的分区上去时要用),
+ * 没写时用这里的默认值, 于是默认仍旧是 /var/log/esurfing/logs。
  *
- * ⚠️ init.d/esurfingclient.init 里的 LOG_DIR 与 LuCI 的日志页都按这个路径找日志,
- *    改这里必须同时改那两处, 否则界面上会看不到日志
+ * 默认选 /var/log 是因为它是 tmpfs: 重启即清, 也不磨损闪存, 小容量设备不会被日志占满 ——
+ * 改配置把日志挪到闪存上的用户自己知道后果。
+ *
+ * ⚠️ init.d/esurfingclient.init 与 LuCI 的日志页都拿这个值兜底, 改这里要一起改
  */
-static const char s_fixed_dir[] = "/var/log/esurfing";
+static const char s_default_base[] = "/var/log/esurfing";
 #endif
 
 /**
@@ -468,8 +469,6 @@ static bool make_dirs(const char* path)
     return is_dir(buf);
 }
 
-#ifndef __OPENWRT__
-
 /**
  * @brief 是否是绝对路径
  * @param path 路径
@@ -527,24 +526,31 @@ static void strip_tail_sep(char* path)
 }
 
 /**
- * @brief 把配置里的日志目录解析成绝对路径
+ * @brief 把配置里的日志基目录解析成绝对路径
  *
- * 相对路径按【程序所在目录】解析, 不能按当前工作目录: 桌面端把程序放进
- * /usr/local/bin 或注册成服务时, 工作目录是 / 或 System32, 按工作目录解析
- * 会把日志写到一个谁也想不到的地方 —— 配置文件与网页文件都是按程序目录找的,
- * 日志也该如此
+ * 相对路径的基准按平台分:
+ * - 桌面端是【程序所在目录】, 不能按当前工作目录: 把程序放进 /usr/local/bin 或注册成
+ *   服务时工作目录是 / 或 System32, 按工作目录解析会把日志写到一个谁也想不到的地方 ——
+ *   配置文件与网页文件都是按程序目录找的, 日志也该如此
+ * - OpenWrt 上是 /var/log/esurfing: 那边的程序装在只读的 /usr/bin 里, 拿它当基准
+ *   既写不了也没意义
  * @param cfg_dir 配置里的取值 (空字符串 / "." / "./" 都表示用默认值)
  * @param out 输出缓冲 (至少 PATH_MAX 字节)
  * @return 是否解析成功
  */
 static bool resolve_log_dir(const char* cfg_dir, char* out)
 {
-    char exec_dir[PATH_MAX];
-    if (get_exec_dir(exec_dir) == false) return false;
+    char base[PATH_MAX];
+
+#ifdef __OPENWRT__
+    if (snprintf(base, sizeof(base), "%s", s_default_base) >= (int)sizeof(base)) return false;
+#else
+    if (get_exec_dir(base) == false) return false;
+#endif
 
     if (cfg_dir == NULL || cfg_dir[0] == '\0' || strcmp(cfg_dir, ".") == 0)
     {
-        return snprintf(out, PATH_MAX, "%s", exec_dir) < PATH_MAX;
+        return snprintf(out, PATH_MAX, "%s", base) < PATH_MAX;
     }
 
 #ifdef _WIN32
@@ -584,24 +590,22 @@ static bool resolve_log_dir(const char* cfg_dir, char* out)
 
     if (rel[0] == '\0')
     {
-        return snprintf(out, PATH_MAX, "%s", exec_dir) < PATH_MAX;
+        return snprintf(out, PATH_MAX, "%s", base) < PATH_MAX;
     }
 
-    const int len = snprintf(out, PATH_MAX, "%s%c%s", exec_dir, SEP, rel);
+    const int len = snprintf(out, PATH_MAX, "%s%c%s", base, SEP, rel);
     if (len <= 0 || (size_t)len >= PATH_MAX) return false;
     strip_tail_sep(out);
     return true;
 }
 
-#endif // !__OPENWRT__
-
 /**
  * @brief 取实际使用的日志目录 (目录不存在时会建出来)
  *
  * 规则: 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里。
- * 桌面端的基目录默认就是程序所在目录, 而那里还放着程序本体 / 配置文件 / portal,
- * 直接往里写会把目录搅乱, 日志页也不好在那一堆文件里翻。
- * OpenWrt 上基目录写死 /var/log/esurfing, 于是日志仍旧落在 /var/log/esurfing/logs。
+ * 桌面端的基目录默认是程序所在目录 (那里还放着程序本体 / 配置文件 / portal,
+ * 直接往里写会把目录搅乱); OpenWrt 上默认是 /var/log/esurfing, 于是日志仍旧落在
+ * /var/log/esurfing/logs。
  * @param out 输出缓冲 (至少 PATH_MAX 字节)
  * @return 目录是否可用
  */
@@ -609,16 +613,11 @@ static bool get_log_dir(char* out)
 {
     char base[PATH_MAX];
 
-#ifdef __OPENWRT__
-    // OpenWrt 上基目录写死 (见 s_fixed_dir), 配置里的 log_dir 不生效
-    if (snprintf(base, sizeof(base), "%s", s_fixed_dir) >= (int)sizeof(base)) return false;
-#else
     if (resolve_log_dir(s_cfg_log_dir, base) == false)
     {
         fprintf(stderr, "[ERROR] 无法解析日志目录: %s\n", safe_str(s_cfg_log_dir));
         return false;
     }
-#endif
 
     const int len = snprintf(out, PATH_MAX, "%s%c%s", base, SEP, s_log_sub_dir);
     if (len <= 0 || (size_t)len >= PATH_MAX)
@@ -864,21 +863,6 @@ bool set_logger_dir(const char* dir)
     // 配置里没写就是默认目录, 什么都不用做
     if (dir == NULL || dir[0] == '\0') return false;
 
-#ifdef __OPENWRT__
-
-    /**
-     * OpenWrt 上日志目录是写死的 (见 s_fixed_dir), 配置里写了也不生效。
-     * 只有用户真写了别的目录才提一句: 配置模板里本来就带着 "./", 每次都报会刷屏
-     */
-    if (strcmp(dir, ".") != 0 && strcmp(dir, DEFAULT_LOG_DIR) != 0)
-    {
-        LOG_INFO("OpenWrt 下日志目录固定为 %s%clogs, 配置里的 log_dir (%s) 不生效",
-            s_fixed_dir, SEP, safe_str(dir));
-    }
-    return false;
-
-#else
-
     if (strlen(dir) >= PATH_MAX)
     {
         LOG_WARN("log_dir 过长 (最多 %d 个字符), 使用默认日志目录 (%s)", PATH_MAX - 1, DEFAULT_LOG_DIR);
@@ -888,8 +872,7 @@ bool set_logger_dir(const char* dir)
     if (strcmp(dir, s_cfg_log_dir) == 0) return true;
 
     /**
-     * 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里 (与 OpenWrt 上
-     * /var/log/esurfing/logs 的形状一致)
+     * 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里
      */
     char new_base[PATH_MAX];
     char new_dir[PATH_MAX];
@@ -1005,8 +988,6 @@ bool set_logger_dir(const char* dir)
 
     LOG_INFO("日志目录已改为 %s", new_dir);
     return true;
-
-#endif // __OPENWRT__
 }
 
 bool init_logger()

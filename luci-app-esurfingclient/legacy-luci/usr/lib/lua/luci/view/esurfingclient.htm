@@ -1,4 +1,31 @@
 <%
+-- 配置文件内容: POST 处理与页面渲染都要用, 所以先读出来
+-- 默认配置与程序的 s_default_cfg 保持同一套字段; log_dir 在 OpenWrt 上同样生效
+-- (默认基目录 /var/log/esurfing, 日志在它下面的 logs 里), web_port / web_external_acc
+-- 则是桌面端的参数 (OpenWrt 版本不带网页服务), 留着只是为了两个平台共用同一套配置格式
+local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"/var/log/esurfing","conn_timeout":3,"op_timeout":5,"web_port":8888,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
+local file = io.open("/etc/config/esurfingclient", "r")
+if file then
+    local content = file:read("*a")
+    file:close()
+    if content and content ~= "" then
+        config_json = content
+    end
+end
+
+-- 实际使用的日志目录: 规则与程序里一致 (Logger.c 的 resolve_log_dir + get_log_dir)
+-- 配置里的 log_dir 是【基目录】, 日志在它下面的 logs 里; 没写 / "." / "./" 时用默认的
+-- /var/log/esurfing; 相对路径也按它解析 (OpenWrt 上程序装在只读的 /usr/bin 里, 不按程序目录)
+local function get_log_dir()
+    local base = config_json:match('"log_dir"%s*:%s*"([^"]*)"') or ''
+    if base == '' or base == '.' or base == './' then
+        base = '/var/log/esurfing'
+    elseif base:sub(1, 1) ~= '/' then
+        base = '/var/log/esurfing/' .. base:gsub('^%.%/', '')
+    end
+    return (base:gsub('/+$', '')) .. '/logs'
+end
+
 if luci.http.getenv("REQUEST_METHOD") == "POST" then
     local data = luci.http.content()
     if data and data ~= "" then
@@ -37,7 +64,7 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
                 luci.http.write("Forbidden")
                 return
             end
-            local log_path = "/var/log/esurfing/logs/" .. file_name
+            local log_path = get_log_dir() .. "/" .. file_name
             local f = io.open(log_path, "r")
             local content = f and f:read("*a") or ""
             if f then f:close() end
@@ -61,18 +88,6 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
         luci.http.write('{"status":"error","message":"No data received"}')
     end
     return
-end
-
--- 默认配置 (与程序的 s_default_cfg 保持同一套字段; log_dir / web_port / web_external_acc
--- 是桌面端的参数, OpenWrt 上日志目录写死 /var/log/esurfing/logs 且没有 Web 服务, 这边不生效)
-local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"./","conn_timeout":3,"op_timeout":5,"web_port":8888,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
-local file = io.open("/etc/config/esurfingclient", "r")
-if file then
-    local content = file:read("*a")
-    file:close()
-    if content and content ~= "" then
-        config_json = content
-    end
 end
 %>
 <%+header%>
@@ -257,7 +272,7 @@ end
                     <select id='log_file_select' class='cbi-input-select' style='width: auto; min-width: 200px; max-width: 400px;'>
                         <%-- 原有的文件列表渲染逻辑保持不动 --%>
                         <%
-                        local log_dir = "/var/log/esurfing/logs"
+                        local log_dir = get_log_dir()
                         local files = {}
                         local fs = require("nixio.fs")
                         if fs and fs.dir then

@@ -43,16 +43,15 @@ return view.extend({
         /**
          * 默认配置
          *
-         * log_dir / web_port / web_external_acc 是桌面端的参数:
-         * OpenWrt 上日志目录写死 /var/log/esurfing/logs, 也没有 Web 服务,
-         * 因此界面上不提供这三项, 但字段仍然留着 —— 配置文件在两个平台之间
-         * 是同一套格式, 复位时写出去的也得是完整的一套
+         * log_dir 在 OpenWrt 上同样生效: 默认基目录 /var/log/esurfing (日志在它下面的 logs 里)。
+         * web_port / web_external_acc 则是桌面端的参数 (OpenWrt 版本不带网页服务), 界面上不提供,
+         * 但字段仍然留着 —— 配置文件在两个平台之间是同一套格式, 复位时写出去的也得是完整的一套
          */
         self.config = self.config || {
             enabled: false,
             web_external_acc: false,
             log_lv: 0,
-            log_dir: './',
+            log_dir: '/var/log/esurfing',
             conn_timeout: 3,
             op_timeout: 5,
             web_port: 8888,
@@ -133,6 +132,28 @@ return view.extend({
                     }),
                     E('div', { class: 'cbi-value-description' }, '单次请求的总超时时长 (单位: 秒)')
                 ])
+            ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '日志目录'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'text',
+                        id: 'log_dir',
+                        class: 'cbi-input-text',
+                        placeholder: '/var/log/esurfing',
+                        value: self.config.log_dir,
+                        change: function(ev) {
+                            self.config.log_dir = ev.target.value;
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, [
+                        '日志会存放在这个目录下的 logs 里; 默认 ',
+                        E('code', {}, '/var/log/esurfing'),
+                        ' (也就是日志在 ', E('code', {}, '/var/log/esurfing/logs'), ' 下, tmpfs, 重启即清)',
+                        E('br'),
+                        '相对路径按 ', E('code', {}, '/var/log/esurfing'), ' 解析; 改成闪存上的目录前请想清楚容量与写次数'
+                    ])
+                ])
             ])
         ]);
 
@@ -175,7 +196,7 @@ return view.extend({
                         class: 'cbi-button cbi-button-action',
                         click: function() { self.downloadLog(); }
                     }, '下载'),
-                    E('div', { class: 'cbi-value-description' }, '日志目录在 OpenWrt 上固定为 /var/log/esurfing/logs (配置文件里的 log_dir 只对桌面端有效)')
+                    E('div', { class: 'cbi-value-description' }, '日志目录按配置里的 log_dir 取 (默认 /var/log/esurfing/logs)')
                 ])
             ]),
 
@@ -257,7 +278,7 @@ return view.extend({
                     enabled: false,
                     web_external_acc: false,
                     log_lv: 0,
-                    log_dir: './',
+                    log_dir: '/var/log/esurfing',
                     conn_timeout: 3,
                     op_timeout: 5,
                     web_port: 8888,
@@ -575,6 +596,26 @@ return view.extend({
         }
     },
     
+    /**
+     * 实际使用的日志目录
+     *
+     * 与程序里的规则一致 (Logger.c 的 resolve_log_dir + get_log_dir):
+     * 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里;
+     * 没写 / 写成 "." / "./" 时用默认的 /var/log/esurfing; 相对路径也按它解析。
+     * OpenWrt 上不按程序所在目录解析 —— 那边程序装在只读的 /usr/bin 里。
+     */
+    logDirPath: function() {
+        var base = (this.config && typeof this.config.log_dir === 'string') ? this.config.log_dir.trim() : '';
+
+        if (base === '' || base === '.' || base === './') {
+            base = '/var/log/esurfing';
+        } else if (base.charAt(0) !== '/') {
+            base = '/var/log/esurfing/' + base.replace(/^\.\//, '');
+        }
+
+        return base.replace(/\/+$/, '') + '/logs';
+    },
+
     loadLogContent: function() {
         var self = this;
 
@@ -585,7 +626,7 @@ return view.extend({
             textarea.value = '请选择一个日志文件';
             return;
         }
-        fs.read_direct('/var/log/esurfing/logs/' + log_select.value)
+        fs.read_direct(self.logDirPath() + '/' + log_select.value)
         .then(function(data) {
             textarea.value = data || '暂无日志, 或客户端未启动';
             if (self.log_autoscroll) {
@@ -601,7 +642,7 @@ return view.extend({
     refreshLogs: function() {
         var self = this;
 
-        fs.list('/var/log/esurfing/logs')
+        fs.list(self.logDirPath())
         .then(function(entries) {
             var new_logs = [];
             for (var i = 0; i < entries.length; i++) {
@@ -796,7 +837,7 @@ return view.extend({
                         enabled: false,
                         web_external_acc: false,
                         log_lv: 4,
-                        log_dir: './',
+                        log_dir: '/var/log/esurfing',
                         conn_timeout: 3,
                         op_timeout: 5,
                         web_port: 8888,

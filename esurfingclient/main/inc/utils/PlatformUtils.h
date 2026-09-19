@@ -210,6 +210,18 @@ bool load_cfg();
 int list_accounts();
 
 /**
+ * @brief 取实际使用的日志目录 (供 --print-log-dir 使用)
+ *
+ * 日志目录由配置里的 log_dir 决定 (OpenWrt 上默认 /var/log/esurfing, 日志落在它下面的
+ * logs 里), 因此只有读完配置才知道。外部脚本 (OpenWrt 的 init.d 要归档上一轮日志、
+ * LuCI 的日志页要列文件) 需要知道这个路径, 总不能让它自己去解析 JSON。
+ *
+ * 配置有问题或日志系统起不来时返回 NULL, 调用方按自己的默认值兜底
+ * @return 日志目录 (进程内静态缓冲, 不要 free), 失败返回 NULL
+ */
+const char* print_log_dir();
+
+/**
  * @brief 获取配置文件路径
  * @return 配置文件路径
  */

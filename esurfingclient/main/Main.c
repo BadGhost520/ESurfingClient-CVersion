@@ -17,6 +17,9 @@ extern void work(void);
 /** @brief 是否只列举可用账号 */
 static bool s_list_accounts = false;
 
+/** @brief 是否只打印日志目录 */
+static bool s_print_log_dir = false;
+
 /**
  * @brief 显示帮助信息
  */
@@ -27,6 +30,7 @@ static void PrintUsage()
     printf("  -r, --role <角色>     程序角色: supervisor (守护) / auth (认证) / web (网页)\n");
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
+    printf("  --print-log-dir      打印实际使用的日志目录后退出 (日志目录由配置里的 log_dir 决定)\n");
 #ifndef __OPENWRT__
     printf("  --control-port <端口> 控制通道端口 (默认 %d; 认证进程监听, Web 进程连接)\n", CONTROL_DEFAULT_PORT);
     printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 守护进程会自动生成并下发)\n");
@@ -112,19 +116,26 @@ static bool parse_port(const char* str, uint16_t* port)
 static int check_args()
 {
     /**
-     * 列举账号是一个独立的查询动作, 由 init 脚本调用,
+     * 列举账号与打印日志目录都是独立的查询动作, 由 init 脚本调用,
      * 与角色/序号组合在一起语义不清, 直接拒绝
      */
-    if (s_list_accounts == true)
+    if (s_list_accounts == true || s_print_log_dir == true)
     {
+        const char* self = s_list_accounts ? "--list-accounts" : "--print-log-dir";
+
         if (g_prog_role != ROLE_STANDALONE)
         {
-            fprintf(stderr, "[ERROR] --list-accounts 不能与 --role 一起使用\n");
+            fprintf(stderr, "[ERROR] %s 不能与 --role 一起使用\n", self);
             return 1;
         }
         if (g_prog_account != 0)
         {
-            fprintf(stderr, "[ERROR] --list-accounts 不能与 --account 一起使用\n");
+            fprintf(stderr, "[ERROR] %s 不能与 --account 一起使用\n", self);
+            return 1;
+        }
+        if (s_list_accounts == true && s_print_log_dir == true)
+        {
+            fprintf(stderr, "[ERROR] --list-accounts 不能与 --print-log-dir 一起使用\n");
             return 1;
         }
         return 0;
@@ -225,6 +236,12 @@ static int parse_args(const int argc, char* argv[])
         if (strcmp(arg, "--list-accounts") == 0)
         {
             s_list_accounts = true;
+            continue;
+        }
+
+        if (strcmp(arg, "--print-log-dir") == 0)
+        {
+            s_print_log_dir = true;
             continue;
         }
 
@@ -333,6 +350,16 @@ int main(const int argc, char *argv[])
     if (s_list_accounts == true)
     {
         return list_accounts() < 0 ? 1 : 0;
+    }
+
+    if (s_print_log_dir == true)
+    {
+        const char* log_dir = print_log_dir();
+        if (log_dir == NULL) return 1;
+
+        printf("%s\n", log_dir);
+        fflush(stdout);
+        return 0;
     }
 
 #ifdef _WIN32

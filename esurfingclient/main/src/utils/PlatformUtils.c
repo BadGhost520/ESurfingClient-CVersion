@@ -1626,3 +1626,34 @@ int list_accounts()
     // 而多实例下 run.log 是所有进程共用的, 每次列举都改名会破坏其它实例的写入
     return g_prog_cnt;
 }
+
+const char* print_log_dir()
+{
+    /**
+     * stdout 要留给路径, 日志只写文件 (必须在 init_logger 之前设置,
+     * 初始化过程本身也会往控制台打日志)
+     */
+    set_logger_console(false);
+
+    if (init_logger() == false)
+    {
+        fprintf(stderr, "[ERROR] 日志系统初始化失败\n");
+        return NULL;
+    }
+
+    /**
+     * 日志目录由配置里的 log_dir 决定, 只有读完配置才知道到底在哪。
+     * 配置有问题时按"列举账号"那套处理: 直接失败, 别挂住 —— 这个查询是给脚本调的
+     */
+    s_list_only = true;
+    const bool loaded = load_cfg();
+    s_list_only = false;
+
+    if (loaded == false)
+    {
+        // 配置有问题时 load_cfg 已经把原因写进日志了
+        return NULL;
+    }
+
+    return get_logger_dir();
+}
