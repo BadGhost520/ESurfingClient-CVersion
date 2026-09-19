@@ -103,6 +103,11 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 > 
 > 之所以保留在配置里, 是因为两个平台共用同一套配置格式, 配置文件直接搬过去也不会缺字段
 
+> [!TIP]
+> 配置里漏写的参数不用怕: 程序每次读取配置时会检查一遍, 缺的按默认值补上并写回配置文件, 日志里也会说明补了什么
+> 
+> 比如只写了 `enabled` 与 `accounts`, 剩下的参数启动一次之后就会出现在配置文件里
+
 ## 附 2: 日志与归档文件
 
 > [!NOTE]
