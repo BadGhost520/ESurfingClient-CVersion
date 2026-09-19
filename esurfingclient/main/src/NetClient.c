@@ -43,7 +43,6 @@ static char s_area[AREA_LENGTH] = {0};
 static _Thread_local char s_request_url[LOCATION_LEN] = {0};
 
 static char s_generate_url[][URL_LENGTH] = {
-    "http://connect.rom.miui.com/generate_204",
     "http://connectivitycheck.platform.hicloud.com/generate_204",
     "http://wifi.vivo.com.cn/generate_204"
 };
@@ -702,11 +701,11 @@ network_status_t check_network_status(const bool connect_only)
 
     LOG_DEBUG("请求第 %" PRIu8 " 个 URL", s_generate_idx + 1);
     resp = get(s_generate_url[s_generate_idx], connect_only);
-    if (s_generate_idx < 3)
+    if (s_generate_idx < 2)
     {
         s_generate_idx++;
     }
-    if (s_generate_idx >= 3)
+    if (s_generate_idx >= 2)
     {
         s_generate_idx = 0;
     }
