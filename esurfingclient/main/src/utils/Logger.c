@@ -357,6 +357,33 @@ static bool is_dir(const char* path)
 #endif
 }
 
+#ifdef _WIN32
+
+/**
+ * @brief 跳过一个路径组件 (跳到它后面的分隔符之后)
+ * @param p 当前位置
+ * @return 下一个组件的位置 (已经到结尾时返回指向结尾的指针)
+ */
+static char* skip_component(char* p)
+{
+    while (*p != '\0' && *p != SEP) p++;
+    if (*p == SEP) p++;
+    return p;
+}
+
+/**
+ * @brief 前缀比较 (Windows 上路径不分大小写)
+ * @param text 文本
+ * @param prefix 前缀
+ * @return 是否以该前缀开头
+ */
+static bool prefix_eq(const char* text, const char* prefix)
+{
+    return _strnicmp(text, prefix, strlen(prefix)) == 0;
+}
+
+#endif // _WIN32
+
 /**
  * @brief 逐级创建目录 (Posix 的 mkdir -p / Windows 的逐级 CreateDirectory)
  *
@@ -378,8 +405,43 @@ static bool make_dirs(const char* path)
         if (*p == '/') *p = SEP;
     }
 
+    /**
+     * 先把"不能拿去建目录"的前缀跳过, 只把后面的部分逐级建出来
+     *
+     * 前缀有三种形状:
+     *   D:\...                盘符
+     *   \\服务器\共享名\...   UNC (\\ 与 \\服务器 这两段都不能单独建)
+     *   \\?\D:\... \\?\UNC\…  扩展长度前缀 (路径超过 260 字符要用它, 这里同样支持)
+     */
     char* p = buf;
-    if (isalpha((unsigned char)p[0]) != 0 && p[1] == ':') p += 2; // 跳过盘符
+    if (p[0] == SEP && p[1] == SEP)
+    {
+        p += 2;
+        if (p[0] == '?' && p[1] == SEP)
+        {
+            p += 2;
+            // \\?\UNC\服务器\共享名\... : UNC 那一段也不能单独建
+            if (prefix_eq(p, "UNC") && p[3] == SEP)
+            {
+                p = skip_component(skip_component(p + 4));
+            }
+            // \\?\D:\... : 剩下的就是普通盘符路径
+            if (isalpha((unsigned char)p[0]) != 0 && p[1] == ':') p += 2;
+        }
+        else
+        {
+            // \\服务器\共享名\... : 这两段由系统管着, 建不得
+            p = skip_component(skip_component(p));
+        }
+    }
+    else if (isalpha((unsigned char)p[0]) != 0 && p[1] == ':')
+    {
+        p += 2;
+    }
+
+    // 前缀后面紧跟的那个分隔符属于前缀, 从它【之后】的组件开始逐级建
+    if (*p == SEP) p++;
+
     for (; *p != '\0'; p++)
     {
         if (*p != SEP) continue;
@@ -417,9 +479,16 @@ static bool is_abs_path(const char* path)
 {
     if (path == NULL || path[0] == '\0') return false;
 #ifdef _WIN32
+    // \\服务器\共享名\... (UNC) 与 \dir 都算绝对路径
     if (path[0] == '/' || path[0] == '\\') return true;
-    // 盘符形式 (D:\ 或 D:/)
-    return isalpha((unsigned char)path[0]) != 0 && path[1] == ':';
+    /**
+     * 盘符形式只认 "D:\" / "D:/"。
+     * "D:dir" 是 Windows 的"盘符相对"写法 (指 D 盘当前目录下的 dir), 而本程序的
+     * 工作目录随环境变 (服务模式下可能是 System32), 按它解析没有意义, 因此不算绝对路径,
+     * 后面会明确判为不可用 (见 resolve_log_dir)
+     */
+    return isalpha((unsigned char)path[0]) != 0 && path[1] == ':' &&
+        (path[2] == '/' || path[2] == '\\');
 #else
     return path[0] == '/';
 #endif
@@ -476,6 +545,29 @@ static bool resolve_log_dir(const char* cfg_dir, char* out)
     if (cfg_dir == NULL || cfg_dir[0] == '\0' || strcmp(cfg_dir, ".") == 0)
     {
         return snprintf(out, PATH_MAX, "%s", exec_dir) < PATH_MAX;
+    }
+
+#ifdef _WIN32
+    /**
+     * "D:dir" 这种盘符相对写法: 指的是 D 盘【当前目录】下的 dir, 而当前目录随环境变
+     * (服务模式下可能是 System32), 按它解析等于把日志写到一个谁也想不到的地方。
+     * 直接判为不可用, 让调用方退回默认目录并给出告警, 比默默写歪强
+     */
+    if (isalpha((unsigned char)cfg_dir[0]) != 0 && cfg_dir[1] == ':' &&
+        cfg_dir[2] != '\0' && cfg_dir[2] != '/' && cfg_dir[2] != '\\')
+    {
+        LOG_WARN("log_dir (%s) 是盘符相对路径 (D:dir 指 D 盘当前目录), 请写成 D:\\dir 这样的绝对路径", cfg_dir);
+        return false;
+    }
+#endif
+
+    /**
+     * 环境变量不做展开 (%TEMP% / $HOME 之类): 程序按字面把它当目录名建出来。
+     * 提一句免得用户以为写 %TEMP% 就会落到临时目录里, 找日志时一头雾水
+     */
+    if (strchr(cfg_dir, '%') != NULL || strchr(cfg_dir, '$') != NULL)
+    {
+        LOG_WARN("log_dir (%s) 里的环境变量不会被展开, 会按普通目录名处理", cfg_dir);
     }
 
     if (is_abs_path(cfg_dir))
