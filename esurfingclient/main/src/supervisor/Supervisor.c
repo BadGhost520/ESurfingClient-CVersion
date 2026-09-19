@@ -210,11 +210,9 @@ static void child_build_argv(const child_t* child, char* exec_path,
         argv[n++] = "web";
     }
 
-    // 控制端口与监听地址由监管者统一决定, 原样传给子进程
+    // 控制端口由监管者统一决定, 原样传给子进程
     argv[n++] = "--control-port";
     argv[n++] = control_arg;
-    argv[n++] = "--web-listen";
-    argv[n++] = g_web_listen;
 
 #ifdef _WIN32
     /**

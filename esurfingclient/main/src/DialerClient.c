@@ -1266,11 +1266,19 @@ void work()
 
     print_banner();
 
+    /**
+     * 先加载配置再起 Web 服务
+     *
+     * 监听端口与是否允许外部访问 (配置里的 web_port / web_external_acc) 要在
+     * 绑端口之前就位, 顺序反过来就只能按默认端口开出去了。
+     * 顺带解决了"配置没读好却已经对外提供网页"这件事: 配置有问题时 cfg_halt
+     * 会挂住等用户改配置, 那种状态下网页上的账号信息本来就是空的
+     */
+    if (load_cfg() == false) shut(1); // 加载配置文件
+
 #ifndef __OPENWRT__
     if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
 #endif
-
-    if (load_cfg() == false) shut(1); // 加载配置文件
 
     time_control_sync(); // 冷启动时先按当前时间同步各账号的时间控制状态
     if (time_control_init() == false) shut(1); // 启动时间控制定时线程

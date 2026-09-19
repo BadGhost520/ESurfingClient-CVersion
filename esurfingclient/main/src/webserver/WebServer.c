@@ -98,6 +98,9 @@ static bool request_apply_config()
 /** @brief 日志文件的固定名字 (Logger.c s_file_name) */
 static const char log_current_name[] = "run.log";
 
+/** @brief 日志文件的后缀 (run.log / <时间戳>.log / <时间戳>-pid-seq.rotate.log 都以此结尾) */
+static const char log_suffix[] = ".log";
+
 /** @brief 通用 API 响应头 */
 #define HEADER_JSON "Content-Type: application/json\r\nCache-Control: no-store\r\n"
 #define HEADER_TEXT "Content-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\n"
@@ -189,6 +192,27 @@ static bool is_safe_log_name(const char* name)
 }
 
 /**
+ * @brief 检查文件名是不是日志文件
+ *
+ * 必须再认一次后缀: 日志目录默认就是【程序所在目录】(配置里的 log_dir),
+ * 那里还躺着程序本体 / 配置文件 / portal, 只判"名字安全"的话
+ * 日志页会把这些都列成日志, 连明文账号密码所在的 ESurfingClient.json
+ * 都能当成日志读出来
+ * @param name 文件名
+ * @return 是否是日志文件
+ */
+static bool is_log_file_name(const char* name)
+{
+    if (is_safe_log_name(name) == false) return false;
+
+    const size_t name_len = strlen(name);
+    const size_t suffix_len = sizeof(log_suffix) - 1;
+    if (name_len <= suffix_len) return false;
+
+    return str_case_cmp(name + name_len - suffix_len, log_suffix) == 0;
+}
+
+/**
  * @brief 读取日志目录中的文件列表
  * @param out 输出数组
  * @param max 数组容量
@@ -214,7 +238,7 @@ static int list_log_files(log_file_entry_t* out, const int max)
     {
         if ((find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) continue;
         if (count >= max) break;
-        if (is_safe_log_name(find_data.cFileName) == false) continue;
+        if (is_log_file_name(find_data.cFileName) == false) continue;
 
         snprintf(out[count].name, sizeof(out[count].name), "%s", find_data.cFileName);
         out[count].size = ((uint64_t)find_data.nFileSizeHigh << 32) | (uint64_t)find_data.nFileSizeLow;
@@ -244,7 +268,7 @@ static int list_log_files(log_file_entry_t* out, const int max)
     while ((entry = readdir(dir_handle)) != NULL)
     {
         if (count >= max) break;
-        if (is_safe_log_name(entry->d_name) == false) continue;
+        if (is_log_file_name(entry->d_name) == false) continue;
 
         const int path_len = snprintf(path, sizeof(path), "%s%c%s", dir, SEP, entry->d_name);
         if (path_len <= 0 || (size_t)path_len >= sizeof(path)) continue;
@@ -286,7 +310,7 @@ static int cmp_log_files(const void* a, const void* b)
 {
     const char* dir = get_logger_dir();
     if (dir == NULL || dir[0] == '\0') return false;
-    if (is_safe_log_name(name) == false) return false;
+    if (is_log_file_name(name) == false) return false;
 
     char path[PATH_MAX];
     const int path_len = snprintf(path, sizeof(path), "%s%c%s", dir, SEP, name);
@@ -409,9 +433,17 @@ static bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON* configs = cJSON_CreateObject();
 
         cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);
+        cJSON_AddBoolToObject(configs, "web_external_acc", g_web_external_acc);
         cJSON_AddNumberToObject(configs, "log_lv", get_logger_level());
+        /**
+         * 这里给的是配置里的原文 (没写时是 "./"), 不是解析后的绝对路径:
+         * 页面上的输入框要原样回显, 保存时也原样写回去, 不能把它改写成绝对路径
+         * (看实际用的是哪个目录请走 /api/status/sys 的 log_dir)
+         */
+        cJSON_AddStringToObject(configs, "log_dir", get_logger_dir_cfg());
         cJSON_AddNumberToObject(configs, "conn_timeout", (double)g_conn_timeout);
         cJSON_AddNumberToObject(configs, "op_timeout", (double)g_op_timeout);
+        cJSON_AddNumberToObject(configs, "web_port", g_web_port);
 
         cJSON* accounts = cJSON_CreateArray();
         cJSON* account = cJSON_CreateObject();
@@ -807,6 +839,9 @@ static void logFn(const char ch, void *param)
     }
 }
 
+/** @brief 监听地址缓冲区长度 (形如 "http://0.0.0.0:65535") */
+#define WEB_LISTEN_LEN 64
+
 static int web_server(void* arg)
 {
     tl_thread_idx = (int8_t)(intptr_t)arg;
@@ -816,15 +851,27 @@ static int web_server(void* arg)
     mg_log_set_fn(logFn, NULL);
     mg_mgr_init(&mgr);
 
-    // 监听地址由 --web-listen 决定, 默认只监听回环
-    char listen_addr[WEB_LISTEN_LEN + 8];
-    snprintf(listen_addr, sizeof(listen_addr), "http://%s", safe_str(g_web_listen));
+    /**
+     * 监听地址由配置文件决定: web_port 是端口, web_external_acc 决定只监听回环
+     * 还是监听全部网卡。
+     *
+     * 默认只监听回环: /api/getConfigs 会返回明文账号密码, 而服务本身没有鉴权,
+     * 监听 0.0.0.0 等于把这些暴露给整个局域网 —— 开启外部访问的时候要说一声
+     */
+    char listen_addr[WEB_LISTEN_LEN];
+    snprintf(listen_addr, sizeof(listen_addr), "http://%s:%" PRIu16,
+        g_web_external_acc ? "0.0.0.0" : "127.0.0.1", g_web_port);
 
     if (mg_http_listen(&mgr, listen_addr, fn, NULL) == NULL)
     {
         LOG_FATAL("Web 服务监听失败: %s (端口可能已被占用)", listen_addr);
         mg_mgr_free(&mgr);
         return 1;
+    }
+
+    if (g_web_external_acc)
+    {
+        LOG_WARN("Web 服务已允许外部访问 (%s), 而接口没有鉴权且会返回明文账号密码, 请确认这确实是你想要的", listen_addr);
     }
 
     g_is_webserver_running = 1;

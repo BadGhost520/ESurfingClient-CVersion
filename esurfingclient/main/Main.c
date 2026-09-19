@@ -30,7 +30,7 @@ static void PrintUsage()
 #ifndef __OPENWRT__
     printf("  --control-port <端口> 控制通道端口 (默认 %d; 认证进程监听, Web 进程连接)\n", CONTROL_DEFAULT_PORT);
     printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 守护进程会自动生成并下发)\n");
-    printf("  --web-listen <地址>   Web 服务监听地址 (默认 %s)\n", DEFAULT_WEB_LISTEN);
+    printf("  (Web 服务端口与是否允许外部访问在配置文件的 web_port / web_external_acc 里改)\n");
 #endif
 #if !defined(__OPENWRT__) && !defined(__ANDROID__)
     printf("  -i, --install        安装为系统服务 (需要管理员/root 权限)\n");
@@ -103,24 +103,7 @@ static bool parse_port(const char* str, uint16_t* port)
     return true;
 }
 
-/**
- * @brief 校验监听地址是否合法 (形如 127.0.0.1:8888)
- * @param str 地址文本
- * @return 是否合法
- */
-static bool check_listen_addr(const char* str)
-{
-    if (str == NULL || str[0] == '\0') return false;
-    if (strlen(str) >= WEB_LISTEN_LEN) return false;
-
-    const char* colon = strrchr(str, ':');
-    if (colon == NULL || colon == str) return false;
-
-    uint16_t port = 0;
-    return parse_port(colon + 1, &port);
-}
-
-#endif  // !__OPENWRT__ (控制通道与 Web 监听地址只存在于非 OpenWrt 构建)
+#endif  // !__OPENWRT__ (控制通道只存在于非 OpenWrt 构建)
 
 /**
  * @brief 校验角色与序号的组合是否合法
@@ -261,24 +244,6 @@ static int parse_args(const int argc, char* argv[])
                 PrintUsage();
                 return 1;
             }
-            continue;
-        }
-
-        if (strcmp(arg, "--web-listen") == 0)
-        {
-            if (i + 1 >= argc)
-            {
-                fprintf(stderr, "[ERROR] %s 缺少监听地址\n", arg);
-                PrintUsage();
-                return 1;
-            }
-            if (check_listen_addr(argv[++i]) == false)
-            {
-                fprintf(stderr, "[ERROR] 监听地址无效 (应形如 127.0.0.1:8888): %s\n", argv[i]);
-                PrintUsage();
-                return 1;
-            }
-            snprintf(g_web_listen, sizeof(g_web_listen), "%s", argv[i]);
             continue;
         }
 

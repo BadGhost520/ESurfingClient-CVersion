@@ -52,6 +52,9 @@ static const char s_fixed_dir[] = "/var/log/esurfing";
  */
 static char s_cfg_log_dir[PATH_MAX] = "";
 
+/** @brief 日志系统是否已经初始化过 (决定 set_logger_dir 是"记下目录"还是"搬文件") */
+static bool s_logger_inited = false;
+
 /* ------------------------------------------------------------------
  * 进程内互斥
  *
@@ -795,6 +798,16 @@ bool set_logger_dir(const char* dir)
     }
 
     /**
+     * 日志系统还没起来 (init_logger 之前调用): 记下目录就够了, init 的时候自然会用上。
+     * 不特判的话这里会先把日志文件打开, init_logger 再打开一次 —— 白漏一个句柄
+     */
+    if (s_logger_inited == false)
+    {
+        snprintf(s_cfg_log_dir, sizeof(s_cfg_log_dir), "%s", dir);
+        return true;
+    }
+
+    /**
      * 换目录这一段必须整体在锁里
      *
      * 中间有一小会儿 file_handle 是空的 (要先关掉旧文件才能改名, Windows 上
@@ -881,6 +894,7 @@ bool init_logger()
     }
     LOG_DEBUG("日志系统初始化完成");
     LOG_DEBUG("日志等级: %s", get_level_str(s_logger_cfg.lv));
+    s_logger_inited = true;
     return true;
 }
 
@@ -914,6 +928,9 @@ void clean_logger()
     }
     fclose(s_logger_cfg.file_handle);
     s_logger_cfg.file_handle = NULL;
+
+    // 收尾之后句柄已经没了, 再 set_logger_dir 只该记下目录, 不该去搬文件
+    s_logger_inited = false;
 
     if (need_rename == false)
     {

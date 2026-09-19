@@ -1051,6 +1051,46 @@ bool load_cfg()
         LOG_WARN("op_timeout 参数不存在, 使用默认参数 (5s)");
     }
 
+    /**
+     * Web 服务端口与是否允许外部访问
+     *
+     * 只有桌面端有 Web 服务 (OpenWrt 上不编译 WebServer.c), 那边这两个参数
+     * 解析出来也没人用, 但配置文件的格式是同一套, 这里就一起读掉
+     */
+    const cJSON* web_port = cJSON_GetObjectItem(cfg_json, "web_port");
+    if (web_port)
+    {
+        if (cJSON_IsNumber(web_port) && web_port->valueint >= 1 && web_port->valueint <= 65535)
+        {
+            g_web_port = (uint16_t)web_port->valueint;
+        }
+        else
+        {
+            LOG_WARN("web_port 参数不正确 (应为 1 - 65535), 使用默认参数 (%d)", DEFAULT_WEB_PORT);
+        }
+    }
+    else
+    {
+        LOG_DEBUG("web_port 参数不存在, 使用默认参数 (%d)", DEFAULT_WEB_PORT);
+    }
+
+    const cJSON* web_external_acc = cJSON_GetObjectItem(cfg_json, "web_external_acc");
+    if (web_external_acc)
+    {
+        if (cJSON_IsBool(web_external_acc))
+        {
+            g_web_external_acc = cJSON_IsTrue(web_external_acc);
+        }
+        else
+        {
+            LOG_WARN("web_external_acc 参数不正确 (应为 true / false), 使用默认参数 (关闭)");
+        }
+    }
+    else
+    {
+        LOG_DEBUG("web_external_acc 参数不存在, 使用默认参数 (关闭)");
+    }
+
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (accounts == NULL || cJSON_IsArray(accounts) == false || cJSON_GetArraySize(accounts) == 0)
     {

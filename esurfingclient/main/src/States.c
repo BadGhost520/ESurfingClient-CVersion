@@ -18,7 +18,9 @@ uint8_t g_prog_account = 0;
 
 uint16_t g_control_port = CONTROL_DEFAULT_PORT;
 
-char g_web_listen[WEB_LISTEN_LEN] = DEFAULT_WEB_LISTEN;
+uint16_t g_web_port = DEFAULT_WEB_PORT;
+
+bool g_web_external_acc = DEFAULT_WEB_EXTERNAL_ACC;
 
 char g_control_token[CONTROL_TOKEN_LEN] = {0};
 

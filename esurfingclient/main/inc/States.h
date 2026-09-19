@@ -36,8 +36,6 @@
 #define LOCATION_LEN 512
 #define LAST_LOCATION_LEN 1024
 
-#define WEB_LISTEN_LEN 64
-
 /** @brief 控制通道令牌长度 (32 位十六进制 + 结尾) */
 #define CONTROL_TOKEN_LEN 33
 
@@ -49,13 +47,16 @@
  */
 #define CONTROL_TOKEN_ENV "ESURFING_CONTROL_TOKEN"
 
+/** @brief Web 服务默认端口 (配置文件 web_port 的默认值) */
+#define DEFAULT_WEB_PORT 8888
+
 /**
- * @brief Web 服务默认监听地址
+ * @brief Web 服务默认是否允许外部访问 (配置文件 web_external_acc 的默认值)
  *
- * 默认只监听回环: /api/getConfigs 会返回明文账号密码, 而服务本身没有鉴权,
+ * 默认关闭: /api/getConfigs 会返回明文账号密码, 而服务本身没有鉴权,
  * 监听 0.0.0.0 等于把这些暴露给整个局域网
  */
-#define DEFAULT_WEB_LISTEN "127.0.0.1:8888"
+#define DEFAULT_WEB_EXTERNAL_ACC false
 
 /** @brief 程序角色 */
 typedef enum
@@ -192,8 +193,19 @@ extern uint8_t g_prog_account;
 /** @brief 控制通道端口 */
 extern uint16_t g_control_port;
 
-/** @brief Web 服务监听地址 (形如 127.0.0.1:8888) */
-extern char g_web_listen[WEB_LISTEN_LEN];
+/**
+ * @brief Web 服务端口 (配置文件 web_port)
+ *
+ * 换端口要重启才生效: 监听地址是启动时绑上去的
+ */
+extern uint16_t g_web_port;
+
+/**
+ * @brief Web 服务是否允许外部访问 (配置文件 web_external_acc)
+ *
+ * false 时只监听回环 127.0.0.1, true 时监听 0.0.0.0 (整个局域网都能打开)
+ */
+extern bool g_web_external_acc;
 
 /**
  * @brief 控制通道令牌 (空字符串表示不校验)
