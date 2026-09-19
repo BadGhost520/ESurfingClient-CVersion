@@ -995,9 +995,11 @@ bool load_cfg()
     /**
      * 日志目录
      *
+     * 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里 (默认就是程序所在目录下的
+     * logs, OpenWrt 上则固定为 /var/log/esurfing/logs)。
      * 必须在这里才能定下来: 日志系统是先起来再读配置的 (配置读错了更要有日志),
      * set_logger_dir 会把已经写下的那几行一起搬到新目录去。
-     * OpenWrt 上目录是写死的, 那边不看这个参数 (只到 DEBUG, 免得刷日志)。
+     * OpenWrt 上基目录是写死的, 那边只有写了别的目录才会提一句。
      */
     const cJSON* log_dir = cJSON_GetObjectItem(cfg_json, "log_dir");
     if (log_dir)
@@ -1008,12 +1010,12 @@ bool load_cfg()
         }
         else
         {
-            LOG_WARN("log_dir 参数不正确, 使用默认日志目录 (%s)", get_logger_dir_cfg());
+            LOG_WARN("log_dir 参数不正确, 使用默认值 (%s)", get_logger_dir_cfg());
         }
     }
     else
     {
-        LOG_DEBUG("log_dir 参数不存在, 使用默认日志目录 (%s)", get_logger_dir_cfg());
+        LOG_DEBUG("log_dir 参数不存在, 使用默认值 (%s)", get_logger_dir_cfg());
     }
 
     const cJSON* conn_timeout = cJSON_GetObjectItem(cfg_json, "conn_timeout");

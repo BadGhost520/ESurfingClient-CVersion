@@ -27,16 +27,21 @@ static const char s_rotate_file_name[] = ".rotate.log";
 /**
  * @brief 配置文件里没写 log_dir 时用的默认值
  *
- * 与 config/ESurfingClient.json 里的一致: 日志就放在程序所在目录
+ * 与 config/ESurfingClient.json 里的一致: 基目录就是程序所在目录,
+ * 日志放在它下面的 logs 里
  */
 #define DEFAULT_LOG_DIR "./"
 
+/** @brief 日志所在的子目录名 (基目录下的这一层) */
+static const char s_log_sub_dir[] = "logs";
+
 #ifdef __OPENWRT__
 /**
- * @brief OpenWrt 上写死的日志目录
+ * @brief OpenWrt 上写死的日志基目录
  *
  * OpenWrt 分支不看配置里的 log_dir: /var/log 是 tmpfs (重启即清, 也不磨损闪存),
  * 而 /usr 是只读的 squashfs, 小容量设备写别处还容易把空间占满。
+ * 日志实际落在 <本目录>/logs 下, 也就是 /var/log/esurfing/logs。
  *
  * ⚠️ init.d/esurfingclient.init 里的 LOG_DIR 与 LuCI 的日志页都按这个路径找日志,
  *    改这里必须同时改那两处, 否则界面上会看不到日志
@@ -508,23 +513,35 @@ static bool resolve_log_dir(const char* cfg_dir, char* out)
 
 /**
  * @brief 取实际使用的日志目录 (目录不存在时会建出来)
+ *
+ * 规则: 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里。
+ * 桌面端的基目录默认就是程序所在目录, 而那里还放着程序本体 / 配置文件 / portal,
+ * 直接往里写会把目录搅乱, 日志页也不好在那一堆文件里翻。
+ * OpenWrt 上基目录写死 /var/log/esurfing, 于是日志仍旧落在 /var/log/esurfing/logs。
  * @param out 输出缓冲 (至少 PATH_MAX 字节)
  * @return 目录是否可用
  */
 static bool get_log_dir(char* out)
 {
+    char base[PATH_MAX];
+
 #ifdef __OPENWRT__
-    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", s_fixed_dir, SEP);
-    if ((size_t)len >= PATH_MAX) return false;
+    // OpenWrt 上基目录写死 (见 s_fixed_dir), 配置里的 log_dir 不生效
+    if (snprintf(base, sizeof(base), "%s", s_fixed_dir) >= (int)sizeof(base)) return false;
 #else
-    char dir[PATH_MAX];
-    if (resolve_log_dir(s_cfg_log_dir, dir) == false)
+    if (resolve_log_dir(s_cfg_log_dir, base) == false)
     {
         fprintf(stderr, "[ERROR] 无法解析日志目录: %s\n", safe_str(s_cfg_log_dir));
         return false;
     }
-    if (snprintf(out, PATH_MAX, "%s", dir) >= PATH_MAX) return false;
 #endif
+
+    const int len = snprintf(out, PATH_MAX, "%s%c%s", base, SEP, s_log_sub_dir);
+    if (len <= 0 || (size_t)len >= PATH_MAX)
+    {
+        fprintf(stderr, "[ERROR] 日志目录路径太长: %s%c%s\n", base, SEP, s_log_sub_dir);
+        return false;
+    }
 
     if (make_dirs(out) == false)
     {
@@ -786,9 +803,25 @@ bool set_logger_dir(const char* dir)
 
     if (strcmp(dir, s_cfg_log_dir) == 0) return true;
 
+    /**
+     * 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里 (与 OpenWrt 上
+     * /var/log/esurfing/logs 的形状一致)
+     */
+    char new_base[PATH_MAX];
     char new_dir[PATH_MAX];
     char new_file[PATH_MAX];
-    if (resolve_log_dir(dir, new_dir) == false || make_dirs(new_dir) == false)
+    if (resolve_log_dir(dir, new_base) == false)
+    {
+        LOG_WARN("log_dir (%s) 不可用, 使用默认日志目录 (%s)", safe_str(dir), DEFAULT_LOG_DIR);
+        return false;
+    }
+    const int dir_len = snprintf(new_dir, sizeof(new_dir), "%s%c%s", new_base, SEP, s_log_sub_dir);
+    if (dir_len <= 0 || (size_t)dir_len >= sizeof(new_dir))
+    {
+        LOG_WARN("log_dir (%s) 过长, 使用默认日志目录 (%s)", safe_str(dir), DEFAULT_LOG_DIR);
+        return false;
+    }
+    if (make_dirs(new_dir) == false)
     {
         LOG_WARN("log_dir (%s) 不可用, 使用默认日志目录 (%s)", safe_str(dir), DEFAULT_LOG_DIR);
         return false;
@@ -811,9 +844,9 @@ bool set_logger_dir(const char* dir)
     }
 
     /**
-     * 解析出来的目录与现在用的一致 (默认配置里的 "./" 就是程序所在目录):
-     * 记下配置的原文就行, 不必把句柄关掉再打开一次 —— 那一下不但没必要,
-     * 换目录那一行日志也会跟着多出来
+     * 解析出来的目录与现在用的一致 (默认配置里的 "./" 就是程序所在目录,
+     * 它的 logs 也正是当前在用的那个目录): 记下配置的原文就行, 不必把句柄
+     * 关掉再打开一次 —— 那一下不但没必要, 换目录那一行日志也会跟着多出来
      */
     if (strcmp(new_dir, s_logger_cfg.log_dir) == 0)
     {

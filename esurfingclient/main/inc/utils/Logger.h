@@ -101,8 +101,10 @@ void set_logger_level(LogLevel lv);
  * 留在默认目录里就没人收尾了 (见实现里的说明)。
  * 在 init_logger() 之前调用也允许, 那时只记下目录, 等 init 时生效。
  *
- * 相对路径按【程序所在目录】解析; OpenWrt 上日志目录写死, 本函数不生效。
- * @param dir 配置里的目录 (空字符串表示保持默认目录)
+ * log_dir 是【基目录】: 日志放在它下面的 logs 里 (OpenWrt 上就是
+ * /var/log/esurfing/logs)。相对路径按【程序所在目录】解析;
+ * OpenWrt 上基目录写死, 本函数不生效。
+ * @param dir 配置里的基目录 (空字符串表示保持默认目录)
  * @return 是否设置成功 (失败时仍旧使用默认目录)
  */
 bool set_logger_dir(const char* dir);
@@ -125,11 +127,12 @@ void clean_logger();
 const char* get_logger_dir(void);
 
 /**
- * @brief 获取配置文件里写的日志目录
+ * @brief 获取配置文件里写的日志基目录
  *
- * 与 get_logger_dir() 的区别: 这个返回的是配置里的原文 (没写时回默认值 "./"),
- * 给页面回显与写回配置用; 那个返回的是解析后的绝对路径, 给查看日志用
- * @return 配置里的日志目录
+ * 与 get_logger_dir() 的区别: 这个返回的是配置里的原文 (没写时回默认值 "./",
+ * 也就是程序所在目录), 给页面回显与写回配置用; 那个返回的是实际在用的目录
+ * (基目录下的 logs), 给查看日志用
+ * @return 配置里的日志基目录
  */
 const char* get_logger_dir_cfg(void);
 

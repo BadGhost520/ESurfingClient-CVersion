@@ -337,8 +337,9 @@
               <legend class="fieldset-legend">日志目录</legend>
               <input type="text" class="input" placeholder="./"
                      x-model="$store.main.configs.log_dir" />
-              <span class="label">日志文件 (run.log) 存放的目录; 相对路径按程序所在目录解析,
-                "./" 就是程序所在目录 (OpenWrt 上固定为 /var/log/esurfing/logs, 这里填了也不生效)</span>
+              <span class="label">日志会存放在这个目录下的 logs 里; 相对路径按程序所在目录解析,
+                "./" 就是程序所在目录 (也就是日志在 <程序目录>/logs 下;
+                OpenWrt 上固定为 /var/log/esurfing/logs, 这里填了也不生效)</span>
             </fieldset>
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Web 服务端口</legend>
