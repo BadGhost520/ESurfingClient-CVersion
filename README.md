@@ -48,6 +48,9 @@
 
 # 目前支持的系统和架构
 
+> [!NOTE]
+> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](doc/OpenWRT_targets.md)
+
 ### 主程序插件包
 
 |  系统   |             架构              |    包管理器    |     理论最低支持版本      |        推荐版本         |
@@ -64,9 +67,6 @@
 |  系统   |             架构              | 包管理器 |     理论最低支持版本      |        推荐版本         |
 |:-------:|:-----------------------------:|:--------:|:-------------------------:|:-----------------------:|
 | OpenWRT | [All](doc/OpenWRT_targets.md) | opkg/apk | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
-
-> [!NOTE]
-> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](doc/OpenWRT_targets.md)
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
@@ -93,16 +93,7 @@
 
 ## 关于日志系统
 
-### 在 Windows 系统中
-
-- 程序运行后, 会在程序的运行目录下新建 logs 文件夹
-- 程序运行时, logs 目录下会生成实时更新的 run.log 日志文件
-- 程序退出时, run.log 日志文件会被重命名为 <时间>.log (比如 19700101-114514.log)
-- 日志行数超过 1000 行会进行轮转操作
-
-### 在类 Unix 系统中
-
-- 程序运行后, 会新建 /var/log/esurfing/logs 目录
+- 可控制日志存放路径, OpenWRT 系统默认在 /var/log/esurfing 新建 logs 目录, 非 OpenWRT 系统默认在程序目录新建 logs 目录
 - 程序运行时, logs 目录下会生成实时更新的 run.log 日志文件
 - 程序退出时, run.log 日志文件会被重命名为 <时间>.log (比如 19700101-114514.log)
 - 日志行数超过 1000 行会进行轮转操作
@@ -111,23 +102,23 @@
 
 ### 群号: 791455104 [[点此加入]](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=yTA84KiemCppMD5Y2CDepUsnVRo59dOS&authKey=CH%2Bb2yFiTVPqLOjdwrEGXGVvmhWTURTFX8yM5eRA7ipWh5fOKAIpJRqCKDIWZT7V&noverify=0&group_code=791455104)
 
-# 赞助 👍
+## 赞助 👍
 
 觉得好的话可以点击这个[神秘小链接](https://ifdian.net/a/badghost)或者下边的微信赞赏码给偶打点钱喵, 谢谢泥喵~
 
 <img alt="Please refresh" height="256" src="image/4.png" width="256"/>
 
-# 赞助者 ❤
+### 赞助者 ❤
 
 **感谢下面的赞助者支持👍**
 
-### 爱发电
+#### 爱发电
 
 <img alt="Please refresh" src="image/fund/aifadian/1.png"/>
 <img alt="Please refresh" src="image/fund/aifadian/2.png"/>
 <img alt="Please refresh" src="image/fund/aifadian/3.png"/>
 
-### 微信
+#### 微信
 
 <img alt="Please refresh" height="256" src="image/fund/wechat/1.jpg" width="256"/>
 <img alt="Please refresh" height="256" src="image/fund/wechat/2.jpg" width="256"/>
