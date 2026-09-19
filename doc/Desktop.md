@@ -44,6 +44,8 @@ sudo ./ESurfingClient-*-darwin-*
 > [!NOTE]
 > 首次运行会在程序所在目录生成 ESurfingClient.json 配置文件和 logs 日志目录
 > 
+> 日志默认就放在这个 logs 目录里 (`logs/run.log`), 想换地方就改配置里的 `log_dir`
+> 
 > 注意是"程序所在目录", 而不是执行命令时所在的目录
 > 
 > 比如在 `C:\Users\bad_g` 下执行 `D:\Tools\ESurfingClient.exe`, 配置文件会生成在 `D:\Tools` 里面, 可以用 pwd 指令查看当前目录来对比
@@ -57,7 +59,9 @@ sudo ./ESurfingClient-*-darwin-*
 > 
 > 网页文件在程序旁边的 portal 目录里, 别把它删了或者单独把主程序挪走
 > 
-> 默认只监听本机, 局域网里的其它设备访问不了; 确实需要的话加参数 `--web-listen 0.0.0.0:8888` (接口没有鉴权, 谨慎使用)
+> 默认只监听本机, 局域网里的其它设备访问不了; 确实需要的话在配置文件的 `web_external_acc` 里开启 (接口没有鉴权, 谨慎使用)
+> 
+> 端口在配置文件的 `web_port` 里改, 默认 8888; 端口与外部访问开关都是启动时绑上去的, 改完要重启程序 (或重启服务) 才生效
 
 ## 三、各个系统的执行方式 (以自启服务的形式运行)
 
@@ -116,9 +120,12 @@ sudo ./ESurfingClient-*-darwin-* -h
 ```json
 {
   "enabled": true,
+  "web_external_acc": false,
   "log_lv": 4,
+  "log_dir": "./",
   "conn_timeout": 7,
   "op_timeout": 10,
+  "web_port": 8888,
   "accounts": [
     {
       "username": "在这填账号",
@@ -132,6 +139,8 @@ sudo ./ESurfingClient-*-darwin-* -h
 
 > [!NOTE]
 > 别忘了改 `enabled` 参数
+> 
+> `log_dir` / `web_port` / `web_external_acc` 都有默认值, 不改也能用, 详见 `附 1`
 
 ## 五、重启程序 / 服务
 
@@ -177,12 +186,20 @@ sudo launchctl list | grep main
 ## 附 1: JSON 参数详解
 
 - enabled(布尔值): 程序是否启动
+- web_external_acc(布尔值): 网页服务是否允许外部访问, 默认 `false` (只监听 127.0.0.1); 改成 `true` 会监听 0.0.0.0, 局域网里的设备也能打开, 但接口没有鉴权、还会返回明文账号密码, 谨慎开启
 - log_lv(整形值, 有效范围 0-6): 日志等级, 等级越高日志显示内容越多, 数值为 0 时不输出任何日志
+- log_dir(字符串值): 日志的【基目录】, 日志放在它下面的 `logs` 里; 默认 `"./"` 即程序所在目录 (也就是日志在 `<程序目录>/logs` 下); 相对路径按程序所在目录解析, 也可以填绝对路径
 - conn_timeout(整形值): 自定义 CURL 连接超时时长
 - op_timeout(整形值): 自定义 CURL 总操作超时时长
+- web_port(整形值, 有效范围 1-65535): 网页服务的端口, 默认 8888
 - accounts(数组): 账号数组
 - username(字符串值): 账号
 - password(字符串值): 密码
 - channel(整形值, 有效范围 1-5): 认证通道
 - mark(字符串值): 标记值 (高级功能)
 - time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
+
+> [!NOTE]
+> 改完配置文件要重启程序 (或重启服务) 才会生效; 网页界面上的设置页也能改上面这些参数, 改完点"保存"写进配置, 账号之类的点"保存并应用"即可
+> 
+> `web_port` 与 `web_external_acc` 是启动时绑上去的, 只能重启生效

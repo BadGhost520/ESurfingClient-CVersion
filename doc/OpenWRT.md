@@ -32,9 +32,12 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 ```json
 {
   "enabled": true,
+  "web_external_acc": false,
   "log_lv": 4,
+  "log_dir": "./",
   "conn_timeout": 7,
   "op_timeout":   10,
+  "web_port": 8888,
   "accounts": [
     {
       "username": "账号",
@@ -46,6 +49,10 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
   ]
 }
 ```
+
+> [!NOTE]
+> `web_external_acc` / `log_dir` / `web_port` 是桌面端的参数, OpenWrt 上不生效
+> (那边日志固定写在 `/var/log/esurfing/logs`, 也没有网页服务), 留着只是为了两个平台共用同一套配置格式, 详见 `附 1`
 
 ### 2. 保存, 输入如下指令重启服务
 
@@ -87,9 +94,20 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 - mark(字符串值): 标记值 (高级功能)
 - time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
 
+> [!NOTE]
+> 下面三个是桌面端 (Windows / Linux / macOS) 的参数, OpenWrt 上写了也不生效, 可以不管它们:
+> 
+> - web_external_acc(布尔值): 网页服务是否允许外部访问 (OpenWrt 版本不带网页服务)
+> - log_dir(字符串值): 日志的基目录, 日志放在它下面的 `logs` 里; OpenWrt 上固定为 `/var/log/esurfing`
+> - web_port(整形值): 网页服务端口 (同上, OpenWrt 版本不带网页服务)
+> 
+> 之所以保留在配置里, 是因为两个平台共用同一套配置格式, 配置文件直接搬过去也不会缺字段
+
 ## 附 2: 日志与归档文件
 
 > [!NOTE]
+> 程序在 OpenWrt 上把日志写在 `/var/log/esurfing/logs` 里 (配置里的 `log_dir` 在这里不生效)
+> 
 > 每次启动服务时, 上一轮的 run.log 会被归档成 `<时间戳>.log` 放在同一个目录里
 > 
 > 所以 `/var/log/esurfing/logs` 下的文件会随着重启变多, 这是正常的, LuCI 的日志页面可以切换查看
