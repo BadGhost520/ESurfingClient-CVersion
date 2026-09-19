@@ -40,11 +40,22 @@ return view.extend({
 
         self.logs = self.logs || [];
 
+        /**
+         * 默认配置
+         *
+         * log_dir / web_port / web_external_acc 是桌面端的参数:
+         * OpenWrt 上日志目录写死 /var/log/esurfing/logs, 也没有 Web 服务,
+         * 因此界面上不提供这三项, 但字段仍然留着 —— 配置文件在两个平台之间
+         * 是同一套格式, 复位时写出去的也得是完整的一套
+         */
         self.config = self.config || {
             enabled: false,
+            web_external_acc: false,
             log_lv: 0,
+            log_dir: './',
             conn_timeout: 3,
             op_timeout: 5,
+            web_port: 8888,
             accounts: []
         };
         
@@ -163,7 +174,8 @@ return view.extend({
                     E('button', {
                         class: 'cbi-button cbi-button-action',
                         click: function() { self.downloadLog(); }
-                    }, '下载')
+                    }, '下载'),
+                    E('div', { class: 'cbi-value-description' }, '日志目录在 OpenWrt 上固定为 /var/log/esurfing/logs (配置文件里的 log_dir 只对桌面端有效)')
                 ])
             ]),
 
@@ -243,9 +255,12 @@ return view.extend({
             .catch(function() {
                 self.config = {
                     enabled: false,
+                    web_external_acc: false,
                     log_lv: 0,
+                    log_dir: './',
                     conn_timeout: 3,
                     op_timeout: 5,
+                    web_port: 8888,
                     accounts: [
                         {
                             username: '加载失败',
@@ -779,9 +794,12 @@ return view.extend({
                     self.showNotification('重置配置中', 'info');
                     self.config = {
                         enabled: false,
+                        web_external_acc: false,
                         log_lv: 4,
+                        log_dir: './',
                         conn_timeout: 3,
                         op_timeout: 5,
+                        web_port: 8888,
                         accounts: [
                             {
                                 username: '',

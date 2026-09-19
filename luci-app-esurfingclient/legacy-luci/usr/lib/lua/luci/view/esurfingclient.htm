@@ -63,7 +63,9 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
     return
 end
 
-local config_json = '{"enabled":false,"log_lv":4,"conn_timeout":3,"op_timeout":5,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
+-- 默认配置 (与程序的 s_default_cfg 保持同一套字段; log_dir / web_port / web_external_acc
+-- 是桌面端的参数, OpenWrt 上日志目录写死 /var/log/esurfing/logs 且没有 Web 服务, 这边不生效)
+local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"./","conn_timeout":3,"op_timeout":5,"web_port":8888,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
 local file = io.open("/etc/config/esurfingclient", "r")
 if file then
     local content = file:read("*a")
