@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include <errno.h>
 
 #ifdef _WIN32
@@ -22,6 +23,34 @@
 
 static const char s_file_name[] = "run.log";
 static const char s_rotate_file_name[] = ".rotate.log";
+
+/**
+ * @brief 配置文件里没写 log_dir 时用的默认值
+ *
+ * 与 config/ESurfingClient.json 里的一致: 日志就放在程序所在目录
+ */
+#define DEFAULT_LOG_DIR "./"
+
+#ifdef __OPENWRT__
+/**
+ * @brief OpenWrt 上写死的日志目录
+ *
+ * OpenWrt 分支不看配置里的 log_dir: /var/log 是 tmpfs (重启即清, 也不磨损闪存),
+ * 而 /usr 是只读的 squashfs, 小容量设备写别处还容易把空间占满。
+ *
+ * ⚠️ init.d/esurfingclient.init 里的 LOG_DIR 与 LuCI 的日志页都按这个路径找日志,
+ *    改这里必须同时改那两处, 否则界面上会看不到日志
+ */
+static const char s_fixed_dir[] = "/var/log/esurfing";
+#endif
+
+/**
+ * @brief 配置文件里写的日志目录 (空字符串表示没写, 用默认值)
+ *
+ * 只存配置里的原样文本: 它是给页面回显用的, 不能拿解析后的绝对路径去回显,
+ * 否则用户改一次配置就会被写成一长串绝对路径
+ */
+static char s_cfg_log_dir[PATH_MAX] = "";
 
 /* ------------------------------------------------------------------
  * 进程内互斥
@@ -158,13 +187,14 @@ static bool get_file_id(const char* path, uint64_t* dev, uint64_t* ino)
 }
 
 /**
- * @brief 打开日志文件并记录它的身份
- * @return 是否打开成功
+ * @brief 以追加方式打开一个日志文件
+ * @param path 文件路径
+ * @return 文件句柄 (失败返回 NULL)
  */
-static bool open_log_file()
+static FILE* open_log_handle(const char* path)
 {
-    s_logger_cfg.file_handle = fopen(s_logger_cfg.log_file, "a");
-    if (s_logger_cfg.file_handle == NULL) return false;
+    FILE* handle = fopen(path, "a");
+    if (handle == NULL) return NULL;
 
 #ifndef _WIN32
     /**
@@ -173,12 +203,24 @@ static bool open_log_file()
      * 不关掉的话子进程会一直白占着一个 fd
      * (Windows 侧用 CreateProcess 且不继承句柄, 无需处理)
      */
-    const int fd = fileno(s_logger_cfg.file_handle);
+    const int fd = fileno(handle);
     if (fd >= 0)
     {
         fcntl(fd, F_SETFD, FD_CLOEXEC);
     }
 #endif
+
+    return handle;
+}
+
+/**
+ * @brief 打开日志文件并记录它的身份
+ * @return 是否打开成功
+ */
+static bool open_log_file()
+{
+    s_logger_cfg.file_handle = open_log_handle(s_logger_cfg.log_file);
+    if (s_logger_cfg.file_handle == NULL) return false;
 
     s_logger_cfg.cur_lines = 0;
     s_logger_cfg.lines_since_check = 0;
@@ -299,32 +341,193 @@ static void rotate()
     }
 }
 
-static bool get_log_dir(char* out)
+/**
+ * @brief 检查路径是不是一个目录
+ * @param path 路径
+ * @return 是否是目录
+ */
+static bool is_dir(const char* path)
 {
 #ifdef _WIN32
-    char dir[PATH_MAX];
-    if (get_exec_dir(dir) == false) return false;
-    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", safe_str(dir), SEP);
-    if ((size_t)len >= PATH_MAX) return false;
-    if (!CreateDirectoryA(out, NULL))
-    {
-        const DWORD err = GetLastError();
-        if (err != ERROR_ALREADY_EXISTS) return false;
-    }
+    const DWORD attr = GetFileAttributesA(path);
+    return attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY) != 0;
 #else
-    const char dir[] = "/var/log/esurfing";
-    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", dir, SEP);
-    if ((size_t)len >= PATH_MAX) return false;
     struct stat st;
-    if (stat(out, &st) != 0)
-    {
-        if (mkdir("/var", 0755) != 0 && errno != EEXIST) return false;
-        if (mkdir("/var/log", 0755) != 0 && errno != EEXIST) return false;
-        if (mkdir(dir, 0755) != 0 && errno != EEXIST) return false;
-        if (mkdir(out, 0755) != 0 && errno != EEXIST) return false;
-    }
-    else if (!S_ISDIR(st.st_mode)) return false;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode) != 0;
 #endif
+}
+
+/**
+ * @brief 逐级创建目录 (Posix 的 mkdir -p / Windows 的逐级 CreateDirectory)
+ *
+ * 配置里的日志目录可能有好几层都还不存在 (例如 /tmp/esurfing/logs/old),
+ * 而 mkdir 只肯建最后一级, 所以这里自己逐级往下建
+ * @param path 目录路径
+ * @return 目录是否可用
+ */
+static bool make_dirs(const char* path)
+{
+    char buf[PATH_MAX];
+    const int len = snprintf(buf, sizeof(buf), "%s", path);
+    if (len <= 0 || (size_t)len >= sizeof(buf)) return false;
+
+#ifdef _WIN32
+    // 配置里可能写成 D:/esurfing/logs 这种混合分隔符, 先统一成 Windows 形式
+    for (char* p = buf; *p != '\0'; p++)
+    {
+        if (*p == '/') *p = SEP;
+    }
+
+    char* p = buf;
+    if (isalpha((unsigned char)p[0]) != 0 && p[1] == ':') p += 2; // 跳过盘符
+    for (; *p != '\0'; p++)
+    {
+        if (*p != SEP) continue;
+        *p = '\0';
+        if (!CreateDirectoryA(buf, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) return false;
+        *p = SEP;
+    }
+    if (!CreateDirectoryA(buf, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) return false;
+#else
+    for (char* p = buf + 1; *p != '\0'; p++)
+    {
+        if (*p != SEP) continue;
+        *p = '\0';
+        if (mkdir(buf, 0755) != 0 && errno != EEXIST) return false;
+        *p = SEP;
+    }
+    if (mkdir(buf, 0755) != 0 && errno != EEXIST) return false;
+#endif
+
+    /**
+     * 上面每一级都是"存在就跳过" (EEXIST / ERROR_ALREADY_EXISTS),
+     * 而路径上摆着一个同名【文件】时同样会走到这里, 所以最后再确认一次是不是目录
+     */
+    return is_dir(buf);
+}
+
+#ifndef __OPENWRT__
+
+/**
+ * @brief 是否是绝对路径
+ * @param path 路径
+ * @return 是否绝对路径
+ */
+static bool is_abs_path(const char* path)
+{
+    if (path == NULL || path[0] == '\0') return false;
+#ifdef _WIN32
+    if (path[0] == '/' || path[0] == '\\') return true;
+    // 盘符形式 (D:\ 或 D:/)
+    return isalpha((unsigned char)path[0]) != 0 && path[1] == ':';
+#else
+    return path[0] == '/';
+#endif
+}
+
+/**
+ * @brief 路径是否存在 (文件或目录都算)
+ * @param path 路径
+ * @return 是否存在
+ */
+static bool path_exists(const char* path)
+{
+#ifdef _WIN32
+    return GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
+#else
+    struct stat st;
+    return stat(path, &st) == 0;
+#endif
+}
+
+/**
+ * @brief 去掉路径结尾多余的分隔符
+ * @param path 路径 (原地修改)
+ */
+static void strip_tail_sep(char* path)
+{
+    size_t len = strlen(path);
+    while (len > 1 && (path[len - 1] == '/' || path[len - 1] == '\\'))
+    {
+#ifdef _WIN32
+        // Windows 的 "D:\" 不能剥, 剥了就剩 "D:" (那表示"当前目录", 不是根)
+        if (len == 3 && path[1] == ':') break;
+#endif
+        path[--len] = '\0';
+    }
+}
+
+/**
+ * @brief 把配置里的日志目录解析成绝对路径
+ *
+ * 相对路径按【程序所在目录】解析, 不能按当前工作目录: 桌面端把程序放进
+ * /usr/local/bin 或注册成服务时, 工作目录是 / 或 System32, 按工作目录解析
+ * 会把日志写到一个谁也想不到的地方 —— 配置文件与网页文件都是按程序目录找的,
+ * 日志也该如此
+ * @param cfg_dir 配置里的取值 (空字符串 / "." / "./" 都表示用默认值)
+ * @param out 输出缓冲 (至少 PATH_MAX 字节)
+ * @return 是否解析成功
+ */
+static bool resolve_log_dir(const char* cfg_dir, char* out)
+{
+    char exec_dir[PATH_MAX];
+    if (get_exec_dir(exec_dir) == false) return false;
+
+    if (cfg_dir == NULL || cfg_dir[0] == '\0' || strcmp(cfg_dir, ".") == 0)
+    {
+        return snprintf(out, PATH_MAX, "%s", exec_dir) < PATH_MAX;
+    }
+
+    if (is_abs_path(cfg_dir))
+    {
+        if (snprintf(out, PATH_MAX, "%s", cfg_dir) >= PATH_MAX) return false;
+        strip_tail_sep(out);
+        return true;
+    }
+
+    // 相对路径: 先去掉开头的 "./", 免得拼出 "/./" 这种路径
+    const char* rel = cfg_dir;
+    while (rel[0] == '.' && (rel[1] == '/' || rel[1] == '\\')) rel += 2;
+    while (rel[0] == '/' || rel[0] == '\\') rel++;
+
+    if (rel[0] == '\0')
+    {
+        return snprintf(out, PATH_MAX, "%s", exec_dir) < PATH_MAX;
+    }
+
+    const int len = snprintf(out, PATH_MAX, "%s%c%s", exec_dir, SEP, rel);
+    if (len <= 0 || (size_t)len >= PATH_MAX) return false;
+    strip_tail_sep(out);
+    return true;
+}
+
+#endif // !__OPENWRT__
+
+/**
+ * @brief 取实际使用的日志目录 (目录不存在时会建出来)
+ * @param out 输出缓冲 (至少 PATH_MAX 字节)
+ * @return 目录是否可用
+ */
+static bool get_log_dir(char* out)
+{
+#ifdef __OPENWRT__
+    const uint16_t len = snprintf(out, PATH_MAX, "%s%clogs", s_fixed_dir, SEP);
+    if ((size_t)len >= PATH_MAX) return false;
+#else
+    char dir[PATH_MAX];
+    if (resolve_log_dir(s_cfg_log_dir, dir) == false)
+    {
+        fprintf(stderr, "[ERROR] 无法解析日志目录: %s\n", safe_str(s_cfg_log_dir));
+        return false;
+    }
+    if (snprintf(out, PATH_MAX, "%s", dir) >= PATH_MAX) return false;
+#endif
+
+    if (make_dirs(out) == false)
+    {
+        fprintf(stderr, "[ERROR] 无法创建日志目录 %s\n", out);
+        return false;
+    }
     return true;
 }
 
@@ -487,11 +690,6 @@ void log_raw_line(const char* text)
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
 {
     if (level > s_logger_cfg.lv) return;
-    if (!s_logger_cfg.file_handle)
-    {
-        fprintf(stderr, "[ERROR] 日志系统未打开, 无法输出日志\n");
-        return;
-    }
     va_list local_args;
     char ts[32];
     char msg[2048];
@@ -524,8 +722,18 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
      * 从这里到 rotate() 结束必须串行: 句柄的判空、取 fd、写、计数、轮转里的
      * fclose 都动同一份内存状态, 两个线程交叉就会 use-after-free (见上面互斥的说明)。
      * 格式化那一段放在锁外, 尽量缩短持锁时间。
+     *
+     * 判空也放在锁里: set_logger_dir() 换日志目录时会在持锁期间把句柄换掉
+     * ("关旧的 -> 搬文件 -> 开新的" 没法拆开做), 在锁外判空会恰好撞上那一小段,
+     * 把正常的一行日志误报成"日志系统未打开"
      */
     logger_lock();
+    if (!s_logger_cfg.file_handle)
+    {
+        logger_unlock();
+        fprintf(stderr, "[ERROR] 日志系统未打开, 无法输出日志\n");
+        return;
+    }
     write_2_file(final_msg, final_size);
     s_logger_cfg.cur_lines++;
     s_logger_cfg.lines_since_check++;
@@ -545,6 +753,112 @@ void set_logger_level(const LogLevel lv)
         s_logger_cfg.lv = lv;
         LOG_INFO("设置日志等级为 [%s]", get_level_str(lv));
     }
+}
+
+bool set_logger_dir(const char* dir)
+{
+    // 配置里没写就是默认目录, 什么都不用做
+    if (dir == NULL || dir[0] == '\0') return false;
+
+#ifdef __OPENWRT__
+
+    /**
+     * OpenWrt 上日志目录是写死的 (见 s_fixed_dir), 配置里写了也不生效。
+     * 说一句免得用户以为是程序没读配置, 但只到 DEBUG: 那边的配置本来就可能是
+     * 从桌面端抄过去的, 每次都 WARN 会把日志刷满
+     */
+    LOG_DEBUG("OpenWrt 下日志目录固定为 %s%clogs, 忽略配置里的 %s", s_fixed_dir, SEP, safe_str(dir));
+    return false;
+
+#else
+
+    if (strlen(dir) >= PATH_MAX)
+    {
+        LOG_WARN("log_dir 过长 (最多 %d 个字符), 使用默认日志目录 (%s)", PATH_MAX - 1, DEFAULT_LOG_DIR);
+        return false;
+    }
+
+    if (strcmp(dir, s_cfg_log_dir) == 0) return true;
+
+    char new_dir[PATH_MAX];
+    char new_file[PATH_MAX];
+    if (resolve_log_dir(dir, new_dir) == false || make_dirs(new_dir) == false)
+    {
+        LOG_WARN("log_dir (%s) 不可用, 使用默认日志目录 (%s)", safe_str(dir), DEFAULT_LOG_DIR);
+        return false;
+    }
+    const int len = snprintf(new_file, sizeof(new_file), "%s%c%s", new_dir, SEP, s_file_name);
+    if (len <= 0 || (size_t)len >= sizeof(new_file))
+    {
+        LOG_WARN("日志文件路径太长 (最大 %zu), 使用默认日志目录 (%s)", sizeof(new_file) - 1, DEFAULT_LOG_DIR);
+        return false;
+    }
+
+    /**
+     * 换目录这一段必须整体在锁里
+     *
+     * 中间有一小会儿 file_handle 是空的 (要先关掉旧文件才能改名, Windows 上
+     * 更不能重命名一个还开着的文件)。不加锁的话别的线程正好在这一刻写日志,
+     * 就会拿到"日志系统未打开"并丢掉那一行。持锁之后那些写日志的线程只是等
+     * 一小会儿, 醒来看到的已经是新目录的句柄了
+     */
+    logger_lock();
+
+    char old_dir[PATH_MAX];
+    char old_file[PATH_MAX];
+    snprintf(old_dir, sizeof(old_dir), "%s", s_logger_cfg.log_dir);
+    snprintf(old_file, sizeof(old_file), "%s", s_logger_cfg.log_file);
+
+    if (s_logger_cfg.file_handle != NULL)
+    {
+        fclose(s_logger_cfg.file_handle);
+        s_logger_cfg.file_handle = NULL;
+    }
+
+    /**
+     * 把已经写下的那几行一起搬过去
+     *
+     * 日志目录要等配置加载完才知道, 而配置加载之前就开始写日志了 (配置读错了
+     * 更得有日志), 不搬的话启动那几行会留在默认目录里: 收尾改名只认当前这一份,
+     * 那个文件就永远留在那儿了。
+     *
+     * 只在目标还不存在时才搬 —— rename 会覆盖同名文件, 而多进程下所有进程
+     * 共写同一份 run.log, 覆盖就等于把别的进程的日志丢掉。
+     * 搬不动也无所谓 (跨文件系统时 rename 会失败), 顶多启动那几行留在原地
+     */
+    const bool old_file_exists = (strlen(s_logger_cfg.log_file) > 0) && path_exists(s_logger_cfg.log_file);
+    if (old_file_exists && path_exists(new_file) == false && strcmp(s_logger_cfg.log_file, new_file) != 0)
+    {
+        rename(s_logger_cfg.log_file, new_file);
+    }
+
+    snprintf(s_logger_cfg.log_dir, sizeof(s_logger_cfg.log_dir), "%s", new_dir);
+    snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s", new_file);
+
+    if (open_log_file() == false)
+    {
+        /**
+         * 新目录打不开 (权限 / 磁盘满): 退回原来的目录继续写。
+         * 上面的 rename 可能已经把旧文件搬走了, 那样这里会新建一个同名文件,
+         * 已经写下的内容仍在搬走的那份里, 不会丢
+         */
+        snprintf(s_logger_cfg.log_dir, sizeof(s_logger_cfg.log_dir), "%s", old_dir);
+        snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s", old_file);
+        open_log_file();
+
+        logger_unlock();
+        LOG_WARN("无法打开日志文件 %s, 继续使用 %s", new_file, old_dir);
+        return false;
+    }
+
+    logger_unlock();
+
+    snprintf(s_cfg_log_dir, sizeof(s_cfg_log_dir), "%s", dir);
+
+    LOG_INFO("日志目录已改为 %s", new_dir);
+    return true;
+
+#endif // __OPENWRT__
 }
 
 bool init_logger()
@@ -625,6 +939,12 @@ void clean_logger()
 const char* get_logger_dir(void)
 {
     return safe_str(s_logger_cfg.log_dir);
+}
+
+const char* get_logger_dir_cfg(void)
+{
+    // 配置里没写时回默认值, 页面上的输入框才不会空着
+    return (s_cfg_log_dir[0] != '\0') ? s_cfg_log_dir : DEFAULT_LOG_DIR;
 }
 
 void set_logger_console(const bool enabled)

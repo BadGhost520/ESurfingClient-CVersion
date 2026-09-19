@@ -52,9 +52,12 @@ typedef struct
 
 static const char s_default_cfg[] = "{\n"
                                     "   \"enabled\": false,\n"
+                                    "   \"web_external_acc\": false,\n"
                                     "   \"log_lv\": 4,\n"
+                                    "   \"log_dir\": \"./\",\n"
                                     "   \"conn_timeout\": 7,\n"
                                     "   \"op_timeout\": 10,\n"
+                                    "   \"web_port\": 8888,\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
@@ -987,6 +990,30 @@ bool load_cfg()
     else
     {
         LOG_WARN("log_lv 参数不存在, 使用默认参数 (INFO)");
+    }
+
+    /**
+     * 日志目录
+     *
+     * 必须在这里才能定下来: 日志系统是先起来再读配置的 (配置读错了更要有日志),
+     * set_logger_dir 会把已经写下的那几行一起搬到新目录去。
+     * OpenWrt 上目录是写死的, 那边不看这个参数 (只到 DEBUG, 免得刷日志)。
+     */
+    const cJSON* log_dir = cJSON_GetObjectItem(cfg_json, "log_dir");
+    if (log_dir)
+    {
+        if (cJSON_IsString(log_dir) && log_dir->valuestring != NULL)
+        {
+            set_logger_dir(log_dir->valuestring);
+        }
+        else
+        {
+            LOG_WARN("log_dir 参数不正确, 使用默认日志目录 (%s)", get_logger_dir_cfg());
+        }
+    }
+    else
+    {
+        LOG_DEBUG("log_dir 参数不存在, 使用默认日志目录 (%s)", get_logger_dir_cfg());
     }
 
     const cJSON* conn_timeout = cJSON_GetObjectItem(cfg_json, "conn_timeout");

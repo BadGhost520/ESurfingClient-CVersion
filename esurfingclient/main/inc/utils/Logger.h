@@ -94,6 +94,19 @@ LogLevel get_logger_level();
 void set_logger_level(LogLevel lv);
 
 /**
+ * @brief 按配置文件里的 log_dir 设置日志目录
+ *
+ * 只能在 init_logger() 之后调用: 日志系统要先能用起来, 否则配置读错了连日志都没有。
+ * 因此这里不只是记下目录, 还得把已经打开的那份日志搬过去 —— 启动的那几行是在
+ * 配置加载之前写下的, 留在默认目录里就没人收尾了 (见实现里的说明)。
+ *
+ * 相对路径按【程序所在目录】解析; OpenWrt 上日志目录写死, 本函数不生效。
+ * @param dir 配置里的目录 (空字符串表示保持默认目录)
+ * @return 是否设置成功 (失败时仍旧使用默认目录)
+ */
+bool set_logger_dir(const char* dir);
+
+/**
  * @brief 初始化日志系统
  * @return 初始化状态
  */
@@ -105,10 +118,19 @@ bool init_logger();
 void clean_logger();
 
 /**
- * @brief 获取日志目录 (未初始化时返回空字符串)
+ * @brief 获取实际使用的日志目录 (未初始化时返回空字符串)
  * @return 日志目录
  */
 const char* get_logger_dir(void);
+
+/**
+ * @brief 获取配置文件里写的日志目录
+ *
+ * 与 get_logger_dir() 的区别: 这个返回的是配置里的原文 (没写时回默认值 "./"),
+ * 给页面回显与写回配置用; 那个返回的是解析后的绝对路径, 给查看日志用
+ * @return 配置里的日志目录
+ */
+const char* get_logger_dir_cfg(void);
 
 /**
  * @brief 设置是否同时把日志输出到控制台
