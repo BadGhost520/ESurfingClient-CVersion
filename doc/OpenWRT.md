@@ -51,8 +51,11 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 ```
 
 > [!NOTE]
-> `web_external_acc` / `log_dir` / `web_port` 是桌面端的参数, OpenWrt 上不生效
-> (那边日志固定写在 `/var/log/esurfing/logs`, 也没有网页服务), 留着只是为了两个平台共用同一套配置格式, 详见 `附 1`
+> `web_external_acc` / `web_port` 是桌面端的参数, OpenWrt 上不生效
+> (那边没有网页服务), 留着只是为了两个平台共用同一套配置格式, 详见 `附 1`
+> 
+> `log_dir` 在 OpenWrt 上同样生效: 它是日志的【基目录】, 日志放在它下面的 `logs` 里,
+> 不写时默认就是 `/var/log/esurfing` (也就是日志在 `/var/log/esurfing/logs` 下)
 
 ### 2. 保存, 输入如下指令重启服务
 
@@ -95,13 +98,25 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 - time_windows(字符串值): 时间控制, 可选, 数组; 每项格式 `{ "start": "mon 08:13", "end": "mon 23:57" }`, 支持跨天/跨周, 留空表示不限; 按系统本地时间判断
 
 > [!NOTE]
-> 下面三个是桌面端 (Windows / Linux / macOS) 的参数, OpenWrt 上写了也不生效, 可以不管它们:
+> 下面这些是桌面端 (Windows / Linux / macOS) 的参数, OpenWrt 上写了也不生效, 可以不管它们:
 > 
 > - web_external_acc(布尔值): 网页服务是否允许外部访问 (OpenWrt 版本不带网页服务)
-> - log_dir(字符串值): 日志的基目录, 日志放在它下面的 `logs` 里; OpenWrt 上固定为 `/var/log/esurfing`
-> - web_port(整形值): 网页服务端口 (同上, OpenWrt 版本不带网页服务)
+> - web_port(整形值): 网页服务端口 (同上)
 > 
 > 之所以保留在配置里, 是因为两个平台共用同一套配置格式, 配置文件直接搬过去也不会缺字段
+
+> [!NOTE]
+> `log_dir` 在 OpenWrt 上【同样生效】:
+> 
+> - 它是日志的**基目录**, 日志放在它下面的 `logs` 里
+> - 不写 (或者写 `"."` / `"./"`) 时用默认值 `/var/log/esurfing`, 也就是日志在 `/var/log/esurfing/logs` 下
+> - 相对路径按 `/var/log/esurfing` 解析 (程序装在只读的 `/usr/bin` 里, 不按程序目录)
+> - 想换地方就填绝对路径, 比如 `/tmp/esurfing` (日志在 `/tmp/esurfing/logs`) 或者 U 盘上的目录
+> 
+> ⚠️ 默认的 `/var/log` 是 tmpfs: 重启就清空, 也不磨损闪存, 小容量设备不会被日志占满。
+> 改到闪存上的目录之前请想清楚容量与写次数。
+> 
+> 改完之后 init 脚本的日志归档与 LuCI 的日志页面都会自动跟着新目录走 (它们都是问程序要的路径)
 
 > [!TIP]
 > 配置里漏写的参数不用怕: 程序每次读取配置时会检查一遍, 缺的按默认值补上并写回配置文件, 日志里也会说明补了什么
@@ -111,11 +126,21 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 ## 附 2: 日志与归档文件
 
 > [!NOTE]
-> 程序在 OpenWrt 上把日志写在 `/var/log/esurfing/logs` 里 (配置里的 `log_dir` 在这里不生效)
+> 程序在 OpenWrt 上把日志写在配置里 `log_dir` 指定的目录【下面的 logs 里】, 不写时是默认的
+> `/var/log/esurfing/logs`
 > 
 > 每次启动服务时, 上一轮的 run.log 会被归档成 `<时间戳>.log` 放在同一个目录里
 > 
-> 所以 `/var/log/esurfing/logs` 下的文件会随着重启变多, 这是正常的, LuCI 的日志页面可以切换查看
+> 所以那个目录下的文件会随着重启变多, 这是正常的, LuCI 的日志页面可以切换查看
+
+> [!TIP]
+> 想知道日志到底写在哪, 直接在终端问程序:
+> 
+> ```shell
+> /usr/bin/esurfingclient --print-log-dir
+> ```
+> 
+> 它会按配置算出实际使用的日志目录并打印出来 (init 脚本的归档用的也是这个)
 
 > [!NOTE]
 > 登录成功时程序会在 `/etc/config/` 下生成 `esurfingclient.<序号>.logout`
