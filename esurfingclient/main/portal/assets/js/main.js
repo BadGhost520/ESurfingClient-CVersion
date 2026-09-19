@@ -111,6 +111,15 @@ const DEFAULT_CONN_TIMEOUT = 3;
 /** 默认操作超时 (秒, 与后端 g_op_timeout 保持一致) */
 const DEFAULT_OP_TIMEOUT = 5;
 
+/** 默认 Web 服务端口 (与后端 States.h 的 DEFAULT_WEB_PORT 保持一致) */
+const DEFAULT_WEB_PORT = 8888;
+
+/** 默认日志目录 (与后端 Logger.c 的 DEFAULT_LOG_DIR 保持一致; "./" 即程序所在目录) */
+const DEFAULT_LOG_DIR = './';
+
+/** 日志目录的最大长度 (后端按 PATH_MAX 校验, 超了会退回默认目录) */
+const MAX_LOG_DIR_LEN = 255;
+
 /** 状态轮询间隔 (毫秒) */
 const STATUS_INTERVAL = 5000;
 
@@ -121,9 +130,12 @@ const LOG_INTERVAL = 5000;
 function defaultConfigs() {
     return {
         enabled: false,
+        web_external_acc: false,
         log_lv: 4,
+        log_dir: DEFAULT_LOG_DIR,
         conn_timeout: DEFAULT_CONN_TIMEOUT,
         op_timeout: DEFAULT_OP_TIMEOUT,
+        web_port: DEFAULT_WEB_PORT,
         accounts: [
             {
                 username: '',
@@ -178,6 +190,18 @@ function formatFileTime(seconds) {
     if (Number.isNaN(date.getTime()) || !Number(seconds)) return '未知时间';
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ` +
         `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+}
+
+/** 日志目录兜底: 空值回默认的 "./" */
+function normalizeLogDir(value) {
+    const dir = String(value === undefined || value === null ? '' : value).trim();
+    return dir === '' ? DEFAULT_LOG_DIR : dir;
+}
+
+/** Web 端口是否合法 (与后端解析 web_port 的区间一致) */
+function isValidWebPort(value) {
+    const port = Number(value);
+    return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
 
 // 说明: 状态指示灯的颜色由 index.html 中的 Alpine 绑定负责
@@ -581,11 +605,15 @@ document.addEventListener('alpine:init', () => {
             const account = (configs.accounts && configs.accounts[0]) || {};
             return {
                 enabled: !!configs.enabled,
+                // 开关与端口都要按类型写回: 后端解析 web_port 时认的是数字
+                web_external_acc: !!configs.web_external_acc,
                 // 下拉框取到的值是字符串, 这里必须转成数字, 否则后端会当成 0 (关闭日志)
                 log_lv: Number(configs.log_lv) || 0,
+                log_dir: normalizeLogDir(configs.log_dir),
                 // 数字输入框同样可能取到字符串或空值, 统一兜底成正整数秒
                 conn_timeout: normalizeTimeout(configs.conn_timeout, DEFAULT_CONN_TIMEOUT),
                 op_timeout: normalizeTimeout(configs.op_timeout, DEFAULT_OP_TIMEOUT),
+                web_port: Number(configs.web_port),
                 accounts: [
                     {
                         username: String(account.username || ''),
@@ -610,6 +638,18 @@ document.addEventListener('alpine:init', () => {
             } catch (error) {
                 return error.message;
             }
+            /**
+             * 端口与日志目录校验的是【页面上的原值】而不是 payload:
+             * buildPayload 会把非法端口一并写出去 (校验不通过时根本不保存),
+             * 拿兜底后的值去校验就等于永远合法, 用户填错了也没有提示
+             */
+            const configs = Alpine.store('main').configs || {};
+            if (!isValidWebPort(configs.web_port)) {
+                return `Web 服务端口应为 1 - 65535 的整数 (当前: ${configs.web_port})`;
+            }
+            if (normalizeLogDir(configs.log_dir).length > MAX_LOG_DIR_LEN) {
+                return `日志目录过长 (最多 ${MAX_LOG_DIR_LEN} 个字符)`;
+            }
             if (!account.username || !account.password) {
                 // 允许保存空账号 (复位后就是这样), 仅提示
                 return null;
@@ -621,6 +661,8 @@ document.addEventListener('alpine:init', () => {
             if (this.saving) return false;
             const notify = Alpine.store('notify');
             const payload = this.buildPayload();
+            // 记下保存前的端口与外部访问开关, 用来判断这次改动要不要重启才生效
+            const before = Alpine.store('main').configs || {};
 
             const invalid = this.validate(payload);
             if (invalid) {
@@ -634,6 +676,14 @@ document.addEventListener('alpine:init', () => {
                 if (code === 204) {
                     notify.success('配置已保存');
                     await Alpine.store('main').refreshConfigs();
+                    /**
+                     * 端口与外部访问开关是启动时绑上去的, 与账号/超时那些不一样 ——
+                     * 保存只改了配置文件, 监听地址要重启程序才会换 (页面现在连的还是旧地址)
+                     */
+                    if (before.web_port !== payload.web_port ||
+                        !!before.web_external_acc !== payload.web_external_acc) {
+                        notify.warning(`Web 端口与外部访问开关要重启程序才会生效, 当前仍在 ${location.host} 上`);
+                    }
                     if (!payload.accounts[0].username || !payload.accounts[0].password) {
                         notify.warning('账号或密码为空, 程序无法完成认证');
                     }
@@ -1084,12 +1134,20 @@ function normalizeConfigs(raw) {
     if (!raw || typeof raw !== 'object') return configs;
 
     configs.enabled = !!raw.enabled;
+    configs.web_external_acc = !!raw.web_external_acc;
+
     const level = Number(raw.log_lv);
     configs.log_lv = Number.isFinite(level) ? Math.min(Math.max(level, 0), 6) : 4;
+
+    // 日志目录: 后端给的是配置里的原文, 空值按默认的 "./" 显示
+    configs.log_dir = normalizeLogDir(raw.log_dir);
 
     // 后端可能返回缺失或非法的超时参数, 这里同样兜底, 避免输入框显示空值
     configs.conn_timeout = normalizeTimeout(raw.conn_timeout, DEFAULT_CONN_TIMEOUT);
     configs.op_timeout = normalizeTimeout(raw.op_timeout, DEFAULT_OP_TIMEOUT);
+
+    // 端口非法时先用默认值填上输入框; 真要保存时 validate 会拦下来
+    configs.web_port = isValidWebPort(raw.web_port) ? Number(raw.web_port) : DEFAULT_WEB_PORT;
 
     const accounts = Array.isArray(raw.accounts) ? raw.accounts : [];
     const account = accounts[0] || {};

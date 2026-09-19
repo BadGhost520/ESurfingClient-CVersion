@@ -333,6 +333,28 @@
                      x-model.number="$store.main.configs.op_timeout" />
               <span class="label">单次请求的总超时时长 (单位: 秒)</span>
             </fieldset>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">日志目录</legend>
+              <input type="text" class="input" placeholder="./"
+                     x-model="$store.main.configs.log_dir" />
+              <span class="label">日志文件 (run.log) 存放的目录; 相对路径按程序所在目录解析,
+                "./" 就是程序所在目录 (OpenWrt 上固定为 /var/log/esurfing/logs, 这里填了也不生效)</span>
+            </fieldset>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">Web 服务端口</legend>
+              <input type="number" class="input" min="1" max="65535" step="1"
+                     x-model.number="$store.main.configs.web_port" />
+              <span class="label">本面板监听的端口 (1 - 65535); 改完要重启程序才会生效,
+                之后请用新端口访问本页面</span>
+            </fieldset>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">允许外部访问</legend>
+              <input type="checkbox" class="checkbox"
+                     x-model="$store.main.configs.web_external_acc" />
+              <span class="label">关闭时只监听 127.0.0.1 (仅本机可访问); 改完要重启程序才会生效</span>
+              <span class="label text-warning">开启后局域网内任何设备都能打开本面板,
+                而接口没有鉴权且会返回明文账号密码, 请谨慎开启</span>
+            </fieldset>
           </div>
         </div>
       </div>
@@ -618,7 +640,8 @@
                target="_blank" rel="noopener">GitHub</a>
           </p>
           <p class="mt-2">使用提示: 修改配置后点击"保存"; 若修改了账号、密码、通道或启用状态,
-            需要点击"保存并应用"(或手动重启程序) 才会生效。</p>
+            需要点击"保存并应用"(或手动重启程序) 才会生效。日志目录、Web 端口与是否允许
+            外部访问需要重启程序 (或重启服务) 才会生效。</p>
         </div>
       </div>
       <div
