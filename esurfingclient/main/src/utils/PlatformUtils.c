@@ -1592,9 +1592,13 @@ bool load_cfg()
 int list_accounts()
 {
     /**
-     * stdout 要留给账号列表, 日志只写文件.
-     * 必须在 init_logger 之前设置: 初始化过程本身也会往控制台打日志
+     * stdout 要留给账号列表, 日志一行都不落盘 (全部改写到 stderr).
+     *
+     * 查询模式必须在 init_logger / load_cfg 之前打开: 这两个调用本身就会写日志,
+     * 而写进 run.log 的那几行会被 OpenWrt 的启动脚本当成上一轮运行留下的日志
+     * 归档走 (见 set_logger_query_mode 的说明)
      */
+    set_logger_query_mode(true);
     set_logger_console(false);
 
     if (init_logger() == false)
@@ -1613,7 +1617,7 @@ int list_accounts()
 
     if (loaded == false)
     {
-        // 配置有问题时 load_cfg 已经把原因写进日志了
+        // 配置有问题时 load_cfg 已经把原因写到 stderr 了
         return -1;
     }
 
@@ -1631,9 +1635,14 @@ int list_accounts()
 const char* print_log_dir()
 {
     /**
-     * stdout 要留给路径, 日志只写文件 (必须在 init_logger 之前设置,
-     * 初始化过程本身也会往控制台打日志)
+     * stdout 要留给路径, 日志一行都不落盘 (全部改写到 stderr).
+     *
+     * 查询模式必须在 init_logger / load_cfg 之前打开。
+     * 这个查询是 OpenWrt 启动脚本在归档上一轮日志【之前】调的, 而它自己会写三行:
+     * 没有旧日志时这三行让 run.log 从"不存在"变成"非空", 脚本于是凭空归档出一个
+     * 只有查询输出的 .log; 有旧日志时这三行会混进归档里 (见 set_logger_query_mode)
      */
+    set_logger_query_mode(true);
     set_logger_console(false);
 
     if (init_logger() == false)
@@ -1652,7 +1661,7 @@ const char* print_log_dir()
 
     if (loaded == false)
     {
-        // 配置有问题时 load_cfg 已经把原因写进日志了
+        // 配置有问题时 load_cfg 已经把原因写到 stderr 了
         return NULL;
     }
 

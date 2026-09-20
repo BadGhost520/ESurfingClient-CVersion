@@ -84,6 +84,25 @@ static log_cfg_t s_logger_cfg = {
 /** @brief 是否同时把日志输出到控制台 */
 static bool s_console_enabled = true;
 
+/**
+ * @brief 查询模式开关
+ *
+ * 打开之后日志一行都不落盘, 全部改写到 stderr。
+ * 给 --print-log-dir / --list-accounts 这类"只查询, 查完就退"的模式用:
+ * 它们必须调 load_cfg() 才知道答案, 而解析配置的过程一定会写几行日志 ——
+ * 那几行落进 run.log 之后, OpenWrt 的 init 脚本会把这份文件当成上一轮运行
+ * 留下的日志归档走 (它的判断就是"run.log 非空就归档"): 没有旧日志时凭空多出
+ * 一个只有查询输出的 .log, 有旧日志时归档里混进这几行
+ *
+ * 为什么是"改写 stderr"而不是"什么都不写": 配置有问题时得让人看得见原因。
+ * stdout 不能占用 (要留给路径 / 账号列表), 而 init 脚本调用这两个查询时都带
+ * 了 2>/dev/null, 所以也不会变成它的噪声
+ *
+ * 查询模式比日志等级更硬: load_cfg() 里会用配置文件里的 log_lv 调
+ * set_logger_level(), 查询模式必须在那之后依然生效
+ */
+static bool s_query_mode = false;
+
 static const char* get_level_str(const LogLevel lv)
 {
     switch (lv)
@@ -756,7 +775,7 @@ static void get_thread_str(char* buf, const size_t len)
  */
 void log_raw_line(const char* text)
 {
-    if (!s_logger_cfg.file_handle) return;
+    if (s_query_mode || !s_logger_cfg.file_handle) return;
 
     char ts[32];
     char proc_str[64];
@@ -802,6 +821,18 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
 
     // 被截断时按实际长度写出, 保证落到文件里的每一行都是完整的一行
     const size_t final_size = ((size_t)final_len < sizeof(final_msg)) ? (size_t)final_len : sizeof(final_msg) - 1;
+
+    /**
+     * 查询模式: 只写 stderr, 文件与 stdout 都不碰 (见 s_query_mode 的说明)
+     *
+     * 放在这里而不是函数开头: 上面那套等级过滤与格式化对两个去向是一样的,
+     * 只有最后落在哪儿不同
+     */
+    if (s_query_mode)
+    {
+        fputs(final_msg, stderr);
+        return;
+    }
 
     write_2_console(final_msg);
 
@@ -1067,4 +1098,9 @@ const char* get_logger_dir_cfg(void)
 void set_logger_console(const bool enabled)
 {
     s_console_enabled = enabled;
+}
+
+void set_logger_query_mode(const bool enabled)
+{
+    s_query_mode = enabled;
 }

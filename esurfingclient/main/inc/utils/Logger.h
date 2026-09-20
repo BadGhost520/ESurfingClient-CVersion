@@ -152,4 +152,21 @@ const char* get_logger_dir_cfg(void);
  */
 void set_logger_console(bool enabled);
 
+/**
+ * @brief 设置查询模式 (日志一行都不落盘, 全部改写到 stderr)
+ *
+ * 给 --print-log-dir / --list-accounts 这类"只查询, 查完就退"的模式用。
+ * 它们要靠 load_cfg() 解析配置才知道答案, 而解析配置必定会写几行日志,
+ * 那几行一落进 run.log, 启动脚本就会把这份文件当成上一轮运行的日志归档走:
+ * 没有旧日志时凭空多出一个只有查询输出的 .log, 有旧日志时归档里混进这几行
+ *
+ * 之所以改写到 stderr 而不是彻底不写: 配置有问题时得让人看得见原因。
+ * stdout 不能占用 (要留给路径 / 账号列表), init 脚本调用时又都带了 2>/dev/null
+ *
+ * 与 set_logger_level() 的区别: 那是"过滤", 会被配置文件里的 log_lv 改掉;
+ * 这是"改去向", load_cfg() 之后依然有效
+ * @param enabled 是否查询模式
+ */
+void set_logger_query_mode(bool enabled);
+
 #endif //ESURFINGCLIENT_LOGGER_H
