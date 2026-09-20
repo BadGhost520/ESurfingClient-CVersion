@@ -32,6 +32,8 @@
 
 #define REQ_CONTENT_TYPE "Content-Type: application/x-www-form-urlencoded"
 #define REQ_ACCEPT "Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*"
+
+#define GENERATE_URL "http://connect.rom.miui.com/generate_204"
 #define GENERATE_BAK_URL "http://1.1.1.1"
 #define AUTH_URL "http://14.146.227.141:7001"
 #define AUTH_BAK_URL "http://121.8.177.212:7001"
@@ -41,13 +43,6 @@ static char s_domain[DOMAIN_LENGTH] = {0};
 static char s_area[AREA_LENGTH] = {0};
 
 static _Thread_local char s_request_url[LOCATION_LEN] = {0};
-
-static char s_generate_url[][URL_LENGTH] = {
-    "http://connectivitycheck.platform.hicloud.com/generate_204",
-    "http://wifi.vivo.com.cn/generate_204"
-};
-
-static uint8_t s_generate_idx = 0;
 
 static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
 {
@@ -575,6 +570,7 @@ curl_resp_t get(const char* url, const bool connect_only)
     char c_id[MAX_LEN] = {0};
 
     struct curl_slist* headers = NULL;
+    struct curl_slist *resolve = NULL;
 
     if (tl_thread_idx > -1)
     {
@@ -613,9 +609,12 @@ curl_resp_t get(const char* url, const bool connect_only)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
 
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
-    if (connect_only) // 判断是否仅连接 (检测网络状态用)
+    if (connect_only == true) // 判断是否为仅连接模式 (检测网络状态用)
     {
-        curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);
+        resolve = curl_slist_append(resolve, "connect.rom.miui.com:80:220.181.104.183");
+        curl_easy_setopt(curl, CURLOPT_RESOLVE, resolve); // 自定义解析地址
+
+        curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L); // 仅连接
     }
     if (tl_thread_idx > -1)
     {
@@ -639,6 +638,7 @@ curl_resp_t get(const char* url, const bool connect_only)
         // 再清理资源
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
+        curl_slist_free_all(resolve);
         resp.status = curl_err_msg_out(curl_code);
         resp.curl_code = curl_code;
         return resp;
@@ -650,6 +650,7 @@ curl_resp_t get(const char* url, const bool connect_only)
 
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
+    curl_slist_free_all(resolve);
 
     if (resp_code == 200)
     {
@@ -693,36 +694,27 @@ network_status_t check_network_status(const bool connect_only)
     connection_status_t conn_status = 0;
 
     /*
-     * miui generate_204 URL
+     * MIUI IP generate_204 URL
      * 204 正常联网
      * 302 需要认证
      * 其他则是非正常状态
      */
 
-    LOG_DEBUG("请求第 %" PRIu8 " 个 URL", s_generate_idx + 1);
-    resp = get(s_generate_url[s_generate_idx], connect_only);
-    if (s_generate_idx < 2)
-    {
-        s_generate_idx++;
-    }
-    if (s_generate_idx >= 2)
-    {
-        s_generate_idx = 0;
-    }
+    resp = get(GENERATE_URL, connect_only);
 
     conn_status = CONNECT_INTERNET;
 
     if (resp.curl_code != CURLE_OK) // 主检测 URL 无法连通
     {
         /*
-         * dns 错误时备用方案
+         * generate 服务器错误时备用方案
          * http://1.1.1.1
          * 301 正常联网
          * 302 需要认证
          * 其他则是非正常状态
          */
 
-        LOG_WARN("主检测 URL 无法连通, 切换到备用 IP 地址 URL");
+        LOG_WARN("主检测 URL 无法连通, 使用备用 IP URL");
         resp = get(GENERATE_BAK_URL, connect_only);
 
         conn_status = CONNECT_INTERNET;
