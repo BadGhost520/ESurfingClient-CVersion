@@ -1,10 +1,12 @@
-#include "cipher/IosZsm.h"
+#include "7z/LzmaDec.h"
+
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
-#include "utils/Logger.h"
-#include "States.h"
+#include "cipher/IosZsm.h"
 
-#include "LzmaDec.h"
+#include "utils/Logger.h"
+
+#include "States.h"
 
 #include <ctype.h>
 #include <stdio.h>

@@ -1,5 +1,6 @@
 #include "webserver/WebServer.h"
-#include "webserver/mongoose.h"
+
+#include "mongoose/mongoose.h"
 
 #include "control/Control.h"
 
@@ -7,7 +8,8 @@
 
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
-#include "utils/cJSON.h"
+
+#include "cJSON/cJSON.h"
 
 #include "NetClient.h"
 #include "States.h"

@@ -53,22 +53,51 @@ static char s_cfg_log_dir[PATH_MAX] = "";
 /** @brief 日志系统是否已经初始化过 (决定 set_logger_dir 是"记下目录"还是"搬文件") */
 static bool s_logger_inited = false;
 
-/* ------------------------------------------------------------------
- * 进程内互斥
+/**
+ * @brief 单条日志的最大长度
  *
- * 跨进程的原子性靠"一次 write 到 O_APPEND 的 fd", 那部分不需要锁。
- * 但 s_logger_cfg 这份【内存状态】在进程内是多线程共享的:
- * 一个线程在 write_2_file 里刚判完 file_handle 非空、正要 fileno(),
- * 另一个线程可能在 rotate() 里把它 fclose 掉了 —— 那就是 use-after-free,
- * 轻则崩溃, 重则把日志行写进一个已被复用的 fd (别人的 socket / 文件)。
- *
- * rotate() 不是罕见路径: 行数到阈值会走, 别的进程轮转过时也会走,
- * 而 OpenWrt 上多个账号共写同一份 run.log, 后者经常发生。
- *
- * ⚠️ log_raw_line() 【不能】用这把锁: 它是看门狗判定卡死时用的,
- *    那时主线程很可能正卡在持有本锁的调用里, 去抢锁等于一起卡住。
- *    它只做一次 write, 本来就够安全。
- * ------------------------------------------------------------------ */
+ * 多个进程共用同一个 run.log 时, 一条日志必须只用一次 write 写出,
+ * 否则不同进程的行会互相穿插. 这里把上限定死并做静态检查
+ */
+#define LOG_LINE_MAX 2560
+
+_Static_assert(LOG_LINE_MAX <= 4096, "日志行过长, 无法保证多进程下的原子写入");
+
+/** @brief 文件身份复检间隔 (行), 用于发现日志文件已被其它进程轮转 */
+#define LOG_ID_CHECK_LINES 32
+
+/** @brief 本进程的日志轮转序号, 用于避免同一秒内的多次轮转重名 */
+static uint32_t s_rotate_seq = 0;
+
+static log_cfg_t s_logger_cfg = {
+    .lv = LOG_LEVEL_INFO,
+    .log_dir = "",
+    .log_file = "",
+    .file_handle = NULL,
+    .max_lines = 10000,
+    .cur_lines = 0,
+    .file_dev = 0,
+    .file_ino = 0,
+    .lines_since_check = 0
+};
+
+/** @brief 是否同时把日志输出到控制台 */
+static bool s_console_enabled = true;
+
+static const char* get_level_str(const LogLevel lv)
+{
+    switch (lv)
+    {
+    case LOG_LEVEL_VERBOSE: return "VERBOSE";
+    case LOG_LEVEL_DEBUG:   return "DEBUG";
+    case LOG_LEVEL_INFO:    return "INFO";
+    case LOG_LEVEL_WARN:    return "WARN";
+    case LOG_LEVEL_ERROR:   return "ERROR";
+    case LOG_LEVEL_FATAL:   return "FATAL";
+    default:                return "UNKNOWN";
+    }
+}
+
 #ifdef _WIN32
 static INIT_ONCE s_log_lock_once = INIT_ONCE_STATIC_INIT;
 static CRITICAL_SECTION s_log_lock;
@@ -105,51 +134,6 @@ static void logger_unlock(void)
     pthread_mutex_unlock(&s_log_lock);
 }
 #endif
-
-/**
- * @brief 单条日志的最大长度
- *
- * 多个进程共用同一个 run.log 时, 一条日志必须只用一次 write 写出,
- * 否则不同进程的行会互相穿插. 这里把上限定死并做静态检查
- */
-#define LOG_LINE_MAX 2560
-
-_Static_assert(LOG_LINE_MAX <= 4096, "日志行过长, 无法保证多进程下的原子写入");
-
-/** @brief 文件身份复检间隔 (行), 用于发现日志文件已被其它进程轮转 */
-#define LOG_ID_CHECK_LINES 32
-
-/** @brief 本进程的日志轮转序号, 用于避免同一秒内的多次轮转重名 */
-static uint32_t s_rotate_seq = 0;
-
-static log_cfg_t s_logger_cfg = {
-    .lv = LOG_LEVEL_INFO,
-    .log_dir = "",
-    .log_file = "",
-    .file_handle = NULL,
-    .max_lines = 1000,
-    .cur_lines = 0,
-    .file_dev = 0,
-    .file_ino = 0,
-    .lines_since_check = 0
-};
-
-/** @brief 是否同时把日志输出到控制台 */
-static bool s_console_enabled = true;
-
-static const char* get_level_str(const LogLevel lv)
-{
-    switch (lv)
-    {
-    case LOG_LEVEL_VERBOSE: return "VERBOSE";
-    case LOG_LEVEL_DEBUG:   return "DEBUG";
-    case LOG_LEVEL_INFO:    return "INFO";
-    case LOG_LEVEL_WARN:    return "WARN";
-    case LOG_LEVEL_ERROR:   return "ERROR";
-    case LOG_LEVEL_FATAL:   return "FATAL";
-    default:                return "UNKNOWN";
-    }
-}
 
 /**
  * @brief 获取路径当前的文件身份

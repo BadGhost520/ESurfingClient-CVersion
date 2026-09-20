@@ -1,7 +1,8 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Watchdog.h"
 #include "utils/Logger.h"
-#include "utils/cJSON.h"
+
+#include "cJSON/cJSON.h"
 
 #include "States.h"
 

@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 1)
 set(PROGRAM_VERSION_PATCH 1)
-set(PROGRAM_VERSION_RELEASE 2)
+set(PROGRAM_VERSION_RELEASE 3)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -60,6 +60,8 @@ find_package(CURL REQUIRED)
 
 if (__OPENWRT__)
     add_executable(ESurfingClient
+            extern/7z/LzmaDec.c
+            extern/cJSON/cJSON.c
             src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
             src/cipher/algo/linux/des_ecb_six_linux.c
             src/cipher/algo/linux/desede_cbc_linux.c
@@ -75,7 +77,6 @@ if (__OPENWRT__)
             src/cipher/algo/android/aes_double_cbc_android.c
             src/cipher/algo/android/aes_double_ecb_android.c
             src/cipher/algo/android/des_ecb_six_android.c
-            src/cipher/algo/ios/lzma/LzmaDec.c
             src/cipher/algo/ios/ios_zsm.c
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
@@ -88,7 +89,6 @@ if (__OPENWRT__)
             src/utils/LogoutState.c
             src/utils/Shutdown.c
             src/utils/Logger.c
-            src/utils/cJSON.c
             src/DialerClient.c
             src/NetClient.c
             src/States.c
@@ -96,6 +96,9 @@ if (__OPENWRT__)
     )
 else ()
     add_executable(ESurfingClient
+            extern/7z/LzmaDec.c
+            extern/cJSON/cJSON.c
+            extern/mongoose/mongoose.c
             src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
             src/cipher/algo/linux/des_ecb_six_linux.c
             src/cipher/algo/linux/desede_cbc_linux.c
@@ -111,7 +114,6 @@ else ()
             src/cipher/algo/android/aes_double_cbc_android.c
             src/cipher/algo/android/aes_double_ecb_android.c
             src/cipher/algo/android/des_ecb_six_android.c
-            src/cipher/algo/ios/lzma/LzmaDec.c
             src/cipher/algo/ios/ios_zsm.c
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
@@ -119,7 +121,6 @@ else ()
             src/control/Control.c
             src/supervisor/Supervisor.c
             src/webserver/WebServer.c
-            src/webserver/mongoose.c
             src/utils/sim/SimProcess.c
             src/utils/sim/SimThread.c
             src/utils/sim/SimEvp.c
@@ -130,7 +131,6 @@ else ()
             src/utils/Shutdown.c
             src/utils/Service.c
             src/utils/Logger.c
-            src/utils/cJSON.c
             src/DialerClient.c
             src/NetClient.c
             src/States.c
@@ -152,7 +152,7 @@ endif ()
 
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/inc
-        ${CMAKE_SOURCE_DIR}/src/cipher/algo/ios/lzma
+        ${CMAKE_SOURCE_DIR}/extern
 )
 
 if (WIN32)

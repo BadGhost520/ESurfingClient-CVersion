@@ -4,7 +4,8 @@
 
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
-#include "utils/cJSON.h"
+
+#include "cJSON/cJSON.h"
 
 #include "States.h"
 
