@@ -4,13 +4,20 @@
 #include "utils/Service.h"
 #include "utils/Logger.h"
 
+#ifdef _WIN32
 #include <setjmp.h>
+extern jmp_buf g_exit_jmp;
+#else
 #include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#endif
+
+#ifndef ENOENT
+#define ENOENT 2
+#endif
 
 extern bool g_need_restart;
-extern jmp_buf g_exit_jmp;
 
 extern void work();
 
@@ -227,11 +234,6 @@ int service_uninstall()
 }
 
 #elif __linux__
-
-#include <string.h>
-
-#include <unistd.h>
-#include <errno.h>
 
 #define SERVICE_NAME "esurfingclient"
 

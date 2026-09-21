@@ -3,10 +3,6 @@
 
 #include "utils/sim/SimEvp.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #define DESEDE_DOUBLE_KEY_SIZE 48
 #define DESEDE_DOUBLE_BLOCK_SIZE 8
 

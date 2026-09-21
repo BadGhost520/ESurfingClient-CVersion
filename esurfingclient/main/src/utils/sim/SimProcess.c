@@ -1,18 +1,16 @@
 #include "utils/sim/SimProcess.h"
 
+#include "states/States.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
-
-#include "../../../inc/states/States.h"
-
-#include <stdlib.h>
-#include <stdio.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <process.h>
 #else
 #include <unistd.h>
+#include <stdlib.h>
 #endif
 
 void restart_process()

@@ -1,5 +1,4 @@
 #include "cipher/CipherInterface.h"
-#include "cipher/IosZsm.h"
 
 #include "states/States.h"
 
@@ -13,22 +12,20 @@
 #include "DialerClient.h"
 #include "NetClient.h"
 
-#ifndef __OPENWRT__
-#include "control/Control.h"
-#include "supervisor/Supervisor.h"
-#endif
-
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-
-#ifndef __OPENWRT__
-extern bool start_web_server();
-extern bool start_web_server_remote();
-#endif
-
 #ifdef _WIN32
 extern bool get_service_mode();
+#else
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#endif
+
+#ifndef __OPENWRT__
+#include "supervisor/Supervisor.h"
+#include "control/Control.h"
+
+extern bool start_web_server_remote();
+extern bool start_web_server();
 #endif
 
 typedef enum

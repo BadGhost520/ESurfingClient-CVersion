@@ -7,6 +7,7 @@
 
 #include "Refresh.h"
 
+#include <inttypes.h>
 #include <setjmp.h>
 #include <signal.h>
 

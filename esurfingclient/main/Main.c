@@ -5,9 +5,12 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Service.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
+
+#ifndef _WIN32
+#include <string.h>
+#include <stdlib.h>
+#endif
 
 extern void work(void);
 

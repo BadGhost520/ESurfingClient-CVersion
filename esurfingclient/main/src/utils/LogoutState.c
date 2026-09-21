@@ -1,11 +1,12 @@
-#include "utils/PlatformUtils.h"
 #include "utils/LogoutState.h"
+
+#include "utils/PlatformUtils.h"
+
 #include "utils/Logger.h"
 
 #include "cJSON/cJSON.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 
 /**
  * @brief 拼出存档路径: <配置文件路径>.<账号序号>.logout

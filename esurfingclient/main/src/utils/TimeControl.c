@@ -1,13 +1,15 @@
+#include "utils/TimeControl.h"
+
+#include "states/States.h"
+
 #include "utils/sim/SimThread.h"
 
 #include "utils/PlatformUtils.h"
-#include "utils/TimeControl.h"
 #include "utils/Logger.h"
 
-#include "../../inc/states/States.h"
-
-#include <stdint.h>
+#ifdef _WIN32
 #include <time.h>
+#endif
 
 #define WEEK_MILLIS 604800000LL
 #define MAX_SLEEP_SLICE_MS 10000

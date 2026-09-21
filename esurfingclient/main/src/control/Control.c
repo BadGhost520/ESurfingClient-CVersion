@@ -1,5 +1,7 @@
 #include "control/Control.h"
 
+#include "states/States.h"
+
 #include "utils/sim/SimThread.h"
 
 #include "utils/PlatformUtils.h"
@@ -7,27 +9,18 @@
 
 #include "cJSON/cJSON.h"
 
-#include "../../inc/states/States.h"
-
-#include <string.h>
-#include <stdlib.h>
-
 /**
  * 注意包含顺序: Windows 下必须先于 windows.h 引入 winsock2.h,
  * 否则会与 windows.h 里的 winsock1 冲突
  */
 #ifdef _WIN32
 #include <winsock2.h>
-#include <ws2tcpip.h>
 typedef SOCKET ctl_sock_t;
 #define CTL_INVALID_SOCK INVALID_SOCKET
 #define ctl_close closesocket
 #else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 typedef int ctl_sock_t;
 #define CTL_INVALID_SOCK (-1)
 #define ctl_close close

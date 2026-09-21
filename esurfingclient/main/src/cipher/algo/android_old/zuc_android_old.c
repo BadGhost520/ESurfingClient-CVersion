@@ -1,10 +1,6 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 typedef struct {
     uint8_t key[16];
     uint8_t iv[16];

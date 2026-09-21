@@ -3,10 +3,6 @@
 
 #include "utils/sim/SimEvp.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #define AES_DOUBLE_ECB_KEY_SIZE 32
 #define AES_DOUBLE_ECB_BLOCK_SIZE 16
 

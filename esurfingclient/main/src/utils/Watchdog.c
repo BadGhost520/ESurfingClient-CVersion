@@ -1,12 +1,15 @@
+#include "utils/Watchdog.h"
+
+#include "states/States.h"
+
 #include "utils/sim/SimThread.h"
 
 #include "utils/PlatformUtils.h"
-#include "utils/Watchdog.h"
 #include "utils/Logger.h"
 
-#include "../../inc/states/States.h"
-
+#ifdef _WIN32
 #include <stdlib.h>
+#endif
 
 /** @brief 看门狗线程的检查间隔 */
 #define WATCHDOG_TICK_MS 500

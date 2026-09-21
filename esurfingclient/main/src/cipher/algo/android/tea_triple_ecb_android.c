@@ -1,10 +1,6 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #define TEA_TRIPLE_KEY_SIZE 48
 #define TEA_TRIPLE_BLOCK_SIZE 8
 #define TEA_DELTA 0x61C88647u

@@ -3,10 +3,6 @@
 
 #include "utils/sim/SimEvp.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-
 typedef struct {
     uint8_t key1[24];
     uint8_t key2[24];

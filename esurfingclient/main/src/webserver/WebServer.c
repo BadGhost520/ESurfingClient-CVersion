@@ -4,6 +4,8 @@
 
 #include "control/Control.h"
 
+#include "states/States.h"
+
 #include "utils/sim/SimThread.h"
 
 #include "utils/PlatformUtils.h"
@@ -12,16 +14,6 @@
 #include "cJSON/cJSON.h"
 
 #include "NetClient.h"
-#include "../../inc/states/States.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
-#ifndef _WIN32
-#include <strings.h>
-#include <dirent.h>
-#endif
 
 static sim_thread_t* web_thread;
 

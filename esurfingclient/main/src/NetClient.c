@@ -1,25 +1,27 @@
+#include "NetClient.h"
+
+#include "states/States.h"
+
 #include "utils/sim/SimEvp.h"
 
 #include "utils/PlatformUtils.h"
 #include "utils/Watchdog.h"
 #include "utils/Logger.h"
 
-#include "NetClient.h"
-#include "../inc/states/States.h"
-
+#ifndef _WIN32
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
+#endif
 
 #ifdef __OPENWRT__
 #include <errno.h>
 
 #ifndef SOL_SOCKET
-    #define SOL_SOCKET 1
+#define SOL_SOCKET 1
 #endif
 
 #ifndef SO_MARK
-    #define SO_MARK 36
+#define SO_MARK 36
 #endif
 #endif
 

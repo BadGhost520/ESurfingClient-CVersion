@@ -1,9 +1,6 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include <string.h>
-#include <stdint.h>
-
 #define XTEA_NUM_ROUNDS 32
 #define XTEA_DELTA 0x9E3779B9u
 

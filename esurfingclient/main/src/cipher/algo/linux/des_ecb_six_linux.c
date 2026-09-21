@@ -3,10 +3,6 @@
 
 #include "utils/sim/SimEvp.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 typedef struct {
     uint8_t key[48];
 } des_ecb_six_pc_ctx_t;

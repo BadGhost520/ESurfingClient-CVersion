@@ -1,10 +1,6 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-
 #define SM4_BLOCK_SIZE 16
 #define SM4_KEY_SIZE 16
 

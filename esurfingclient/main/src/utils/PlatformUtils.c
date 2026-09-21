@@ -1,28 +1,28 @@
 #include "utils/PlatformUtils.h"
+
+#include "states/States.h"
+
 #include "utils/Watchdog.h"
 #include "utils/Logger.h"
 
 #include "cJSON/cJSON.h"
 
-#include "../../inc/states/States.h"
-
 #include <curl/curl.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <ctype.h>
-#include <errno.h>
-#include <stdio.h>
-#include <time.h>
 
 #ifdef _WIN32
 
-#include <sysinfoapi.h>
 #include <iphlpapi.h>
 
 #else
 
-#include <strings.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <errno.h>
+
+#ifndef ERANGE
+#define ERANGE 34
+#endif
 
 #ifdef __APPLE__
 // get_exec_path() 用的 _NSGetExecutablePath() 在这个头里

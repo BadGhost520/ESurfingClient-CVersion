@@ -3,10 +3,6 @@
 
 #include "utils/sim/SimEvp.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #define DES_SIX_KEY_SIZE 48
 #define DES_SIX_BLOCK_SIZE 8
 

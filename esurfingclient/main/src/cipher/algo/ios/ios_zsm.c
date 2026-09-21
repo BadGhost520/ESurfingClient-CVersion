@@ -1,17 +1,11 @@
-#include "7z/LzmaDec.h"
-
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
-#include "cipher/IosZsm.h"
+
+#include "states/States.h"
 
 #include "utils/Logger.h"
 
-#include "../../../../inc/states/States.h"
-
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "7z/LzmaDec.h"
 
 /*
  * iOS PacketTunnel IZsmModLoad (sub_10007131C) layout:

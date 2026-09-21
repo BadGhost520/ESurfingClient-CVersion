@@ -1,10 +1,6 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #define SNOW3G_CELLS 22
 #define SNOW3G_KEY_SIZE 16
 #define SNOW3G_IV_SIZE 16

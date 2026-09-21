@@ -1,9 +1,6 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include <stdint.h>
-#include <string.h>
-
 typedef struct {
     uint32_t k0[4];
     uint32_t k1[4];

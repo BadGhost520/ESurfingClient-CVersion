@@ -3,6 +3,8 @@
 
 #include <curl/curl.h>
 
+#include <stdbool.h>
+
 #define HTTP_OK 200
 #define HTTP_NO_CONTENT 204
 #define HTTP_MOVED_PERMANENTLY 301

@@ -2,15 +2,10 @@
 
 #include "control/Control.h"
 
+#include "states/States.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
-
-#include "../../inc/states/States.h"
-
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 
 #ifdef _WIN32
 
@@ -22,9 +17,10 @@ typedef volatile LONG stop_flag_t;
 
 #else
 
-#include <errno.h>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
 #if defined(__linux__)
 #include <sys/prctl.h>
@@ -33,6 +29,10 @@ typedef volatile LONG stop_flag_t;
 typedef pid_t child_handle_t;
 #define CHILD_HANDLE_INVALID ((pid_t)-1)
 typedef volatile sig_atomic_t stop_flag_t;
+
+#ifndef EINTR
+#define EINTR 4
+#endif
 
 #endif
 

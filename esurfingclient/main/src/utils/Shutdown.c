@@ -1,23 +1,23 @@
+#include "utils/Shutdown.h"
+
+#include "states/States.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/TimeControl.h"
-#include "utils/Shutdown.h"
 #include "utils/Watchdog.h"
 #include "utils/Logger.h"
 
-#include "../../inc/states/States.h"
-
-#include <signal.h>
+#ifdef _WIN32
+#include <windows.h>
+extern bool get_service_mode();
+#else
 #include <stdlib.h>
+#endif
 
 #ifndef __OPENWRT__
 extern void restart_process();
 extern void stop_web_server();
 #include "control/Control.h"
-#endif
-
-#ifdef _WIN32
-#include <windows.h>
-extern bool get_service_mode();
 #endif
 
 void shut(const int8_t exit_code)

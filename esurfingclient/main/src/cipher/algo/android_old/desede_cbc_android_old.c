@@ -1,10 +1,7 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include "utils/sim/evp.h"
-
-#include <string.h>
-#include <stdio.h>
+#include "utils/sim/SimEvp.h"
 
 typedef struct {
     uint8_t key1[24];

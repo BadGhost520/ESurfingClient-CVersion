@@ -1,24 +1,18 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 
-#include <sys/stat.h>
-#include <string.h>
-#include <stdarg.h>
-#include <ctype.h>
-#include <errno.h>
-
 #ifdef _WIN32
 #include <windows.h>
-#include <stdlib.h>
 #include <io.h>
 #else
 #include <pthread.h>
-#include <unistd.h>
-#include <fcntl.h>
-#endif
+#include <string.h>
+#include <stdarg.h>
+#include <errno.h>
 
 #ifndef EEXIST
 #define EEXIST 17
+#endif
 #endif
 
 static const char s_file_name[] = "run.log";
