@@ -2,12 +2,13 @@
 #define ESURFINGCLIENT_STATES_H
 
 #include "cipher/CipherInterface.h"
+
 #include "utils/sim/SimThread.h"
+
+#include "Refresh.h"
 
 #include <setjmp.h>
 #include <signal.h>
-#include <stdbool.h>
-#include <stdint.h>
 
 #define SCHOOL_NETWORK_SYMBOL 8
 
@@ -15,13 +16,13 @@
 #define USER_AGENT_LEN 32
 #define CLIENT_ID_LEN 40
 #define HOST_NAME_LEN 32
-#define OSTAG_LEN 32
 #define KEEP_URL_LEN 256
 #define TERM_URL_LEN 256
 #define AUTH_URL_LEN 256
 #define MAC_ADDR_LEN 20
 #define ALGO_ID_LEN 37
 #define TICKET_LEN 40
+#define OSTAG_LEN 32
 
 #define USR_LEN 16
 #define PWD_LEN 128
@@ -282,8 +283,5 @@ extern long g_conn_timeout;
 
 /** @brief 总操作超时时长 */
 extern long g_op_timeout;
-
-/** @brief 刷新状态函数 */
-void refresh_states();
 
 #endif //ESURFINGCLIENT_STATES_H

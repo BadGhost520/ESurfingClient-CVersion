@@ -4,7 +4,7 @@
 #include "utils/TimeControl.h"
 #include "utils/Logger.h"
 
-#include "States.h"
+#include "../../inc/states/States.h"
 
 #include <stdint.h>
 #include <time.h>

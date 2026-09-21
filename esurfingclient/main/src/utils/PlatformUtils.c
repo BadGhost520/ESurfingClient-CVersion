@@ -4,7 +4,7 @@
 
 #include "cJSON/cJSON.h"
 
-#include "States.h"
+#include "../../inc/states/States.h"
 
 #include <curl/curl.h>
 #include <string.h>

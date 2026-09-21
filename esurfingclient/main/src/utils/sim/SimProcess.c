@@ -3,7 +3,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 
-#include "States.h"
+#include "../../../inc/states/States.h"
 
 #include <stdlib.h>
 #include <stdio.h>

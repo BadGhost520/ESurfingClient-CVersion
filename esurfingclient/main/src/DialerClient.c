@@ -1,6 +1,8 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/IosZsm.h"
 
+#include "states/States.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/TimeControl.h"
 #include "utils/LogoutState.h"
@@ -10,7 +12,6 @@
 
 #include "DialerClient.h"
 #include "NetClient.h"
-#include "States.h"
 
 #ifndef __OPENWRT__
 #include "control/Control.h"

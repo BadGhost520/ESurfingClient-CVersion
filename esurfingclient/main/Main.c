@@ -1,9 +1,9 @@
 #include "control/Control.h"
 
+#include "states/States.h"
+
 #include "utils/PlatformUtils.h"
 #include "utils/Service.h"
-
-#include "States.h"
 
 #include <stdlib.h>
 #include <string.h>

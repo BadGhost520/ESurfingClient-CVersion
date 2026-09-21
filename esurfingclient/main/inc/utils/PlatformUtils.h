@@ -1,7 +1,7 @@
 #ifndef ESURFINGCLIENT_PLATFORMUTILS_H
 #define ESURFINGCLIENT_PLATFORMUTILS_H
 
-#include "States.h"
+#include "../states/States.h"
 
 #include <inttypes.h>
 #include <stdint.h>

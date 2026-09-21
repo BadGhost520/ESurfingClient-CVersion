@@ -81,6 +81,8 @@ if (__OPENWRT__)
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
+            src/states/Refresh.c
+            src/states/States.c
             src/utils/sim/SimThread.c
             src/utils/sim/SimEvp.c
             src/utils/PlatformUtils.c
@@ -91,7 +93,6 @@ if (__OPENWRT__)
             src/utils/Logger.c
             src/DialerClient.c
             src/NetClient.c
-            src/States.c
             Main.c
     )
 else ()
@@ -118,9 +119,11 @@ else ()
             src/cipher/CipherFactory.c
             src/cipher/CipherUtils.c
             src/cipher/KeyData.c
-            src/control/Control.c
             src/supervisor/Supervisor.c
             src/webserver/WebServer.c
+            src/control/Control.c
+            src/states/Refresh.c
+            src/states/States.c
             src/utils/sim/SimProcess.c
             src/utils/sim/SimThread.c
             src/utils/sim/SimEvp.c
@@ -133,7 +136,6 @@ else ()
             src/utils/Logger.c
             src/DialerClient.c
             src/NetClient.c
-            src/States.c
             Main.c
     )
 endif ()

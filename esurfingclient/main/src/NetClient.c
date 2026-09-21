@@ -5,7 +5,7 @@
 #include "utils/Logger.h"
 
 #include "NetClient.h"
-#include "States.h"
+#include "../inc/states/States.h"
 
 #include <string.h>
 #include <stdlib.h>

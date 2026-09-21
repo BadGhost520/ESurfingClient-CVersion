@@ -12,7 +12,7 @@
 #include "cJSON/cJSON.h"
 
 #include "NetClient.h"
-#include "States.h"
+#include "../../inc/states/States.h"
 
 #include <stdlib.h>
 #include <string.h>
