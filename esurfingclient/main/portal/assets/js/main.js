@@ -377,7 +377,6 @@ async function restartAuthRequest() {
 
 document.addEventListener('alpine:init', () => {
 
-    // ------------------------------ 全局提示 ------------------------------
 
     Alpine.store('notify', {
         items: [],
@@ -400,7 +399,6 @@ document.addEventListener('alpine:init', () => {
         }
     });
 
-    // ------------------------------ 主状态 ------------------------------
 
     Alpine.store('main', {
         configs: defaultConfigs(),
@@ -477,7 +475,6 @@ document.addEventListener('alpine:init', () => {
         }
     });
 
-    // ------------------------------ 状态轮询 ------------------------------
 
     Alpine.store('status', {
         authStatusText: '未知认证状态',
@@ -545,7 +542,6 @@ document.addEventListener('alpine:init', () => {
         }
     });
 
-    // ------------------------------ 配置操作 ------------------------------
 
     Alpine.store('settings', {
         saving: false,
@@ -715,7 +711,6 @@ document.addEventListener('alpine:init', () => {
         }
     });
 
-    // ------------------------------ 账号编辑组件 ------------------------------
 
     Alpine.data('editConfigs', () => ({
         accounts: [],
@@ -798,7 +793,6 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
-    // ------------------------------ 重新认证组件 ------------------------------
 
     Alpine.data('restartAuth', () => ({
         busy: false,
@@ -821,7 +815,6 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
-    // ------------------------------ 仪表板组件 ------------------------------
 
     Alpine.data('dashboard', () => ({
         sys: null,
@@ -914,7 +907,6 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
-    // ------------------------------ 日志查看组件 ------------------------------
 
     Alpine.data('logViewer', () => ({
         files: [],
