@@ -58,60 +58,81 @@ find_package(CURL REQUIRED)
 add_executable(ESurfingClient
         third_party/7z/LzmaDec.c
         third_party/cJSON/cJSON.c
-        src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
-        src/cipher/algo/linux/des_ecb_six_linux.c
-        src/cipher/algo/linux/desede_cbc_linux.c
-        src/cipher/algo/linux/mod_xtea_linux.c
-        src/cipher/algo/linux/aes_ecb_linux.c
-        src/cipher/algo/linux/aes_cbc_linux.c
+        src/cipher/CipherFactory.c
+        src/cipher/CipherUtils.c
+        src/cipher/KeyData.c
+        src/cipher/algo/android/aes_double_cbc_android.c
+        src/cipher/algo/android/aes_double_ecb_android.c
+        src/cipher/algo/android/des_ecb_six_android.c
         src/cipher/algo/android/desede_double_cbc_android.c
         src/cipher/algo/android/sm4_variant_cbc_android.c
         src/cipher/algo/android/sm4_variant_ecb_android.c
         src/cipher/algo/android/snow3g_variant_android.c
         src/cipher/algo/android/tea_triple_cbc_android.c
         src/cipher/algo/android/tea_triple_ecb_android.c
-        src/cipher/algo/android/aes_double_cbc_android.c
-        src/cipher/algo/android/aes_double_ecb_android.c
-        src/cipher/algo/android/des_ecb_six_android.c
         src/cipher/algo/ios/ios_zsm.c
-        src/cipher/CipherFactory.c
-        src/cipher/CipherUtils.c
-        src/cipher/KeyData.c
+        src/cipher/algo/linux/aes_cbc_linux.c
+        src/cipher/algo/linux/aes_ecb_linux.c
+        src/cipher/algo/linux/des_ecb_six_linux.c
+        src/cipher/algo/linux/desede_cbc_linux.c
+        src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
+        src/cipher/algo/linux/mod_xtea_linux.c
+        src/clients/dialer/dialer_auth.c
+        src/clients/dialer/dialer_client.c
+        src/clients/dialer/dialer_location.c
+        src/clients/dialer/dialer_net.c
+        src/clients/dialer/dialer_session.c
+        src/clients/dialer/dialer_ticket.c
+        src/clients/net/CheckNetwork.c
+        src/clients/net/netclient.c
+        src/clients/net/netclient_curl.c
+        src/config/config.c
+        src/config/config_accounts.c
+        src/config/config_defaults.c
+        src/config/config_time_window.c
+        src/main.c
         src/states/Refresh.c
         src/states/States.c
-        src/utils/sim/SimThread.c
-        src/utils/sim/SimEvp.c
-        src/utils/net_adapters.c
-        src/utils/str_util.c
-        src/config/config_accounts.c
-        src/config/config_time_window.c
-        src/utils/exec_path.c
-        src/utils/process_info.c
-        src/utils/xml.c
-        src/utils/bytes_util.c
-        src/utils/time_util.c
-        src/config/config_defaults.c
-        src/config/config.c
-        src/utils/log_dir.c
-        src/utils/TimeControl.c
-        src/utils/Watchdog.c
         src/utils/LogoutState.c
         src/utils/Shutdown.c
-        src/utils/Logger.c
-        src/clients/dialer/DialerClient.c
-        src/clients/net/CheckNetwork.c
-        src/clients/net/NetClient.c
-        src/main.c
+        src/utils/TimeControl.c
+        src/utils/Watchdog.c
+        src/utils/bytes_util.c
+        src/utils/exec_path.c
+        src/utils/log_control.c
+        src/utils/log_core.c
+        src/utils/log_dir.c
+        src/utils/log_file.c
+        src/utils/log_meta.c
+        src/utils/logger_dir.c
+        src/utils/net_adapters.c
+        src/utils/process_info.c
+        src/utils/sim/SimThread.c
+        src/utils/sim/sim_evp_aes.c
+        src/utils/sim/sim_evp_cipher.c
+        src/utils/sim/sim_evp_des3.c
+        src/utils/sim/sim_evp_md5.c
+        src/utils/str_util.c
+        src/utils/time_util.c
+        src/utils/xml.c
 )
 
 if (NOT __OPENWRT__)
     target_sources(ESurfingClient PRIVATE
             third_party/mongoose/mongoose.c
-            src/supervisor/Supervisor.c
-            src/webserver/WebServer.c
-            src/control/Control.c
-            src/utils/sim/SimProcess.c
+            src/control/control_client.c
+            src/control/control_server.c
+            src/supervisor/supervisor_child.c
+            src/supervisor/supervisor_loop.c
+            src/supervisor/supervisor_signal.c
+            src/supervisor/supervisor_state.c
             src/utils/Service.c
+            src/utils/sim/SimProcess.c
+            src/webserver/web_api_get.c
+            src/webserver/web_api_post.c
+            src/webserver/web_log_files.c
+            src/webserver/web_serve.c
+            src/webserver/web_server.c
     )
 
     add_custom_target(CopyPortal ALL
