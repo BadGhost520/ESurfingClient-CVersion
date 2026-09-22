@@ -55,6 +55,14 @@ typedef struct
 char* get_adapters_json();
 
 /**
+ * @brief 截取 URL 中指定参数
+ * @param url URL 地址
+ * @param search_str_start 要查找的参数名
+ * @return 查找到的参数
+ */
+char* extract_url_param(const char* url, const char* search_str_start);
+
+/**
  * @brief 获取程序运行目录
  * @param dir_array 目录指针
  * @return 是否获取成功

@@ -331,3 +331,7 @@
 ### 2026.9.21
 1. (14:47) 清理了多余的 include, 优化了代码结构
 2. (14:49) 拆分 States 源文件
+
+### 2026.9.22
+1. (10:46) 拆分 NetClient
+2. (10:47) 移动 NetClient 和 DialerClient 到 clients 目录

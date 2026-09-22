@@ -1,4 +1,3 @@
-#include "states/Refresh.h"
 #include "states/States.h"
 
 #include "utils/PlatformUtils.h"

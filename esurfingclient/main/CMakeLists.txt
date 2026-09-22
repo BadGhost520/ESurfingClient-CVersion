@@ -91,8 +91,9 @@ if (__OPENWRT__)
             src/utils/LogoutState.c
             src/utils/Shutdown.c
             src/utils/Logger.c
-            src/DialerClient.c
-            src/NetClient.c
+            src/clients/dialer/DialerClient.c
+            src/clients/net/CheckNetwork.c
+            src/clients/net/NetClient.c
             Main.c
     )
 else ()
@@ -134,8 +135,9 @@ else ()
             src/utils/Shutdown.c
             src/utils/Service.c
             src/utils/Logger.c
-            src/DialerClient.c
-            src/NetClient.c
+            src/clients/dialer/DialerClient.c
+            src/clients/net/CheckNetwork.c
+            src/clients/net/NetClient.c
             Main.c
     )
 endif ()

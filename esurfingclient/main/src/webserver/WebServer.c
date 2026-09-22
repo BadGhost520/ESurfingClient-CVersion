@@ -2,6 +2,8 @@
 
 #include "mongoose/mongoose.h"
 
+#include "clients/net/NetClient.h"
+
 #include "control/Control.h"
 
 #include "states/States.h"
@@ -12,8 +14,6 @@
 #include "utils/Logger.h"
 
 #include "cJSON/cJSON.h"
-
-#include "NetClient.h"
 
 static sim_thread_t* web_thread;
 

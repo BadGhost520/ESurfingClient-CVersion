@@ -5,8 +5,6 @@
 
 #include "utils/sim/SimThread.h"
 
-#include "Refresh.h"
-
 #include <inttypes.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -284,5 +282,8 @@ extern long g_conn_timeout;
 
 /** @brief 总操作超时时长 */
 extern long g_op_timeout;
+
+/** @brief 刷新状态函数 */
+void refresh_states();
 
 #endif //ESURFINGCLIENT_STATES_H

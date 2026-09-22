@@ -1,3 +1,6 @@
+#include "clients/dialer/DialerClient.h"
+#include "clients/net/NetClient.h"
+
 #include "cipher/CipherInterface.h"
 
 #include "states/States.h"
@@ -8,9 +11,6 @@
 #include "utils/Shutdown.h"
 #include "utils/Watchdog.h"
 #include "utils/Logger.h"
-
-#include "DialerClient.h"
-#include "NetClient.h"
 
 #ifdef _WIN32
 extern bool get_service_mode();
@@ -43,6 +43,27 @@ typedef enum
     RUN_FAILED = 1,
     TIMEOUT_RETRY = 2
 } RunStatus;
+
+/**
+ * @brief 等待认证时机的返回值
+ *
+ * 成员名避开 WAIT_FAILED / WAIT_TIMEOUT 这类:
+ * Windows 的 <windows.h> 定义了同名的宏 (WAIT_FAILED 是 ((DWORD)0xFFFFFFFF)),
+ * 而本文件经 NetClient.h -> curl.h -> winsock2.h 会把 windows.h 带进来,
+ * 于是枚举成员被宏替换掉, 编译报 "expected identifier before '(' token"。
+ * Linux 上不会 —— 这个坑只在 Windows 构建时出现。
+ */
+typedef enum
+{
+    /** @brief 网络已进入需要认证的状态 */
+    WAIT_READY = 0,
+    /** @brief 重试次数用尽 */
+    WAIT_RETRY_EXHAUSTED = 1,
+    /** @brief 收到退出请求 */
+    WAIT_EXIT = 2,
+    /** @brief 允许时段关闭, 应当回到主循环等待 */
+    WAIT_TIME_CLOSED = 3
+} WaitResult;
 
 static const uint64_t table[] = {1, 5, 10, 20, 30};
 
@@ -810,111 +831,6 @@ static bool supervisor_gone()
     return parent_process_alive() == false;
 }
 
-int dialer_app(void* arg)
-{
-    tl_thread_idx = (int8_t)(intptr_t)arg; // 领取线程下标参数
-    g_prog_status[tl_thread_idx].runtime_status.is_running = true;
-    g_prog_status[tl_thread_idx].thread_id = sim_thread_cur_id(); // 获取当前线程 TID
-    LOG_DEBUG("认证线程 %" PRId8 " 创建成功, ID: %" PRIu64 ", 使用配置: %" PRIu8,
-        tl_thread_idx,
-        g_prog_status[tl_thread_idx].thread_id,
-        g_prog_status[tl_thread_idx].login_cfg.idx);
-
-    refresh_states(); // 刷新数据 (algo_id, host_name, client_id, mac_addr)
-    if (get_last_location() == false) g_prog_status[tl_thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
-
-    /**
-     * 运行循环
-     * is_running 为真且 is_need_reset 为假时保持循环
-     * 正在运行且不需要重置时保持循环
-     * 如果不运行, 或者需要重置时退出循环
-     */
-    int exit_code = 0;
-    while (g_prog_status[tl_thread_idx].runtime_status.is_running && g_stop_requested == 0)
-    {
-        /**
-         * 打卡: 只作为兜底。
-         *
-         * 真正精确的打卡在两个地方 —— sleep_ms() 里 (每次睡眠按自己的时长打卡)
-         * 和 NetClient 的 get()/post() 里 (每次网络请求按连接+操作超时打卡)。
-         * 所有可能长时间阻塞的操作都从这两处过, 所以这里只要保证"一轮里
-         * 没被覆盖到的部分不会拖太久"就够了。
-         */
-        watchdog_pet_network();
-
-        if (supervisor_gone())
-        {
-            LOG_WARN("守护进程已退出, 本进程一并退出");
-            break;
-        }
-        /**
-         * 认证进程里没有独立的时间控制线程, 由本线程自己校正时间窗口
-         * 单进程模式下由时间控制线程统一校正, 这里不重复做
-         */
-        if (g_prog_role == ROLE_AUTH)
-        {
-            time_control_sync();
-        }
-
-        const RunStatus run_status = run();
-        // 如果 run 函数返回 RUN_FAILED 或需要重置, 则退出循环
-        if (run_status == RUN_FAILED)
-        {
-            LOG_ERROR("线程出现错误, 正在退出");
-            g_prog_status[tl_thread_idx].runtime_status.is_running = false;
-            exit_code = 1; // 认证进程据此退出, 交给外部监管者重新拉起
-            break;
-        }
-        if (g_prog_status[tl_thread_idx].runtime_status.is_need_reauth)
-        {
-            LOG_INFO("线程需要重置, 正在退出");
-            g_prog_status[tl_thread_idx].runtime_status.is_running = false;
-            break;
-        }
-    }
-
-    /**
-     * 线程退出时的操作
-     */
-    watchdog_stop(); // 关闭流程里主循环不再打卡, 别把它当成卡死
-    clean(); // 清除参数
-    return exit_code;
-}
-
-/**
- * @brief 等待认证时机的返回值
- *
- * 成员名避开 WAIT_FAILED / WAIT_TIMEOUT 这类:
- * Windows 的 <windows.h> 定义了同名的宏 (WAIT_FAILED 是 ((DWORD)0xFFFFFFFF)),
- * 而本文件经 NetClient.h -> curl.h -> winsock2.h 会把 windows.h 带进来,
- * 于是枚举成员被宏替换掉, 编译报 "expected identifier before '(' token"。
- * Linux 上不会 —— 这个坑只在 Windows 构建时出现。
- */
-typedef enum
-{
-    /** @brief 网络已进入需要认证的状态 */
-    WAIT_READY = 0,
-    /** @brief 重试次数用尽 */
-    WAIT_RETRY_EXHAUSTED = 1,
-    /** @brief 收到退出请求 */
-    WAIT_EXIT = 2,
-    /** @brief 允许时段关闭, 应当回到主循环等待 */
-    WAIT_TIME_CLOSED = 3
-} WaitResult;
-
-/**
- * @brief 打印程序信息
- */
-static void print_banner()
-{
-    LOG_INFO("-------------------------------------------------------------------");
-    LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
-    LOG_INFO(" - 本程序由 BadGhost 制作, 遵循 Apache-2.0 开源协议");
-    LOG_INFO(" - 项目地址: https://github.com/BadGhost520/ESurfingClient-CVersion");
-
-    LOG_INFO("-------------------------------------------------------------------");
-}
-
 /**
  * @brief 等待网络进入需要认证的状态
  *
@@ -1021,6 +937,205 @@ static void logout_previous_session()
     }
 
     logout_state_clear(g_prog_status[0].login_cfg.idx);
+}
+
+static void get_school_ip_symbol()
+{
+    if (g_school_network_symbol[0] != '\0')
+    {
+        return;
+    }
+    if (tl_thread_idx < 0)
+    {
+        return;
+    }
+
+    /*
+     * 必须用当前线程的 last_location
+     * 配置 1 已联网时 g_prog_status[0].last_location 为空
+     */
+    char* school_ip = extract_url_param(g_prog_status[tl_thread_idx].last_location, "wlanuserip");
+    if (school_ip == NULL)
+    {
+        LOG_ERROR("无法从 last_location 提取 wlanuserip");
+        return;
+    }
+
+    const char* first_dot = strchr(school_ip, '.');
+    const char* second_dot = first_dot ? strchr(first_dot + 1, '.') : NULL;
+    if (second_dot == NULL)
+    {
+        LOG_ERROR("wlanuserip 格式无效: %s", school_ip);
+        free(school_ip);
+        return;
+    }
+
+    const size_t len = (size_t)(second_dot - school_ip);
+    if (len == 0 || len >= SCHOOL_NETWORK_SYMBOL)
+    {
+        LOG_ERROR("校园网标志长度无效: %zu", len);
+        free(school_ip);
+        return;
+    }
+
+    memcpy(g_school_network_symbol, school_ip, len);
+    g_school_network_symbol[len] = '\0';
+    LOG_INFO("获取到校园网标志: %s", g_school_network_symbol);
+    free(school_ip);
+}
+
+static bool get_last_location()
+{
+    uint8_t retry = 1;
+    bool quit = false;
+
+    while (quit == false)
+    {
+        if (g_need_exit || g_stop_requested)
+        {
+            return false;
+        }
+        switch (check_network_status(false)) // 检查网络状态
+        {
+        case STATUS_OK:
+            // 正常连接到互联网
+            retry = 1;
+            LOG_INFO("已连接至互联网");
+            sleep_ms(10000, true);
+            break;
+        case STATUS_NEED_AUTH:
+            // 需要认证
+            quit = true;
+            break;
+        default:
+            // 网络错误
+            if (retry > 5)
+            {
+                LOG_FATAL("超过最多重试次数");
+                return false;
+            }
+            LOG_WARN("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);
+            retry++;
+            sleep_ms(1000, true);
+        }
+    }
+
+    curl_resp_t resp = {0};
+
+    resp = get(g_prog_status[tl_thread_idx].last_location, false);
+
+    while (resp.http_code == HTTP_FOUND)
+    {
+        if (resp.body_data)
+        {
+            free(resp.body_data);
+            resp.body_data = NULL;
+            resp.body_size = 0;
+        }
+        resp = get(g_prog_status[tl_thread_idx].last_location, false);
+    }
+
+    if (resp.body_data)
+    {
+        free(resp.body_data);
+        resp.body_data = NULL;
+        resp.body_size = 0;
+    }
+
+    if (resp.http_code != HTTP_OK)
+    {
+        LOG_ERROR("跟随重定向后未获得认证页面, 状态码: %d", resp.http_code);
+        return false;
+    }
+
+    g_prog_status[tl_thread_idx].last_location_lock = true;
+    LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[tl_thread_idx].login_cfg.idx, g_prog_status[tl_thread_idx].last_location);
+
+    get_school_ip_symbol(); // 获取校园网特征
+    return true;
+}
+
+static int dialer_app(void* arg)
+{
+    tl_thread_idx = (int8_t)(intptr_t)arg; // 领取线程下标参数
+    g_prog_status[tl_thread_idx].runtime_status.is_running = true;
+    g_prog_status[tl_thread_idx].thread_id = sim_thread_cur_id(); // 获取当前线程 TID
+    LOG_DEBUG("认证线程 %" PRId8 " 创建成功, ID: %" PRIu64 ", 使用配置: %" PRIu8,
+        tl_thread_idx,
+        g_prog_status[tl_thread_idx].thread_id,
+        g_prog_status[tl_thread_idx].login_cfg.idx);
+
+    refresh_states(); // 刷新数据 (algo_id, host_name, client_id, mac_addr)
+    if (get_last_location() == false) g_prog_status[tl_thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
+
+    /**
+     * 运行循环
+     * is_running 为真且 is_need_reset 为假时保持循环
+     * 正在运行且不需要重置时保持循环
+     * 如果不运行, 或者需要重置时退出循环
+     */
+    int exit_code = 0;
+    while (g_prog_status[tl_thread_idx].runtime_status.is_running && g_stop_requested == 0)
+    {
+        /**
+         * 打卡: 只作为兜底。
+         *
+         * 真正精确的打卡在两个地方 —— sleep_ms() 里 (每次睡眠按自己的时长打卡)
+         * 和 NetClient 的 get()/post() 里 (每次网络请求按连接+操作超时打卡)。
+         * 所有可能长时间阻塞的操作都从这两处过, 所以这里只要保证"一轮里
+         * 没被覆盖到的部分不会拖太久"就够了。
+         */
+        watchdog_pet_network();
+
+        if (supervisor_gone())
+        {
+            LOG_WARN("守护进程已退出, 本进程一并退出");
+            break;
+        }
+        /**
+         * 认证进程里没有独立的时间控制线程, 由本线程自己校正时间窗口
+         * 单进程模式下由时间控制线程统一校正, 这里不重复做
+         */
+        if (g_prog_role == ROLE_AUTH)
+        {
+            time_control_sync();
+        }
+
+        const RunStatus run_status = run();
+        // 如果 run 函数返回 RUN_FAILED 或需要重置, 则退出循环
+        if (run_status == RUN_FAILED)
+        {
+            LOG_ERROR("线程出现错误, 正在退出");
+            g_prog_status[tl_thread_idx].runtime_status.is_running = false;
+            exit_code = 1; // 认证进程据此退出, 交给外部监管者重新拉起
+            break;
+        }
+        if (g_prog_status[tl_thread_idx].runtime_status.is_need_reauth)
+        {
+            LOG_INFO("线程需要重置, 正在退出");
+            g_prog_status[tl_thread_idx].runtime_status.is_running = false;
+            break;
+        }
+    }
+
+    /**
+     * 线程退出时的操作
+     */
+    watchdog_stop(); // 关闭流程里主循环不再打卡, 别把它当成卡死
+    clean(); // 清除参数
+    return exit_code;
+}
+
+/**
+ * @brief 打印程序信息
+ */
+static void print_banner()
+{
+    LOG_INFO("-------------------------------------------------------------------");
+    LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
+    LOG_INFO(" - 本程序由 BadGhost 制作, 遵循 Apache-2.0 开源协议");
+    LOG_INFO(" - 项目地址: https://github.com/BadGhost520/ESurfingClient-CVersion");
+    LOG_INFO("-------------------------------------------------------------------");
 }
 
 /**
