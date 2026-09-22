@@ -199,4 +199,4 @@ char* clean_CDATA(const char* text);
  */
 const char* print_log_dir();
 
-#endif // ESURFINGCLIENT_PLATFORMUTILS_H
+#endif

@@ -7,27 +7,6 @@
 
 #include <7z/LzmaDec.h>
 
-/*
- * iOS PacketTunnel IZsmModLoad (sub_10007131C) layout:
- *
- *   [3-byte hdr][u8 len1][str1][u8 len2][str2=AID]
- *   [5-byte LZMA props][u32le packed: top nibble type==2, low 28 bits unpacked size]
- *   [TEA ciphertext...]
- *
- * TEA key (32 ASCII bytes, two 16-byte halves, 32 decrypt rounds each, 8-byte blocks):
- *   "Rirn53a;feb#UXES5ZrRBTGmYwml:fRt"
- *
- * After LZMA:
- *   buf[0xFA] = IV length
- *   buf[0xFC] = key length
- *   buf[0xFF] = key offset base (key at buf[buf[0xFF]+1])
- *   JS source at buf+0x103
- *
- * JS globals: cdckey, cdciv, cdy(type, mode, key, iv, data)
- * type 常写在 var codex = 0xNN; 再 cdy(codex, ...)
- * type < 16 → oCode (1-9), type >= 16 → nCode (not ported yet)
- */
-
 #define ZSM_TEA_KEY "Rirn53a;feb#UXES5ZrRBTGmYwml:fRt"
 #define ZSM_TEA_DELTA 0x61C88647u
 #define ZSM_JS_OFFSET 0x103
@@ -402,7 +381,6 @@ static cipher_interface_t* create_ios_ocode_cipher(int type, const uint8_t* key,
         return NULL;
     }
 }
-
 
 static void log_zsm_prefix(const uint8_t* data, size_t length)
 {

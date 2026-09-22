@@ -19,10 +19,9 @@
 #endif
 
 #ifdef __APPLE__
-// get_exec_path() 用的 _NSGetExecutablePath() 在这个头里
 #include <mach-o/dyld.h>
 #endif
 
 #endif
 
-#endif //ESURFINGCLIENT_PLATFORM_INTERNAL_H
+#endif

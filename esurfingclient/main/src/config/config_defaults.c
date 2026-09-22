@@ -10,7 +10,6 @@
 
 #include <stdio.h>
 
-/** @brief 补全时用得上的默认值类型 */
 typedef enum
 {
     CFG_DEF_BOOL = 0,
@@ -19,29 +18,16 @@ typedef enum
     CFG_DEF_ARR
 } cfg_def_type_t;
 
-/** @brief 一个可以补的参数 */
 typedef struct
 {
-    /** @brief 参数名 */
     const char* name;
-    /** @brief 默认值的类型 */
     cfg_def_type_t type;
-    /** @brief 默认值 (布尔) */
     bool boolean;
-    /** @brief 默认值 (数字) */
     int number;
-    /** @brief 默认值 (字符串) */
     const char* str;
-    /** @brief 默认值的单位 (只用于日志, 可为空) */
     const char* unit;
 } cfg_def_t;
 
-/**
- * @brief 配置文件顶层的默认参数
- *
- * ⚠️ 必须与 files/etc/config/esurfingclient 以及 s_default_cfg 保持一致:
- *    缺哪个参数, 用户下次打开配置文件就会看到它被补上, 补上的值就是这里的默认值
- */
 static const cfg_def_t s_cfg_defaults[] = {
     {"enabled",          CFG_DEF_BOOL, false, 0, NULL, NULL},
     {"web_external_acc", CFG_DEF_BOOL, DEFAULT_WEB_EXTERNAL_ACC, 0, NULL, NULL},
@@ -52,7 +38,6 @@ static const cfg_def_t s_cfg_defaults[] = {
     {"web_port",         CFG_DEF_NUM, false, DEFAULT_WEB_PORT, NULL, NULL},
 };
 
-/** @brief 账号里的默认参数 */
 static const cfg_def_t s_account_defaults[] = {
     {"username",     CFG_DEF_STR, false, 0, "", NULL},
     {"password",     CFG_DEF_STR, false, 0, "", NULL},

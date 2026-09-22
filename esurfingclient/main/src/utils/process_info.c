@@ -1,7 +1,6 @@
 #include "utils/PlatformUtils.h"
 
 #ifndef _WIN32
-/** @brief 启动时的父进程号 (用来判断父进程是否已经没了) */
 static pid_t s_parent_pid = 0;
 #endif
 

@@ -36,4 +36,4 @@ void uint32_2_bytes_le(uint32_t value, uint8_t* bytes);
 
 void xor_bytes(const uint8_t* a, const uint8_t* b, uint8_t* result, size_t len);
 
-#endif // ESURFINGCLIENT_CIPHERUTILS_H
+#endif

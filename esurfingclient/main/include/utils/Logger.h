@@ -9,12 +9,6 @@
 #define PATH_MAX 260
 #endif
 
-/**
- * @brief 配置文件里没写 log_dir 时用的默认值
- *
- * 与 files/etc/config/esurfingclient 里的一致: 基目录就是程序所在目录,
- * 日志放在它下面的 logs 里 (补全配置时也要用这个值)
- */
 #define DEFAULT_LOG_DIR "./"
 
 typedef enum {
@@ -34,11 +28,8 @@ typedef struct {
     FILE*       file_handle;
     size_t      max_lines;
     size_t      cur_lines;
-    /** @brief 当前持有的日志文件设备号 (Windows 为卷序列号) */
     uint64_t    file_dev;
-    /** @brief 当前持有的日志文件 inode (Windows 为文件索引) */
     uint64_t    file_ino;
-    /** @brief 距上次文件身份复检已写入的行数 */
     size_t      lines_since_check;
 } log_cfg_t;
 
@@ -169,4 +160,4 @@ void set_logger_console(bool enabled);
  */
 void set_logger_query_mode(bool enabled);
 
-#endif //ESURFINGCLIENT_LOGGER_H
+#endif

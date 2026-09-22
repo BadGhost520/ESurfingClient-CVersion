@@ -18,4 +18,4 @@ bool start_web_server_remote();
  */
 void stop_web_server();
 
-#endif //ESURFINGCLIENT_WEBSERVER_H
+#endif

@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-// 线程句柄类型
 typedef struct SimThread sim_thread_t;
 
 // 线程函数类型：void* 参数，int 返回值
@@ -24,4 +23,4 @@ uint64_t sim_thread_cur_id(void);
 // 销毁线程句柄 (不等待线程结束)
 void sim_thread_destroy(sim_thread_t* thread);
 
-#endif // ESURFINGCLIENT_SIMTHREAD_H
+#endif

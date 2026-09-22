@@ -32,4 +32,4 @@ int service_install();
  */
 int service_uninstall();
 
-#endif //ESURFINGCLIENT_SERVICE_H
+#endif

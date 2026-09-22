@@ -32,4 +32,4 @@ typedef struct {
     size_t body_size;
 } curl_resp_t;
 
-#endif //ESURFINGCLIENT_DEFINITION_H
+#endif

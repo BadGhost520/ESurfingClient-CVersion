@@ -38,4 +38,4 @@ int list_accounts();
  */
 const char* get_config_file_path(void);
 
-#endif //ESURFINGCLIENT_CONFIG_H
+#endif

@@ -30,4 +30,4 @@ uint64_t time_control_wait_ms(void);
  */
 void time_control_stop(void);
 
-#endif // ESURFINGCLIENT_TIMECONTROL_H
+#endif

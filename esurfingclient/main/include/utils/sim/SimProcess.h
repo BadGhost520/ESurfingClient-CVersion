@@ -3,4 +3,4 @@
 
 extern void restart_process();
 
-#endif //ESURFINGCLIENT_SIMPROCESS_H
+#endif

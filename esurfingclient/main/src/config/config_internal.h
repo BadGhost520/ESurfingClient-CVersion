@@ -17,4 +17,4 @@ uint8_t complete_cfg(cJSON* cfg_json);
 
 void cfg_halt();
 
-#endif //ESURFINGCLIENT_CONFIG_INTERNAL_H
+#endif

@@ -48,4 +48,4 @@ bool logout_state_load(prog_status_t* status);
  */
 void logout_state_clear(uint8_t idx);
 
-#endif //ESURFINGCLIENT_LOGOUTSTATE_H
+#endif

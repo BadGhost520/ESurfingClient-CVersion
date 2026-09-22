@@ -7,10 +7,6 @@
 extern "C" {
 #endif
 
-/*
- * 与 OpenSSL 头文件互斥：本头文件是 <openssl/evp.h> 的替代品，不应与它同时包含。
- * （libcurl 仍然链接 libcrypto 时，链接层面也不会冲突，见下面的名称重映射。）
- */
 #if defined(OPENSSL_EVP_H) || defined(HEADER_EVP_H) || defined(MYSSL_OPENSSL_EVP_INCLUDED)
 #error "simssl/evp.h 不能与 OpenSSL 的 <openssl/evp.h> 出现在同一个编译单元中"
 #endif
@@ -100,4 +96,4 @@ void simssl_des3_decrypt_block(const unsigned char key[24], const unsigned char 
 }
 #endif
 
-#endif /* SIMEVP_H */
+#endif

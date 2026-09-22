@@ -14,13 +14,10 @@
 
 extern void work(void);
 
-/** @brief 参数解析结果, 该值表示继续运行, 其它值直接作为退出码返回 */
 #define ARG_CONTINUE (-1)
 
-/** @brief 是否只列举可用账号 */
 static bool s_list_accounts = false;
 
-/** @brief 是否只打印日志目录 */
 static bool s_print_log_dir = false;
 
 /**
@@ -306,7 +303,7 @@ static int parse_args(const int argc, char* argv[])
  * 环境变量对应的 /proc/<PID>/environ 只有属主和 root 可读。
  *
  * 显式给的 --control-token 优先, 这里只在没给的时候兜底。
- * (Windows 上监管者仍然走命令行, 原因见 Supervisor.c 的 child_build_argv)
+ * (Windows 上监管者仍然走命令行, 原因见 supervisor_child.c 的 child_build_argv)
  */
 static void load_control_token_env()
 {

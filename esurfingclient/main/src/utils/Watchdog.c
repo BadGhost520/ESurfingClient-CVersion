@@ -11,62 +11,21 @@
 #include <stdlib.h>
 #endif
 
-/** @brief 看门狗线程的检查间隔 */
 #define WATCHDOG_TICK_MS 500
 
-/**
- * @brief 判定卡死的宽限
- *
- * 声明了预算之后再宽限这么久还没等到下一次打卡才动手。
- * 留余量是因为主循环的一轮本身会有零点几秒的抖动
- */
 #define WATCHDOG_MARGIN_MS 5000
 
-/**
- * @brief 打卡预算的下限
- *
- * 调用方传了个过小的值 (比如 0) 时兜一下, 免得把正常的一轮误判成卡死
- */
 #define WATCHDOG_MIN_BUDGET_MS 1000
 
-/** @brief 网络请求打卡在"连接超时 + 操作超时"之外再留的余量 */
 #define WATCHDOG_NET_MARGIN_MS 10000
 
-/**
- * @brief 启动后给主循环的启动宽限
- *
- * 线程刚起来时主循环可能还在做初始化, 还没打第一次卡
- */
 #define WATCHDOG_START_GRACE_MS 30000
 
-/**
- * @brief 线程间共享的状态
- *
- * 刻意只用 32 位量: OpenWrt 路由器多是 32 位 MIPS, 64 位量在两个线程之间
- * 读写会被撕裂, 可能算出错误的超时。
- *
- * - s_pet_seq: 打卡序号, 只增不减
- * - s_budget_ms: 本次打卡声明的预算
- *
- * 写入顺序是"先写预算, 再自增序号"。看门狗读到新序号时预算必然已是新的;
- * 万一只读到新序号却拿到旧预算, 那也只会让超时判得更早一点 —— 所以判断时
- * 先读序号、再读预算, 最后确认序号没变。
- */
 static volatile uint32_t s_pet_seq = 0;
 static volatile uint32_t s_budget_ms = 0;
 static volatile bool s_running = false;
 static sim_thread_t* s_thread = NULL;
 
-/**
- * @brief 当前线程是不是看门狗自己
- *
- * 必须有这个标记: 本线程的循环也要睡眠, 而 sleep_ms() 现在会按睡眠时长打卡 ——
- * 那等于看门狗给自己打卡, 序号每个 tick 都在变, 判定分支永远走"有新打卡"这一边,
- * watchdog_fire 就成了不可达代码。表现是"装了看门狗但卡死依然没人管",
- * 而且不报任何错。
- *
- * 用线程局部变量而不是全局量: 只有本线程该被排除, 其它线程照常打卡。
- */
 static _Thread_local bool tl_in_watchdog = false;
 
 /**

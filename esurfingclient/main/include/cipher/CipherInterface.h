@@ -166,4 +166,4 @@ bool init_ios_cipher_from_zsm(const uint8_t* data, size_t length, char* algo_id_
  */
 bool init_cipher(const char* algo_id);
 
-#endif // ESURFINGCLIENT_CIPHERINTERFACE_H
+#endif

@@ -1,11 +1,6 @@
 #ifndef ESURFINGCLIENT_SUPERVISOR_H
 #define ESURFINGCLIENT_SUPERVISOR_H
 
-/**
- * @brief 让程序以监管进程启动的参数
- *
- * 安装系统服务时用它作为启动参数, 这样服务起来就是"监管者 + 认证 + Web"的多进程拓扑
- */
 #define SUPERVISOR_ARG "--role supervisor"
 
 /**
@@ -24,4 +19,4 @@
  */
 int work_supervisor(void);
 
-#endif //ESURFINGCLIENT_SUPERVISOR_H
+#endif

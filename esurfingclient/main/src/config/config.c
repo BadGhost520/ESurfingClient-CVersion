@@ -101,7 +101,6 @@ const char* get_config_file_path(void)
 
 #endif
 
-/** @brief 是否处于"只列举账号"模式 */
 bool s_list_only = false;
 
 /**
@@ -321,7 +320,6 @@ bool load_cfg()
         LOG_WARN("conn_timeout 参数不存在, 使用默认参数 (%d 秒)", DEFAULT_CONN_TIMEOUT);
     }
 
-
     const cJSON* op_timeout = cJSON_GetObjectItem(cfg_json, "op_timeout");
     if (op_timeout)
     {
@@ -342,7 +340,7 @@ bool load_cfg()
     /**
      * Web 服务端口与是否允许外部访问
      *
-     * 只有桌面端有 Web 服务 (OpenWrt 上不编译 WebServer.c), 那边这两个参数
+     * 只有桌面端有 Web 服务 (OpenWrt 版不带 Web 服务), 那边这两个参数
      * 解析出来也没人用, 但配置文件的格式是同一套, 这里就一起读掉
      */
     const cJSON* web_port = cJSON_GetObjectItem(cfg_json, "web_port");

@@ -26,4 +26,4 @@ curl_resp_t get(const char* url, bool connect_only);
  */
 network_status_t check_network_status(bool connect_only);
 
-#endif //ESURFINGCLIENT_NETCLIENT_H
+#endif

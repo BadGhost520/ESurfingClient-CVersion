@@ -14,4 +14,4 @@ void shut(int8_t exit_code);
  */
 void init_shutdown_hook();
 
-#endif //ESURFINGCLIENT_SHUTDOWN_H
+#endif

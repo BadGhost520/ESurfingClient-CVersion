@@ -6,4 +6,4 @@
  */
 void work();
 
-#endif // ESURFINGCLIENT_DIALERCLIENT_H
+#endif
