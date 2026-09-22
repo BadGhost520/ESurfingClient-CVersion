@@ -6,12 +6,12 @@
 
 ## 平台与编译器
 
-- **`winsock2.h` 必须先于 `windows.h` 引入**（`src/control/control_internal.h`）。
+- **`winsock2.h` 必须先于 `windows.h` 引入**（`src/control/ControlInternal.h`）。
   Windows 下反了会和 `windows.h` 里的 winsock1 冲突。
 - **`SimEvp.h` 与 `<openssl/evp.h>` 互斥**（`include/utils/sim/SimEvp.h`）。
   该头文件是 `evp.h` 的替代品，不能与它同时包含；libcurl 仍链 libcrypto 时链接层面
   不冲突，靠的是头文件里的名称重映射。
-- **枚举成员名要避开 Windows 宏**（`src/clients/dialer/dialer_internal.h` 的 `WaitResult`）。
+- **枚举成员名要避开 Windows 宏**（`src/clients/dialer/DialerInternal.h` 的 `WaitResult`）。
   `windows.h` 定义了 `WAIT_FAILED`（`((DWORD)0xFFFFFFFF)`）等同名宏，而该模块会经
   `NetClient.h` → `curl.h` → `winsock2.h` 把 `windows.h` 带进来，成员名撞上就会被宏替换掉，
   报 `expected identifier before '(' token`。Linux 上不出现，只在 Windows 构建时炸。
@@ -22,20 +22,20 @@
 ## 配置
 
 - **默认参数必须与 `esurfingclient/files/etc/config/esurfingclient` 及 `s_default_cfg` 三处一致**
-  （`src/config/config_defaults.c`）。缺哪个参数，用户下次打开配置文件就会看到它被补上。
-- **`s_cfg_log_dir` 只存配置里的原样文本**（定义在 `src/utils/log_core.c`，声明在 `src/utils/logger_internal.h`）。
+  （`src/config/ConfigDefaults.c`）。缺哪个参数，用户下次打开配置文件就会看到它被补上。
+- **`s_cfg_log_dir` 只存配置里的原样文本**（定义在 `src/utils/LogCore.c`，声明在 `src/utils/LoggerInternal.h`）。
   它是给页面回显用的，不能回显解析后的绝对路径 —— 否则用户改一次配置就被写成一长串路径。
 
 ## 日志
 
-- **OpenWrt 默认日志目录选 `/var/log/esurfing`**（`src/utils/logger_dir.c`）。
+- **OpenWrt 默认日志目录选 `/var/log/esurfing`**（`src/utils/LoggerDir.c`）。
   因为 `/var/log` 是 tmpfs：重启即清、不磨闪存、小容量设备不会被日志占满。
   配置里的 `log_dir` 同样生效（想把日志放 U 盘时用）。
   ⚠️ `files/etc/init.d/esurfingclient` 与 LuCI 的日志页都拿这个值兜底，改要一起改。
-- **单条日志必须只用一次 `write` 写出**（`src/utils/log_core.c`，`LOG_LINE_MAX` + 静态断言）。
+- **单条日志必须只用一次 `write` 写出**（`src/utils/LogCore.c`，`LOG_LINE_MAX` + 静态断言）。
   多进程共用同一个 `run.log`，分多次写会让不同进程的行互相穿插。
 - **查询模式（`--print-log-dir` / `--list-accounts`）一行都不落盘，改写到 stderr**
-  （`src/utils/log_control.c` 里的 `set_logger_query_mode` + `log_core.c` 的 `s_query_mode`）。这两个模式必须调 `load_cfg()` 才知道答案，而解析配置一定会写日志；
+  （`src/utils/LogControl.c` 里的 `set_logger_query_mode` + `LogCore.c` 的 `s_query_mode`）。这两个模式必须调 `load_cfg()` 才知道答案，而解析配置一定会写日志；
   那几行落进 `run.log` 后，OpenWrt 的 init 脚本会把这文件当成上一轮运行的日志归档走
   （它的判断就是"`run.log` 非空就归档"）—— 没有旧日志时凭空多出一个只有查询输出的 `.log`，
   有旧日志时归档里混进这几行。之所以是"改写 stderr"而不是"什么都不写"：配置有问题时得让人
@@ -62,7 +62,7 @@
 
 ## 进程与控制通道
 
-- **控制通道协议**（`src/control/control_internal.h`）：
+- **控制通道协议**（`src/control/ControlInternal.h`）：
 
   | 请求（一行 JSON） | 响应（一行 JSON） |
   |---|---|
@@ -74,14 +74,14 @@
   进程拆分后 Web 进程既看不到认证状态、也不能直接改认证线程的运行时状态，所以要这条只监听
   回环的控制通道，鉴权靠监管者下发的令牌。**刻意不放配置读写**：两个进程读同一份配置，
   Web 进程保存配置也直接写文件，通道只负责运行时状态与动作，协议面最小、最不容易出错。
-- **退出请求只由信号处理函数置位**（`src/supervisor/supervisor_internal.h` 的 `s_stop_requested`）：
+- **退出请求只由信号处理函数置位**（`src/supervisor/SupervisorInternal.h` 的 `s_stop_requested`）：
   信号处理函数里不能做 join / 打日志 / rename / exit 这些不是 async-signal-safe 的事，
   真正的关闭动作由各角色的主循环来做。
 - **模块内共享状态的定义只放一处，头文件里只放 `extern` 声明**
-  （`src/supervisor/supervisor_state.c`、`src/utils/log_core.c` 等）。若把可变状态定义在头文件里，每个 `.c` 会拿到
+  （`src/supervisor/SupervisorState.c`、`src/utils/LogCore.c` 等）。若把可变状态定义在头文件里，每个 `.c` 会拿到
   自己的一份副本，`s_child_count` 之类的计数就各算各的，行为与拆分前不同。
-- **`_Thread_local` 的限定符在声明与定义两侧都必须带**（`src/clients/net/netclient.c` 的
-  `s_request_url`，声明在 `netclient_internal.h`）。少了它就不是线程局部对象，`header_cb` 拼 Location
+- **`_Thread_local` 的限定符在声明与定义两侧都必须带**（`src/clients/net/NetClient.c` 的
+  `s_request_url`，声明在 `NetClientInternal.h`）。少了它就不是线程局部对象，`header_cb` 拼 Location
   时的基准地址会串到别的线程去。
 
 ## iOS ZSM 包格式（逆向参考）
@@ -114,7 +114,7 @@
   后端 `parse_channel_json` 三处一致（后端默认值是 Android）。
 - **LuCI 页面（`rootfs/www` 与 `rootfs-legacy`）**：默认配置与后端 `s_default_cfg` 是同一套字段；
   `web_port` / `web_external_acc` 是桌面端参数，OpenWrt 版不带网页服务，界面上不提供但字段保留
-  ——配置格式两个平台共用，复位时写出去的也必须是完整一套；日志目录规则与 `logger_dir.c` 的
+  ——配置格式两个平台共用，复位时写出去的也必须是完整一套；日志目录规则与 `LoggerDir.c` 的
   `resolve_log_dir` / `get_log_dir` 一致（配置里的 `log_dir` 是**基目录**，日志在它下面的
   `logs` 里；没写或写成 `.` / `./` 时用 `/var/log/esurfing`；相对路径也按它解析，OpenWrt 上
   程序装在只读的 `/usr/bin` 里，不按程序目录解析）。

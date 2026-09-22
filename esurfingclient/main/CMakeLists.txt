@@ -77,62 +77,62 @@ add_executable(ESurfingClient
         src/cipher/algo/linux/desede_cbc_linux.c
         src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
         src/cipher/algo/linux/mod_xtea_linux.c
-        src/clients/dialer/dialer_auth.c
-        src/clients/dialer/dialer_client.c
-        src/clients/dialer/dialer_location.c
-        src/clients/dialer/dialer_net.c
-        src/clients/dialer/dialer_session.c
-        src/clients/dialer/dialer_ticket.c
+        src/clients/dialer/DialerAuth.c
+        src/clients/dialer/DialerClient.c
+        src/clients/dialer/DialerLocation.c
+        src/clients/dialer/DialerNet.c
+        src/clients/dialer/DialerSession.c
+        src/clients/dialer/DialerTicket.c
         src/clients/net/CheckNetwork.c
-        src/clients/net/netclient.c
-        src/clients/net/netclient_curl.c
-        src/config/config.c
-        src/config/config_accounts.c
-        src/config/config_defaults.c
-        src/config/config_time_window.c
+        src/clients/net/NetClient.c
+        src/clients/net/NetClientCurl.c
+        src/config/Config.c
+        src/config/ConfigAccounts.c
+        src/config/ConfigDefaults.c
+        src/config/ConfigTimeWindow.c
         src/main.c
         src/states/Refresh.c
         src/states/States.c
+        src/utils/BytesUtil.c
+        src/utils/ExecPath.c
+        src/utils/LogControl.c
+        src/utils/LogCore.c
+        src/utils/LogDir.c
+        src/utils/LogFile.c
+        src/utils/LogMeta.c
+        src/utils/LoggerDir.c
         src/utils/LogoutState.c
+        src/utils/NetAdapters.c
+        src/utils/ProcessInfo.c
         src/utils/Shutdown.c
+        src/utils/StrUtil.c
         src/utils/TimeControl.c
+        src/utils/TimeUtil.c
         src/utils/Watchdog.c
-        src/utils/bytes_util.c
-        src/utils/exec_path.c
-        src/utils/log_control.c
-        src/utils/log_core.c
-        src/utils/log_dir.c
-        src/utils/log_file.c
-        src/utils/log_meta.c
-        src/utils/logger_dir.c
-        src/utils/net_adapters.c
-        src/utils/process_info.c
+        src/utils/Xml.c
+        src/utils/sim/SimEvpAes.c
+        src/utils/sim/SimEvpCipher.c
+        src/utils/sim/SimEvpDes3.c
+        src/utils/sim/SimEvpMd5.c
         src/utils/sim/SimThread.c
-        src/utils/sim/sim_evp_aes.c
-        src/utils/sim/sim_evp_cipher.c
-        src/utils/sim/sim_evp_des3.c
-        src/utils/sim/sim_evp_md5.c
-        src/utils/str_util.c
-        src/utils/time_util.c
-        src/utils/xml.c
 )
 
 if (NOT __OPENWRT__)
     target_sources(ESurfingClient PRIVATE
             third_party/mongoose/mongoose.c
-            src/control/control_client.c
-            src/control/control_server.c
-            src/supervisor/supervisor_child.c
-            src/supervisor/supervisor_loop.c
-            src/supervisor/supervisor_signal.c
-            src/supervisor/supervisor_state.c
+            src/control/ControlClient.c
+            src/control/ControlServer.c
+            src/supervisor/SupervisorChild.c
+            src/supervisor/SupervisorLoop.c
+            src/supervisor/SupervisorSignal.c
+            src/supervisor/SupervisorState.c
             src/utils/Service.c
             src/utils/sim/SimProcess.c
-            src/webserver/web_api_get.c
-            src/webserver/web_api_post.c
-            src/webserver/web_log_files.c
-            src/webserver/web_serve.c
-            src/webserver/web_server.c
+            src/webserver/WebApiGet.c
+            src/webserver/WebApiPost.c
+            src/webserver/WebLogFiles.c
+            src/webserver/WebServe.c
+            src/webserver/WebServer.c
     )
 
     add_custom_target(CopyPortal ALL

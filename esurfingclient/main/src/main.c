@@ -303,7 +303,7 @@ static int parse_args(const int argc, char* argv[])
  * 环境变量对应的 /proc/<PID>/environ 只有属主和 root 可读。
  *
  * 显式给的 --control-token 优先, 这里只在没给的时候兜底。
- * (Windows 上监管者仍然走命令行, 原因见 supervisor_child.c 的 child_build_argv)
+ * (Windows 上监管者仍然走命令行, 原因见 SupervisorChild.c 的 child_build_argv)
  */
 static void load_control_token_env()
 {
