@@ -4,14 +4,8 @@ PKG_NAME:=luci-app-esurfingclient
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 
-# 版本号由 scripts/sync-version.sh 从 esurfingclient/main/CMakeLists.txt 生成,
-# 不要手改。
-#
-# 这里写成字面值而不是去读那个文件: CI 与文档都是
-#   cp -r luci-app-esurfingclient openwrt-sdk/package/
-# 只拷这一个目录, 跨包引用在 SDK 里必然失效 —— 包目录必须自包含。
 PKG_VERSION:=2.1.1
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -29,11 +23,6 @@ define Package/luci-app-esurfingclient/description
 ESurfing 客户端的 LuCI 配置页面
 endef
 
-# rootfs/ 与 rootfs-legacy/ 都是目标 rootfs 的镜像, 分别对应
-# 新版 LuCI (JS) 与老版 LuCI (Lua/HTM)。
-#
-# 注意: 这里先装到 /tmp/luci-staging 而不是直接装到 /www, 是故意的 —
-# postinst 会在目标机上探测是哪一代 LuCI, 再决定装哪一套。别"顺手清理"这个中转。
 define Package/luci-app-esurfingclient/install
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/view
 	$(INSTALL_DATA) $(CURDIR)/rootfs/www/luci-static/resources/view/esurfingclient.js $(1)/tmp/luci-staging/new/view/
@@ -88,7 +77,7 @@ rm -f /usr/lib/lua/luci/view/esurfingclient.htm
 rm -rf /tmp/luci-*
 /etc/init.d/uhttpd restart 2>/dev/null &
 
-echo "LuCI 界面已移除"
+echo "ESurfingClient LuCI 已移除"
 exit 0
 endef
 
