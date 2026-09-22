@@ -1,6 +1,8 @@
 #ifndef ESURFINGCLIENT_PLATFORMUTILS_H
 #define ESURFINGCLIENT_PLATFORMUTILS_H
 
+#include "config/Config.h"
+
 #include "states/States.h"
 
 #ifdef _WIN32
@@ -77,15 +79,6 @@ bool get_exec_dir(char* dir_array);
  * @return 是否获取成功
  */
 bool get_exec_path(char* path_array);
-
-/**
- * @brief 取配置文件的完整路径
- *
- * OpenWrt 上是 /etc/config/esurfingclient, 桌面分支是程序目录下的 ESurfingClient.json。
- * 注意桌面分支要等 load_cfg() 跑过才有值。
- * @return 配置文件的完整路径
- */
-const char* get_config_path(void);
 
 /**
  * @brief 记下启动时的父进程号
@@ -195,26 +188,6 @@ char* extract_between_tags(const char* text, const char* start_tag, const char* 
 char* clean_CDATA(const char* text);
 
 /**
- * @brief 保存配置文件
- * @param configs_str 配置文件字符串
- */
-bool save_cfg(const char* configs_str);
-
-/**
- * @brief 加载配置文件
- */
-bool load_cfg();
-
-/**
- * @brief 列举配置文件中所有可用账号的序号
- *
- * 供 OpenWrt 的 init 脚本使用: 每个可用账号起一个认证进程实例。
- * 复用 load_cfg 的校验逻辑, 结果与真正会被加载的账号完全一致
- * @return 账号数量, -1 表示配置有问题
- */
-int list_accounts();
-
-/**
  * @brief 取实际使用的日志目录 (供 --print-log-dir 使用)
  *
  * 日志目录由配置里的 log_dir 决定 (OpenWrt 上默认 /var/log/esurfing, 日志落在它下面的
@@ -225,11 +198,5 @@ int list_accounts();
  * @return 日志目录 (进程内静态缓冲, 不要 free), 失败返回 NULL
  */
 const char* print_log_dir();
-
-/**
- * @brief 获取配置文件路径
- * @return 配置文件路径
- */
-const char* get_config_file_path(void);
 
 #endif // ESURFINGCLIENT_PLATFORMUTILS_H

@@ -4,21 +4,10 @@ project(ESurfingClient C CXX)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# ★ 版本号唯一真相源
-#
-# 要改版本号就改这四行, 然后跑 scripts/sync-version.sh 分发到各处:
-#   - esurfingclient/Makefile           (PKG_VERSION / PKG_RELEASE)
-#   - luci-app-esurfingclient/Makefile  (PKG_VERSION / PKG_RELEASE)
-#   - 两处 LuCI 页面里显示的版本号
-# 那些地方是脚本从这四行生成出来的, 不要手改 (下次同步会被覆盖回去)。
-#
-# 顺带一个好处: 二进制 -DPROGRAM_FULL_VERSION 报出来的版本与 OpenWrt
-# 包版本必然一致 —— 同源。以前 CI 用 sed 现改 Makefile 里的版本号,
-# 包版本可以和程序自报的版本对不上。
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 1)
 set(PROGRAM_VERSION_PATCH 1)
-set(PROGRAM_VERSION_RELEASE 4)
+set(PROGRAM_VERSION_RELEASE 5)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -66,8 +55,6 @@ endif ()
 
 find_package(CURL REQUIRED)
 
-# 源文件清单只写一遍, 各平台差异在下面用 target_sources 追加。
-# (以前 if(__OPENWRT__)/else 各列了 36 行几乎相同的内容, 加一个 .c 要改两处)
 add_executable(ESurfingClient
         third_party/7z/LzmaDec.c
         third_party/cJSON/cJSON.c
@@ -94,7 +81,18 @@ add_executable(ESurfingClient
         src/states/States.c
         src/utils/sim/SimThread.c
         src/utils/sim/SimEvp.c
-        src/utils/PlatformUtils.c
+        src/utils/net_adapters.c
+        src/utils/str_util.c
+        src/config/config_accounts.c
+        src/config/config_time_window.c
+        src/utils/exec_path.c
+        src/utils/process_info.c
+        src/utils/xml.c
+        src/utils/bytes_util.c
+        src/utils/time_util.c
+        src/config/config_defaults.c
+        src/config/config.c
+        src/utils/log_dir.c
         src/utils/TimeControl.c
         src/utils/Watchdog.c
         src/utils/LogoutState.c
@@ -106,7 +104,6 @@ add_executable(ESurfingClient
         src/main.c
 )
 
-# OpenWrt 那一支不带 Web 界面 / 守护进程编排, 差异就是这 6 个文件。
 if (NOT __OPENWRT__)
     target_sources(ESurfingClient PRIVATE
             third_party/mongoose/mongoose.c
@@ -128,11 +125,9 @@ if (NOT __OPENWRT__)
     add_dependencies(ESurfingClient CopyPortal)
 endif ()
 
-# include/ 是第一方头文件的根, third_party/ 是 vendored 库的根。
-# 第一方代码统一写 #include "utils/Logger.h" 这种模块路径,
-# vendored 库统一用尖括号 #include <cJSON/cJSON.h>, 一眼能分清是谁的。
 target_include_directories(ESurfingClient PRIVATE
         ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/third_party
 )
 
