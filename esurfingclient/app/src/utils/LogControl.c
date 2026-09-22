@@ -49,8 +49,9 @@ void clean_logger()
      *
      * ⚠️ OpenWrt 上【没有】守护进程: procd 只跑 --role auth 实例, 而
      *    --list-accounts 也刻意不调用本函数 —— 于是没人改名, run.log 会一直追加。
-     *    那边由 init 脚本在启动前归档 (archive_previous_log), procd + init 脚本
-     *    在 OpenWrt 上就是那个"守护进程"。改动这里时别忘了那一处。
+     *    那边由 init 脚本归档 (archive_previous_log): 实例退出后 (stop_service)
+     *    归档一次, 启动时只在"上一轮没走到停止"时兜底。procd + init 脚本在
+     *    OpenWrt 上就是那个"守护进程"。改动这里时别忘了那一处。
      */
     const bool need_rename = (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB);
 

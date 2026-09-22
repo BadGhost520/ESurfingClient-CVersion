@@ -66,14 +66,6 @@ if [ -f "/etc/config/esurfingclient.opkg" ]; then
 	echo "-> /etc/config/esurfingclient.opkg"
 fi
 
-if [ -f "/etc/init.d/esurfingclient.apk-new" ]; then
-	mv /etc/init.d/esurfingclient.apk-new /etc/init.d/esurfingclient
-fi
-
-if [ -x "/etc/init.d/esurfingclient" ]; then
-	echo "重启服务中"
-    /etc/init.d/esurfingclient restart 2>/dev/null &
-fi
 exit 0
 endef
 

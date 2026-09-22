@@ -42,6 +42,16 @@
   看见原因；stdout 要留给路径/账号列表，而 init 脚本调用这两个查询时都带了 `2>/dev/null`。
   查询模式比日志等级更硬：`load_cfg()` 会用配置里的 `log_lv` 调 `set_logger_level()`，
   查询模式必须在那之后依然生效。
+- **OpenWrt 上的归档由 init 脚本负责，时机是"这一轮运行结束之后"**
+  （`files/etc/init.d/esurfingclient` 的 `archive_previous_log`）。`run.log` 是多进程共用的，
+  改名只能由一方来做，而 AUTH / WEB 角色在 `clean_logger()` 里刻意不改名（交给监管进程）；
+  OpenWrt 上 procd 只跑 `--role auth`，没有监管进程，所以由这个脚本充当。
+  两点容易踩：
+  - `stop_service` 是在 procd 杀实例**之前**被调用的（上游提交 `base-files: calling stop_service
+    before procd_kill`），所以脚本要自己先 `kill` 实例、等它们退出，再改名；给一个还在写的
+    `run.log` 改名会把新日志一起卷进归档。
+  - `start_service` 里那次归档只是兜底（被强杀 / 结束超时 / 掉电时上一轮没走到停止），
+    正常停止/重启时它是空操作，所以一次运行只会留下一个归档文件。
 
 ## 看门狗
 
