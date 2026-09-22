@@ -73,7 +73,7 @@ define Package/esurfingclient/postrm
 #!/bin/sh
 echo "正在清理 ESurfing 客户端残留文件"
 
-rm -f /etc/config/esurfingclient.*
+rm -f /etc/config/esurfingclient*
 
 rm -rf /var/log/esurfing
 
