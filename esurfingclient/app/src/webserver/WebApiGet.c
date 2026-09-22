@@ -46,7 +46,8 @@ bool query_is_authed(bool* out)
  * @param out_len 输出内容长度
  * @param truncated 是否被截断
  * @return 是否读取成功
- */static bool read_log_file(const char* name, char** out, size_t* out_len, bool* truncated)
+ */
+static bool read_log_file(const char* name, char** out, size_t* out_len, bool* truncated)
 {
     const char* dir = get_logger_dir();
     if (dir == NULL || dir[0] == '\0') return false;

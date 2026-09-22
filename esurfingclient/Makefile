@@ -9,7 +9,7 @@ PKG_RELEASE:=5
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
-PKG_BUILD_DEPENDS:=libcurl libopenssl
+PKG_BUILD_DEPENDS:=libcurl
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
