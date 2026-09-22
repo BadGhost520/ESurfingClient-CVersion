@@ -31,7 +31,7 @@ static const char s_log_sub_dir[] = "logs";
  * 默认选 /var/log 是因为它是 tmpfs: 重启即清, 也不磨损闪存, 小容量设备不会被日志占满 ——
  * 改配置把日志挪到闪存上的用户自己知道后果。
  *
- * ⚠️ init.d/esurfingclient.init 与 LuCI 的日志页都拿这个值兜底, 改这里要一起改
+ * ⚠️ files/etc/init.d/esurfingclient 与 LuCI 的日志页都拿这个值兜底, 改这里要一起改
  */
 static const char s_default_base[] = "/var/log/esurfing";
 #endif

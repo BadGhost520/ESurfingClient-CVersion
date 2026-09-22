@@ -2,10 +2,16 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-esurfingclient
 PKG_LICENSE:=Apache-2.0
-PKG_LICENSE_FILES:=../LICENSE
+PKG_LICENSE_FILES:=LICENSE
 
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+# 版本号由 scripts/sync-version.sh 从 esurfingclient/main/CMakeLists.txt 生成,
+# 不要手改。
+#
+# 这里写成字面值而不是去读那个文件: CI 与文档都是
+#   cp -r luci-app-esurfingclient openwrt-sdk/package/
+# 只拷这一个目录, 跨包引用在 SDK 里必然失效 —— 包目录必须自包含。
+PKG_VERSION:=2.1.1
+PKG_RELEASE:=4
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -23,18 +29,23 @@ define Package/luci-app-esurfingclient/description
 ESurfing 客户端的 LuCI 配置页面
 endef
 
+# rootfs/ 与 rootfs-legacy/ 都是目标 rootfs 的镜像, 分别对应
+# 新版 LuCI (JS) 与老版 LuCI (Lua/HTM)。
+#
+# 注意: 这里先装到 /tmp/luci-staging 而不是直接装到 /www, 是故意的 —
+# postinst 会在目标机上探测是哪一代 LuCI, 再决定装哪一套。别"顺手清理"这个中转。
 define Package/luci-app-esurfingclient/install
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/view
-	$(INSTALL_DATA) $(CURDIR)/luci/www/luci-static/resources/view/esurfingclient.js $(1)/tmp/luci-staging/new/view/
+	$(INSTALL_DATA) $(CURDIR)/rootfs/www/luci-static/resources/view/esurfingclient.js $(1)/tmp/luci-staging/new/view/
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/menu.d
-	$(INSTALL_DATA) $(CURDIR)/luci/usr/share/luci/menu.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/menu.d/
+	$(INSTALL_DATA) $(CURDIR)/rootfs/usr/share/luci/menu.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/menu.d/
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/acl.d
-	$(INSTALL_DATA) $(CURDIR)/luci/usr/share/rpcd/acl.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/acl.d/
+	$(INSTALL_DATA) $(CURDIR)/rootfs/usr/share/rpcd/acl.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/acl.d/
 
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/legacy/controller
-	$(INSTALL_DATA) $(CURDIR)/legacy-luci/usr/lib/lua/luci/controller/esurfingclient.lua $(1)/tmp/luci-staging/legacy/controller/
+	$(INSTALL_DATA) $(CURDIR)/rootfs-legacy/usr/lib/lua/luci/controller/esurfingclient.lua $(1)/tmp/luci-staging/legacy/controller/
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/legacy/view
-	$(INSTALL_DATA) $(CURDIR)/legacy-luci/usr/lib/lua/luci/view/esurfingclient.htm $(1)/tmp/luci-staging/legacy/view/
+	$(INSTALL_DATA) $(CURDIR)/rootfs-legacy/usr/lib/lua/luci/view/esurfingclient.htm $(1)/tmp/luci-staging/legacy/view/
 endef
 
 define Package/luci-app-esurfingclient/postinst
@@ -72,9 +83,7 @@ echo "正在移除 ESurfingClient LuCI"
 rm -f /usr/lib/lua/luci/controller/esurfingclient.lua
 rm -f /www/luci-static/resources/view/esurfingclient.js
 rm -f /usr/share/luci/menu.d/luci-app-esurfingclient.json
-rmdir /www/luci-static/resources/view/esurfingclient 2>/dev/null || true
-rm -f /usr/lib/lua/luci/view/esurfingclient/config.htm
-rmdir /usr/lib/lua/luci/view/esurfingclient 2>/dev/null || true
+rm -f /usr/lib/lua/luci/view/esurfingclient.htm
 
 rm -rf /tmp/luci-*
 /etc/init.d/uhttpd restart 2>/dev/null &

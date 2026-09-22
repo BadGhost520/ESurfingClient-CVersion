@@ -122,15 +122,12 @@ jobs:
       - name: 获取版本号
         id: version
         run: |
-          cd esurfingclient/main
-          MAJOR=$(grep -oP 'set\(PROGRAM_VERSION_MAJOR \K\d+' CMakeLists.txt)
-          MINOR=$(grep -oP 'set\(PROGRAM_VERSION_MINOR \K\d+' CMakeLists.txt)
-          PATCH=$(grep -oP 'set\(PROGRAM_VERSION_PATCH \K\d+' CMakeLists.txt)
-          RELEASE=$(grep -oP 'set\(PROGRAM_VERSION_RELEASE \K\d+' CMakeLists.txt)
+          # 版本号真相源: esurfingclient/main/CMakeLists.txt 的 set(PROGRAM_VERSION_*)
+          # 解析只有一处实现 (scripts/sync-version.sh), 这里直接取它的输出,
+          # 不再自己 grep CMakeLists。--print 是只读模式, 不改任何文件。
+          bash scripts/sync-version.sh --print >> "$GITHUB_OUTPUT"
           
-          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
-          echo "release=${RELEASE}" >> $GITHUB_OUTPUT
-          echo "full_version=${MAJOR}.${MINOR}.${PATCH}-r${RELEASE}" >> $GITHUB_OUTPUT
+
 
       - name: 生成 OpenWRT 主程序插件包编译动态矩阵
         id: matrix

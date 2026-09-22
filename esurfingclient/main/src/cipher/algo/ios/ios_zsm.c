@@ -5,7 +5,7 @@
 
 #include "utils/Logger.h"
 
-#include "7z/LzmaDec.h"
+#include <7z/LzmaDec.h>
 
 /*
  * iOS PacketTunnel IZsmModLoad (sub_10007131C) layout:

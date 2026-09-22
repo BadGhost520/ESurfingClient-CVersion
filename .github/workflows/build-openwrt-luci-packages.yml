@@ -33,12 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: 更新版本号
+      - name: 同步版本号
         run: |
-          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" luci-app-esurfingclient/Makefile
-          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" luci-app-esurfingclient/Makefile
-          sed -i "s/E('p', { class: 'desc' }, 'LuCI 版本.*/E('p', { class: 'desc' }, 'LuCI 版本: ${{ inputs.version }}-r${{ inputs.release }}'),/" luci-app-esurfingclient/luci/www/luci-static/resources/view/esurfingclient.js
-          sed -i "s%<p class='desc'>LuCI 版本.*%<p class='desc'>LuCI 版本: ${{ inputs.version }}-r${{ inputs.release }}</p>%" luci-app-esurfingclient/legacy-luci/usr/lib/lua/luci/view/esurfingclient.htm
+          # 版本号真相源是 esurfingclient/main/CMakeLists.txt 的 set(PROGRAM_VERSION_*)。
+          # 这里把 workflow 传入的版本号写回那四行, 再由脚本分发到本包 Makefile
+          # 与两处页面文字 (以前是 4 条 sed 就地改文件, 改了什么都看不见)。
+          bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
       - name: 安装软件包 (最多重试 3 次)
         run: |

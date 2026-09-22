@@ -4,8 +4,11 @@ PKG_NAME:=esurfingclient
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+# 版本号由 scripts/sync-version.sh 从 main/CMakeLists.txt 生成, 不要手改。
+# 那四行 set(PROGRAM_VERSION_*) 是唯一真相源; 这里保留字面值, 是因为
+# OpenWrt 构建只吃这个 Makefile, 不会去解析 CMakeLists。
+PKG_VERSION:=2.1.1
+PKG_RELEASE:=4
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
@@ -13,8 +16,6 @@ PKG_BUILD_DEPENDS:=libcurl libopenssl
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
-
-$(warning DEBUG: ARCH is $(ARCH))
 
 ifneq ($(filter mips%,$(ARCH)),)
   EXTRA_MIPS_FLAGS := -minterlink-mips16
@@ -87,11 +88,12 @@ define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/esurfingclient
 
+	# files/ 是目标 rootfs 的镜像: 目录结构本身就是"装到哪"的文档
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(CURDIR)/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CURDIR)/config/ESurfingClient.json $(1)/etc/config/esurfingclient
+	$(INSTALL_CONF) $(CURDIR)/files/etc/config/esurfingclient $(1)/etc/config/esurfingclient
 endef
 
 define Build/Compile

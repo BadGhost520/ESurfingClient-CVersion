@@ -9,7 +9,7 @@
 
 ### 如下图红框所示
 
-<img alt="Please refresh" width="75%" src="../image/targets/01.png"/>
+<img alt="Please refresh" width="75%" src="assets/targets/01.png"/>
 
 **一个架构实际上包含多个目标平台**
 

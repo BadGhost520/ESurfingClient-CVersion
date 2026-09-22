@@ -14,6 +14,44 @@
 
 ### 自行编译教程很简略, 因为过程完全可以按照 action 的步骤去做, 这里就不再细说
 
+# 仓库目录一览
+
+> 动手之前先认清哪个目录是"包", 哪个是"给包用的输入"。
+
+```
+esurfingclient/              OpenWrt 包①: 主程序
+├── Makefile                 只认包内路径 (CI 会把本目录整个拷进 SDK)
+├── LICENSE                  包内自带, 不能引用仓库根的 LICENSE
+├── files/                   目标 rootfs 的镜像
+│   └── etc/{config,init.d}/ 部署到设备上就是这两个位置
+└── main/                    CMake 工程
+    ├── CMakeLists.txt        ★ 版本号唯一真相源 (set(PROGRAM_VERSION_*))
+    ├── src/                 第一方源码 (cipher/clients/control/states/...)
+    ├── include/             第一方头文件, 与 src/ 同构
+    ├── portal/              内置网页界面的源
+    └── third_party/         vendored: cJSON / mongoose / 7z
+
+luci-app-esurfingclient/     OpenWrt 包②: LuCI 页面 (同样自包含)
+├── Makefile  LICENSE
+├── rootfs/                  新版 LuCI (JS)
+└── rootfs-legacy/           老版 LuCI (Lua/HTM)
+
+ci/                          构建输入, 不是文档内容
+├── openwrt/all.config       打包用的 defconfig 片段
+└── toolchains/mingw64.cmake Windows 交叉编译工具链
+scripts/                     构建脚本 (CI 与本地共用)
+├── build-portal.sh          网页资源构建 (下载 + tailwind + CDN 本地化)
+└── sync-version.sh          版本号分发 (从 CMakeLists 到各包与页面)
+docs/                        文档与截图 (assets/)
+```
+
+**两条硬规矩**:
+
+1. **包目录自包含** —— 任何 `../` 形式的引用, 在 `cp -r <包> openwrt-sdk/package/` 之后都会指到别处, 而本地看着一切正常。
+2. **版本号只改一处** —— `esurfingclient/main/CMakeLists.txt` 里的四行 `set(PROGRAM_VERSION_*)`,
+   然后跑 `scripts/sync-version.sh` 分发到两个包的 Makefile 与 LuCI 页面 (那些地方是生成物, 别手改)。
+
+
 # Windows
 
 ### `简单一点` 就是在 Windows 使用 vcpkg 安装 mingw 包, 包括 curl 的
@@ -47,26 +85,11 @@ sudo apt install -y cmake \
                     libperl-dev
 ```
 
-### 2. 创建交叉编译工具链
+### 2. 直接使用仓库里的工具链文件
 
 ```shell
-# 根据自身情况判断路径
-cd /path/to/esurfingclient/main
-
-cat > toolchain-mingw64.cmake << 'EOF'
-      set(CMAKE_SYSTEM_NAME Windows)
-      set(CMAKE_SYSTEM_PROCESSOR x86_64)
-      
-      set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
-      set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
-      set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
-      
-      set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
-      
-      set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-      set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-      set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-      EOF
+# 工具链文件在 ci/toolchains/mingw64.cmake, 不用再手抄一份到 main/ 下面
+cat /path/to/ci/toolchains/mingw64.cmake
 ```
 
 ### 3. 使用指定配置编译安装 libcurl 
@@ -150,7 +173,7 @@ cmake \
     -G Ninja \
     -B build \
     -S . \
-    -DCMAKE_TOOLCHAIN_FILE=toolchain-mingw64.cmake \
+    -DCMAKE_TOOLCHAIN_FILE=../../ci/toolchains/mingw64.cmake \
     -DBUILD_SHARED_LIBS=OFF
 
 cmake --build build --target ESurfingClient -j$(nproc)
@@ -321,11 +344,13 @@ tar -I zstd -xf openwrt-sdk-24.10.8-malta-le_gcc-13.3.0_musl.Linux-x86_64.tar.zs
 > [!WARNING]
 > 做这一步之前, 如果有版本号要求的话
 > 
-> 检查 esurfingclient/main 目录下的 CMakeLists.txt 文件
+> 版本号只有一个源: `esurfingclient/main/CMakeLists.txt` 里的
+> `set(PROGRAM_VERSION_MAJOR/MINOR/PATCH/RELEASE ...)` 四行
 > 
-> 找到 set(PROGRAM_VERSION_MAJOR x), set(PROGRAM_VERSION_MINOR x),set(PROGRAM_VERSION_PATCH x), set(PROGRAM_VERSION_RELEASE x) 三个选项
+> 改完在仓库根执行 `scripts/sync-version.sh`, 它会把版本号分发到两个包的 Makefile
+> 与 LuCI 页面显示的版本号; 也可以直接 `scripts/sync-version.sh 2.2.0-r1` (等价于先改那四行再分发)
 > 
-> 修改成自己要的版本号, 否则包版本号默认是 1.0.0-1 
+> 两个包的 Makefile 里那两行 PKG_VERSION/PKG_RELEASE 是分发生成的, 不要手改
 
 ```shell
 cp -r esurfingclient openwrt-sdk/package/
@@ -344,7 +369,7 @@ scripts/feeds install esurfingclient
 ```shell
 make defconfig
 
-cat ../openwrt-config/all.config >> .config
+cat ../ci/openwrt/all.config >> .config
 
 make defconfig
 ```

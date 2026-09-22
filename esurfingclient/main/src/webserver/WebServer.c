@@ -1,6 +1,6 @@
 #include "webserver/WebServer.h"
 
-#include "mongoose/mongoose.h"
+#include <mongoose/mongoose.h>
 
 #include "clients/net/NetClient.h"
 
@@ -13,7 +13,7 @@
 #include "utils/PlatformUtils.h"
 #include "utils/Logger.h"
 
-#include "cJSON/cJSON.h"
+#include <cJSON/cJSON.h>
 
 static sim_thread_t* web_thread;
 

@@ -36,10 +36,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: 更新 Makefile 版本号
+      - name: 同步版本号
         run: |
-          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" esurfingclient/Makefile
-          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" esurfingclient/Makefile
+          # 版本号真相源是 esurfingclient/main/CMakeLists.txt 的 set(PROGRAM_VERSION_*)。
+          # 这里把 workflow 传入的版本号写回那四行, 再分发到包 Makefile —— 于是
+          # 包版本、工件名、二进制自报的版本三者必然一致 (同一处生成)。
+          bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
       - name: 安装软件包 (最多重试 3 次)
         run: |
@@ -110,7 +112,7 @@ jobs:
           
           scripts/feeds install curl
           
-          cat ../openwrt-config/all.config >> .config
+          cat ../ci/openwrt/all.config >> .config
 
           make defconfig
 

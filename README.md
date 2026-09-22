@@ -29,7 +29,7 @@
 
 ## 附上作者自用 K2P 路由器安装本包之后的资源占用情况⬇ (图中还安装了 MWAN3 插件)
 
-![Please refresh](image/1.png) ![Please refresh](image/2.png) ![Please refresh](image/3.png)
+![Please refresh](docs/assets/1.png) ![Please refresh](docs/assets/2.png) ![Please refresh](docs/assets/3.png)
 
 > [!TIP]
 > ~~经实测, 运行十天后运行内存占用仅增加 300 kB 左右~~
@@ -44,12 +44,12 @@
 > 
 > 4 级信息级日志文件轮换后占用 1 mB 左右
 
-# [更新日志](UpdateLogs.md)
+# [更新日志](CHANGELOG.md)
 
 # 目前支持的系统和架构
 
 > [!NOTE]
-> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](doc/OpenWRT_targets.md)
+> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](docs/OpenWRT_targets.md)
 
 ### 主程序插件包
 
@@ -60,13 +60,13 @@
 | Android | x86_64/arm64-v8a/armeabi-v7a  | 便携二进制文件 |         Android 7         |       Android 10        |
 |  macOS  |            x86_64             | 便携二进制文件 |         macOS 12          |        macOS 13         |
 |  macOS  |            aarch64            | 便携二进制文件 |         macOS 13          |        macOS 14         |
-| OpenWRT | [All](doc/OpenWRT_targets.md) |    opkg/apk    | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
+| OpenWRT | [All](docs/OpenWRT_targets.md) |    opkg/apk    | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
 
 ### OpenWRT LuCI 插件包
 
 |  系统   |             架构              | 包管理器 |     理论最低支持版本      |        推荐版本         |
 |:-------:|:-----------------------------:|:--------:|:-------------------------:|:-----------------------:|
-| OpenWRT | [All](doc/OpenWRT_targets.md) | opkg/apk | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
+| OpenWRT | [All](docs/OpenWRT_targets.md) | opkg/apk | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
@@ -77,17 +77,17 @@
 
 # 文档
 
-[**Windows, Linux, MacOS 环境使用教程**](doc/Desktop.md)
+[**Windows, Linux, MacOS 环境使用教程**](docs/Desktop.md)
 
-[**OpenWRT 环境使用教程**](doc/OpenWRT.md)
+[**OpenWRT 环境使用教程**](docs/OpenWRT.md)
 
-[**OpenWRT 进阶 - 多拨教程**](doc/OpenWRT_mwan3.md)
+[**OpenWRT 进阶 - 多拨教程**](docs/OpenWRT_mwan3.md)
 
-[**程序自行编译教程**](doc/Compile.md)
+[**程序自行编译教程**](docs/Compile.md)
 
-[**OpenWRT 系统目标平台自查教程**](doc/OpenWRT_targets.md)
+[**OpenWRT 系统目标平台自查教程**](docs/OpenWRT_targets.md)
 
-[**Q&A**](doc/Q&A.md)
+[**Q&A**](docs/Q&A.md)
 
 # 其他
 
@@ -106,7 +106,7 @@
 
 觉得好的话可以点击这个[神秘小链接](https://ifdian.net/a/badghost)或者下边的微信赞赏码给偶打点钱喵, 谢谢泥喵~
 
-<img alt="Please refresh" height="256" src="image/4.png" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/4.png" width="256"/>
 
 ### 赞助者 ❤
 
@@ -114,19 +114,19 @@
 
 #### 爱发电
 
-<img alt="Please refresh" src="image/fund/aifadian/1.png"/>
-<img alt="Please refresh" src="image/fund/aifadian/2.png"/>
-<img alt="Please refresh" src="image/fund/aifadian/3.png"/>
+<img alt="Please refresh" src="docs/assets/fund/aifadian/1.png"/>
+<img alt="Please refresh" src="docs/assets/fund/aifadian/2.png"/>
+<img alt="Please refresh" src="docs/assets/fund/aifadian/3.png"/>
 
 #### 微信
 
-<img alt="Please refresh" height="256" src="image/fund/wechat/1.jpg" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/2.jpg" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/3.jpg" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/4.png" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/5.png" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/6.png" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/7.jpg" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/8.jpg" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/9.png" width="256"/>
-<img alt="Please refresh" height="256" src="image/fund/wechat/10.png" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/1.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/2.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/3.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/4.png" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/5.png" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/6.png" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/7.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/8.jpg" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/9.png" width="256"/>
+<img alt="Please refresh" height="256" src="docs/assets/fund/wechat/10.png" width="256"/>

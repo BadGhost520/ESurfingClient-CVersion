@@ -5,7 +5,7 @@
 #include "utils/Watchdog.h"
 #include "utils/Logger.h"
 
-#include "cJSON/cJSON.h"
+#include <cJSON/cJSON.h>
 
 #include <curl/curl.h>
 
@@ -903,7 +903,7 @@ typedef struct
 /**
  * @brief 配置文件顶层的默认参数
  *
- * ⚠️ 必须与 config/ESurfingClient.json 以及 s_default_cfg 保持一致:
+ * ⚠️ 必须与 files/etc/config/esurfingclient 以及 s_default_cfg 保持一致:
  *    缺哪个参数, 用户下次打开配置文件就会看到它被补上, 补上的值就是这里的默认值
  */
 static const cfg_def_t s_cfg_defaults[] = {
