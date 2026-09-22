@@ -1,7 +1,7 @@
 # 程序自行编译教程
 
 > [!NOTE]
-> 教程版本: v2.0.8-r1
+> 教程版本: v2.1.1-r5
 
 ### 我还是比较建议使用已有的 github action 来编译的
 
@@ -16,9 +16,10 @@
 
 # 仓库目录一览
 
+> [!NOTE]
 > 动手之前先认清哪个目录是"包", 哪个是"给包用的输入"。
 
-```
+``` text
 esurfingclient/              OpenWrt 包①: 主程序
 ├── Makefile                 只认包内路径 (CI 会把本目录整个拷进 SDK)
 ├── LICENSE                  包内自带, 不能引用仓库根的 LICENSE
@@ -44,13 +45,6 @@ scripts/                     构建脚本 (CI 与本地共用)
 └── sync-version.sh          版本号分发 (从 CMakeLists 到各包与页面)
 docs/                        文档与截图 (assets/)
 ```
-
-**两条硬规矩**:
-
-1. **包目录自包含** —— 任何 `../` 形式的引用, 在 `cp -r <包> openwrt-sdk/package/` 之后都会指到别处, 而本地看着一切正常。
-2. **版本号只改一处** —— `esurfingclient/main/CMakeLists.txt` 里的四行 `set(PROGRAM_VERSION_*)`,
-   然后跑 `scripts/sync-version.sh` 分发到两个包的 Makefile 与 LuCI 页面 (那些地方是生成物, 别手改)。
-
 
 # Windows
 
@@ -88,7 +82,7 @@ sudo apt install -y cmake \
 ### 2. 直接使用仓库里的工具链文件
 
 ```shell
-# 工具链文件在 ci/toolchains/mingw64.cmake, 不用再手抄一份到 main/ 下面
+# 工具链文件在 ci/toolchains/mingw64.cmake, 不用再手抄一份到 app/ 下面
 cat /path/to/ci/toolchains/mingw64.cmake
 ```
 
@@ -167,7 +161,7 @@ sudo make install
 
 ```shell
 # 根据自身情况判断路径
-cd /path/to/esurfingclient/main
+cd /path/to/esurfingclient/app
           
 cmake \
     -G Ninja \
@@ -276,7 +270,7 @@ sudo make install
 export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
 
 # 根据自身情况判断路径
-cd /path/to/esurfingclient/main
+cd /path/to/esurfingclient/app
 
 cmake . -B build
 
@@ -344,7 +338,7 @@ tar -I zstd -xf openwrt-sdk-24.10.8-malta-le_gcc-13.3.0_musl.Linux-x86_64.tar.zs
 > [!WARNING]
 > 做这一步之前, 如果有版本号要求的话
 > 
-> 版本号只有一个源: `esurfingclient/main/CMakeLists.txt` 里的
+> 版本号只有一个源: `esurfingclient/app/CMakeLists.txt` 里的
 > `set(PROGRAM_VERSION_MAJOR/MINOR/PATCH/RELEASE ...)` 四行
 > 
 > 改完在仓库根执行 `scripts/sync-version.sh`, 它会把版本号分发到两个包的 Makefile

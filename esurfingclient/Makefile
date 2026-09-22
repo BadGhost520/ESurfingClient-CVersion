@@ -4,11 +4,8 @@ PKG_NAME:=esurfingclient
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 
-# 版本号由 scripts/sync-version.sh 从 main/CMakeLists.txt 生成, 不要手改。
-# 那四行 set(PROGRAM_VERSION_*) 是唯一真相源; 这里保留字面值, 是因为
-# OpenWrt 构建只吃这个 Makefile, 不会去解析 CMakeLists。
 PKG_VERSION:=2.1.1
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
@@ -25,7 +22,7 @@ endif
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) $(CURDIR)/main/* $(PKG_BUILD_DIR)/
+	$(CP) $(CURDIR)/app/* $(PKG_BUILD_DIR)/
 endef
 
 CMAKE_SOURCE_SUBDIR:=.

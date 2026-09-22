@@ -182,7 +182,7 @@ jobs:
         run: |
           set -e
 
-          cd esurfingclient/main
+          cd esurfingclient/app
 
           cmake -B build -S . \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
@@ -229,7 +229,7 @@ jobs:
 
       - name: 处理 web 文件
         run: |
-          bash scripts/build-portal.sh esurfingclient/main/portal portal ./tailwindcss-linux-x64
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
 
       - name: 复制配置文件到根目录
         run: |

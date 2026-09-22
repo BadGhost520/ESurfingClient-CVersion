@@ -125,7 +125,7 @@ jobs:
 
       - name: 构建 ESurfingClient 程序
         run: |
-          cd esurfingclient/main
+          cd esurfingclient/app
           
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -181,7 +181,7 @@ jobs:
 
       - name: 处理 web 文件
         run: |
-          bash scripts/build-portal.sh esurfingclient/main/portal portal ./tailwindcss-linux-x64
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
 
       - name: 复制配置文件到根目录
         run: |

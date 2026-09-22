@@ -121,7 +121,7 @@ jobs:
         run: |
           export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
           
-          cd esurfingclient/main
+          cd esurfingclient/app
           
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
             -DCMAKE_BUILD_TYPE=Release \
@@ -162,7 +162,7 @@ jobs:
 
       - name: 处理 web 文件
         run: |
-          bash scripts/build-portal.sh esurfingclient/main/portal portal ./tailwindcss-linux-x64
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
 
       - name: 复制配置文件到根目录
         run: |

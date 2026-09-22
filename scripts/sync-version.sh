@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-CMAKE_LISTS="$ROOT/esurfingclient/main/CMakeLists.txt"
+CMAKE_LISTS="$ROOT/esurfingclient/app/CMakeLists.txt"
 MK_MAIN="$ROOT/esurfingclient/Makefile"
 MK_LUCI="$ROOT/luci-app-esurfingclient/Makefile"
 JS="$ROOT/luci-app-esurfingclient/rootfs/www/luci-static/resources/view/esurfingclient.js"
@@ -87,7 +87,7 @@ if [ "$PRINT_ONLY" = 1 ]; then
     exit 0
 fi
 
-echo "版本真相源 esurfingclient/main/CMakeLists.txt: $FULL_VERSION"
+echo "版本真相源 esurfingclient/app/CMakeLists.txt: $FULL_VERSION"
 
 # 1) 两个包的 Makefile
 sed_inplace "s/^PKG_VERSION:=.*/PKG_VERSION:=$VERSION/" "$MK_MAIN"

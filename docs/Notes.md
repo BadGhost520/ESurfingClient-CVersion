@@ -106,7 +106,7 @@
 
 前端的注释清理掉了，但下面这些"两边必须一致"的约束依然成立：
 
-- **内置网页界面（`main/portal/assets/js/main.js`）里的常量要和后端常量对齐**：
+- **内置网页界面（`app/portal/assets/js/main.js`）里的常量要和后端常量对齐**：
   `DEFAULT_CONN_TIMEOUT` / `DEFAULT_OP_TIMEOUT` / `DEFAULT_WEB_PORT` / `MAX_TIME_WINDOWS`
   对齐 `include/states/States.h`；默认日志目录对齐 `include/utils/Logger.h` 的 `DEFAULT_LOG_DIR`（`"./"` 表示
   程序所在目录）；日志目录长度按后端 `PATH_MAX` 校验，超了会退回默认目录。
@@ -118,7 +118,7 @@
   `resolve_log_dir` / `get_log_dir` 一致（配置里的 `log_dir` 是**基目录**，日志在它下面的
   `logs` 里；没写或写成 `.` / `./` 时用 `/var/log/esurfing`；相对路径也按它解析，OpenWrt 上
   程序装在只读的 `/usr/bin` 里，不按程序目录解析）。
-- **`main/portal/index.html` 里有两处是给打包脚本用的标记**，改动时要一起看
+- **`app/portal/index.html` 里有两处是给打包脚本用的标记**，改动时要一起看
   `scripts/build-portal.sh`：
   - daisyUI 主题那一行**必须独占一行**，打包时整行删除（脚本按行匹配删）；
   - `class-keeper` 那段是让开发模式的 Tailwind 浏览器版生成运行时才用到的类，打包后由
@@ -137,10 +137,10 @@
   检出会变成 CRLF，而带 `\r` 的 `#!/bin/sh` 在路由器上跑不起来（报 "not found" —— 解释器
   路径后面跟着一个 `\r`）。它平时在 Windows 工作区里是 LF，很难注意到，直到某次重新检出。
   `.gitattributes` 里按角色钉了 `**/etc/init.d/*`、`**/*.init`、`*.sh`。
-- **版本号唯一源是 `esurfingclient/main/CMakeLists.txt` 的 `set(PROGRAM_VERSION_*)` 四行**，
+- **版本号唯一源是 `esurfingclient/app/CMakeLists.txt` 的 `set(PROGRAM_VERSION_*)` 四行**，
   改完跑 `scripts/sync-version.sh` 分发到两个包的 Makefile 与两处 LuCI 页面（那些是生成物）。
 - **`luci-app` 的 `/tmp/luci-staging` 中转是故意的**：postinst 在目标机上探测属于哪一代 LuCI，
   再决定装 JS 那套还是 Lua/HTM 那套，别"顺手清理"。
-- **portal 的网页资源**：`main/portal` 里是源（`index.html` 引用 CDN、`input.css` 是 Tailwind
+- **portal 的网页资源**：`app/portal` 里是源（`index.html` 引用 CDN、`input.css` 是 Tailwind
   输入），发布用的 `assets/css/tailwind.css`、`assets/js/alpine.js`、`daisyui.mjs` 由
   `scripts/build-portal.sh` 生成，不参与版本管理。
