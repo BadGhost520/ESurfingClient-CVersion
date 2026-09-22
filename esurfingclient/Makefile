@@ -69,6 +69,24 @@ fi
 exit 0
 endef
 
+define Package/esurfingclient/postrm
+#!/bin/sh
+echo "正在清理 ESurfing 客户端残留文件"
+
+# 会话存档 (<配置文件路径>.<账号序号>.logout): 只有被强杀过才会留下, 卸载后没有意义
+rm -f /etc/config/esurfingclient.*.logout
+
+# 升级时留下的模板文件
+rm -f /etc/config/esurfingclient.apk-new
+rm -f /etc/config/esurfingclient.opkg-new
+rm -f /etc/config/esurfingclient.opkg
+
+# 默认日志目录 (配置里自己指定过 log_dir 的路径不动, 免得误删用户自己的东西)
+rm -rf /var/log/esurfing
+
+exit 0
+endef
+
 define Package/esurfingclient/description
 轻量第三方电信校园网认证客户端 (支持 OpenWrt/Linux/Windows 多平台运行)
 endef
