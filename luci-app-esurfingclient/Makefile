@@ -68,9 +68,6 @@ rm -f /www/luci-static/resources/view/esurfingclient.js
 rm -f /usr/share/luci/menu.d/luci-app-esurfingclient.json
 rm -f /usr/lib/lua/luci/view/esurfingclient.htm
 
-rm -rf /tmp/luci-*
-/etc/init.d/uhttpd restart 2>/dev/null &
-
 echo "ESurfingClient LuCI 已移除"
 exit 0
 endef
