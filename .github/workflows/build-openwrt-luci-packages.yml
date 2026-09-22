@@ -96,9 +96,18 @@ jobs:
 
       - name: 编译 luci-app-esurfingclient
         env:
-          OPENWRT_APK_PRIVATE_KEY: ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
+          BUILD_KEY_APK_SEC: /tmp/openwrt-apk-private-key.pem
         run: |
           cd openwrt-sdk
+          
+          cat > /tmp/openwrt-apk-private-key.pem << 'EOF'
+          ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
+          EOF
+          chmod 600 /tmp/openwrt-apk-private-key.pem
+          
+          echo "CONFIG_SIGN_EACH_PACKAGE=y" >> .config
+          make defconfig
+          
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
           find bin/packages -name "luci-app-esurfingclient*.${{ inputs.package_type }}" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }} \;
 

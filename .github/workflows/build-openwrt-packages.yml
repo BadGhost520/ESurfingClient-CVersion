@@ -121,11 +121,19 @@ jobs:
 
       - name: 编译 esurfingclient
         env:
-          OPENWRT_APK_PRIVATE_KEY: ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
+          BUILD_KEY_APK_SEC: /tmp/openwrt-apk-private-key.pem
         run: |
           cp -r esurfingclient openwrt-sdk/package/
           
           cd openwrt-sdk
+          
+          cat > /tmp/openwrt-apk-private-key.pem << 'EOF'
+          ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
+          EOF
+          chmod 600 /tmp/openwrt-apk-private-key.pem
+          
+          echo "CONFIG_SIGN_EACH_PACKAGE=y" >> .config
+          make defconfig
           
           scripts/feeds install esurfingclient
           
