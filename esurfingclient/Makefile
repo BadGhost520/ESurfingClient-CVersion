@@ -85,7 +85,6 @@ define Package/esurfingclient/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/esurfingclient
 
-	# files/ 是目标 rootfs 的镜像: 目录结构本身就是"装到哪"的文档
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient $(1)/etc/init.d/esurfingclient
 

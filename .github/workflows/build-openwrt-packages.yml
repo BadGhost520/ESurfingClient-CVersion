@@ -120,11 +120,20 @@ jobs:
           make package/curl/compile -j$(nproc)
 
       - name: 编译 esurfingclient
-        env:
-          BUILD_KEY_APK_SEC: /tmp/openwrt-apk-private-key.pem
         run: |
           cp -r esurfingclient openwrt-sdk/package/
           
+          cd openwrt-sdk
+          
+          scripts/feeds install esurfingclient
+          
+          make package/esurfingclient/compile -j$(nproc)
+
+          find bin/packages -name "esurfingclient*.${{ inputs.package_type }}" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ inputs.architecture }}.${{ inputs.package_type }} \;
+
+      - name: OpenWRT APK 包签名
+        if: inputs.package_type == 'apk'
+        run: |
           cd openwrt-sdk
           
           cat > /tmp/openwrt-apk-private-key.pem << 'EOF'
@@ -132,14 +141,7 @@ jobs:
           EOF
           chmod 600 /tmp/openwrt-apk-private-key.pem
           
-          echo "CONFIG_SIGN_EACH_PACKAGE=y" >> .config
-          make defconfig
-          
-          scripts/feeds install esurfingclient
-          
-          make package/esurfingclient/compile -j$(nproc)
-
-          find bin/packages -name "esurfingclient*.${{ inputs.package_type }}" -exec cp {} ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ inputs.architecture }}.${{ inputs.package_type }} \;
+          staging_dir/host/bin/apk adbsign --allow-untrusted --sign-key /tmp/openwrt-apk-private-key.pem ../esurfingclient_${{ inputs.version }}-${{ inputs.release }}_${{ inputs.architecture }}.${{ inputs.package_type }}
 
       - name: 上传工件
         uses: actions/upload-artifact@v7
