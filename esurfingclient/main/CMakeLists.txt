@@ -28,9 +28,6 @@ else ()
     message(STATUS "OpenWRT - no")
 endif ()
 
-set(WEB_ROOT_DIR "${CMAKE_SOURCE_DIR}/web_root")
-add_definitions(-DWEB_ROOT_PATH="${WEB_ROOT_DIR}")
-
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()
@@ -58,91 +55,54 @@ endif ()
 
 find_package(CURL REQUIRED)
 
-if (__OPENWRT__)
-    add_executable(ESurfingClient
-            extern/7z/LzmaDec.c
-            extern/cJSON/cJSON.c
-            src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
-            src/cipher/algo/linux/des_ecb_six_linux.c
-            src/cipher/algo/linux/desede_cbc_linux.c
-            src/cipher/algo/linux/mod_xtea_linux.c
-            src/cipher/algo/linux/aes_ecb_linux.c
-            src/cipher/algo/linux/aes_cbc_linux.c
-            src/cipher/algo/android/desede_double_cbc_android.c
-            src/cipher/algo/android/sm4_variant_cbc_android.c
-            src/cipher/algo/android/sm4_variant_ecb_android.c
-            src/cipher/algo/android/snow3g_variant_android.c
-            src/cipher/algo/android/tea_triple_cbc_android.c
-            src/cipher/algo/android/tea_triple_ecb_android.c
-            src/cipher/algo/android/aes_double_cbc_android.c
-            src/cipher/algo/android/aes_double_ecb_android.c
-            src/cipher/algo/android/des_ecb_six_android.c
-            src/cipher/algo/ios/ios_zsm.c
-            src/cipher/CipherFactory.c
-            src/cipher/CipherUtils.c
-            src/cipher/KeyData.c
-            src/states/Refresh.c
-            src/states/States.c
-            src/utils/sim/SimThread.c
-            src/utils/sim/SimEvp.c
-            src/utils/PlatformUtils.c
-            src/utils/TimeControl.c
-            src/utils/Watchdog.c
-            src/utils/LogoutState.c
-            src/utils/Shutdown.c
-            src/utils/Logger.c
-            src/clients/dialer/DialerClient.c
-            src/clients/net/CheckNetwork.c
-            src/clients/net/NetClient.c
-            Main.c
-    )
-else ()
-    add_executable(ESurfingClient
-            extern/7z/LzmaDec.c
-            extern/cJSON/cJSON.c
-            extern/mongoose/mongoose.c
-            src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
-            src/cipher/algo/linux/des_ecb_six_linux.c
-            src/cipher/algo/linux/desede_cbc_linux.c
-            src/cipher/algo/linux/mod_xtea_linux.c
-            src/cipher/algo/linux/aes_ecb_linux.c
-            src/cipher/algo/linux/aes_cbc_linux.c
-            src/cipher/algo/android/desede_double_cbc_android.c
-            src/cipher/algo/android/sm4_variant_cbc_android.c
-            src/cipher/algo/android/sm4_variant_ecb_android.c
-            src/cipher/algo/android/snow3g_variant_android.c
-            src/cipher/algo/android/tea_triple_cbc_android.c
-            src/cipher/algo/android/tea_triple_ecb_android.c
-            src/cipher/algo/android/aes_double_cbc_android.c
-            src/cipher/algo/android/aes_double_ecb_android.c
-            src/cipher/algo/android/des_ecb_six_android.c
-            src/cipher/algo/ios/ios_zsm.c
-            src/cipher/CipherFactory.c
-            src/cipher/CipherUtils.c
-            src/cipher/KeyData.c
-            src/supervisor/Supervisor.c
-            src/webserver/WebServer.c
-            src/control/Control.c
-            src/states/Refresh.c
-            src/states/States.c
-            src/utils/sim/SimProcess.c
-            src/utils/sim/SimThread.c
-            src/utils/sim/SimEvp.c
-            src/utils/PlatformUtils.c
-            src/utils/TimeControl.c
-            src/utils/Watchdog.c
-            src/utils/LogoutState.c
-            src/utils/Shutdown.c
-            src/utils/Service.c
-            src/utils/Logger.c
-            src/clients/dialer/DialerClient.c
-            src/clients/net/CheckNetwork.c
-            src/clients/net/NetClient.c
-            Main.c
-    )
-endif ()
+add_executable(ESurfingClient
+        extern/7z/LzmaDec.c
+        extern/cJSON/cJSON.c
+        src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
+        src/cipher/algo/linux/des_ecb_six_linux.c
+        src/cipher/algo/linux/desede_cbc_linux.c
+        src/cipher/algo/linux/mod_xtea_linux.c
+        src/cipher/algo/linux/aes_ecb_linux.c
+        src/cipher/algo/linux/aes_cbc_linux.c
+        src/cipher/algo/android/desede_double_cbc_android.c
+        src/cipher/algo/android/sm4_variant_cbc_android.c
+        src/cipher/algo/android/sm4_variant_ecb_android.c
+        src/cipher/algo/android/snow3g_variant_android.c
+        src/cipher/algo/android/tea_triple_cbc_android.c
+        src/cipher/algo/android/tea_triple_ecb_android.c
+        src/cipher/algo/android/aes_double_cbc_android.c
+        src/cipher/algo/android/aes_double_ecb_android.c
+        src/cipher/algo/android/des_ecb_six_android.c
+        src/cipher/algo/ios/ios_zsm.c
+        src/cipher/CipherFactory.c
+        src/cipher/CipherUtils.c
+        src/cipher/KeyData.c
+        src/states/Refresh.c
+        src/states/States.c
+        src/utils/sim/SimThread.c
+        src/utils/sim/SimEvp.c
+        src/utils/PlatformUtils.c
+        src/utils/TimeControl.c
+        src/utils/Watchdog.c
+        src/utils/LogoutState.c
+        src/utils/Shutdown.c
+        src/utils/Logger.c
+        src/clients/dialer/DialerClient.c
+        src/clients/net/CheckNetwork.c
+        src/clients/net/NetClient.c
+        Main.c
+)
 
 if (NOT __OPENWRT__)
+target_sources(ESurfingClient PRIVATE
+        extern/mongoose/mongoose.c
+        src/supervisor/Supervisor.c
+        src/webserver/WebServer.c
+        src/control/Control.c
+        src/utils/sim/SimProcess.c
+        src/utils/Service.c
+)
+
 add_custom_target(CopyPortal ALL
         COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/portal"
         COMMAND ${CMAKE_COMMAND} -E copy_directory

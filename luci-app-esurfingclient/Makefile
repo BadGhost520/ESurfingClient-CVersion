@@ -70,7 +70,7 @@ define Package/luci-app-esurfingclient/postrm
 echo "正在移除 ESurfingClient LuCI"
 
 rm -f /usr/lib/lua/luci/controller/esurfingclient.lua
-rm -f /www/luci-static/resources/view/esurfingclient/config.js
+rm -f /www/luci-static/resources/view/esurfingclient.js
 rm -f /usr/share/luci/menu.d/luci-app-esurfingclient.json
 rmdir /www/luci-static/resources/view/esurfingclient 2>/dev/null || true
 rm -f /usr/lib/lua/luci/view/esurfingclient/config.htm
