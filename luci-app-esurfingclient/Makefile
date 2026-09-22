@@ -55,12 +55,6 @@ else
 	cp /tmp/luci-staging/legacy/view/esurfingclient.htm /usr/lib/lua/luci/view/
 fi
 
-rm -rf /tmp/luci-staging
-
-rm -rf /tmp/luci-*
-/etc/init.d/uhttpd restart 2>/dev/null &
-/etc/init.d/rpcd restart 2>/dev/null &
-
 echo "LuCI 页面配置完成"
 exit 0
 endef
