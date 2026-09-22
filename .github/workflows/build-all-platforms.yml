@@ -122,9 +122,6 @@ jobs:
       - name: 获取版本号
         id: version
         run: |
-          # 版本号真相源: esurfingclient/main/CMakeLists.txt 的 set(PROGRAM_VERSION_*)
-          # 解析只有一处实现 (scripts/sync-version.sh), 这里直接取它的输出,
-          # 不再自己 grep CMakeLists。--print 是只读模式, 不改任何文件。
           bash scripts/sync-version.sh --print >> "$GITHUB_OUTPUT"
           
 

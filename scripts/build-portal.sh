@@ -1,21 +1,4 @@
 #!/usr/bin/env bash
-#
-# 把 esurfingclient/main/portal 的"网页源"构建成可以脱机分发的静态资源。
-#
-# 用法:
-#   scripts/build-portal.sh <portal源目录> <输出目录> <tailwindcss可执行文件>
-#
-# 例:
-#   scripts/build-portal.sh esurfingclient/main/portal portal ./tailwindcss-linux-x64
-#
-# 为什么要有这个脚本:
-#   这段逻辑原先在 5 个 workflow 里各抄了一遍 (linux / windows / 两个 macos /
-#   android), 而且 Linux 用 `sed -i`, macOS 用 `sed -i ''` —— 一份逻辑两个方言。
-#   web 资源怎么构建属于构建系统的事, 不该只存在于 CI 的 shell 里。
-#
-# 可移植性:
-#   统一用 `sed -i.bak` + 删备份的写法, GNU sed 和 BSD sed 都吃。
-#   下载优先用 wget, 没有就退回 curl (macOS runner 不保证有 wget)。
 
 set -euo pipefail
 

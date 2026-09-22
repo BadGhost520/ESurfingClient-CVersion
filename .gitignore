@@ -1,12 +1,3 @@
-# ---------------------------------------------------------------
-# 仓库级忽略规则
-#
-# 以前这里一条规则都没有, TEMP/ 和 cmake-build-*/ 之所以没进 git status,
-# 只是因为 CLion 在每个目录里自动塞了一份 `*` 的 .gitignore。
-# 那种"干净"不可复现: 换个目录、换个 IDE、clone 一遍就失效。
-# ---------------------------------------------------------------
-
-# ---------- 构建产物 ----------
 build/
 cmake-build-*/
 out/
@@ -22,16 +13,13 @@ openwrt-sdk/
 *.ipk
 *.apk
 
-# ---------- 运行期产物 ----------
 logs/
 *.log
 
-# ---------- portal 构建产物 (scripts/build-portal.sh 生成) ----------
 **/portal/assets/css/
 **/portal/assets/js/alpine.js
 **/portal/daisyui.mjs
 
-# ---------- 编辑器 / 系统 ----------
 .idea/
 .vscode/
 .vs/
@@ -39,5 +27,4 @@ logs/
 .DS_Store
 Thumbs.db
 
-# ---------- 杂物 ----------
 TEMP/

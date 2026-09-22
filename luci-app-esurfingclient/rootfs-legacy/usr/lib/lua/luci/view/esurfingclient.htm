@@ -1,8 +1,4 @@
 <%
--- 配置文件内容: POST 处理与页面渲染都要用, 所以先读出来
--- 默认配置与程序的 s_default_cfg 保持同一套字段; log_dir 在 OpenWrt 上同样生效
--- (默认基目录 /var/log/esurfing, 日志在它下面的 logs 里), web_port / web_external_acc
--- 则是桌面端的参数 (OpenWrt 版本不带网页服务), 留着只是为了两个平台共用同一套配置格式
 local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"/var/log/esurfing","conn_timeout":3,"op_timeout":5,"web_port":8888,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
 local file = io.open("/etc/config/esurfingclient", "r")
 if file then
@@ -175,18 +171,15 @@ end
     }
 </style>
 
-<!-- 大标题 -->
 <h2>ESurfing 客户端</h2>
 
-<!-- 描述 -->
 <div style='margin-left: 25px;'>
     <p class='desc'>用于方便地调整 ESurfing 程序的配置文件</p>
     <p class='desc'>账号密码与原电信认证程序的账号密码相同</p>
-    <p class='desc'>LuCI 版本: 2.1.1-r4</p>
+    <p class='desc'>LuCI 版本: 2.1.1-r5</p>
     <p class='desc' style='margin-bottom: 15px;'>> Powered by BadGhost</p>
 </div>
 
-<!-- 内容 -->
 <div class='cbi-section'>
     <ul class='cbi-tabmenu'>
         <li class='cbi-tab'>
@@ -200,7 +193,6 @@ end
         </li>
     </ul>
     
-    <!-- 常规设置 -->
     <div class='cbi-section-node cbi-section-node-tabbed'>
         <div class='cbi-tabcontainer' style='display: block;'>
             <h3 style='margin-top: 0; margin-bottom: 0;'>基本设置</h3>
@@ -242,7 +234,6 @@ end
             </div>
         </div>
 
-        <!-- 账号设置 -->
         <div class='cbi-tabcontainer' style='display: none;'>
             <h3 style='margin-top: 0; margin-bottom: 0;'>账号设置</h3>
             <table class='table cbi-section-table'>
@@ -263,7 +254,6 @@ end
             </div>
         </div>
 
-        <!-- 日志查看 -->
         <div class='cbi-tabcontainer' style='display: none;'>
             <h3 style='margin-top: 0; margin-bottom: 0;'>日志查看</h3>
             <div class='cbi-value'>
@@ -314,7 +304,6 @@ end
     </div>
 </div>
 
-<!-- 各个按钮 -->
 <div style='text-align: right; margin-top: 20px; padding: 10px;'>
     <button id='save-and-apply-button' class='cbi-button cbi-button-apply' onclick='saveAndApplyConfig()'>保存并应用</button>
     <button id='save-button' class='cbi-button cbi-button-save' onclick='saveConfig()'>保存</button>
@@ -920,7 +909,6 @@ end
 </script>
 <%+footer%>
 
-<!-- 账号编辑模态框 -->
 <div id='edit_modal' class='modal-overlay'>
     <div class='modal'>
         <div class='cbi-section'>

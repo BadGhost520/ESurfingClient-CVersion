@@ -1,35 +1,4 @@
 #!/usr/bin/env bash
-#
-# 版本号分发
-#
-# 唯一真相源: esurfingclient/main/CMakeLists.txt 里的四行
-#   set(PROGRAM_VERSION_MAJOR x)
-#   set(PROGRAM_VERSION_MINOR x)
-#   set(PROGRAM_VERSION_PATCH x)
-#   set(PROGRAM_VERSION_RELEASE x)
-#
-# 分发到各处 (以下都是生成物, 不要手改):
-#   - esurfingclient/Makefile             PKG_VERSION / PKG_RELEASE
-#   - luci-app-esurfingclient/Makefile    PKG_VERSION / PKG_RELEASE
-#   - luci-app-esurfingclient/rootfs/www/.../esurfingclient.js    页面显示
-#   - luci-app-esurfingclient/rootfs-legacy/.../esurfingclient.htm
-#
-# 用法:
-#   scripts/sync-version.sh               # 按 CMakeLists 分发到各处
-#   scripts/sync-version.sh 2.2.0-r1      # 先改 CMakeLists 那四行, 再分发
-#   scripts/sync-version.sh --print       # 只读: 输出 version/release/full_version
-#                                         # (供 workflow 追加到 $GITHUB_OUTPUT)
-#
-# 为什么要有这个脚本:
-#   分发动作原先散在 workflow 里 —— get-version 用 grep -oP 抠 CMakeLists,
-#   两个包 workflow 再用 4 条 sed 写回 Makefile 和页面。同一件事三份实现,
-#   且 sed 就地改文件, 改了什么都看不见。现在解析一份、分发一份, 分发完
-#   还会自己复检一遍 (对不上就报错退出)。
-#
-# 为什么 luci-app 那边写的是字面值而不是直接读 CMakeLists:
-#   CI 与文档都是 cp -r luci-app-esurfingclient openwrt-sdk/package/,
-#   只拷这一个目录, 跨包引用进了 SDK 必然失效。所以由本脚本在完整仓库里
-#   先同步好, 保证每个包目录自包含。
 
 set -euo pipefail
 

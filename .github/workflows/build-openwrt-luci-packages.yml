@@ -35,9 +35,6 @@ jobs:
 
       - name: 同步版本号
         run: |
-          # 版本号真相源是 esurfingclient/main/CMakeLists.txt 的 set(PROGRAM_VERSION_*)。
-          # 这里把 workflow 传入的版本号写回那四行, 再由脚本分发到本包 Makefile
-          # 与两处页面文字 (以前是 4 条 sed 就地改文件, 改了什么都看不见)。
           bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
       - name: 安装软件包 (最多重试 3 次)

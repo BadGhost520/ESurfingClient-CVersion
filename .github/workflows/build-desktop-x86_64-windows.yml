@@ -43,8 +43,6 @@ jobs:
 
       - name: 检查工具链
         run: |
-          # 工具链文件现在住在仓库里 (ci/toolchains/mingw64.cmake),
-          # 不再在 workflow 里现写一份, 免得 workflow 与文档各存一份实现。
           cat ci/toolchains/mingw64.cmake
 
       - name: 获取 libcurl 缓存

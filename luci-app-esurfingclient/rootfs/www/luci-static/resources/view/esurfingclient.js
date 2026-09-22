@@ -40,13 +40,6 @@ return view.extend({
 
         self.logs = self.logs || [];
 
-        /**
-         * 默认配置
-         *
-         * log_dir 在 OpenWrt 上同样生效: 默认基目录 /var/log/esurfing (日志在它下面的 logs 里)。
-         * web_port / web_external_acc 则是桌面端的参数 (OpenWrt 版本不带网页服务), 界面上不提供,
-         * 但字段仍然留着 —— 配置文件在两个平台之间是同一套格式, 复位时写出去的也得是完整的一套
-         */
         self.config = self.config || {
             enabled: false,
             web_external_acc: false,
@@ -237,7 +230,7 @@ return view.extend({
             E('div', { style: 'margin-left: 25px;'}, [
                 E('p', { class: 'desc' }, '用于方便地调整 ESurfing 程序的配置文件'),
                 E('p', { class: 'desc' }, '账号密码与原电信认证程序的账号密码相同'),
-                E('p', { class: 'desc' }, 'LuCI 版本: 2.1.1-r4'),
+                E('p', { class: 'desc' }, 'LuCI 版本: 2.1.1-r5'),
                 E('p', { class: 'desc' }, '> Powered by BadGhost')
             ]),
             E('div', { class: 'cbi-section' }, [
