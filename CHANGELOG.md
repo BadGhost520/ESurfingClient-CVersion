@@ -347,3 +347,6 @@
 8. (16:01) 按"只保留函数说明与函数内步骤注释"清理全仓库注释
 9. (20:14) 拆分出来的源文件统一为 PascalCase 命名 (LogoutState 这种)
 10. (21:12) 主程序目录 esurfingclient/main 换为 esurfingclient/app
+
+### 2026.9.22
+1. (23:44) 尝试为 OpenWRT apk 包添加签名

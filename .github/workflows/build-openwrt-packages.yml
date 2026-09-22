@@ -120,6 +120,8 @@ jobs:
           make package/curl/compile -j$(nproc)
 
       - name: 编译 esurfingclient
+        env:
+          OPENWRT_APK_PRIVATE_KEY: ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
         run: |
           cp -r esurfingclient openwrt-sdk/package/
           

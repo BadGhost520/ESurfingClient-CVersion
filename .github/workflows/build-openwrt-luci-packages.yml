@@ -95,6 +95,8 @@ jobs:
           scripts/feeds install luci-app-esurfingclient
 
       - name: 编译 luci-app-esurfingclient
+        env:
+          OPENWRT_APK_PRIVATE_KEY: ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
         run: |
           cd openwrt-sdk
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
