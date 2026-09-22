@@ -99,6 +99,32 @@
   type 通常写在 `var codex = 0xNN;` 再 `cdy(codex, ...)`；
   `type < 16` → oCode(1-9)，`type >= 16` → nCode（尚未移植）
 
+## 前端与后端的同步点
+
+前端的注释清理掉了，但下面这些"两边必须一致"的约束依然成立：
+
+- **内置网页界面（`main/portal/assets/js/main.js`）里的常量要和后端常量对齐**：
+  `DEFAULT_CONN_TIMEOUT` / `DEFAULT_OP_TIMEOUT` / `DEFAULT_WEB_PORT` / `MAX_TIME_WINDOWS`
+  对齐 `include/states/States.h`；默认日志目录对齐 `Logger.c` 的 `DEFAULT_LOG_DIR`（`"./"` 表示
+  程序所在目录）；日志目录长度按后端 `PATH_MAX` 校验，超了会退回默认目录。
+- **认证通道取值统一用 `windows/linux/android/ios/macos`**：前端下拉框、`index.html`、
+  后端 `parse_channel_json` 三处一致（后端默认值是 Android）。
+- **LuCI 页面（`rootfs/www` 与 `rootfs-legacy`）**：默认配置与后端 `s_default_cfg` 是同一套字段；
+  `web_port` / `web_external_acc` 是桌面端参数，OpenWrt 版不带网页服务，界面上不提供但字段保留
+  ——配置格式两个平台共用，复位时写出去的也必须是完整一套；日志目录规则与 `Logger.c` 的
+  `resolve_log_dir` / `get_log_dir` 一致（配置里的 `log_dir` 是**基目录**，日志在它下面的
+  `logs` 里；没写或写成 `.` / `./` 时用 `/var/log/esurfing`；相对路径也按它解析，OpenWrt 上
+  程序装在只读的 `/usr/bin` 里，不按程序目录解析）。
+- **`main/portal/index.html` 里有两处是给打包脚本用的标记**，改动时要一起看
+  `scripts/build-portal.sh`：
+  - daisyUI 主题那一行**必须独占一行**，打包时整行删除（脚本按行匹配删）；
+  - `class-keeper` 那段是让开发模式的 Tailwind 浏览器版生成运行时才用到的类，打包后由
+    `input.css` 负责。
+- 内置网页界面与 LuCI 界面的**状态指示灯颜色都交给 Alpine 的 `:class` 绑定**，不要直接操作
+  `classList`，两者会互相覆盖。
+- `main.js` 对 `/api/logs`、`/api/status/sys`、`/api/restartAuth` 这三个较新接口做了降级处理：
+  旧后端返回 404 时功能自动降级并提示，不报错崩溃。
+
 ## 仓库与打包约定
 
 - **包目录自包含**：`esurfingclient/`、`luci-app-esurfingclient/` 会被整个拷进 OpenWrt SDK

@@ -1,24 +1,12 @@
-/*
- * source(none): 关掉 Tailwind 的自动扫描。
- * 编译时 portal 目录里还放着 alpine.js / daisyui.mjs, 自动扫描会把它们的字符串
- * 也当成类名, 白白生成一堆用不到的样式 (实测能多出 5KB 左右)。
- * 下面显式列出需要扫描的文件即可。
- */
 @import "tailwindcss" source(none);
 @source "./index.html";
 @source "./assets/js/main.js";
 @source "./assets/js/toggleTheme.js";
 
-/*
- * daisyUI 主题
- * 本文件只用于打包: 工作流用它生成 assets/css/output.css (生成后本文件会被删除),
- * 这里显式声明使用到的主题, 保证离线环境下 亮色 / 暗色 (synthwave) 两套主题都可用
- */
 @plugin "./daisyui.mjs" {
     themes: light --default, synthwave --prefersdark;
 }
 
-/* Alpine 初始化前隐藏面板, 避免所有面板同时闪现 (index.html 里也有一份, 给开发模式用) */
 [x-cloak] {
     display: none !important;
 }

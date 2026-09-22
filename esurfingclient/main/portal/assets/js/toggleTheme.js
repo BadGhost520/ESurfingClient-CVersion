@@ -1,8 +1,3 @@
-/**
- * 主题切换 (亮色 / 暗色)
- * 与 daisyUI 的 theme-controller 配合使用: 勾选时使用 synthwave, 否则使用 light
- * 选择结果保存在 localStorage 中, 下次打开页面自动恢复
- */
 (function () {
   "use strict";
 

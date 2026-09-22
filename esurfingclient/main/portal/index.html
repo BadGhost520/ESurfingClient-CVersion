@@ -8,12 +8,8 @@
   <title>ESurfing 客户端控制面板</title>
   <link rel="icon" id="favicon" type="image/svg+xml"
         href="assets/svg/dashboard.svg" />
-  <!-- 本地调试直接走 CDN; 打包时工作流会把下面这些引用换成本地文件 (发布的页面要在脱机状态下使用)
-       daisyUI -> assets/css/output.css (由 input.css + daisyui.mjs 编译, 含 light / synthwave 主题)
-       alpine  -> assets/js/alpine.js -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet"
         type="text/css" />
-  <!-- daisyUI 全部主题 (含切主题用的 synthwave); 必须独占一行, 打包时整行删除 -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
   <style>
     /* Alpine 初始化前隐藏面板, 避免所有面板同时闪现 */
@@ -24,9 +20,7 @@
 </head>
 
 <body>
-<!-- class-keeper: 让 dev 模式的 Tailwind 浏览器版生成这些运行时才用到的类 (打包时由 input.css 负责) -->
 <div id="class-keeper" class="hidden alert-info alert-success alert-warning alert-error" aria-hidden="true"></div>
-<!-- 全局提示 (右上角) -->
 <div class="toast toast-top toast-end z-50" x-data>
   <template x-for="item in $store.notify.items" :key="item.id">
     <div class="alert shadow-lg" :class="item.cls">
@@ -37,9 +31,7 @@
 <div class="drawer lg:drawer-open" x-data
      x-init="$store.main.init(); $store.status.start()">
   <input id="main-drawer" type="checkbox" class="drawer-toggle" />
-  <!-- 内容区 -->
   <div class="drawer-content flex flex-col min-h-screen">
-    <!-- 导航栏 -->
     <div class="navbar bg-base-200 w-full shadow-sm">
       <div class="flex-none lg:hidden">
         <label for="main-drawer" aria-label="open sidebar"
@@ -59,7 +51,6 @@
       </div>
       <div class="mx-2 flex-1 px-2 text-xl font-bold"
            x-text="$store.main.menuText"></div>
-      <!-- 重新认证 -->
       <div class="flex items-center mr-4" x-data="restartAuth">
         <button class="btn btn-soft btn-warning" @click="open()"
                 :disabled="busy">
@@ -82,13 +73,11 @@
           </div>
         </dialog>
       </div>
-      <!-- 认证状态 -->
       <div class="flex items-center mr-4">
         <div id="authStatus" class="status mr-2"
              :class="$store.status.authStatusOk === true ? 'status-success' : 'status-error'"></div>
         <span x-text="$store.status.authStatusText"></span>
       </div>
-      <!-- 联网状态 -->
       <div class="flex items-center mr-4">
         <div id="onlineStatus" class="status mr-2"
              :class="$store.status.onlineStatusLevel === 'success' ? 'status-success' : ($store.status.onlineStatusLevel === 'warning' ? 'status-warning' : 'status-error')"></div>
@@ -113,12 +102,10 @@
         </label>
       </div>
     </div>
-    <!-- 仪表板页面 -->
     <div
             class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 place-content-start gap-4 p-10"
             x-show="$store.main.activePanel === 'dashboard'" x-cloak
             x-data="dashboard">
-      <!-- 连接状态 -->
       <div class="card bg-base-300 shadow-md">
         <div class="card-body">
           <h2 class="card-title">
@@ -169,7 +156,6 @@
           </div>
         </div>
       </div>
-      <!-- 当前账号 -->
       <div class="card bg-base-300 shadow-md">
         <div class="card-body">
           <h2 class="card-title">
@@ -227,7 +213,6 @@
           </div>
         </div>
       </div>
-      <!-- 程序信息 -->
       <div class="card bg-base-300 shadow-md">
         <div class="card-body">
           <h2 class="card-title">
@@ -280,7 +265,6 @@
         </div>
       </div>
     </div>
-    <!-- 设置页面 -->
     <div
             class="flex-1 grid grid-cols-1 place-content-start gap-4 p-10"
             x-show="$store.main.activePanel === 'settings'" x-cloak
@@ -382,7 +366,6 @@
             账号</h2>
           <div class="overflow-x-auto">
             <table class="table table-zebra">
-              <!-- 表头 -->
               <thead>
               <tr class="bg-base-200">
                 <th class="text-center">账号</th>
@@ -392,7 +375,6 @@
                 <th></th>
               </tr>
               </thead>
-              <!-- 表体 -->
               <tbody>
               <tr>
                 <td class="text-center"
@@ -417,7 +399,6 @@
           </p>
         </div>
       </div>
-      <!-- 保存按钮 -->
       <div class="flex-1 flex flex-row-reverse gap-4 mt-2">
         <button class="btn btn-soft btn-error"
                 @click="toggleModal('resetModal', 'open')">复位</button>
@@ -435,7 +416,6 @@
           保存并应用
         </button>
       </div>
-      <!-- 编辑账号模态框 -->
       <dialog x-ref="setModal" class="modal modal-top">
         <div class="modal-box max-w-[90%] mx-auto mt-18 rounded-t-lg">
           <h3 class="text-lg font-bold">编辑账号</h3>
@@ -526,7 +506,6 @@
           </div>
         </div>
       </dialog>
-      <!-- 重置模态框 -->
       <dialog x-ref="resetModal" class="modal modal-top">
         <div class="modal-box max-w-[90%] mx-auto mt-18 rounded-t-lg">
           <h3 class="text-lg font-bold">重置配置</h3>
@@ -543,7 +522,6 @@
         </div>
       </dialog>
     </div>
-    <!-- 日志页面 -->
     <div class="flex-1 p-10" x-show="$store.main.activePanel === 'logs'"
          x-cloak x-data="logViewer">
       <div class="card bg-base-300 shadow-md">
@@ -563,7 +541,6 @@
             日志查看</h2>
           <div class="divider my-1"></div>
           <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <!-- 左侧: 文件列表与控制 -->
             <div class="lg:col-span-1">
               <div class="text-sm font-semibold mb-2">日志文件</div>
               <ul
@@ -603,7 +580,6 @@
                 </div>
               </div>
             </div>
-            <!-- 右侧: 日志内容 -->
             <div class="lg:col-span-3">
               <div class="flex items-center justify-between gap-2 mb-2">
                     <span class="text-xs opacity-70 font-mono truncate"
@@ -622,7 +598,6 @@
         </div>
       </div>
     </div>
-    <!-- 关于页面 -->
     <div class="flex-1 p-10" x-show="$store.main.activePanel === 'about'"
          x-cloak>
       <div
@@ -675,7 +650,6 @@
         </div>
       </div>
     </div>
-    <!-- 页脚 -->
     <footer
             class="footer sm:footer-horizontal bg-base-200 text-base-content p-7">
       <aside>
@@ -810,7 +784,6 @@
       </nav>
     </footer>
   </div>
-  <!-- 菜单栏 -->
   <div class="drawer-side shadow-sm">
     <label for="main-drawer" aria-label="close sidebar"
            class="drawer-overlay"></label>

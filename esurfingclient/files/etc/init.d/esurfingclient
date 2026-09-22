@@ -6,14 +6,8 @@ STOP=10
 USE_PROCD=1
 PROG=/usr/bin/esurfingclient
 
-# 日志位置与程序里的一致: 由配置里的 log_dir 决定 (默认 /var/log/esurfing, 日志落在它下面的 logs 里)
-# 直接问程序要, 免得在这里再实现一遍路径解析 (配置读不出来时用默认值兜底)
 LOG_DIR_DEFAULT=/var/log/esurfing/logs
 
-# 取实际使用的日志目录
-#
-# 用函数而不是在脚本顶上算一次: 每次 stop / status 都会加载本脚本,
-# 那几次没必要为了一个路径去跑一遍程序 (要延迟到真正要用的时候)
 get_log_dir() {
   local dir
   dir="$($PROG --print-log-dir 2>/dev/null)"
@@ -21,7 +15,6 @@ get_log_dir() {
   echo "$dir"
 }
 
-# 等待默认路由就绪
 wait_network() {
   local i=0
   while [ $i -lt 60 ]; do
@@ -32,22 +25,6 @@ wait_network() {
   return 1
 }
 
-# 把上一轮运行的 run.log 归档成 <时间戳>.log
-#
-# 为什么要在 init 脚本里做这件事:
-#   桌面上"退出时把 run.log 改名"是守护进程 (单进程模式/监管进程) 干的 ——
-#   clean_logger() 里 AUTH 与 WEB 角色故意不改名, 因为 run.log 是所有进程共用的,
-#   改名只能由一方来做。而 --list-accounts 也刻意不调用 clean_logger。
-#
-#   可是 OpenWrt 上【根本没有守护进程】: procd 只跑 --role auth 实例,
-#   于是没有任何人改名, run.log 就一直追加下去 (实测确认过)。
-#   procd + 本脚本在 OpenWrt 上就是那个"守护进程", 所以归档由这里负责。
-#
-# 放在【启动前】而不是停止后, 有两个好处:
-#   - 此刻没有实例在写 (restart/reload 时 procd 已经停掉了旧的)
-#   - 上次若是被强杀的 (没走到收尾) 也能归档, 停止后归档就漏了这种
-# procd 自己 respawn 拉起实例时不走 start_service, 那种情况下不归档 ——
-# 与桌面端"守护进程不退出就不改名"的行为一致。
 archive_previous_log() {
   local log_dir log_file ts target n
   log_dir="$(get_log_dir)"
@@ -118,7 +95,6 @@ stop_service() {
   :
 }
 
-# 改完配置 (增删账号) 后要重新起实例, 所以 reload 必须真的重建
 reload_service() {
   stop
   start

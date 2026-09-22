@@ -9,9 +9,6 @@ if file then
     end
 end
 
--- 实际使用的日志目录: 规则与程序里一致 (Logger.c 的 resolve_log_dir + get_log_dir)
--- 配置里的 log_dir 是【基目录】, 日志在它下面的 logs 里; 没写 / "." / "./" 时用默认的
--- /var/log/esurfing; 相对路径也按它解析 (OpenWrt 上程序装在只读的 /usr/bin 里, 不按程序目录)
 local function get_log_dir()
     local base = config_json:match('"log_dir"%s*:%s*"([^"]*)"') or ''
     if base == '' or base == '.' or base == './' then
@@ -192,7 +189,7 @@ end
             <a href='#' onclick='return false;'>日志</a>
         </li>
     </ul>
-    
+
     <div class='cbi-section-node cbi-section-node-tabbed'>
         <div class='cbi-tabcontainer' style='display: block;'>
             <h3 style='margin-top: 0; margin-bottom: 0;'>基本设置</h3>
@@ -466,7 +463,7 @@ end
         config.accounts.splice(index, 1);
         renderTable();
     }
-    
+
     // 保存操作
     function saveOperation() {
         return fetch(window.location.href, {

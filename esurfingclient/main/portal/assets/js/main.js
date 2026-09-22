@@ -1,15 +1,3 @@
-/*!
- * ESurfing 客户端 - Web 控制面板前端逻辑
- * 依赖: Alpine.js 3
- * 后端接口约定见 ../README.md (由 esurfingclient/main/src/webserver/WebServer.c 提供)
- *
- * 说明: 后端的 /api/logs, /api/status/sys, /api/restartAuth 为新增接口,
- *       若后端版本较旧 (返回 404), 相关功能会自动降级并在界面上给出提示, 不会报错崩溃
- */
-
-// ============================== 常量 ==============================
-
-/** 认证通道显示名 (与 LuCI 界面保持一致) */
 const CHANNEL_TEXT = {
     windows: 'Windows (未实现, Android 替代)',
     linux: 'Linux',
@@ -18,7 +6,6 @@ const CHANNEL_TEXT = {
     macos: 'MacOS'
 };
 
-/** 可选的认证通道 (与 index.html 中的下拉框、后端 parse_channel_json 保持一致) */
 const CHANNEL_VALUES = ['windows', 'linux', 'android', 'ios', 'macos'];
 
 /**
@@ -73,7 +60,6 @@ function normalizeTimeout(raw, fallback) {
     return timeout;
 }
 
-/** 星期 */
 const WEEK_DAYS = [
     { value: 'mon', text: '周一' },
     { value: 'tue', text: '周二' },
@@ -91,10 +77,8 @@ const WEEK_DAY_TEXT = WEEK_DAYS.reduce((map, day) => {
     return map;
 }, {});
 
-/** 时间格式 HH:MM */
 const TIME_RE = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 
-/** 提示框样式 (写成完整类名, 便于 Tailwind 扫描到) */
 const TOAST_CLASS = {
     info: 'alert-info',
     success: 'alert-success',
@@ -102,28 +86,20 @@ const TOAST_CLASS = {
     error: 'alert-error'
 };
 
-/** 后端最多支持的时间段数量 (States.h MAX_TIME_WINDOWS) */
 const MAX_TIME_WINDOWS = 16;
 
-/** 默认连接超时 (秒, 与后端 States.h 的 DEFAULT_CONN_TIMEOUT 保持一致) */
 const DEFAULT_CONN_TIMEOUT = 7;
 
-/** 默认操作超时 (秒, 与后端 States.h 的 DEFAULT_OP_TIMEOUT 保持一致) */
 const DEFAULT_OP_TIMEOUT = 10;
 
-/** 默认 Web 服务端口 (与后端 States.h 的 DEFAULT_WEB_PORT 保持一致) */
 const DEFAULT_WEB_PORT = 8888;
 
-/** 默认日志目录 (与后端 Logger.c 的 DEFAULT_LOG_DIR 保持一致; "./" 即程序所在目录) */
 const DEFAULT_LOG_DIR = './';
 
-/** 日志目录的最大长度 (后端按 PATH_MAX 校验, 超了会退回默认目录) */
 const MAX_LOG_DIR_LEN = 255;
 
-/** 状态轮询间隔 (毫秒) */
 const STATUS_INTERVAL = 5000;
 
-/** 日志自动刷新间隔 (毫秒) */
 const LOG_INTERVAL = 5000;
 
 /** 默认配置 (与后端 s_default_cfg 保持一致) */
@@ -146,8 +122,6 @@ function defaultConfigs() {
         ]
     };
 }
-
-// ============================== 基础工具 ==============================
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -203,11 +177,6 @@ function isValidWebPort(value) {
     const port = Number(value);
     return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
-
-// 说明: 状态指示灯的颜色由 index.html 中的 Alpine 绑定负责
-// (直接操作 classList 会与 Alpine 的 :class 绑定互相覆盖)
-
-// ============================== 时间窗口 ==============================
 
 /** 空的时间窗口编辑项 */
 function defaultEditTimeWindow() {
@@ -270,8 +239,6 @@ function timeWindowText(value) {
     return `${day} ${parts[1] || ''}`.trim();
 }
 
-// ============================== 后端接口 ==============================
-
 class ApiError extends Error {
     constructor(message, status) {
         super(message);
@@ -280,7 +247,6 @@ class ApiError extends Error {
     }
 }
 
-/** 默认请求超时 (毫秒) */
 const REQUEST_TIMEOUT = 8000;
 
 /** 兼容性: 不支持 AbortSignal.timeout 时退化为无超时 */
@@ -323,20 +289,16 @@ async function request(method, url, options = {}) {
 }
 
 const api = {
-    /** 读取配置 */
     async getConfigs() {
         const response = await request('GET', '/api/getConfigs');
         return response.json();
     },
 
-    /** 认证状态: { status: boolean, reachable: boolean }
-     *  reachable 为 false 表示认证进程没在跑 (拆分多进程后才会出现) */
     async authStatus() {
         const response = await request('GET', '/api/status/auth');
         return response.json();
     },
 
-    /** 联网状态: 204 已联网 / 302 需要认证 / 503 未联网 (后端会实际探测网络, 给更长的超时) */
     async onlineStatus() {
         const response = await request('GET', '/api/status/online', {
             allow: [204, 302, 503],
@@ -345,7 +307,6 @@ const api = {
         return response.status;
     },
 
-    /** 保存配置: 204 成功 / 400 内容为空 / 500 保存失败 (配置非法) */
     async saveConfigs(configs) {
         const response = await request('POST', '/api/saveConfigs', {
             json: configs,
@@ -354,7 +315,6 @@ const api = {
         return response.status;
     },
 
-    /** 应用配置: 204 成功 / 400 / 500 */
     async applyConfigs() {
         const response = await request('POST', '/api/applyConfigs', {
             json: { apply: true },
@@ -363,7 +323,6 @@ const api = {
         return response.status;
     },
 
-    /** 重新认证 (新增接口, 旧后端返回 404) */
     async restartAuth() {
         const response = await request('POST', '/api/restartAuth', {
             json: { restart: true },
@@ -372,19 +331,16 @@ const api = {
         return response.status;
     },
 
-    /** 程序运行信息 (新增接口, 旧后端返回 null) */
     async sysInfo() {
         const response = await request('GET', '/api/status/sys', { allow: [200, 404] });
         return response.status === 404 ? null : response.json();
     },
 
-    /** 日志文件列表 (新增接口, 旧后端返回 null) */
     async logFiles() {
         const response = await request('GET', '/api/logs', { allow: [200, 404] });
         return response.status === 404 ? null : response.json();
     },
 
-    /** 日志文件内容 (新增接口) */
     async logContent(name) {
         const response = await request('GET', '/api/logs?file=' + encodeURIComponent(name), {
             allow: [200, 404]
@@ -418,8 +374,6 @@ async function restartAuthRequest() {
         return false;
     }
 }
-
-// ============================== Alpine ==============================
 
 document.addEventListener('alpine:init', () => {
 
@@ -459,7 +413,6 @@ document.addEventListener('alpine:init', () => {
             this.refreshConfigs();
         },
 
-        /** 从后端重新读取配置 */
         async refreshConfigs() {
             if (this.configsLoading) return;
             this.configsLoading = true;
@@ -571,7 +524,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        /** 立即刷新一次认证状态与联网状态 */
         async refreshNow() {
             await Promise.all([this.updateAuthStatus(), this.updateOnlineStatus()]);
             this.lastCheckAt = new Date();
@@ -638,11 +590,6 @@ document.addEventListener('alpine:init', () => {
             } catch (error) {
                 return error.message;
             }
-            /**
-             * 端口与日志目录校验的是【页面上的原值】而不是 payload:
-             * buildPayload 会把非法端口一并写出去 (校验不通过时根本不保存),
-             * 拿兜底后的值去校验就等于永远合法, 用户填错了也没有提示
-             */
             const configs = Alpine.store('main').configs || {};
             if (!isValidWebPort(configs.web_port)) {
                 return `Web 服务端口应为 1 - 65535 的整数 (当前: ${configs.web_port})`;
@@ -676,10 +623,6 @@ document.addEventListener('alpine:init', () => {
                 if (code === 204) {
                     notify.success('配置已保存');
                     await Alpine.store('main').refreshConfigs();
-                    /**
-                     * 端口与外部访问开关是启动时绑上去的, 与账号/超时那些不一样 ——
-                     * 保存只改了配置文件, 监听地址要重启程序才会换 (页面现在连的还是旧地址)
-                     */
                     if (before.web_port !== payload.web_port ||
                         !!before.web_external_acc !== payload.web_external_acc) {
                         notify.warning(`Web 端口与外部访问开关要重启程序才会生效, 当前仍在 ${location.host} 上`);
@@ -730,7 +673,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        /** 保存并应用 */
         async saveAndApply() {
             if (this.applying) return;
             this.applying = true;
@@ -742,7 +684,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        /** 复位配置并写回配置文件 */
         async resetConfigs() {
             const notify = Alpine.store('notify');
             Alpine.store('main').resetConfigs();
@@ -750,7 +691,6 @@ document.addEventListener('alpine:init', () => {
             if (ok) notify.info('配置已复位到默认值, 需要重新填写账号后重启程序');
         },
 
-        /** 等待程序重启完成 (后端重启期间页面会自动重连) */
         async waitForRestart() {
             const notify = Alpine.store('notify');
             let offline = false;
@@ -906,7 +846,6 @@ document.addEventListener('alpine:init', () => {
             this.tickTimer = null;
         },
 
-        /** 重新认证 */
         async restart() {
             if (this.restarting) return;
             this.restarting = true;
@@ -1029,7 +968,6 @@ document.addEventListener('alpine:init', () => {
                 (file.current ? ' · 正在写入' : '');
         },
 
-        /** 读取日志文件列表 */
         async loadFiles() {
             try {
                 const data = await api.logFiles();
@@ -1069,7 +1007,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        /** 选择日志文件并读取内容 */
         async select(name) {
             this.selected = name;
             await this.loadContent();
@@ -1092,7 +1029,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        /** 手动/自动刷新 */
         async refresh() {
             await this.loadFiles();
             if (this.selected) await this.loadContent();
