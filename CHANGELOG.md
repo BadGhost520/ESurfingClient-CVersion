@@ -335,3 +335,15 @@
 ### 2026.9.22
 1. (10:46) 拆分 NetClient
 2. (10:47) 移动 NetClient 和 DialerClient 到 clients 目录
+
+### 2026.9.22 (v2.1.2-r1)
+1. (14:22) 包内自带 LICENSE, CMake 源文件清单收口, 修掉 LuCI 卸载时删错的路径
+2. (14:24) 目录结构重构: 包目录自包含 (files/ 镜像目标 rootfs), 配置与图片分别归到 ci/ 与 docs/, 新增仓库级 .gitignore 并停止跟踪 .idea
+3. (14:24) 构建逻辑从工作流收进仓库: scripts/build-portal.sh (网页资源构建)、scripts/sync-version.sh (版本号统一从 CMakeLists 分发)、ci/toolchains/mingw64.cmake
+4. (15:28) 拆分 PlatformUtils.c (1708 行) 为 12 个按职责划分的文件
+5. (15:46) 清理脚本与工作流的说明性注释, 容易踩的约定集中写到 docs/Notes.md
+6. (15:48) 清理内置网页界面与 init 脚本的注释
+7. (16:01) 拆分 Supervisor / Control / DialerClient / WebServer / NetClient / Logger / SimEvp 七个大文件, 拆分后最大的源文件不到 600 行
+8. (16:01) 按"只保留函数说明与函数内步骤注释"清理全仓库注释
+9. (20:14) 拆分出来的源文件统一为 PascalCase 命名 (LogoutState 这种)
+10. (21:12) 主程序目录 esurfingclient/main 换为 esurfingclient/app
