@@ -7,6 +7,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#define ALGO_ID_LEN 37
+
 typedef struct cipherInterface
 {
     char* (*encrypt)(struct cipherInterface* self, const char* text);
@@ -14,6 +16,16 @@ typedef struct cipherInterface
     void (*destroy)(struct cipherInterface* self);
     void* private_data;
 } cipher_interface_t;
+
+typedef struct
+{
+    char algo_id[ALGO_ID_LEN];
+    uint8_t* key;
+    size_t key_len;
+    uint8_t* iv;
+    size_t iv_len;
+    char* js;
+} ios_zsm_blob_t;
 
 // cipher_interface_t* create_aes_cbc_android_old_cipher(
 //     const uint8_t* key1,
@@ -158,6 +170,8 @@ void destroy_cipher_factory();
  * @return 是否成功
  */
 bool init_ios_cipher_from_zsm(const uint8_t* data, size_t length, char* algo_id_out);
+
+bool init_ios_cipher_from_blob(int8_t type, ios_zsm_blob_t blob);
 
 /**
  * 初始化加解密工厂

@@ -126,14 +126,14 @@ static bool extract_algo_id_from_zsm(const bytes_t zsm, char* algo_id)
     size_t str1_len = 0;
     size_t str2_len = 0;
 
-    if (zsm.data == NULL || algo_id == NULL || zsm.length < 5)
+    if (zsm.data == NULL || algo_id == NULL || zsm.len < 5)
     {
         return false;
     }
 
     offset = 3;
-    if (read_zsm_pascal_string(zsm.data, zsm.length, &offset, &str1, &str1_len)
-        && read_zsm_pascal_string(zsm.data, zsm.length, &offset, &str2, &str2_len))
+    if (read_zsm_pascal_string(zsm.data, zsm.len, &offset, &str1, &str1_len)
+        && read_zsm_pascal_string(zsm.data, zsm.len, &offset, &str2, &str2_len))
     {
         if (is_uuid_text(str2, str2_len))
         {
@@ -147,7 +147,7 @@ static bool extract_algo_id_from_zsm(const bytes_t zsm, char* algo_id)
         }
     }
 
-    size_t end = zsm.length;
+    size_t end = zsm.len;
     while (end > 0)
     {
         const unsigned char c = zsm.data[end - 1];
@@ -170,12 +170,11 @@ bool load_cipher(const bytes_t zsm)
 {
     char algo_id[ALGO_ID_LEN];
     const uint8_t chn = g_prog_status[tl_thread_idx].login_cfg.chn;
-    const bool ios_module = looks_like_ios_zsm(zsm.data, zsm.length);
+    const bool ios_module = looks_like_ios_zsm(zsm.data, zsm.len);
 
     LOG_DEBUG("load 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
-    LOG_INFO("当前通道: %" PRIu8 ", ZSM 长度: %zu, 动态 ZSM 模块: %s",
-             chn, zsm.length, ios_module ? "是" : "否");
-    if (zsm.data == NULL || zsm.length == 0) // 检查 zsm 数据是否为空, 为空则返回 false
+    LOG_INFO("当前通道: %" PRIu8 ", ZSM 长度: %zu, 动态 ZSM 模块: %s", chn, zsm.len, ios_module ? "是" : "否");
+    if (zsm.data == NULL || zsm.len == 0) // 检查 zsm 数据是否为空, 为空则返回 false
     {
         LOG_ERROR("无效的 zsm 数据");
         return false;
@@ -192,9 +191,9 @@ bool load_cipher(const bytes_t zsm)
         {
             LOG_WARN("通道不是 iOS/macOS, 但 ticket 返回了动态 ZSM, 按动态密钥解包, UA 不变");
         }
-        if (init_ios_cipher_from_zsm(zsm.data, zsm.length, algo_id) == false)
+        if (init_ios_cipher_from_zsm(zsm.data, zsm.len, algo_id) == false)
         {
-            LOG_ERROR("无法按动态 ZSM 解包出密钥 (长度 %zu, 通道 %" PRIu8 ")", zsm.length, chn);
+            LOG_ERROR("无法按动态 ZSM 解包出密钥 (长度 %zu, 通道 %" PRIu8 ")", zsm.len, chn);
             if (chn == 4 || chn == 5)
             {
                 return false;
@@ -211,7 +210,7 @@ bool load_cipher(const bytes_t zsm)
 
     if (extract_algo_id_from_zsm(zsm, algo_id) == false)
     {
-        LOG_ERROR("无法从 ZSM 中提取 Algo-ID (长度 %zu)", zsm.length);
+        LOG_ERROR("无法从 ZSM 中提取 Algo-ID (长度 %zu)", zsm.len);
         return false;
     }
     LOG_INFO("Algo ID: %s", algo_id);
@@ -219,7 +218,7 @@ bool load_cipher(const bytes_t zsm)
     if (init_cipher(algo_id) == false)
     {
         LOG_WARN("CipherFactory 没有 Algo-ID %s, 尝试按动态 ZSM 解包", algo_id);
-        if (init_ios_cipher_from_zsm(zsm.data, zsm.length, algo_id))
+        if (init_ios_cipher_from_zsm(zsm.data, zsm.len, algo_id))
         {
             snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id));
             LOG_DEBUG("全局 AlgoID 已更新: %s", g_prog_status[tl_thread_idx].auth_cfg.algo_id);

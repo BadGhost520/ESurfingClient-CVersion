@@ -30,26 +30,6 @@
 #define XML_BUFFER_SIZE 1024
 #define NAME_LENGTH 256
 
-typedef enum
-{
-    GET_TICKET = 1,
-    LOGIN = 2,
-    HEART_BEAT = 3,
-    TERM = 4
-} XmlChoose;
-
-typedef enum
-{
-    CONSOLE_FORMAT = 1,
-    FILE_FORMAT = 2
-} TimeFormat;
-
-typedef struct
-{
-    uint8_t* data;
-    size_t length;
-} bytes_t;
-
 /**
  * @brief 打包适配器数据
  * @return JSON 文本
@@ -108,6 +88,22 @@ bool parent_process_alive(void);
  * @return 解析后的数据
  */
 char* xml_parser(const char* xml_data, const char* tag);
+
+/**
+ * @brief 字节转 base64
+ * @param in 字节数据
+ * @param len 字节长度
+ * @return base64 码
+ */
+char* bytes2base64(const uint8_t* in, size_t len);
+
+/**
+ * @brief base64 转字节
+ * @param in base64 码
+ * @param out_len 字节长度指针
+ * @return 字节数据
+ */
+uint8_t* base642bytes(const char* in, size_t* out_len);
 
 /**
  * @brief 文本转字节

@@ -19,7 +19,6 @@
 #define TERM_URL_LEN 256
 #define AUTH_URL_LEN 256
 #define MAC_ADDR_LEN 20
-#define ALGO_ID_LEN 37
 #define TICKET_LEN 40
 #define OSTAG_LEN 32
 
@@ -52,6 +51,26 @@
 
 typedef enum
 {
+    GET_TICKET = 1,
+    LOGIN = 2,
+    HEART_BEAT = 3,
+    TERM = 4
+} XmlChoose;
+
+typedef enum
+{
+    CONSOLE_FORMAT = 1,
+    FILE_FORMAT = 2
+} TimeFormat;
+
+typedef struct
+{
+    uint8_t* data;
+    size_t len;
+} bytes_t;
+
+typedef enum
+{
     ROLE_STANDALONE = 0,
     ROLE_SUPERVISOR = 1,
     ROLE_AUTH = 2,
@@ -72,10 +91,13 @@ typedef struct
     char ticket[TICKET_LEN];
     char client_ip[IP_LEN];
     char ac_ip[IP_LEN];
+    bool dynamic;
     cipher_interface_t* cipher;
+    ios_zsm_blob_t blob;
     uint64_t keep_retry;
     uint64_t auth_time;
     uint64_t tick;
+    int8_t type;
 } auth_cfg_t;
 
 typedef struct

@@ -31,6 +31,15 @@ uint8_t* hex_2_bytes(const char* hex, size_t* out_len)
     return bytes;
 }
 
+void zsm_blob_free(ios_zsm_blob_t* blob)
+{
+    if (!blob) return;
+    s_free(blob->key);
+    s_free(blob->iv);
+    s_free(blob->js);
+    memset(blob, 0, sizeof(*blob));
+}
+
 void* s_malloc(const size_t size)
 {
     if (size == 0) return NULL;

@@ -44,7 +44,7 @@ bool init_session()
     {
         const bytes_t zsm = {
             .data = (uint8_t*)resp.body_data,
-            .length = resp.body_size
+            .len = resp.body_size
         };
 
         LOG_DEBUG("开始初始化会话");

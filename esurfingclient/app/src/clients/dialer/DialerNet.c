@@ -256,7 +256,7 @@ WaitResult wait_need_auth()
             // 正常连接到互联网
             retry_network = 1;
             LOG_INFO("已连接至互联网");
-            sleep_ms(10000, true);
+            sleep_ms(3000, false);
             break;
         case STATUS_NEED_AUTH:
             // 需要认证
@@ -292,7 +292,7 @@ void logout_previous_session()
 {
     if (logout_state_load(&g_prog_status[0]) == false) return;
 
-    LOG_WARN("上次退出时没来得及登出 (会话可能还挂在服务端在线), 先补一次登出");
+    LOG_WARN("检测到 logout 文件, 尝试登出");
 
     /**
      * term() / init_cipher() 都按 tl_thread_idx 取状态。认证进程就一个账号、
@@ -301,15 +301,26 @@ void logout_previous_session()
      */
     tl_thread_idx = 0;
 
-    if (init_cipher(g_prog_status[0].auth_cfg.algo_id))
+    bool inited = false;
+
+    if (g_prog_status[0].auth_cfg.dynamic == true)
     {
-        if (term())
+        inited = init_ios_cipher_from_blob(g_prog_status[0].auth_cfg.type, g_prog_status[0].auth_cfg.blob);
+    }
+    else
+    {
+        inited = init_cipher(g_prog_status[0].auth_cfg.algo_id);
+    }
+
+    if (inited == true)
+    {
+        if (term() == true)
         {
-            LOG_INFO("补登出完成, 会话已从服务端释放");
+            LOG_INFO("登出完成, 会话已从服务端释放");
         }
         else
         {
-            LOG_WARN("补登出失败 (客户端 IP 可能已经变了), 交给服务器超时下线");
+            LOG_WARN("登出失败 (客户端 IP 可能已经变了), 交给服务器超时下线");
         }
         destroy_cipher_factory();
     }
