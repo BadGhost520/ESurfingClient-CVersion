@@ -56,7 +56,7 @@
 |  系统   |              架构              |    包管理器    |     理论最低支持版本      |        推荐版本         |
 |:-------:|:------------------------------:|:--------------:|:-------------------------:|:-----------------------:|
 | Windows |             x86_64             | 便携二进制文件 |     Windows Vista x64     |     Windows 10 x64	      |
-|  Linux  |             x86_64             | 便携二进制文件 |        glibc 2.36         |       glibc 2.39        |
+|  Linux  |       x86_64/loongarch64       | 便携二进制文件 |        glibc 2.36         |       glibc 2.39        |
 | Android |  x86_64/arm64-v8a/armeabi-v7a  | 便携二进制文件 |         Android 7         |       Android 10        |
 |  macOS  |             x86_64             | 便携二进制文件 |         macOS 12          |        macOS 13         |
 |  macOS  |            aarch64             | 便携二进制文件 |         macOS 13          |        macOS 14         |
