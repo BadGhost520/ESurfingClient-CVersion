@@ -124,7 +124,7 @@ jobs:
 
       - name: 构建 ESurfingClient 程序
         run: |
-          cd esurfingclient/main
+          cd esurfingclient/app
 
           cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
             -DCMAKE_BUILD_TYPE=Release \
