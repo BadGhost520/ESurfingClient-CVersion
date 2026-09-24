@@ -326,6 +326,8 @@ void work()
     time_control_sync(); // 冷启动时先按当前时间同步各账号的时间控制状态
     if (time_control_init() == false) shut(1); // 启动时间控制定时线程
 
+    logout_previous_session(); // 前台模式的强杀登出流程
+
     /**
      * 检测网络状态, 进入需要认证的状态后才继续
      */

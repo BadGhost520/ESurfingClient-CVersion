@@ -34,25 +34,29 @@ static void zsm_blob_to_json(cJSON* root, const ios_zsm_blob_t* blob)
 
     if (blob->key != NULL && blob->key_len > 0)
     {
+        LOG_VERBOSE("blob key: %s", blob->key);
+        LOG_VERBOSE("blob key_len: %d", blob->key_len);
         char* b64 = bytes2base64(blob->key, blob->key_len);
         if (b64 != NULL)
         {
             cJSON_AddStringToObject(root, "zsm_key", b64);
             free(b64);
         }
+        LOG_VERBOSE("将 key 转 base64 并添加");
     }
-    LOG_VERBOSE("将 key 转 base64 并添加");
 
     if (blob->iv != NULL && blob->iv_len > 0)
     {
+        LOG_VERBOSE("blob iv: %s", blob->iv);
+        LOG_VERBOSE("blob iv_len: %d", blob->iv_len);
         char* b64 = bytes2base64(blob->iv, blob->iv_len);
         if (b64 != NULL)
         {
             cJSON_AddStringToObject(root, "zsm_iv", b64);
             free(b64);
         }
+        LOG_VERBOSE("将 iv 转 base64 并添加");
     }
-    LOG_VERBOSE("将 iv 转 base64 并添加");
 }
 
 static bool zsm_blob_from_json(const cJSON* root, ios_zsm_blob_t* blob)
@@ -122,13 +126,17 @@ bool logout_state_save(const prog_status_t* status)
     cJSON_AddStringToObject(root, "mac_addr", safe_str(status->auth_cfg.mac_addr));
     cJSON_AddStringToObject(root, "ostag", safe_str(status->auth_cfg.ostag));
     cJSON_AddStringToObject(root, "ticket", safe_str(status->auth_cfg.ticket));
-    cJSON_AddNumberToObject(root, "type", status->auth_cfg.type);
     LOG_VERBOSE("添加各类普通登出参数");
 
-    zsm_blob_to_json(root, &status->auth_cfg.blob); // 添加 blob 存储
-    LOG_VERBOSE("添加 blob 登出参数");
+    if (status->login_cfg.chn == 4 || status->login_cfg.chn == 5)
+    {
+        cJSON_AddNumberToObject(root, "type", status->auth_cfg.type);
+        LOG_VERBOSE("添加 type 登出参数: %" PRId8, status->auth_cfg.type);
+        zsm_blob_to_json(root, &status->auth_cfg.blob); // 添加 blob 存储
+        LOG_VERBOSE("添加 blob 登出参数");
+    }
 
-    char* text = cJSON_PrintUnformatted(root);
+    char* text = cJSON_Print(root);
     cJSON_Delete(root);
     if (text == NULL) return false;
 
@@ -225,21 +233,24 @@ bool logout_state_load(prog_status_t* status)
         status->auth_cfg.dynamic = dynamic->valueint;
     }
 
-    const cJSON* type = cJSON_GetObjectItem(root, "type");
-    if (type == NULL || cJSON_IsNumber(type) == false)
+    if (status->auth_cfg.dynamic == true)
     {
-        LOG_WARN("会话存档的 type 参数解析失败: %s", path);
-        cJSON_Delete(root);
-        return false;
-    }
-    status->auth_cfg.type = (int8_t)type->valueint;
+        const cJSON* type = cJSON_GetObjectItem(root, "type");
+        if (type == NULL || cJSON_IsNumber(type) == false)
+        {
+            LOG_WARN("会话存档的 type 参数解析失败: %s", path);
+            cJSON_Delete(root);
+            return false;
+        }
+        status->auth_cfg.type = (int8_t)type->valueint;
 
-    if (zsm_blob_from_json(root, &status->auth_cfg.blob) == false)
-    {
-        LOG_WARN("会话存档的 ZSM key/iv 解码失败: %s", path);
-        zsm_blob_free(&status->auth_cfg.blob);
-        cJSON_Delete(root);
-        return false;
+        if (zsm_blob_from_json(root, &status->auth_cfg.blob) == false)
+        {
+            LOG_WARN("会话存档的 ZSM key/iv 解码失败: %s", path);
+            zsm_blob_free(&status->auth_cfg.blob);
+            cJSON_Delete(root);
+            return false;
+        }
     }
 
     cJSON_Delete(root);

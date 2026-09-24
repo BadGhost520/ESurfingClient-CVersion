@@ -25,9 +25,9 @@ char* bytes2base64(const uint8_t* in, const size_t len)
     size_t i = 0, j = 0;
     while (i < len)
     {
-        const uint32_t a = i < len ? in[i++] : 0;
-        const uint32_t b = i < len ? in[i++] : 0;
-        const uint32_t c = i < len ? in[i++] : 0;
+        const uint32_t a = in[i++];
+        const uint32_t b = (i < len) ? in[i++] : 0;
+        const uint32_t c = (i < len) ? in[i++] : 0;
         const uint32_t t = (a << 16) | (b << 8) | c;
 
         out[j++] = b64_enc[(t >> 18) & 0x3F];
@@ -36,9 +36,18 @@ char* bytes2base64(const uint8_t* in, const size_t len)
         out[j++] = b64_enc[t & 0x3F];
     }
 
-    const size_t mod = len % 3;
-    if (mod == 1) { out[olen - 1] = '='; out[olen - 2] = '='; }
-    else if (mod == 2) { out[olen - 1] = '='; }
+    switch (len % 3)
+    {
+        case 1:
+            out[olen - 2] = '=';
+            out[olen - 1] = '=';
+            break;
+        case 2:
+            out[olen - 1] = '=';
+            break;
+        default:
+            break;
+    }
 
     out[olen] = '\0';
     return out;
@@ -49,40 +58,80 @@ uint8_t* base642bytes(const char* in, size_t* out_len)
     if (in == NULL || out_len == NULL) return NULL;
 
     const size_t in_len = strlen(in);
+
     if (in_len == 0)
     {
         uint8_t* p = malloc(1);
         if (p) *out_len = 0;
         return p;
     }
+
     if (in_len % 4 != 0) return NULL;
 
-    static int dec[256];
-    static int inited = 0;
-    if (!inited)
-    {
-        memset(dec, -1, sizeof(dec));
-        for (int i = 0; i < 64; i++) dec[(uint8_t)b64_enc[i]] = i;
-        inited = 1;
-    }
+    int dec[256];
+    for (int i = 0; i < 256; ++i) dec[i] = -1;
+    for (int i = 0; i < 64; ++i)
+        dec[(unsigned char)b64_enc[i]] = i;
 
     const size_t max_out = in_len / 4 * 3;
-    uint8_t* out = malloc(max_out);
+    uint8_t* out = malloc(max_out ? max_out : 1);
     if (!out) return NULL;
 
     size_t j = 0;
+
     for (size_t i = 0; i < in_len; i += 4)
     {
-        const int v0 = dec[(uint8_t)in[i]];
-        const int v1 = dec[(uint8_t)in[i + 1]];
-        const int v2 = in[i + 2] == '=' ? -2 : dec[(uint8_t)in[i + 2]];
-        const int v3 = in[i + 3] == '=' ? -2 : dec[(uint8_t)in[i + 3]];
+        const int v0 = dec[(unsigned char)in[i]];
+        const int v1 = dec[(unsigned char)in[i + 1]];
+        const int v2 = (in[i + 2] == '=') ? -2 : dec[(unsigned char)in[i + 2]];
+        const int v3 = (in[i + 3] == '=') ? -2 : dec[(unsigned char)in[i + 3]];
 
-        if (v0 < 0 || v1 < 0 || v2 == -1 || v3 == -1) { free(out); return NULL; }
+        /* 前两个字符必须是合法 Base64 字符，不能是 '=' */
+        if (v0 < 0 || v1 < 0)
+        {
+            free(out);
+            return NULL;
+        }
 
-        const uint32_t t = (v0 << 18) | (v1 << 12) |
-                     ((v2 < 0 ? 0 : v2) << 6) |
-                      (v3 < 0 ? 0 : v3);
+        /* -1 表示非法字符 */
+        if (v2 == -1 || v3 == -1)
+        {
+            free(out);
+            return NULL;
+        }
+
+        /* 严格校验 '=' 填充 */
+        if (v2 == -2)
+        {
+            /* 第三个是 '='，第四个也必须是 '=' */
+            if (v3 != -2)
+            {
+                free(out);
+                return NULL;
+            }
+
+            /* 填充只能出现在最后一个 4 字符块 */
+            if (i + 4 != in_len)
+            {
+                free(out);
+                return NULL;
+            }
+        }
+        else if (v3 == -2)
+        {
+            /* 第四个是 '='，第三个必须是有效字符，且必须是最后一块 */
+            if (i + 4 != in_len)
+            {
+                free(out);
+                return NULL;
+            }
+        }
+
+        const uint32_t t =
+            ((uint32_t)v0 << 18) |
+            ((uint32_t)v1 << 12) |
+            ((v2 < 0 ? 0u : (uint32_t)v2) << 6) |
+            (v3 < 0 ? 0u : (uint32_t)v3);
 
         out[j++] = (t >> 16) & 0xFF;
         if (v2 >= 0) out[j++] = (t >> 8) & 0xFF;
