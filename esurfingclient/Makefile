@@ -4,8 +4,8 @@ PKG_NAME:=esurfingclient
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 
-PKG_VERSION:=2.1.1
-PKG_RELEASE:=5
+PKG_VERSION:=1.0.0
+PKG_RELEASE:=1
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
@@ -71,6 +71,8 @@ endef
 
 define Package/esurfingclient/postrm
 #!/bin/sh
+[ "$$PKG_UPGRADE" = "1" ] && exit 0
+
 echo "正在清理 ESurfing 客户端残留文件"
 
 rm -f /etc/config/esurfingclient*

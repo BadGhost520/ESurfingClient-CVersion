@@ -4,8 +4,8 @@ PKG_NAME:=luci-app-esurfingclient
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 
-PKG_VERSION:=2.1.1
-PKG_RELEASE:=5
+PKG_VERSION:=1.0.0
+PKG_RELEASE:=1
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -61,6 +61,7 @@ endef
 
 define Package/luci-app-esurfingclient/postrm
 #!/bin/sh
+[ "$$PKG_UPGRADE" = "1" ] && exit 0
 echo "正在移除 ESurfingClient LuCI"
 
 rm -f /usr/lib/lua/luci/controller/esurfingclient.lua
