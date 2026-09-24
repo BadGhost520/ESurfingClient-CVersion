@@ -1,0 +1,9 @@
+#ifndef ESURFINGCLIENT_DIALERCLIENT_H
+#define ESURFINGCLIENT_DIALERCLIENT_H
+
+/**
+ * @brief 工作函数
+ */
+void work();
+
+#endif

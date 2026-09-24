@@ -1,0 +1,121 @@
+name: Build OpenWRT LuCI packages
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      release:
+        required: true
+        type: string
+      sdk_version:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+      package_type:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 同步版本号
+        run: |
+          bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
+
+      - name: 安装软件包 (最多重试 3 次)
+        run: |
+          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev rsync wget ca-certificates unzip file zstd python3-setuptools swig curl"
+
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在安装 $PACKAGES"
+            if apt-get update && apt-get install -y $PACKAGES; then
+              echo "所有软件包已完成安装"
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
+
+      - name: 获取 OpenWrt SDK 压缩包缓存
+        id: cache-openwrt-sdk
+        uses: actions/cache@v6
+        with:
+          path: |
+            openwrt-sdk.tar.zst
+          key: openwrt-${{ inputs.package_type }}-sdk-${{ inputs.sdk_version }}
+
+      - name: 下载 SDK (最多重试 3 次)
+        if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
+        run: |
+          BASE="https://downloads.openwrt.org/releases/${{ inputs.sdk_version }}/targets/${{ inputs.target }}"
+          FILE=$(curl -s "$BASE/" | grep -oE 'openwrt-sdk-[^"<]+\.tar\.zst' | head -n1)
+
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在下载 OpenWRT SDK 包"
+            if wget -O openwrt-sdk.tar.zst "$BASE/$FILE"; then
+              echo "OpenWRT SDK 包下载完成"
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
+
+      - name: 解压 SDK
+        run: |
+          mkdir -p openwrt-sdk
+
+          tar --zstd -xf openwrt-sdk.tar.zst -C openwrt-sdk --strip-components=1
+
+      - name: 准备构建环境
+        run: |
+          cd openwrt-sdk
+          scripts/feeds update packages
+          scripts/feeds install luci-base
+          make defconfig
+
+      - name: 部署 LuCI 包
+        run: |
+          cp -r luci-app-esurfingclient openwrt-sdk/package/
+          cd openwrt-sdk
+          scripts/feeds install luci-app-esurfingclient
+
+      - name: 编译 luci-app-esurfingclient
+        run: |
+          cd openwrt-sdk
+          
+          make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
+          find bin/packages -name "luci-app-esurfingclient*.${{ inputs.package_type }}" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }} \;
+
+      - name: OpenWRT APK 包签名
+        if: inputs.package_type == 'apk'
+        run: |
+          cd openwrt-sdk
+          
+          cat > /tmp/openwrt-apk-private-key.pem << 'EOF'
+          ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
+          EOF
+          chmod 600 /tmp/openwrt-apk-private-key.pem
+          
+          staging_dir/host/bin/apk adbsign --allow-untrusted --sign-key /tmp/openwrt-apk-private-key.pem ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }}
+
+      - name: 上传工件
+        uses: actions/upload-artifact@v7
+        with:
+          name: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all-${{ inputs.package_type }}
+          path: luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }}
+          retention-days: 30

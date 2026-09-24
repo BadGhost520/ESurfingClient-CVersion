@@ -1,0 +1,138 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+USE_PROCD=1
+PROG=/usr/bin/esurfingclient
+
+LOG_DIR_DEFAULT=/var/log/esurfing/logs
+
+get_log_dir() {
+  local dir
+  dir="$($PROG --print-log-dir 2>/dev/null)"
+  [ -n "$dir" ] || dir="$LOG_DIR_DEFAULT"
+  echo "$dir"
+}
+
+wait_network() {
+  local i=0
+  while [ $i -lt 60 ]; do
+      ip route show default 2>/dev/null | grep -q "default" && return 0
+      sleep 1
+      i=$((i + 1))
+  done
+  return 1
+}
+
+# 把这一轮运行的 run.log 归档成 <时间戳>.log
+#
+# 归档时机是【这一轮结束之后】: stop_service 里先等实例退出再改名, 所以正常停止/重启
+# 只会留下一个归档文件; start_service 那次只是"上一轮没走到停止"时的兜底。
+#
+# 为什么不由程序自己改名: run.log 是多进程共用的, 改名只能由一方做, 而 AUTH / WEB
+# 角色在 clean_logger() 里刻意不改名 (交给监管进程)。OpenWrt 上没有监管进程
+# (procd 只跑 --role auth), 所以由本脚本充当那个"监管者"。
+archive_previous_log() {
+  local log_dir log_file ts target n
+  log_dir="$(get_log_dir)"
+  log_file="$log_dir/run.log"
+
+  [ -s "$log_file" ] || return 0
+
+  ts="$(date +%Y%m%d-%H%M%S)"
+  target="$log_dir/$ts.log"
+
+  # 同一秒内重复启动也不能覆盖已有的归档
+  n=1
+  while [ -e "$target" ]; do
+      target="$log_dir/$ts-$n.log"
+      n=$((n + 1))
+  done
+
+  if mv "$log_file" "$target" 2>/dev/null; then
+      echo "esurfingclient: 上一轮的日志已归档为 ${target##*/}"
+  fi
+}
+
+boot() {
+  sleep 5
+  start
+}
+
+start_service() {
+  # 正常停止时 stop_service 已经归档过了; 这里只兜底"上一轮没走到停止"的情况
+  # (被强杀 / 结束超时 / 掉电), 判断仍是 run.log 非空才归档
+  archive_previous_log
+
+  if ! wait_network; then
+      echo "esurfingclient: timeout waiting for network"
+      return 1
+  fi
+
+  sleep 5
+
+  # 每个可用账号起一个独立的认证进程
+  # 这样账号之间完全隔离: 单个账号崩溃或卡住不会波及其它账号,
+  # 而且每个实例有各自的崩溃重启计数 (账号级的 respawn 粒度)
+  local accounts
+  accounts="$($PROG --list-accounts 2>/dev/null)"
+
+  if [ -z "$accounts" ]; then
+      echo "esurfingclient: 没有可用账号, 未启动任何实例 (请检查 $(get_log_dir)/run.log)"
+      return 0
+  fi
+
+  local idx
+  local count=0
+  local flat=""
+  for idx in $accounts; do
+      procd_open_instance "account${idx}"
+      procd_set_param command $PROG --role auth --account $idx
+      procd_set_param respawn 60 5 5
+      procd_set_param stdout 1
+      procd_set_param stderr 1
+      procd_close_instance
+      count=$((count + 1))
+      flat="${flat}${flat:+ }${idx}"
+  done
+
+  echo "esurfingclient: 已启动 ${count} 个认证进程实例: ${flat}"
+}
+
+# 列出正在跑的认证实例 pid (procd 起的实例就是本程序, 按 argv[0] 认, 绝对路径与
+# 光名字两种写法都认, 免得手工启动的实例被漏掉)
+auth_pids() {
+  local p cmd base
+  base="${PROG##*/}"
+  for p in /proc/[0-9]*; do
+      [ -r "$p/cmdline" ] || continue
+      cmd="$(tr '\0' ' ' 2>/dev/null < "$p/cmdline")"
+      case "$cmd" in
+          "$PROG "*|"$base "*) echo "${p#/proc/}" ;;
+      esac
+  done
+}
+
+stop_service() {
+  # procd 是在本钩子【之后】才杀实例的 (base-files: calling stop_service before
+  # procd_kill), 而给一个还在写的 run.log 改名会把新日志一起卷进归档, 所以这里
+  # 先自己停实例, 等它们真的退出再归档
+  local pids i=0
+  pids="$(auth_pids)"
+  [ -n "$pids" ] && kill $pids 2>/dev/null
+
+  while [ $i -lt 15 ]; do
+      [ -n "$(auth_pids)" ] || break
+      sleep 1
+      i=$((i + 1))
+  done
+
+  # 没等到实例退出就先不归档: 留给下次启动兜底, 总比给还在写的文件改名强
+  [ -n "$(auth_pids)" ] || archive_previous_log
+}
+
+reload_service() {
+  stop
+  start
+}

@@ -1,0 +1,981 @@
+<%
+local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"/var/log/esurfing","conn_timeout":3,"op_timeout":5,"web_port":8888,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
+local file = io.open("/etc/config/esurfingclient", "r")
+if file then
+    local content = file:read("*a")
+    file:close()
+    if content and content ~= "" then
+        config_json = content
+    end
+end
+
+local function get_log_dir()
+    local base = config_json:match('"log_dir"%s*:%s*"([^"]*)"') or ''
+    if base == '' or base == '.' or base == './' then
+        base = '/var/log/esurfing'
+    elseif base:sub(1, 1) ~= '/' then
+        base = '/var/log/esurfing/' .. base:gsub('^%.%/', '')
+    end
+    return (base:gsub('/+$', '')) .. '/logs'
+end
+
+if luci.http.getenv("REQUEST_METHOD") == "POST" then
+    local data = luci.http.content()
+    if data and data ~= "" then
+        if string.find(data, '"action":"exec"') and string.find(data, '"cmd":"') then
+            local cmd = data:match('"cmd":"([^"]+)"')
+            if cmd then
+                local allowed = {
+                    ["/etc/init.d/esurfingclient restart"] = true,
+                    ["/etc/init.d/esurfingclient stop"] = true,
+                    ["/etc/init.d/esurfingclient start"] = true,
+                }
+                if allowed[cmd] then
+                    os.execute(cmd .. " >/dev/null 2>&1 &")
+                    luci.http.prepare_content("application/json")
+                    luci.http.write('{"status":"ok","message":"Command executed"}')
+                else
+                    luci.http.status(403)
+                    luci.http.prepare_content("application/json")
+                    luci.http.write('{"status":"error","message":"Command not allowed"}')
+                end
+            else
+                luci.http.prepare_content("application/json")
+                luci.http.write('{"status":"error","message":"Invalid exec request"}')
+            end
+            os.execute("sleep 5")
+            return
+        end
+
+        if string.find(data, '"action":"getlog"') then
+            local file_name = data:match('"file":"([^"]+)"')
+            if not file_name or file_name == "" then
+                file_name = "run.log"   -- 默认值
+            end
+            if not file_name:match("^[%w_%-%.]+$") or file_name:find("%.%.", 1, true) then
+                luci.http.status(403)
+                luci.http.write("Forbidden")
+                return
+            end
+            local log_path = get_log_dir() .. "/" .. file_name
+            local f = io.open(log_path, "r")
+            local content = f and f:read("*a") or ""
+            if f then f:close() end
+            luci.http.prepare_content("text/plain")
+            luci.http.write(content)
+            return
+        end
+
+        local f = io.open("/etc/config/esurfingclient", "w")
+        if f then
+            f:write(data)
+            f:close()
+            luci.http.prepare_content("application/json")
+            luci.http.write('{"status":"ok"}')
+        else
+            luci.http.status(500)
+            luci.http.write('{"status":"error","message":"Cannot write file"}')
+        end
+    else
+        luci.http.status(400)
+        luci.http.write('{"status":"error","message":"No data received"}')
+    end
+    return
+end
+%>
+<%+header%>
+<style>
+    .desc {
+        font-size: 13px;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 3000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .modal-overlay .modal {
+        position: absolute;
+        top: 70px;
+        left: 65px;
+        right: 65px;
+        background-color: var(--background-color, #fff);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-overlay.show {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .notification-container {
+        position: absolute;
+        top: 20px;
+        right: 0px;
+        background-color: rgba(0, 0, 0, 0);
+        z-index: 4000;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .notification {
+        background-color: rgba(0, 0, 0, 0);
+        color: #32325D;
+        font-size: 14px;
+        font-weight: bold;
+        transform: translateX(0);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        padding: 10px 20px;
+        border-radius: 5px;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        margin-bottom: 10px;
+        transition:
+            transform 0.1s ease-in,
+            opacity 0.2s ease-in-out;
+    }
+
+    .notification.show {
+        transform: translateX(-40px);
+        opacity: 1;
+    }
+
+    .notification.show.info {
+        background-color: #FFFFFF;
+        color: #32325D;
+    }
+
+    .notification.show.succ {
+        background-color: #5CB85C;
+        color: #32325D;
+    }
+
+    .notification.show.error {
+        background-color: #FFD600;
+        color: #FF0000;
+    }
+</style>
+
+<h2>ESurfing 客户端</h2>
+
+<div style='margin-left: 25px;'>
+    <p class='desc'>用于方便地调整 ESurfing 程序的配置文件</p>
+    <p class='desc'>账号密码与原电信认证程序的账号密码相同</p>
+    <p class='desc'>LuCI 版本: 2.1.1-r5</p>
+    <p class='desc' style='margin-bottom: 15px;'>> Powered by BadGhost</p>
+</div>
+
+<div class='cbi-section'>
+    <ul class='cbi-tabmenu'>
+        <li class='cbi-tab'>
+            <a href='#' onclick='return false;'>配置</a>
+        </li>
+        <li class='cbi-tab-disabled'>
+            <a href='#' onclick='return false;'>账号</a>
+        </li>
+        <li class='cbi-tab-disabled'>
+            <a href='#' onclick='return false;'>日志</a>
+        </li>
+    </ul>
+
+    <div class='cbi-section-node cbi-section-node-tabbed'>
+        <div class='cbi-tabcontainer' style='display: block;'>
+            <h3 style='margin-top: 0; margin-bottom: 0;'>基本设置</h3>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='enabled'>启用</label>
+                <div class='cbi-value-field'>
+                    <input type='checkbox' id='enabled' name='enabled' value='1' />
+                    <div class='cbi-value-description'>启用 ESurfing 客户端</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='log_lv'>日志级别</label>
+                <div class='cbi-value-field'>
+                    <select id='log_lv' class='cbi-input-select' name='log_lv'>
+                        <option value='0'>0 - 关闭</option>
+                        <option value='1'>1 - 致命</option>
+                        <option value='2'>2 - 错误</option>
+                        <option value='3'>3 - 警告</option>
+                        <option value='4'>4 - 信息</option>
+                        <option value='5'>5 - 调试</option>
+                        <option value='6'>6 - 全部</option>
+                    </select>
+                    <div class='cbi-value-description'>日志的详细程度</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='conn_timeout'>连接超时</label>
+                <div class='cbi-value-field'>
+                    <input type='number' id='conn_timeout' class='cbi-input-text' name='conn_timeout' min='1' step='1' />
+                    <div class='cbi-value-description'>连接阶段的超时时长 (单位: 秒)</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='op_timeout'>操作超时</label>
+                <div class='cbi-value-field'>
+                    <input type='number' id='op_timeout' class='cbi-input-text' name='op_timeout' min='1' step='1' />
+                    <div class='cbi-value-description'>单次请求的总超时时长 (单位: 秒)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class='cbi-tabcontainer' style='display: none;'>
+            <h3 style='margin-top: 0; margin-bottom: 0;'>账号设置</h3>
+            <table class='table cbi-section-table'>
+                <thead class='thead'>
+                    <tr class='tr cbi-section-table-titles'>
+                        <th class='th'>账号</th>
+                        <th class='th'>密码</th>
+                        <th class='th'>通道</th>
+                        <th class='th'>标记值</th>
+                        <th class='th'>时间控制</th>
+                        <th class='th' style='width: 135px;'></th>
+                    </tr>
+                </thead>
+                <tbody id='account-table-body' class='tbody'></tbody>
+            </table>
+            <div style='text-align: left; padding: 10px;'>
+                <button class='cbi-button cbi-button-apply' onclick='showModal(config.accounts.length, "edit_modal")'>添加</button>
+            </div>
+        </div>
+
+        <div class='cbi-tabcontainer' style='display: none;'>
+            <h3 style='margin-top: 0; margin-bottom: 0;'>日志查看</h3>
+            <div class='cbi-value'>
+                <label class='cbi-value-title'>日志文件</label>
+                <div class='cbi-value-field'>
+                    <select id='log_file_select' class='cbi-input-select' style='width: auto; min-width: 200px; max-width: 400px;'>
+                        <%-- 原有的文件列表渲染逻辑保持不动 --%>
+                        <%
+                        local log_dir = get_log_dir()
+                        local files = {}
+                        local fs = require("nixio.fs")
+                        if fs and fs.dir then
+                            for f in fs.dir(log_dir) do
+                                if f:match("%.log$") then
+                                    table.insert(files, f)
+                                end
+                            end
+                            table.sort(files, function(a, b) return a > b end)
+                        end
+                        if #files == 0 then
+                        %>
+                        <option value=''>暂无日志文件</option>
+                        <%
+                        else
+                            for _, f in ipairs(files) do
+                        %>
+                        <option value='<%=f%>'><%=f%></option>
+                        <%
+                            end
+                        end
+                        %>
+                    </select>
+                    <button class='cbi-button cbi-button-action' onclick='downloadLog()'>下载</button>
+                </div>
+            </div>
+
+            <div class='cbi-value'>
+                <label class='cbi-value-title'>日志置底</label>
+                <div class='cbi-value-field'>
+                    <input type='checkbox' id='log-autoscroll-check' checked onchange='onLogAutoScrollChange()' />
+                    <div class='cbi-value-description'>开启后日志有更新将会自动置底</div>
+                </div>
+            </div>
+            <textarea id='log_content' class='cbi-input-textarea' readonly rows='20' style='font-family: monospace; width: 100%;'>
+                暂无日志, 或客户端未启动
+            </textarea>
+        </div>
+    </div>
+</div>
+
+<div style='text-align: right; margin-top: 20px; padding: 10px;'>
+    <button id='save-and-apply-button' class='cbi-button cbi-button-apply' onclick='saveAndApplyConfig()'>保存并应用</button>
+    <button id='save-button' class='cbi-button cbi-button-save' onclick='saveConfig()'>保存</button>
+    <button id='reset-button' class='cbi-button cbi-button-reset' onclick='showModal(0, "reset_modal")'>复位</button>
+</div>
+
+<script>
+    // 全局配置
+    var config = <% luci.http.write(config_json) %>;
+
+    // 当前编辑的账号
+    var account = {};
+
+    // 是否为添加模式
+    var add_mode = false;
+
+    // 当前有多少个提示
+    var notification_count = 0;
+
+    // 时间窗口辅助函数
+    var currentTimeWindows = [];
+
+    function defaultEditTimeWindow() {
+        return { startDay: '', startTime: '', endDay: '', endTime: '' };
+    }
+
+    function timeWindowsToEdit(windows) {
+        return (windows || []).map(function(window) {
+            var startParts = (window.start || '').split(' ');
+            var endParts = (window.end || '').split(' ');
+            return {
+                startDay: startParts[0] || '',
+                startTime: startParts[1] || '',
+                endDay: endParts[0] || '',
+                endTime: endParts[1] || ''
+            };
+        });
+    }
+
+    function editToTimeWindows(editWindows) {
+        var windows = [];
+        for (var i = 0; i < editWindows.length; i++) {
+            var edit = editWindows[i];
+            if (!edit.startDay || !edit.startTime || !edit.endDay || !edit.endTime) {
+                throw new Error('存在未填写完整的时间段，请补全或删除该时间段');
+            }
+
+            var start = edit.startDay.toLowerCase() + ' ' + edit.startTime;
+            var end = edit.endDay.toLowerCase() + ' ' + edit.endTime;
+            if (start === end) {
+                throw new Error('时间段开始和结束不能相同：' + start);
+            }
+
+            windows.push({ start: start, end: end });
+        }
+        return windows;
+    }
+
+    function dayOptionsHtml(id, selected) {
+        var days = [
+            { value: '', label: '星期' },
+            { value: 'mon', label: '周一' },
+            { value: 'tue', label: '周二' },
+            { value: 'wed', label: '周三' },
+            { value: 'thu', label: '周四' },
+            { value: 'fri', label: '周五' },
+            { value: 'sat', label: '周六' },
+            { value: 'sun', label: '周日' }
+        ];
+        var html = '<select id="' + id + '" class="cbi-input-select">';
+        days.forEach(function(day) {
+            html += '<option value="' + day.value + '"' + (selected === day.value ? ' selected' : '') + '>' + day.label + '</option>';
+        });
+        html += '</select>';
+        return html;
+    }
+
+    function renderTimeWindows() {
+        var container = document.getElementById('time-windows-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        currentTimeWindows.forEach(function(edit, index) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;';
+            row.innerHTML =
+                '<span>开始</span>' +
+                dayOptionsHtml('tw_start_day_' + index, edit.startDay) +
+                '<input type="time" id="tw_start_time_' + index + '" class="cbi-input-text" value="' + edit.startTime + '" />' +
+                '<span>结束</span>' +
+                dayOptionsHtml('tw_end_day_' + index, edit.endDay) +
+                '<input type="time" id="tw_end_time_' + index + '" class="cbi-input-text" value="' + edit.endTime + '" />' +
+                '<button type="button" class="cbi-button cbi-button-remove" onclick="removeTimeWindow(' + index + ')">删除</button>';
+            container.appendChild(row);
+        });
+    }
+
+    function addTimeWindow() {
+        if (currentTimeWindows.length >= 16) {
+            showNotification('最多支持 16 个时间段', 'error');
+            return;
+        }
+        currentTimeWindows.push(defaultEditTimeWindow());
+        renderTimeWindows();
+    }
+
+    function removeTimeWindow(index) {
+        currentTimeWindows.splice(index, 1);
+        renderTimeWindows();
+    }
+
+    // 保存账号
+    function saveAccount() {
+        var edit_username = document.getElementById('edit_username');
+        var edit_password = document.getElementById('edit_password');
+        var edit_channel = document.getElementById('edit_channel');
+        var edit_mark = document.getElementById('edit_mark');
+
+        var editWindows = [];
+        for (var i = 0; i < currentTimeWindows.length; i++) {
+            editWindows.push({
+                startDay: document.getElementById('tw_start_day_' + i).value,
+                startTime: document.getElementById('tw_start_time_' + i).value,
+                endDay: document.getElementById('tw_end_day_' + i).value,
+                endTime: document.getElementById('tw_end_time_' + i).value
+            });
+        }
+
+        var timeWindows;
+        try {
+            timeWindows = editToTimeWindows(editWindows);
+        } catch (error) {
+            showNotification(error.message, 'error');
+            return;
+        }
+
+        if (add_mode) {
+            var new_account = {
+                username: edit_username.value.trim(),
+                password: edit_password.value.trim(),
+                channel: edit_channel.value,
+                mark: edit_mark.value.trim(),
+                time_windows: timeWindows
+            };
+            config.accounts.push(new_account);
+        } else{
+            account.username = edit_username.value.trim();
+            account.password = edit_password.value.trim();
+            account.channel = edit_channel.value;
+            account.mark = edit_mark.value.trim();
+            account.time_windows = timeWindows;
+        }
+
+        renderTable();
+        hideModal();
+    }
+
+    // 删除账号
+    function deleteAccount(index) {
+        config.accounts.splice(index, 1);
+        renderTable();
+    }
+
+    // 保存操作
+    function saveOperation() {
+        return fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config, null, 2)
+        })
+    }
+
+    // 应用操作
+    function applyOperation() {
+        return fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'exec', cmd: '/etc/init.d/esurfingclient restart' })
+        })
+    }
+
+    // 保存并应用配置
+    function saveAndApplyConfig() {
+        document.getElementById('save-and-apply-button').disabled = true;
+        document.getElementById('save-button').disabled = true;
+        document.getElementById('reset-button').disabled = true;
+        showNotification('保存并应用配置中', 'info');
+        return saveOperation()
+        .then(response => response.json())
+        .then(data => {
+            if (data.status == 'ok') {
+                applyOperation()
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status == 'ok') {
+                        showNotification('配置已保存并应用，服务已重启', 'succ');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        showNotification('应用失败: ' + data.message, 'error');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
+                    }
+                })
+                .catch(err => {
+                    showNotification('请求失败: ' + err, 'error');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                });
+            } else {
+                showNotification('配置保存失败', 'error');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            }
+        })
+        .catch(err => {
+            showNotification('配置保存失败: ' + err, 'error');
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        });
+    }
+
+    // 保存配置
+    function saveConfig() {
+        document.getElementById('save-and-apply-button').disabled = true;
+        document.getElementById('save-button').disabled = true;
+        document.getElementById('reset-button').disabled = true;
+        showNotification('保存配置中', 'info');
+        return saveOperation()
+        .then(response => response.json())
+        .then(data => {
+            if (data.status == 'ok') {
+                showNotification('配置保存成功', 'succ');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            } else {
+                showNotification('配置保存失败', 'error');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            }
+        })
+        .catch(err => {
+            showNotification('配置保存失败: ' + err, 'error');
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        });
+    }
+
+    // 重置配置
+    function resetConfig() {
+        hideModal();
+        document.getElementById('save-and-apply-button').disabled = true;
+        document.getElementById('save-button').disabled = true;
+        document.getElementById('reset-button').disabled = true;
+        showNotification('重置配置中', 'info');
+        config = {
+            enabled: false,
+            log_lv: 4,
+            conn_timeout: 3,
+            op_timeout: 5,
+            accounts: [{
+                username: '',
+                password: '',
+                channel: 'phone',
+                mark: '',
+                time_windows: []
+            }]
+        };
+        return saveOperation()
+        .then(response => response.json())
+        .then(data => {
+            if (data.status == 'ok') {
+                showNotification('配置重置成功, 已重置到默认值', 'succ');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            } else {
+                showNotification('配置重置失败', 'error');
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            }
+        })
+        .catch(err => {
+            showNotification('配置重置失败: ' + err, 'error');
+            setTimeout(function() {
+                location.reload();
+            }, 2000);
+        });
+    }
+
+    // 渲染表格
+    function renderTable() {
+        var tbody = document.getElementById('account-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        config.accounts.forEach(function(item, index) {
+            var row = tbody.insertRow();
+            row.className = 'tr';
+            row.setAttribute('data-index', index);
+
+            var cell0 = row.insertCell(0);
+            cell0.className = 'td';
+            cell0.textContent = item.username || '(无)';
+
+            var cell1 = row.insertCell(1);
+            cell1.className = 'td';
+            cell1.textContent = item.password ? '******' : '(无)';
+
+            var cell2 = row.insertCell(2);
+            cell2.className = 'td';
+            cell2.textContent = item.channel;
+
+            var cell3 = row.insertCell(3);
+            cell3.className = 'td';
+            cell3.textContent = item.mark || '(无)';
+
+            var cell4 = row.insertCell(4);
+            cell4.className = 'td';
+            cell4.textContent = (item.time_windows && item.time_windows.length) ? item.time_windows.length + ' 个时段' : '(不限)';
+
+            var cell5 = row.insertCell(5);
+            cell5.className = 'td';
+            cell5.innerHTML = `
+                <button class='cbi-button cbi-button-edit' onclick='showModal(${index}, "edit_modal")'>编辑</button>
+                <button class='cbi-button cbi-button-remove' onclick='deleteAccount(${index})'>删除</button>
+            `;
+        });
+    }
+
+    // 日志是否始终置底, 默认开启
+    var logAutoScroll = true;
+
+    // 滚动日志到底部
+    function scrollLogToBottom() {
+        var log_area = document.getElementById('log_content');
+        if (log_area) {
+            log_area.scrollTop = log_area.scrollHeight;
+        }
+    }
+
+    // 勾选框变化时
+    function onLogAutoScrollChange() {
+        var check = document.getElementById('log-autoscroll-check');
+        logAutoScroll = !!(check && check.checked);
+        if (logAutoScroll) {
+            scrollLogToBottom();
+        }
+    }
+
+    // 下载当前显示的日志
+    function downloadLog() {
+        var log_area = document.getElementById('log_content');
+        if (!log_area) return;
+        var select = document.getElementById('log_file_select');
+        var filename = (select && select.value) ? select.value : 'run.log';
+
+        var blob = new Blob([log_area.value || ''], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    var logTimer = null;
+
+    function startLogAutoRefresh() {
+        if (logTimer) clearInterval(logTimer);
+        logTimer = setInterval(function() {
+            if (currentTab == 2) {
+                loadLogContent();
+            }
+        }, 5000);
+    }
+
+    function stopLogAutoRefresh() {
+        if (logTimer) {
+            clearInterval(logTimer);
+            logTimer = null;
+        }
+    }
+
+    function loadLogContent() {
+        var select = document.getElementById('log_file_select');
+        if (!select) return;
+        var filename = select.value;
+        if (!filename) {
+            document.getElementById('log_content').value = '请选择一个日志文件';
+            return;
+        }
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getlog', file: filename })
+        })
+        .then(response => response.text())
+        .then(data => {
+            var log_area = document.getElementById('log_content');
+            if (log_area) {
+                log_area.value = data || '暂无日志, 或客户端未启动';
+                if (logAutoScroll) {
+                    scrollLogToBottom();
+                }
+            }
+        })
+        .catch(err => showNotification('日志文件读取失败: ' + err, 'error'));
+    }
+
+    // 显示模态框
+    function showModal(index, modal_id) {
+        var modal = document.getElementById(modal_id);
+
+        if (modal_id === 'reset_modal') {
+            modal.classList.add('show');
+            return;
+        }
+        var edit_username = document.getElementById('edit_username');
+        var edit_password = document.getElementById('edit_password');
+        var edit_channel = document.getElementById('edit_channel');
+        var edit_mark = document.getElementById('edit_mark');
+
+        account = {};
+        add_mode = false;
+        if (config.accounts[index]) {
+            account = config.accounts[index];
+        } else {
+            add_mode = true;
+            account = {
+                username: '',
+                password: '',
+                channel: 'phone',
+                mark: '',
+                time_windows: []
+            };
+        }
+
+        currentTimeWindows = timeWindowsToEdit(account.time_windows);
+        renderTimeWindows();
+
+        edit_username.value = account.username;
+        edit_password.value = account.password;
+        var channel = account.channel;
+        if (channel === 1 || channel === '1' || channel === 'windows') {
+            channel = 'android'; // 未实现, 暂用 android 通道代替
+        } else if (channel === 2 || channel === '2' || channel === 'linux') {
+            channel = 'linux';
+        } else if (channel === 3 || channel === '3' || channel === 'android') {
+            channel = 'android';
+        } else if (channel === 4 || channel === '4' || channel === 'ios' || channel === 'iphone') {
+            channel = 'ios';
+        } else if (channel === 5 || channel === '5' || channel === 'macos' || channel === 'mac' || channel === 'osx') {
+            channel = 'macos';
+        } else {
+            channel = 'android';
+        }
+        for (var i = 0; i < edit_channel.options.length; i++) {
+            if (edit_channel.options[i].value === channel) {
+                edit_channel.selectedIndex = i;
+                break;
+            }
+        }
+        edit_mark.value = account.mark;
+
+        modal.classList.add('show');
+    }
+
+    // 隐藏模态框
+    function hideModal() {
+        var modals = document.querySelectorAll('.modal-overlay');
+        modals.forEach(function(modal) {
+            modal.classList.remove('show');
+        });
+    }
+
+    // 提示信息
+    function showNotification(message, type) {
+        var notification = document.createElement('div');
+        notification.className = 'notification';
+
+        var notification_content = document.createElement('div');
+        notification_content.className = 'notification-content';
+
+        var notification_message = document.createElement('span');
+        if (type === 'info') {
+            notification_message.textContent = message + ' ~(￣▽￣~)~';
+        } else if (type === 'succ') {
+            notification_message.textContent = message + ' ≧∇≦';
+        } else if (type === 'error') {
+            notification_message.textContent = message + ' >_<';
+        }
+
+        notification_content.appendChild(notification_message);
+        notification.appendChild(notification_content);
+        document.getElementById('notification_container').appendChild(notification);
+
+        setTimeout(function() {
+            notification.classList.add('show', type);
+        }, 200);
+
+        setTimeout(function() {
+            notification.className = 'notification';
+        }, 3200);
+
+        setTimeout(function() {
+            notification.remove();
+        }, 3400);
+    }
+
+    // Tab 切换事件
+    var currentTab = 0;
+    var tabs = document.querySelectorAll('.cbi-tab, .cbi-tab-disabled');
+    var tabContainers = document.querySelectorAll('.cbi-tabcontainer');
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('cbi-tab');
+                tabs[i].classList.add('cbi-tab-disabled');
+                tabContainers[i].style.display = 'none';
+            }
+            currentTab = Array.from(tabs).indexOf(tab);
+            if (currentTab == 2) {
+                var check = document.getElementById('log-autoscroll-check');
+                if (check) check.checked = logAutoScroll;
+                showNotification('正在读取日志', 'info');
+                loadLogContent();
+                startLogAutoRefresh();
+            } else {
+                stopLogAutoRefresh();
+            }
+            tab.classList.remove('cbi-tab-disabled');
+            tab.classList.add('cbi-tab');
+            tabContainers[currentTab].style.display = 'block';
+        });
+    });
+
+    // 超时参数兜底, 非正数或非法值一律用默认值 (与后端 g_conn_timeout / g_op_timeout 一致)
+    function normalizeTimeout(value, fallback) {
+        var timeout = parseInt(value, 10);
+        return (isNaN(timeout) || timeout <= 0) ? fallback : timeout;
+    }
+
+    // 启用复选框事件
+    var enabled = document.getElementById('enabled');
+
+    enabled.addEventListener('change', function(e) {
+        config.enabled = e.target.checked;
+    });
+
+    // 日志级别选择事件
+    var log_lv = document.getElementById('log_lv');
+
+    log_lv.addEventListener('change', function(e) {
+        config.log_lv = parseInt(e.target.value);
+        for (var i = 0; i < log_lv.options.length; i++) {
+            if (log_lv.options[i].value == config.log_lv) {
+                log_lv.options[i].selected = true;
+                break;
+            }
+        }
+    });
+
+    // 连接超时输入事件
+    var conn_timeout = document.getElementById('conn_timeout');
+
+    conn_timeout.addEventListener('change', function(e) {
+        config.conn_timeout = normalizeTimeout(e.target.value, 3);
+        e.target.value = config.conn_timeout;
+    });
+
+    // 操作超时输入事件
+    var op_timeout = document.getElementById('op_timeout');
+
+    op_timeout.addEventListener('change', function(e) {
+        config.op_timeout = normalizeTimeout(e.target.value, 5);
+        e.target.value = config.op_timeout;
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        showNotification('正在读取配置文件', 'info');
+        enabled.checked = config.enabled;
+        log_lv.value = config.log_lv;
+        // 旧配置文件可能缺少超时参数, 这里补齐默认值, 避免输入框显示空值
+        config.conn_timeout = normalizeTimeout(config.conn_timeout, 3);
+        config.op_timeout = normalizeTimeout(config.op_timeout, 5);
+        conn_timeout.value = config.conn_timeout;
+        op_timeout.value = config.op_timeout;
+        renderTable();
+        showNotification('读取配置文件完成', 'succ');
+    });
+</script>
+<%+footer%>
+
+<div id='edit_modal' class='modal-overlay'>
+    <div class='modal'>
+        <div class='cbi-section'>
+            <h3 style='font-size: 16px; font-weight: bold;'>账号编辑</h3>
+        </div>
+        <div style='margin-top: 25px;'>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='username'>*账号</label>
+                <div class='cbi-value-field'>
+                    <input type='text' id='edit_username' class='cbi-input-text' placeholder='请输入账号' name='username' />
+                    <div class='cbi-value-description'>和官方认证程序的账号相同</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='password'>*密码</label>
+                <div class='cbi-value-field'>
+                    <input type='text' id='edit_password' class='cbi-input-text' placeholder='请输入密码' name='password' />
+                    <div class='cbi-value-description'>和官方认证程序的密码相同</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='channel'>*通道</label>
+                <div class='cbi-value-field'>
+                    <select id='edit_channel' class='cbi-input-select' name='channel'>
+                        <option value='windows'>Windows (未实现, Android 替代)</option>
+                        <option value='linux'>Linux</option>
+                        <option value='android'>Android</option>
+                        <option value='ios'>iOS</option>
+                        <option value='macos'>MacOS</option>
+                    </select>
+                    <div class='cbi-value-description'>选择账号的认证通道</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='mark'>标记值</label>
+                <div class='cbi-value-field'>
+                    <input type='text' id='edit_mark' class='cbi-input-text' placeholder='请输入标记值' name='mark' />
+                    <div class='cbi-value-description'>可选项, 用于 MWAN 多路区分<br>十六进制数, 以 0x 开头, 例如 0x100</div>
+                </div>
+            </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='time_windows'>时间控制</label>
+                <div class='cbi-value-field'>
+                    <div id='time-windows-container'></div>
+                    <button type='button' class='cbi-button cbi-button-add' onclick='addTimeWindow()'>添加时间段</button>
+                    <div class='cbi-value-description'>未设置时间段 = 不限制</div>
+                </div>
+            </div>
+        </div>
+        <div style='text-align: right; margin-top: 20px; padding: 10px;'>
+            <button class='cbi-button cbi-button-neutral' onclick='hideModal()'>关闭</button>
+            <button class='cbi-button cbi-button-apply' onclick='saveAccount()'>保存</button>
+        </div>
+    </div>
+</div>
+
+<div id='reset_modal' class='modal-overlay'>
+    <div class='modal'>
+        <div class='cbi-section'>
+            <h3 style='font-size: 16px; font-weight: bold;'>重置配置</h3>
+        </div>
+        <div style='color: red; margin-top: 30px; font-size: 20px; font-weight: bold; text-align: center;'>
+            <p>确定要重置配置到默认值吗? ∑(°Д°) 此操作不可逆!</p>
+        </div>
+        <div style='text-align: right; margin-top: 20px; padding: 10px;'>
+            <button class='cbi-button cbi-button-neutral' onclick='hideModal()'>取消</button>
+            <button class='cbi-button cbi-button-reset' onclick='resetConfig()'>重置</button>
+            <div style='text-align: right; font-size: 14px; color: #969696;'>真的不可逆喔...</div>
+        </div>
+    </div>
+</div>
+
+<div id='notification_container' class='notification-container'></div>

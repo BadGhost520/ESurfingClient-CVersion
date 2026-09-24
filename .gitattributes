@@ -1,0 +1,11 @@
+esurfingclient/files/etc/init.d/* text eol=lf
+**/etc/init.d/* text eol=lf
+**/*.init text eol=lf
+
+*.sh text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

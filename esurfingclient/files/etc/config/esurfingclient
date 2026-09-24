@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "web_external_acc": false,
+  "log_lv":  4,
+  "log_dir": "./",
+  "conn_timeout": 7,
+  "op_timeout": 10,
+  "web_port": 8888,
+  "accounts": [
+    {
+      "username": "",
+      "password": "",
+      "channel": 3,
+      "mark": "",
+      "time_windows": []
+    }
+  ]
+}

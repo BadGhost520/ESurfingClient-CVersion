@@ -2,19 +2,17 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=esurfingclient
 PKG_LICENSE:=Apache-2.0
-PKG_LICENSE_FILES:=../LICENSE
+PKG_LICENSE_FILES:=LICENSE
 
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 PKG_BUILD_PARALLEL:=1
-PKG_BUILD_DEPENDS:=libcurl libopenssl
+PKG_BUILD_DEPENDS:=libcurl
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
-
-$(warning DEBUG: ARCH is $(ARCH))
 
 ifneq ($(filter mips%,$(ARCH)),)
   EXTRA_MIPS_FLAGS := -minterlink-mips16
@@ -24,7 +22,7 @@ endif
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) $(CURDIR)/main/* $(PKG_BUILD_DIR)/
+	$(CP) $(CURDIR)/app/* $(PKG_BUILD_DIR)/
 endef
 
 CMAKE_SOURCE_SUBDIR:=.
@@ -68,14 +66,19 @@ if [ -f "/etc/config/esurfingclient.opkg" ]; then
 	echo "-> /etc/config/esurfingclient.opkg"
 fi
 
-if [ -f "/etc/init.d/esurfingclient.apk-new" ]; then
-	mv /etc/init.d/esurfingclient.apk-new /etc/init.d/esurfingclient
-fi
+exit 0
+endef
 
-if [ -x "/etc/init.d/esurfingclient" ]; then
-	echo "重启服务中"
-    /etc/init.d/esurfingclient restart 2>/dev/null &
-fi
+define Package/esurfingclient/postrm
+#!/bin/sh
+[ "$$PKG_UPGRADE" = "1" ] && exit 0
+
+echo "正在清理 ESurfing 客户端残留文件"
+
+rm -f /etc/config/esurfingclient*
+
+rm -rf /var/log/esurfing
+
 exit 0
 endef
 
@@ -88,10 +91,10 @@ define Package/esurfingclient/install
 	$(CP) $(PKG_INSTALL_DIR)/usr/bin/ESurfingClient $(1)/usr/bin/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(CURDIR)/init.d/esurfingclient.init $(1)/etc/init.d/esurfingclient
+	$(INSTALL_BIN) $(CURDIR)/files/etc/init.d/esurfingclient $(1)/etc/init.d/esurfingclient
 
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CURDIR)/config/ESurfingClient.json $(1)/etc/config/esurfingclient
+	$(INSTALL_CONF) $(CURDIR)/files/etc/config/esurfingclient $(1)/etc/config/esurfingclient
 endef
 
 define Build/Compile

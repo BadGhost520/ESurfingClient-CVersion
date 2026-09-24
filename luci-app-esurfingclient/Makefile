@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-esurfingclient
 PKG_LICENSE:=Apache-2.0
-PKG_LICENSE_FILES:=../LICENSE
+PKG_LICENSE_FILES:=LICENSE
 
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
@@ -25,16 +25,16 @@ endef
 
 define Package/luci-app-esurfingclient/install
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/view
-	$(INSTALL_DATA) $(CURDIR)/luci/www/luci-static/resources/view/esurfingclient.js $(1)/tmp/luci-staging/new/view/
+	$(INSTALL_DATA) $(CURDIR)/rootfs/www/luci-static/resources/view/esurfingclient.js $(1)/tmp/luci-staging/new/view/
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/menu.d
-	$(INSTALL_DATA) $(CURDIR)/luci/usr/share/luci/menu.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/menu.d/
+	$(INSTALL_DATA) $(CURDIR)/rootfs/usr/share/luci/menu.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/menu.d/
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/new/acl.d
-	$(INSTALL_DATA) $(CURDIR)/luci/usr/share/rpcd/acl.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/acl.d/
+	$(INSTALL_DATA) $(CURDIR)/rootfs/usr/share/rpcd/acl.d/luci-app-esurfingclient.json $(1)/tmp/luci-staging/new/acl.d/
 
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/legacy/controller
-	$(INSTALL_DATA) $(CURDIR)/legacy-luci/usr/lib/lua/luci/controller/esurfingclient.lua $(1)/tmp/luci-staging/legacy/controller/
+	$(INSTALL_DATA) $(CURDIR)/rootfs-legacy/usr/lib/lua/luci/controller/esurfingclient.lua $(1)/tmp/luci-staging/legacy/controller/
 	$(INSTALL_DIR) $(1)/tmp/luci-staging/legacy/view
-	$(INSTALL_DATA) $(CURDIR)/legacy-luci/usr/lib/lua/luci/view/esurfingclient.htm $(1)/tmp/luci-staging/legacy/view/
+	$(INSTALL_DATA) $(CURDIR)/rootfs-legacy/usr/lib/lua/luci/view/esurfingclient.htm $(1)/tmp/luci-staging/legacy/view/
 endef
 
 define Package/luci-app-esurfingclient/postinst
@@ -55,31 +55,21 @@ else
 	cp /tmp/luci-staging/legacy/view/esurfingclient.htm /usr/lib/lua/luci/view/
 fi
 
-rm -rf /tmp/luci-staging
-
-rm -rf /tmp/luci-*
-/etc/init.d/uhttpd restart 2>/dev/null &
-/etc/init.d/rpcd restart 2>/dev/null &
-
 echo "LuCI 页面配置完成"
 exit 0
 endef
 
 define Package/luci-app-esurfingclient/postrm
 #!/bin/sh
+[ "$$PKG_UPGRADE" = "1" ] && exit 0
 echo "正在移除 ESurfingClient LuCI"
 
 rm -f /usr/lib/lua/luci/controller/esurfingclient.lua
-rm -f /www/luci-static/resources/view/esurfingclient/config.js
+rm -f /www/luci-static/resources/view/esurfingclient.js
 rm -f /usr/share/luci/menu.d/luci-app-esurfingclient.json
-rmdir /www/luci-static/resources/view/esurfingclient 2>/dev/null || true
-rm -f /usr/lib/lua/luci/view/esurfingclient/config.htm
-rmdir /usr/lib/lua/luci/view/esurfingclient 2>/dev/null || true
+rm -f /usr/lib/lua/luci/view/esurfingclient.htm
 
-rm -rf /tmp/luci-*
-/etc/init.d/uhttpd restart 2>/dev/null &
-
-echo "LuCI 界面已移除"
+echo "ESurfingClient LuCI 已移除"
 exit 0
 endef
 

@@ -1,0 +1,250 @@
+name: Build Android Binary
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
+      curl_version:
+        required: true
+        type: string
+      tail_wind_labs_version:
+        required: true
+        type: string
+      abi:
+        required: true
+        type: string
+
+env:
+  NDK_VERSION: r30
+  NDK_DIR: android-ndk-r30
+  ANDROID_API: 24
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 解析 ABI 参数
+        id: abi
+        shell: bash
+        run: |
+          set -e
+          case "${{ inputs.abi }}" in
+            arm64-v8a)
+              echo "target=aarch64-linux-android" >> "$GITHUB_OUTPUT"
+              ;;
+            armeabi-v7a)
+              echo "target=armv7a-linux-androideabi" >> "$GITHUB_OUTPUT"
+              ;;
+            x86_64)
+              echo "target=x86_64-linux-android" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "❌ 不支持的 ABI: ${{ inputs.abi }}"
+              exit 1
+              ;;
+          esac
+          echo "abi=${{ inputs.abi }}" >> "$GITHUB_OUTPUT"
+          echo "api=$ANDROID_API" >> "$GITHUB_OUTPUT"
+
+      - name: 安装软件包 (最多重试 3 次)
+        run: |
+          PACKAGES="build-essential cmake wget make binutils file unzip"
+
+          sudo apt-get update
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在安装 $PACKAGES"
+            if sudo apt-get install -y $PACKAGES; then
+              echo "所有软件包已完成安装"
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
+
+      - name: 获取 Android NDK 缓存
+        id: cache-ndk
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.NDK_DIR }}
+          key: android-ndk-${{ env.NDK_VERSION }}-linux
+
+      - name: 下载 Android NDK
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          wget -q https://dl.google.com/android/repository/${NDK_DIR}-linux.zip
+          unzip -q ${NDK_DIR}-linux.zip
+          rm ${NDK_DIR}-linux.zip
+          ls -d ${NDK_DIR}
+
+      - name: 导出 NDK 环境变量
+        run: |
+          echo "ANDROID_NDK_HOME=$GITHUB_WORKSPACE/$NDK_DIR" >> $GITHUB_ENV
+          echo "TOOLCHAIN=$GITHUB_WORKSPACE/$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64" >> $GITHUB_ENV
+
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v6
+        with:
+          path: curl-android-${{ steps.abi.outputs.abi }}
+          key: curl-${{ inputs.curl_version }}-android-${{ steps.abi.outputs.abi }}
+
+      - name: 构建 libcurl 静态链接库 (Android ${{ steps.abi.outputs.abi }})
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          export PATH=$TOOLCHAIN/bin:$PATH
+          export CC=$TOOLCHAIN/bin/${{ steps.abi.outputs.target }}${{ steps.abi.outputs.api }}-clang
+          export CXX=$TOOLCHAIN/bin/${{ steps.abi.outputs.target }}${{ steps.abi.outputs.api }}-clang++
+          export AR=$TOOLCHAIN/bin/llvm-ar
+          export AS=$CC
+          export LD=$TOOLCHAIN/bin/ld
+          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
+          export STRIP=$TOOLCHAIN/bin/llvm-strip
+
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
+
+          ./configure \
+            --prefix=$GITHUB_WORKSPACE/curl-android-${{ steps.abi.outputs.abi }} \
+            --host=${{ steps.abi.outputs.target }} \
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            --enable-http \
+            --enable-proxy \
+            --enable-cookies \
+            --enable-basic-auth \
+            --enable-digest-auth \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-websockets \
+            --disable-bearer-auth \
+            --disable-kerberos-auth \
+            --disable-negotiate-auth \
+            --disable-ntlm \
+            --disable-tls-srp \
+            --disable-aws \
+            --disable-rtmp \
+            --without-brotli \
+            --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-librtmp \
+            --without-libidn2 \
+            --without-nghttp2 \
+            --without-ngtcp2 \
+            --without-nghttp3 \
+            --without-quiche \
+            --without-msh3 \
+            --without-libgsasl \
+            --without-libssh \
+            --without-wolfssh \
+            --without-hyper \
+            --without-zlib \
+            --disable-ares \
+            --disable-rt \
+            --disable-threaded-resolver \
+            --disable-ipv6 \
+            --disable-unix-sockets \
+            --disable-manual \
+            --disable-docs \
+            --disable-verbose \
+            --disable-versioned-symbols
+
+          make -j$(nproc)
+          make install
+
+      - name: 构建 ESurfingClient 程序 (Android ${{ steps.abi.outputs.abi }})
+        run: |
+          set -e
+
+          cd esurfingclient/app
+
+          cmake -B build -S . \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=${{ steps.abi.outputs.abi }} \
+            -DANDROID_PLATFORM=android-${{ steps.abi.outputs.api }} \
+            -DANDROID_STL=c++_static \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/curl-android-${{ steps.abi.outputs.abi }} \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH \
+            -DCMAKE_VERBOSE_MAKEFILE=ON
+
+          cmake --build build -j$(nproc)
+
+          cp build/ESurfingClient \
+             ../../ESurfingClient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}
+
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}
+
+      - name: 验证
+        run: |
+          BIN="ESurfingClient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}"
+          if [ -f "$BIN" ]; then
+            echo "✅ 构建成功"
+            echo "📏 文件大小: $(du -h "$BIN" | cut -f1)"
+            file "$BIN"
+          else
+            echo "❌ 未找到二进制文件"
+            exit 1
+          fi
+
+      - name: 获取 web 处理缓存
+        id: cache-web
+        uses: actions/cache@v6
+        with:
+          path: tailwindcss-linux-x64
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
+
+      - name: 下载 tailwind_labs 打包程序
+        if: steps.cache-web.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+
+      - name: 处理 web 文件
+        run: |
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
+
+      - name: 复制配置文件到根目录
+        run: |
+          # files/ 里放的是部署到设备上的名字 (etc/config/esurfingclient),
+          # 桌面端读的是程序同目录下的 ESurfingClient.json, 这里做一次改名
+          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
+
+      - name: 打包成 tar.gz 压缩包
+        run: |
+          tar -czf esurfingclient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}.tar.gz \
+            ESurfingClient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }} portal/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: esurfingclient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}
+          path: esurfingclient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}.tar.gz
+          retention-days: 30

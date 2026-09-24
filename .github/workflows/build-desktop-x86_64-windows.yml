@@ -11,9 +11,6 @@ on:
       full_version:
         required: true
         type: string
-      openssl_version:
-        required: true
-        type: string
       curl_version:
         required: true
         type: string
@@ -37,99 +34,16 @@ jobs:
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
-              echo "✅ 所有软件包已完成安装"
+              echo "所有软件包已完成安装"
               break
             fi
-            echo "❌ 尝试 $i 失败"
+            echo "尝试 $i 失败"
             sleep 3
           done
 
-      - name: 创建工具链
+      - name: 检查工具链
         run: |
-          cd esurfingclient/main
-          
-          cat > toolchain-mingw64.cmake << 'EOF'
-          set(CMAKE_SYSTEM_NAME Windows)
-          set(CMAKE_SYSTEM_PROCESSOR x86_64)
-          
-          set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
-          set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
-          set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
-          
-          set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
-          
-          set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-          set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-          set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          EOF
-
-      - name: 获取 OpenSSL 缓存
-        id: cache-openssl
-        uses: actions/cache@v6
-        with:
-          path: |
-            /usr/x86_64-w64-mingw32/lib/libcrypto.a
-            /usr/x86_64-w64-mingw32/include/openssl
-          key: openssl-${{ inputs.openssl_version }}-mingw64-x86_64
-
-      - name: 构建 libOpenSSL 静态链接库
-        if: steps.cache-openssl.outputs.cache-hit != 'true'
-        run: |
-          cd /tmp
-          wget https://github.com/openssl/openssl/releases/download/openssl-${{ inputs.openssl_version }}/openssl-${{ inputs.openssl_version }}.tar.gz
-          tar -xzf openssl-${{ inputs.openssl_version }}.tar.gz
-          cd openssl-${{ inputs.openssl_version }}
-          
-          ./Configure mingw64 \
-            --cross-compile-prefix=x86_64-w64-mingw32- \
-            --prefix=/usr/x86_64-w64-mingw32 \
-            --libdir=lib \
-            no-shared \
-            no-tests \
-            no-docs \
-            no-apps \
-            no-tls \
-            no-bf \
-            no-cast \
-            no-idea \
-            no-rc2 \
-            no-rc4 \
-            no-rc5 \
-            no-seed \
-            no-aria \
-            no-camellia \
-            no-sm2 \
-            no-sm3 \
-            no-mdc2 \
-            no-rmd160 \
-            no-whirlpool \
-            no-blake2 \
-            no-md4 \
-            no-dtls \
-            no-quic \
-            no-sctp \
-            no-srp \
-            no-zlib \
-            no-zstd \
-            no-brotli \
-            no-ktls \
-            no-rdrand \
-            no-asan \
-            no-msan \
-            no-ubsan \
-            no-trace \
-            no-egd \
-            no-krb5kdf \
-            no-scrypt \
-            no-x942kdf \
-            no-x963kdf \
-            no-srtp \
-            no-ocsp \
-            no-cms \
-            no-ts
-          
-          make -j$(nproc)
-          make install
+          cat ci/toolchains/mingw64.cmake
 
       - name: 获取 libcurl 缓存
         id: cache-curl
@@ -211,11 +125,11 @@ jobs:
 
       - name: 构建 ESurfingClient 程序
         run: |
-          cd esurfingclient/main
+          cd esurfingclient/app
           
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE=toolchain-mingw64.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=../../ci/toolchains/mingw64.cmake \
             -DBUILD_SHARED_LIBS=OFF \
             -B build \
             -S .
@@ -233,22 +147,22 @@ jobs:
       - name: 验证
         run: |
           if [ -f "ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe" ]; then
-            echo "✅ 构建成功"
-            echo "📏 文件大小: $(stat -c%s ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe) bytes"
+            echo "构建成功"
+            echo "文件大小: $(stat -c%s ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe) bytes"
 
-            echo "🔍 检查依赖:"
+            echo "检查依赖:"
             deps=$(x86_64-w64-mingw32-objdump -p ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe | grep "DLL Name" || true)
             echo "$deps" | head -20
 
             if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
-              echo "❌ 错误: 链接了第三方动态库"
+              echo "错误: 链接了第三方动态库"
               echo "$deps" | grep -E "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
               exit 1
             else
-              echo "✅ 完全静态: 没有链接第三方动态库"
+              echo "完全静态: 没有链接第三方动态库"
             fi
           else
-            echo "❌ 未找到二进制文件"
+            echo "未找到二进制文件"
             exit 1
           fi
 
@@ -267,29 +181,17 @@ jobs:
 
       - name: 处理 web 文件
         run: |
-          cp -r esurfingclient/main/portal ./
-          mkdir portal/assets/css
-          
-          wget -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
-          wget -O portal/daisyui.mjs https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
-          
-          ./tailwindcss-linux-x64 -i portal/input.css -o portal/assets/css/output.css --minify
-          rm portal/input.css
-          rm portal/daisyui.mjs
-          
-          sed -i 's#https://cdn.jsdelivr.net/npm/daisyui@5#assets/css/output.css#g' portal/index.html
-          
-          sed -i 's#<link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css"##g' portal/index.html
-          
-          sed -i 's#rel="stylesheet" type="text/css" />##g' portal/index.html
-          
-          sed -i 's#<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>##g' portal/index.html
-          
-          sed -i 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#assets/js/alpine.js#g' portal/index.html
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
+
+      - name: 复制配置文件到根目录
+        run: |
+          # files/ 里放的是部署到设备上的名字 (etc/config/esurfingclient),
+          # 桌面端读的是程序同目录下的 ESurfingClient.json, 这里做一次改名
+          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
       - name: 打包成 zip 压缩包
         run: |
-          zip -r esurfingclient-${{ inputs.full_version }}-windows-x86_64.zip ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe portal/
+          zip -r esurfingclient-${{ inputs.full_version }}-windows-x86_64.zip ESurfingClient-${{ inputs.full_version }}-windows-x86_64.exe ESurfingClient.json portal/
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
