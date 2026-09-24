@@ -177,7 +177,7 @@ jobs:
 
       - name: 打包成 tar.gz 压缩包
         run: |
-          tar -czf esurfingclient-${{ inputs.full_version }}-linux-loongarch64.tar.gz ESurfingClient-${{ inputs.full_version }}-linux-loongarch64
+          tar -czf esurfingclient-${{ inputs.full_version }}-linux-loongarch64.tar.gz ESurfingClient-${{ inputs.full_version }}-linux-loongarch64 ESurfingClient.json portal/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
