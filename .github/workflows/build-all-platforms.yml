@@ -287,8 +287,8 @@ jobs:
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
-      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
+      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
   macos-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-x86_64'
