@@ -22,6 +22,7 @@ on:
           - all
           - windows-x86_64
           - linux-x86_64
+          - linux-loongarch64
           - macos-x86_64
           - macos-aarch64
           - android
@@ -279,6 +280,16 @@ jobs:
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
+  linux-loongarch64:
+    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-loongarch64'
+    uses: ./.github/workflows/build-desktop-loongarch64-linux.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      full_version: ${{ needs.get-version.outputs.full_version }}
+      openssl_version: ${{ needs.get-version.outputs.openssl_version }}
+      curl_version: ${{ needs.get-version.outputs.curl_version }}
+
   macos-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-x86_64'
     uses: ./.github/workflows/build-desktop-x86_64-macos.yml
@@ -372,6 +383,7 @@ jobs:
     needs:
       - windows-x86_64
       - linux-x86_64
+      - linux-loongarch64
       - macos-x86_64
       - macos-aarch64
       - android
