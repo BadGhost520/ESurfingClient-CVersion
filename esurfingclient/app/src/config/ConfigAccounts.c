@@ -82,8 +82,8 @@ void apply_channel_ua(login_cfg_t* cfg, uint8_t cfg_no)
     switch (cfg->chn)
     {
     case 1:
-        LOG_INFO("使用通道 1: Windows (暂未实现, 使用 Android 通道)");
-        snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
+        LOG_INFO("使用通道 1: Windows");
+        snprintf(cfg->user_agent, USER_AGENT_LEN, WINDOWS_UA);
         break;
     case 2:
         LOG_INFO("使用通道 2: Linux");

@@ -185,6 +185,17 @@ bool load_cipher(const bytes_t zsm)
      * 头部 UUID 只是模块 ID, 不在 Android/Linux CipherFactory 里.
      * 通道号只决定 UA/主机名, 不决定密钥解包方式.
      */
+    if (chn == 1)
+    {
+        if (init_win_cipher_from_zsm(zsm.data, zsm.len, algo_id))
+        {
+            snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id));
+            LOG_INFO("Windows ZSM 解包成功, Algo-ID: %s", g_prog_status[tl_thread_idx].auth_cfg.algo_id);
+            return true;
+        }
+        LOG_WARN("Windows ZSM 解包失败, 回退到通用路径");
+    }
+
     if (chn == 4 || chn == 5 || ios_module)
     {
         if (chn != 4 && chn != 5)
