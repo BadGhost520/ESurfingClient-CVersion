@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 1)
-set(PROGRAM_VERSION_PATCH 3)
-set(PROGRAM_VERSION_RELEASE 5)
+set(PROGRAM_VERSION_PATCH 5)
+set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -74,7 +74,7 @@ add_executable(ESurfingClient
         src/cipher/algo/linux/desede_cbc_linux.c
         src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
         src/cipher/algo/linux/mod_xtea_linux.c
-        src/cipher/algo/win/win_zsm.c
+        src/cipher/algo/windows/win_zsm.c
         src/cipher/CipherFactory.c
         src/cipher/CipherUtils.c
         src/cipher/KeyData.c

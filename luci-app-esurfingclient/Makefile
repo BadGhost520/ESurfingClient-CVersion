@@ -20,7 +20,7 @@ define Package/luci-app-esurfingclient
 endef
 
 define Package/luci-app-esurfingclient/description
-ESurfing 客户端的 LuCI 配置页面
+LuCI for ESurfingClient
 endef
 
 define Package/luci-app-esurfingclient/install

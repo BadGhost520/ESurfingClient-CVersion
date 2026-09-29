@@ -473,7 +473,7 @@ return view.extend({
                 E('label', { class: 'cbi-value-title', style: 'margin-top: 10px;' }, '*通道'),
                 E('div', { class: 'cbi-value-field' }, [
                     E('select', { id: 'edit_channel', class: 'cbi-input-select' }, [
-                        E('option', { value: 'windows', selected: (account.channel === 1 || account.channel === '1' || account.channel === 'windows') ? true : undefined }, 'Windows (未实现, Android 替代)'),
+                        E('option', { value: 'windows', selected: (account.channel === 1 || account.channel === '1' || account.channel === 'windows') ? true : undefined }, 'Windows'),
                         E('option', { value: 'linux', selected: (account.channel === 2 || account.channel === '2' || account.channel === 'linux') ? true : undefined }, 'Linux'),
                         E('option', { value: 'android', selected: (account.channel === 3 || account.channel === '3' || account.channel === 'android') ? true : undefined }, 'Android'),
                         E('option', { value: 'ios', selected: (account.channel === 4 || account.channel === '4' || account.channel === 'ios' || account.channel === 'iphone') ? true : undefined }, 'iOS'),

@@ -79,7 +79,7 @@ start_service() {
   accounts="$($PROG --list-accounts 2>/dev/null)"
 
   if [ -z "$accounts" ]; then
-      echo "esurfingclient: 没有可用账号, 未启动任何实例 (请检查 $(get_log_dir)/run.log)"
+      echo "esurfingclient: 没有可用账号, 或程序 enabled 未打开, 未启动任何实例 (请检查 $(get_log_dir)/run.log)"
       return 0
   fi
 

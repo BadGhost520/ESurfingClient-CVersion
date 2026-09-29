@@ -756,7 +756,7 @@ end
         edit_password.value = account.password;
         var channel = account.channel;
         if (channel === 1 || channel === '1' || channel === 'windows') {
-            channel = 'android'; // 未实现, 暂用 android 通道代替
+            channel = 'windows';
         } else if (channel === 2 || channel === '2' || channel === 'linux') {
             channel = 'linux';
         } else if (channel === 3 || channel === '3' || channel === 'android') {
@@ -930,7 +930,7 @@ end
                 <label class='cbi-value-title' for='channel'>*通道</label>
                 <div class='cbi-value-field'>
                     <select id='edit_channel' class='cbi-input-select' name='channel'>
-                        <option value='windows'>Windows (未实现, Android 替代)</option>
+                        <option value='windows'>Windows</option>
                         <option value='linux'>Linux</option>
                         <option value='android'>Android</option>
                         <option value='ios'>iOS</option>
