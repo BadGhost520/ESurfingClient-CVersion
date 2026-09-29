@@ -77,7 +77,7 @@ exit 0
 endef
 
 define Package/esurfingclient/description
-Lightweight third-party esurfingclient (Supports multi-platform operation on Windows/Linux/MacOS/OpenWrt)
+	Lightweight third-party esurfingclient (Supports multi-platform operation on Windows/Linux/MacOS/OpenWrt)
 endef
 
 define Package/esurfingclient/install

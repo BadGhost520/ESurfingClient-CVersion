@@ -20,7 +20,7 @@ define Package/luci-app-esurfingclient
 endef
 
 define Package/luci-app-esurfingclient/description
-LuCI for ESurfingClient
+	LuCI for ESurfingClient
 endef
 
 define Package/luci-app-esurfingclient/install
