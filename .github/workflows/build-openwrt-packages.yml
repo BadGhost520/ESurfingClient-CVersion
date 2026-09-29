@@ -65,23 +65,24 @@ jobs:
           path: /builder/feeds/
           key: openwrt-feeds-${{ inputs.sdk_version }}
 
+      - name: 缓存源码下载与 host 工具
+        id: cache-buildcache
+        uses: actions/cache@v6
+        with:
+          path: |
+            /builder/dl/
+            /builder/staging_dir/host/
+            /builder/staging_dir/hostpkg/
+          key: openwrt-buildcache-${{ inputs.sdk_version }}
+
       - name: 初始化 SDK
         run: |
           cd /builder
           [ -f ./setup.sh ] && ./setup.sh
           make defconfig
 
-      - name: 获取 OpenWrt 缓存
-        id: cache-openwrt
-        uses: actions/cache@v6
-        with:
-          path: |
-            /builder/staging_dir/
-            /builder/dl/
-          key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-${{ inputs.sdk_version }}
-
       - name: 准备构建环境
-        if: steps.cache-openwrt.outputs.cache-hit != 'true'
+        if: steps.cache-buildcache.outputs.cache-hit != 'true'
         run: |
           cd /builder
           scripts/feeds update base
@@ -91,7 +92,7 @@ jobs:
           make defconfig
 
       - name: 编译 libcurl
-        if: steps.cache-openwrt.outputs.cache-hit != 'true'
+        if: steps.cache-buildcache.outputs.cache-hit != 'true'
         run: |
           cd /builder
           make package/curl/compile -j$(nproc)

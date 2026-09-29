@@ -60,7 +60,16 @@ jobs:
         uses: actions/cache@v6
         with:
           path: /builder/feeds/
-          key: openwrt-feeds-${{ inputs.sdk_version }}
+          key: openwrt-luci-feeds-${{ inputs.sdk_version }}
+
+      - name: 缓存 SDK 编译产物
+        id: cache-luci-sdk
+        uses: actions/cache@v6
+        with:
+          path: |
+            /builder/dl/
+            /builder/staging_dir/
+          key: openwrt-luci-sdk-${{ inputs.package_type }}-${{ inputs.sdk_version }}
 
       - name: 初始化 SDK
         run: |
@@ -68,17 +77,8 @@ jobs:
           [ -f ./setup.sh ] && ./setup.sh
           make defconfig
 
-      - name: 获取 OpenWrt 缓存
-        id: cache-openwrt
-        uses: actions/cache@v6
-        with:
-          path: |
-            /builder/staging_dir/
-            /builder/dl/
-          key: openwrt-luci-${{ inputs.package_type }}-${{ inputs.sdk_version }}
-
       - name: 准备构建环境
-        if: steps.cache-openwrt.outputs.cache-hit != 'true'
+        if: steps.cache-luci-sdk.outputs.cache-hit != 'true'
         run: |
           cd /builder
           scripts/feeds update packages
