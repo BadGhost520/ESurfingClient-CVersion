@@ -31,7 +31,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: openwrt/sdk:${{ replace(inputs.target, '/', '-') }}-${{ inputs.sdk_version }}
+      image: openwrt/sdk:${{ inputs.target }}-${{ inputs.sdk_version }}
 
     steps:
       - uses: actions/checkout@v7
@@ -43,7 +43,6 @@ jobs:
       - name: 初始化 SDK
         run: |
           cd /home/build/openwrt
-          # OpenWrt 24.10 及之后版本需要先运行 setup.sh
           [ -f ./setup.sh ] && ./setup.sh
           make defconfig
 

@@ -136,41 +136,41 @@ jobs:
           set -euo pipefail
 
           ALL='[
-            {"target":"bcm27xx/bcm2710","architecture":"aarch64_cortex-a53"},
-            {"target":"bcm27xx/bcm2711","architecture":"aarch64_cortex-a72"},
-            {"target":"bcm27xx/bcm2712","architecture":"aarch64_cortex-a76"},
-            {"target":"armsr/armv8","architecture":"aarch64_generic"},
-            {"target":"bcm27xx/bcm2708","architecture":"arm_arm1176jzf-s_vfp"},
-            {"target":"at91/sam9x","architecture":"arm_arm926ej-s"},
-            {"target":"armsr/armv7","architecture":"arm_cortex-a15_neon-vfpv4"},
-            {"target":"at91/sama5","architecture":"arm_cortex-a5_vfpv4"},
-            {"target":"mediatek/mt7629","architecture":"arm_cortex-a7"},
-            {"target":"bcm27xx/bcm2709","architecture":"arm_cortex-a7_neon-vfpv4"},
-            {"target":"at91/sama7","architecture":"arm_cortex-a7_vfpv4"},
-            {"target":"omap/generic","architecture":"arm_cortex-a8_vfpv3"},
-            {"target":"bcm53xx/generic","architecture":"arm_cortex-a9"},
-            {"target":"imx/cortexa9","architecture":"arm_cortex-a9_neon"},
-            {"target":"mvebu/cortexa9","architecture":"arm_cortex-a9_vfpv3-d16"},
-            {"target":"gemini/generic","architecture":"arm_fa526"},
-            {"target":"kirkwood/generic","architecture":"arm_xscale"},
-            {"target":"ixp4xx/generic","architecture":"armeb_xscale"},
-            {"target":"x86/legacy","architecture":"i386_pentium-mmx"},
-            {"target":"x86/generic","architecture":"i386_pentium4"},
-            {"target":"loongarch64/generic","architecture":"loongarch64_generic"},
-            {"target":"malta/be64","architecture":"mips64_mips64r2"},
-            {"target":"octeon/generic","architecture":"mips64_octeonplus"},
-            {"target":"malta/le64","architecture":"mips64el_mips64r2"},
-            {"target":"ath79/generic","architecture":"mips_24kc"},
-            {"target":"bmips/bcm6318","architecture":"mips_mips32"},
-            {"target":"malta/le","architecture":"mipsel_24kc"},
-            {"target":"pistachio/generic","architecture":"mipsel_24kc_24kf"},
-            {"target":"bcm47xx/mips74k","architecture":"mipsel_74kc"},
-            {"target":"bcm47xx/generic","architecture":"mipsel_mips32"},
-            {"target":"qoriq/generic","architecture":"powerpc64_e5500"},
-            {"target":"apm821xx/nand","architecture":"powerpc_464fp"},
-            {"target":"mpc85xx/p1010","architecture":"powerpc_8548"},
-            {"target":"d1/generic","architecture":"riscv64_generic"},
-            {"target":"x86/64","architecture":"x86_64"}
+            {"target":"bcm27xx-bcm2710","architecture":"aarch64_cortex-a53"},
+            {"target":"bcm27xx-bcm2711","architecture":"aarch64_cortex-a72"},
+            {"target":"bcm27xx-bcm2712","architecture":"aarch64_cortex-a76"},
+            {"target":"armsr-armv8","architecture":"aarch64_generic"},
+            {"target":"bcm27xx-bcm2708","architecture":"arm_arm1176jzf-s_vfp"},
+            {"target":"at91-sam9x","architecture":"arm_arm926ej-s"},
+            {"target":"armsr-armv7","architecture":"arm_cortex-a15_neon-vfpv4"},
+            {"target":"at91-sama5","architecture":"arm_cortex-a5_vfpv4"},
+            {"target":"mediatek-mt7629","architecture":"arm_cortex-a7"},
+            {"target":"bcm27xx-bcm2709","architecture":"arm_cortex-a7_neon-vfpv4"},
+            {"target":"at91-sama7","architecture":"arm_cortex-a7_vfpv4"},
+            {"target":"omap-generic","architecture":"arm_cortex-a8_vfpv3"},
+            {"target":"bcm53xx-generic","architecture":"arm_cortex-a9"},
+            {"target":"imx-cortexa9","architecture":"arm_cortex-a9_neon"},
+            {"target":"mvebu-cortexa9","architecture":"arm_cortex-a9_vfpv3-d16"},
+            {"target":"gemini-generic","architecture":"arm_fa526"},
+            {"target":"kirkwood-generic","architecture":"arm_xscale"},
+            {"target":"ixp4xx-generic","architecture":"armeb_xscale"},
+            {"target":"x86-legacy","architecture":"i386_pentium-mmx"},
+            {"target":"x86-generic","architecture":"i386_pentium4"},
+            {"target":"loongarch64-generic","architecture":"loongarch64_generic"},
+            {"target":"malta-be64","architecture":"mips64_mips64r2"},
+            {"target":"octeon-generic","architecture":"mips64_octeonplus"},
+            {"target":"malta-le64","architecture":"mips64el_mips64r2"},
+            {"target":"ath79-generic","architecture":"mips_24kc"},
+            {"target":"bmips-bcm6318","architecture":"mips_mips32"},
+            {"target":"malta-le","architecture":"mipsel_24kc"},
+            {"target":"pistachio-generic","architecture":"mipsel_24kc_24kf"},
+            {"target":"bcm47xx-mips74k","architecture":"mipsel_74kc"},
+            {"target":"bcm47xx-generic","architecture":"mipsel_mips32"},
+            {"target":"qoriq-generic","architecture":"powerpc64_e5500"},
+            {"target":"apm821xx-nand","architecture":"powerpc_464fp"},
+            {"target":"mpc85xx-p1010","architecture":"powerpc_8548"},
+            {"target":"d1-generic","architecture":"riscv64_generic"},
+            {"target":"x86-64","architecture":"x86_64"}
           ]'
 
           gen() {
@@ -208,12 +208,12 @@ jobs:
           set -euo pipefail
 
           IPK_ENTRY=$(jq -nc \
-            --arg t "x86/64" \
+            --arg t "x86-64" \
             --arg s "$IPK_SDK" \
             '{target:$t, package_type:"ipk", sdk_version:$s}')
-
+          
           APK_ENTRY=$(jq -nc \
-            --arg t "x86/64" \
+            --arg t "x86-64" \
             --arg s "$APK_SDK" \
             '{target:$t, package_type:"apk", sdk_version:$s}')
 
