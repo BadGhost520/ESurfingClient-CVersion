@@ -40,7 +40,7 @@ jobs:
 
       - name: 准备构建环境
         run: |
-          cd /home/build/openwrt
+          cd /builder
           [ -f ./setup.sh ] && ./setup.sh
           scripts/feeds update packages
           scripts/feeds install luci-base
@@ -48,13 +48,13 @@ jobs:
 
       - name: 部署 LuCI 包
         run: |
-          cp -r $GITHUB_WORKSPACE/luci-app-esurfingclient /home/build/openwrt/package/
-          cd /home/build/openwrt
+          cp -r $GITHUB_WORKSPACE/luci-app-esurfingclient /builder/package/
+          cd /builder
           scripts/feeds install luci-app-esurfingclient
 
       - name: 编译 luci-app-esurfingclient
         run: |
-          cd /home/build/openwrt
+          cd /builder
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
           find bin/packages -name "luci-app-esurfingclient*.${{ inputs.package_type }}" \
             -exec cp {} $GITHUB_WORKSPACE/luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }} \;
@@ -62,7 +62,7 @@ jobs:
       - name: OpenWRT APK 包签名
         if: inputs.package_type == 'apk'
         run: |
-          cd /home/build/openwrt
+          cd /builder
           cat > /tmp/openwrt-apk-private-key.pem << 'EOF'
           ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
           EOF

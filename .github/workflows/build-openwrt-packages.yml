@@ -41,27 +41,9 @@ jobs:
         run: |
           bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
-      - name: 诊断镜像结构
-        run: |
-          echo "=== 当前工作目录 ==="
-          pwd
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          echo ""
-          echo "=== /home 目录 ==="
-          ls -la /home/ || true
-          echo ""
-          echo "=== 查找 SDK 目录（含 feeds.conf.default）==="
-          find / -maxdepth 5 -name "feeds.conf.default" -printf '%h\n' 2>/dev/null || true
-          echo ""
-          echo "=== 查找 setup.sh ==="
-          find / -maxdepth 5 -name "setup.sh" 2>/dev/null || true
-          echo ""
-          echo "=== 查找 bin/ 和 staging_dir/ ==="
-          find / -maxdepth 5 -name "staging_dir" -type d 2>/dev/null || true
-
       - name: 初始化 SDK
         run: |
-          cd /home/build/openwrt
+          cd /builder
           [ -f ./setup.sh ] && ./setup.sh
           make defconfig
 
@@ -70,14 +52,14 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            /home/build/openwrt/staging_dir/
-            /home/build/openwrt/dl/
+            /builder/staging_dir/
+            /builder/dl/
           key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-${{ inputs.sdk_version }}
 
       - name: 准备构建配置
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
-          cd /home/build/openwrt
+          cd /builder
           scripts/feeds update base
           scripts/feeds update packages
           scripts/feeds install curl
@@ -87,13 +69,13 @@ jobs:
       - name: 编译 libcurl
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
-          cd /home/build/openwrt
+          cd /builder
           make package/curl/compile -j$(nproc)
 
       - name: 编译 esurfingclient
         run: |
-          cp -r $GITHUB_WORKSPACE/esurfingclient /home/build/openwrt/package/
-          cd /home/build/openwrt
+          cp -r $GITHUB_WORKSPACE/esurfingclient /builder/package/
+          cd /builder
           scripts/feeds install esurfingclient
           make package/esurfingclient/compile -j$(nproc)
           find bin/packages -name "esurfingclient*.${{ inputs.package_type }}" \
@@ -102,7 +84,7 @@ jobs:
       - name: OpenWRT APK 包签名
         if: inputs.package_type == 'apk'
         run: |
-          cd /home/build/openwrt
+          cd /builder
           cat > /tmp/openwrt-apk-private-key.pem << 'EOF'
           ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
           EOF
