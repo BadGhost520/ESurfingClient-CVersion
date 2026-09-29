@@ -41,6 +41,15 @@ jobs:
         run: |
           bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
+      - name: 导入 OpenWrt GPG 公钥
+        run: |
+          gpg --keyserver keyserver.ubuntu.com --recv-keys \
+            0xCD84BCED626471F1 \
+            0x1D53D1877742E911 \
+            0xCD54E82DADB3684D \
+            0x28A39BC32074BE7A \
+            0x88CA59E88F681580
+
       - name: 初始化 SDK
         run: |
           cd /builder
@@ -56,7 +65,7 @@ jobs:
             /builder/dl/
           key: openwrt-${{ inputs.architecture }}-${{ inputs.package_type }}-${{ inputs.sdk_version }}
 
-      - name: 准备构建配置
+      - name: 准备构建环境
         if: steps.cache-openwrt.outputs.cache-hit != 'true'
         run: |
           cd /builder

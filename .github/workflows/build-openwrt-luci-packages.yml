@@ -38,23 +38,43 @@ jobs:
         run: |
           bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
-      - name: 准备构建环境
+      - name: 导入 OpenWrt GPG 公钥
+        run: |
+          gpg --keyserver keyserver.ubuntu.com --recv-keys \
+            0xCD84BCED626471F1 \
+            0x1D53D1877742E911 \
+            0xCD54E82DADB3684D \
+            0x28A39BC32074BE7A \
+            0x88CA59E88F681580
+
+      - name: 初始化 SDK
         run: |
           cd /builder
           [ -f ./setup.sh ] && ./setup.sh
+          make defconfig
+
+      - name: 获取 OpenWrt 缓存
+        id: cache-openwrt
+        uses: actions/cache@v6
+        with:
+          path: |
+            /builder/staging_dir/
+            /builder/dl/
+          key: openwrt-luci-${{ inputs.package_type }}-${{ inputs.sdk_version }}
+
+      - name: 准备构建环境
+        if: steps.cache-openwrt.outputs.cache-hit != 'true'
+        run: |
+          cd /builder
           scripts/feeds update packages
           scripts/feeds install luci-base
           make defconfig
 
-      - name: 部署 LuCI 包
+      - name: 编译 luci-app-esurfingclient
         run: |
           cp -r $GITHUB_WORKSPACE/luci-app-esurfingclient /builder/package/
           cd /builder
           scripts/feeds install luci-app-esurfingclient
-
-      - name: 编译 luci-app-esurfingclient
-        run: |
-          cd /builder
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
           find bin/packages -name "luci-app-esurfingclient*.${{ inputs.package_type }}" \
             -exec cp {} $GITHUB_WORKSPACE/luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }} \;
