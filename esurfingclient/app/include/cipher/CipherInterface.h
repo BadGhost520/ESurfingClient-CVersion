@@ -173,6 +173,9 @@ bool init_ios_cipher_from_zsm(const uint8_t* data, size_t length, char* algo_id_
 
 bool init_ios_cipher_from_blob(int8_t type, ios_zsm_blob_t blob);
 
+/* Windows 通道 (UA: CCTP/WinSVR5/1068) 的 ZSM 解包, algo_id_out 可传 NULL */
+bool init_win_cipher_from_zsm(const uint8_t* data, size_t length, char* algo_id_out);
+
 /**
  * 初始化加解密工厂
  * @param algo_id 算法 ID

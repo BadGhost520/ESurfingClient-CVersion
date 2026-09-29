@@ -74,6 +74,7 @@ add_executable(ESurfingClient
         src/cipher/algo/linux/desede_cbc_linux.c
         src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
         src/cipher/algo/linux/mod_xtea_linux.c
+        src/cipher/algo/win/win_zsm.c
         src/cipher/CipherFactory.c
         src/cipher/CipherUtils.c
         src/cipher/KeyData.c

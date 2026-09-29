@@ -115,7 +115,7 @@ bool logout_state_save(const prog_status_t* status)
     cJSON* root = cJSON_CreateObject();
     if (root == NULL) return false;
 
-    cJSON_AddBoolToObject(root, "dynamic", status->login_cfg.chn == 4 || status->login_cfg.chn == 5); // 用来判定是否是 iOS 和 MacOS 通道
+    cJSON_AddBoolToObject(root, "dynamic", status->login_cfg.chn == 1 || status->login_cfg.chn == 4 || status->login_cfg.chn == 5); // 动态 ZSM 通道: Windows / iOS / MacOS
     cJSON_AddNumberToObject(root, "account", status->login_cfg.idx);
     cJSON_AddStringToObject(root, "user_agent", safe_str(status->login_cfg.user_agent));
     cJSON_AddStringToObject(root, "term_url", safe_str(status->auth_cfg.term_url));
@@ -128,7 +128,7 @@ bool logout_state_save(const prog_status_t* status)
     cJSON_AddStringToObject(root, "ticket", safe_str(status->auth_cfg.ticket));
     LOG_VERBOSE("添加各类普通登出参数");
 
-    if (status->login_cfg.chn == 4 || status->login_cfg.chn == 5)
+    if (status->login_cfg.chn == 1 || status->login_cfg.chn == 4 || status->login_cfg.chn == 5)
     {
         cJSON_AddNumberToObject(root, "type", status->auth_cfg.type);
         LOG_VERBOSE("添加 type 登出参数: %" PRId8, status->auth_cfg.type);
