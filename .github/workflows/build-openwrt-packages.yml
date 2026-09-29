@@ -77,6 +77,20 @@ jobs:
             /builder/staging_dir/hostpkg/
           key: openwrt-buildcache-v2-${{ inputs.sdk_version }}
 
+      - name: 缓存 libcurl 目标产物
+        id: cache-libcurl-target
+        uses: actions/cache@v6
+        with:
+          path: |
+            /builder/staging_dir/target-*/usr/include/curl/
+            /builder/staging_dir/target-*/usr/lib/libcurl*
+            /builder/staging_dir/target-*/usr/lib/pkgconfig/libcurl.pc
+            /builder/staging_dir/target-*/stamp/.curl*
+            /builder/staging_dir/target-*/stamp/.libcurl*
+            /builder/staging_dir/target-*/packages/packages/*/curl*.ipk
+            /builder/staging_dir/target-*/packages/packages/*/libcurl*.ipk
+          key: openwrt-libcurl-target-v2-${{ inputs.architecture }}-${{ inputs.package_type }}-${{ inputs.sdk_version }}
+
       - name: 初始化 SDK
         run: |
           cd /builder
@@ -91,7 +105,7 @@ jobs:
           make defconfig
 
       - name: 编译 libcurl
-        if: steps.cache-buildcache.outputs.cache-hit != 'true'
+        if: steps.cache-libcurl-target.outputs.cache-hit != 'true'
         run: |
           cd /builder
           make package/curl/compile -j$(nproc)
