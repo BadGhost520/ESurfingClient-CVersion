@@ -41,6 +41,24 @@ jobs:
         run: |
           bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
+      - name: 诊断镜像结构
+        run: |
+          echo "=== 当前工作目录 ==="
+          pwd
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          echo ""
+          echo "=== /home 目录 ==="
+          ls -la /home/ || true
+          echo ""
+          echo "=== 查找 SDK 目录（含 feeds.conf.default）==="
+          find / -maxdepth 5 -name "feeds.conf.default" -printf '%h\n' 2>/dev/null || true
+          echo ""
+          echo "=== 查找 setup.sh ==="
+          find / -maxdepth 5 -name "setup.sh" 2>/dev/null || true
+          echo ""
+          echo "=== 查找 bin/ 和 staging_dir/ ==="
+          find / -maxdepth 5 -name "staging_dir" -type d 2>/dev/null || true
+
       - name: 初始化 SDK
         run: |
           cd /home/build/openwrt
