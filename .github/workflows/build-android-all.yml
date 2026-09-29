@@ -49,7 +49,7 @@ jobs:
               echo "target=x86_64-linux-android" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "❌ 不支持的 ABI: ${{ inputs.abi }}"
+              echo "不支持的 ABI: ${{ inputs.abi }}"
               exit 1
               ;;
           esac
@@ -206,11 +206,11 @@ jobs:
         run: |
           BIN="ESurfingClient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}"
           if [ -f "$BIN" ]; then
-            echo "✅ 构建成功"
-            echo "📏 文件大小: $(du -h "$BIN" | cut -f1)"
+            echo "构建成功"
+            echo "文件大小: $(du -h "$BIN" | cut -f1)"
             file "$BIN"
           else
-            echo "❌ 未找到二进制文件"
+            echo "未找到二进制文件"
             exit 1
           fi
 
@@ -233,8 +233,6 @@ jobs:
 
       - name: 复制配置文件到根目录
         run: |
-          # files/ 里放的是部署到设备上的名字 (etc/config/esurfingclient),
-          # 桌面端读的是程序同目录下的 ESurfingClient.json, 这里做一次改名
           cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
       - name: 打包成 tar.gz 压缩包

@@ -134,8 +134,6 @@ jobs:
 
       - name: 复制配置文件到根目录
         run: |
-          # files/ 里放的是部署到设备上的名字 (etc/config/esurfingclient),
-          # 桌面端读的是程序同目录下的 ESurfingClient.json, 这里做一次改名
           cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
       - name: 打包成 tar.gz
