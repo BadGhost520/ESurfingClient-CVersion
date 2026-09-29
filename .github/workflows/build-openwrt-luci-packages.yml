@@ -74,8 +74,8 @@ jobs:
       - name: 初始化 SDK
         run: |
           cd /builder
-          [ -f ./setup.sh ] && ./setup.sh
-          make defconfig
+          # 跳过 setup.sh（内部 feeds update 慢且不检查缓存）
+          [ -f .config ] || make defconfig
 
       - name: 准备构建环境
         if: steps.cache-luci-sdk.outputs.cache-hit != 'true'
