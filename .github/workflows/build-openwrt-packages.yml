@@ -58,12 +58,14 @@ jobs:
             0x28A39BC32074BE7A \
             0x88CA59E88F681580
 
-      - name: 缓存 feeds 索引
-        id: cache-feeds
+      - name: 缓存 packages feed
+        id: cache-feeds-packages
         uses: actions/cache@v6
         with:
-          path: /builder/feeds/
-          key: openwrt-feeds-v2-${{ inputs.sdk_version }}
+          path: |
+            /builder/feeds/packages/
+            /builder/feeds/packages.index
+          key: openwrt-feeds-packages-v1-${{ inputs.sdk_version }}
 
       - name: 缓存源码下载与 host 工具
         id: cache-buildcache
@@ -78,13 +80,12 @@ jobs:
       - name: 初始化 SDK
         run: |
           cd /builder
-          # 跳过 setup.sh 的 GPG 校验，直接初始化配置
           [ -f .config ] || make defconfig
 
-      - name: 更新 feeds 并安装 curl
+      - name: 更新 packages feed 并安装 curl
         run: |
           cd /builder
-          scripts/feeds update -a
+          scripts/feeds update packages
           scripts/feeds install curl
           cat $GITHUB_WORKSPACE/ci/openwrt/all.config >> .config
           make defconfig
