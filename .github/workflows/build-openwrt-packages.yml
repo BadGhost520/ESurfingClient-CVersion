@@ -41,22 +41,22 @@ jobs:
         run: |
           bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
-      - name: 缓存 GPG 密钥环
-        id: cache-gnupg
-        uses: actions/cache@v6
-        with:
-          path: /github/home/.gnupg
-          key: openwrt-gnupg-keys-v1
-
-      - name: 导入 OpenWrt GPG 公钥
-        if: steps.cache-gnupg.outputs.cache-hit != 'true'
-        run: |
-          gpg --keyserver keyserver.ubuntu.com --recv-keys \
-            0xCD84BCED626471F1 \
-            0x1D53D1877742E911 \
-            0xCD54E82DADB3684D \
-            0x28A39BC32074BE7A \
-            0x88CA59E88F681580
+#      - name: 缓存 GPG 密钥环
+#        id: cache-gnupg
+#        uses: actions/cache@v6
+#        with:
+#          path: /github/home/.gnupg
+#          key: openwrt-gnupg-keys-v1
+#
+#      - name: 导入 OpenWrt GPG 公钥
+#        if: steps.cache-gnupg.outputs.cache-hit != 'true'
+#        run: |
+#          gpg --keyserver keyserver.ubuntu.com --recv-keys \
+#            0xCD84BCED626471F1 \
+#            0x1D53D1877742E911 \
+#            0xCD54E82DADB3684D \
+#            0x28A39BC32074BE7A \
+#            0x88CA59E88F681580
 
       - name: 缓存 packages feed
         id: cache-feeds-packages
