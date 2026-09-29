@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: openwrt/sdk:${{ inputs.target }}-${{ inputs.sdk_version }}
+      options: --user root
 
     steps:
       - uses: actions/checkout@v7
