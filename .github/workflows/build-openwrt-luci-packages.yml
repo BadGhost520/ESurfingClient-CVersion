@@ -60,7 +60,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: /builder/feeds/
-          key: openwrt-luci-feeds-${{ inputs.sdk_version }}
+          key: openwrt-luci-feeds-v2-${{ inputs.sdk_version }}
 
       - name: 缓存 SDK 编译产物
         id: cache-luci-sdk
@@ -69,19 +69,17 @@ jobs:
           path: |
             /builder/dl/
             /builder/staging_dir/
-          key: openwrt-luci-sdk-${{ inputs.package_type }}-${{ inputs.sdk_version }}
+          key: openwrt-luci-sdk-v2-${{ inputs.package_type }}-${{ inputs.sdk_version }}
 
       - name: 初始化 SDK
         run: |
           cd /builder
-          # 跳过 setup.sh（内部 feeds update 慢且不检查缓存）
           [ -f .config ] || make defconfig
 
-      - name: 准备构建环境
-        if: steps.cache-luci-sdk.outputs.cache-hit != 'true'
+      - name: 更新 feeds 并安装 luci-base
         run: |
           cd /builder
-          scripts/feeds update packages
+          scripts/feeds update -a
           scripts/feeds install luci-base
           make defconfig
 

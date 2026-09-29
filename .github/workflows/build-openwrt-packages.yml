@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: /builder/feeds/
-          key: openwrt-feeds-${{ inputs.sdk_version }}
+          key: openwrt-feeds-v2-${{ inputs.sdk_version }}
 
       - name: 缓存源码下载与 host 工具
         id: cache-buildcache
@@ -73,20 +73,18 @@ jobs:
             /builder/dl/
             /builder/staging_dir/host/
             /builder/staging_dir/hostpkg/
-          key: openwrt-buildcache-${{ inputs.sdk_version }}
+          key: openwrt-buildcache-v2-${{ inputs.sdk_version }}
 
       - name: 初始化 SDK
         run: |
           cd /builder
-          # 跳过 setup.sh（内部 feeds update 慢且不检查缓存）
+          # 跳过 setup.sh 的 GPG 校验，直接初始化配置
           [ -f .config ] || make defconfig
 
-      - name: 准备构建环境
-        if: steps.cache-buildcache.outputs.cache-hit != 'true'
+      - name: 更新 feeds 并安装 curl
         run: |
           cd /builder
-          scripts/feeds update base
-          scripts/feeds update packages
+          scripts/feeds update -a
           scripts/feeds install curl
           cat $GITHUB_WORKSPACE/ci/openwrt/all.config >> .config
           make defconfig
