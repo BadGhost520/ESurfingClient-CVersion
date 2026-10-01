@@ -45,7 +45,7 @@ jobs:
           path: |
             /builder/feeds/luci/
             /builder/feeds/luci.index
-          key: openwrt-feeds-luci-v1-${{ inputs.sdk_version }}
+          key: openwrt-feeds-luci-${{ inputs.sdk_version }}
 
       - name: 缓存 LuCI 编译产物
         id: cache-luci-sdk
@@ -58,7 +58,7 @@ jobs:
             /builder/staging_dir/target-*/usr/lib/opkg/
             /builder/staging_dir/target-*/packages/
             /builder/staging_dir/target-*/stamp/
-          key: openwrt-luci-sdk-v4-${{ inputs.package_type }}-${{ inputs.sdk_version }}
+          key: openwrt-luci-sdk-${{ inputs.package_type }}-${{ inputs.sdk_version }}
 
       - name: 初始化 SDK
         run: |

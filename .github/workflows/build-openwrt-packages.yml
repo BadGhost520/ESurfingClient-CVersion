@@ -48,7 +48,7 @@ jobs:
           path: |
             /builder/feeds/packages/
             /builder/feeds/packages.index
-          key: openwrt-feeds-packages-v1-${{ inputs.sdk_version }}
+          key: openwrt-feeds-packages-${{ inputs.sdk_version }}
 
       - name: 缓存源码下载与 host 工具
         id: cache-buildcache
@@ -58,7 +58,7 @@ jobs:
             /builder/dl/
             /builder/staging_dir/host/
             /builder/staging_dir/hostpkg/
-          key: openwrt-buildcache-v2-${{ inputs.sdk_version }}
+          key: openwrt-buildcache-${{ inputs.sdk_version }}
 
       - name: 缓存 libcurl 目标产物
         id: cache-libcurl-target
@@ -72,7 +72,7 @@ jobs:
             /builder/staging_dir/target-*/stamp/.libcurl*
             /builder/staging_dir/target-*/packages/packages/*/curl*.ipk
             /builder/staging_dir/target-*/packages/packages/*/libcurl*.ipk
-          key: openwrt-libcurl-target-v2-${{ inputs.architecture }}-${{ inputs.package_type }}-${{ inputs.sdk_version }}
+          key: openwrt-libcurl-target-${{ inputs.architecture }}-${{ inputs.package_type }}-${{ inputs.sdk_version }}
 
       - name: 初始化 SDK
         run: |
