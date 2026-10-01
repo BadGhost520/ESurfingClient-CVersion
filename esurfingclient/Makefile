@@ -60,6 +60,8 @@ if [ -f "/etc/config/esurfingclient.opkg" ]; then
 	echo "-> /etc/config/esurfingclient.opkg"
 fi
 
+[ "$PKG_UPGRADE" = "1" ] && /etc/init.d/esurfingclient restart
+
 exit 0
 endef
 

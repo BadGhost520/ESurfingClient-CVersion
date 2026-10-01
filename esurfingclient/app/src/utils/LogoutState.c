@@ -187,7 +187,7 @@ bool logout_state_load(prog_status_t* status)
     FILE* fp = fopen(path, "r");
     if (fp == NULL)
     {
-        LOG_ERROR("无法打开登出文件");
+        LOG_DEBUG("无法打开登出文件");
         return false;
     }
 
@@ -199,7 +199,7 @@ bool logout_state_load(prog_status_t* status)
     cJSON* root = cJSON_Parse(data);
     if (root == NULL)
     {
-        LOG_WARN("会话存档解析失败 (可能上次写到一半就被杀了), 按没有存档处理: %s", path);
+        LOG_WARN("会话存档解析失败: %s", path);
         return false;
     }
 

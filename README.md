@@ -32,15 +32,15 @@
 ![Please refresh](docs/assets/1.png) ![Please refresh](docs/assets/2.png) ![Please refresh](docs/assets/3.png)
 
 > [!TIP]
-> ~~经实测, 运行十天后运行内存占用仅增加 300 kB 左右~~
+> 经实测, 运行十天后运行内存占用仅增加 28 kB 左右
 >
 > 初运行 (单进程)
 >
 > VmPeak: 912 kB, VmSize: 800 kB, VmHWM: 536 kB, VmRSS: 536 kB
 >
-> ~~十天后~~(旧数据, 新数据待测)
+> 十天后
 >
-> ~~VmHWM: 3108 kB, VmRSS: 3048 kB~~
+> VmPeak: 1088 kB, VmSize: 884 kB, VmHWM: 668 kB, VmRSS: 564 kB
 > 
 > 4 级信息级日志文件轮换后占用 1 mB 左右
 

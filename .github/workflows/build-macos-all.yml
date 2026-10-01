@@ -1,4 +1,4 @@
-name: Build Desktop x86_64 macOS Binary
+name: Build Desktop macOS Binary
 
 permissions:
   contents: write
@@ -17,19 +17,26 @@ on:
       tail_wind_labs_version:
         required: true
         type: string
+      tail_wind_labs_architecture:
+        required: true
+        type: string
+      runs_on:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
 
 jobs:
   build:
-    runs-on: macos-15-intel
+    runs-on: macos-${{ inputs.runs_on }}
 
     steps:
       - uses: actions/checkout@v7
 
       - name: 准备安装目录
         run: |
-          sudo mkdir -p /usr/local/opt/openssl-built
           sudo mkdir -p /usr/local/opt/curl-built
-          sudo chown -R $(whoami) /usr/local/opt/openssl-built
           sudo chown -R $(whoami) /usr/local/opt/curl-built
 
       - name: 安装编译工具
@@ -41,7 +48,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: /usr/local/opt/curl-built
-          key: curl-${{ inputs.curl_version }}-macos-x86_64
+          key: curl-${{ inputs.curl_version }}-macos-${{ inputs.architecture }}
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
@@ -90,7 +97,6 @@ jobs:
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-            -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl-built \
             -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
             -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
             -B build \
@@ -98,18 +104,18 @@ jobs:
 
           cmake --build build -j$(sysctl -n hw.logicalcpu)
 
-          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
+          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
 
-          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 || true
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} || true
 
-          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
 
       - name: 验证
         run: |
-          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-x86_64" ]; then
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}" ]; then
             echo "构建成功"
-            echo "文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 | cut -f1)"
-            file ESurfingClient-${{ inputs.full_version }}-darwin-x86_64
+            echo "文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
           else
             echo "未找到二进制文件"
             exit 1
@@ -119,18 +125,18 @@ jobs:
         id: cache-web
         uses: actions/cache@v6
         with:
-          path: tailwindcss-macos-x64
-          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-x86_64
+          path: tailwindcss-macos-${{ inputs.architecture }}
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-${{ inputs.architecture }}
 
       - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
-          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-x64
-          chmod +x tailwindcss-macos-x64
+          wget -O tailwindcss-macos-${{ inputs.architecture }} https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-${{ inputs.tail_wind_labs_architecture }}
+          chmod +x tailwindcss-macos-${{ inputs.architecture }}
 
       - name: 处理 web 文件
         run: |
-          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-macos-x64
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-macos-${{ inputs.architecture }}
 
       - name: 复制配置文件到根目录
         run: |
@@ -138,11 +144,11 @@ jobs:
 
       - name: 打包成 tar.gz
         run: |
-          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-x86_64 ESurfingClient.json portal/
+          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} ESurfingClient.json portal/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-${{ inputs.full_version }}-darwin-x86_64
-          path: esurfingclient-${{ inputs.full_version }}-darwin-x86_64.tar.gz
+          name: esurfingclient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
+          path: esurfingclient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}.tar.gz
           retention-days: 30

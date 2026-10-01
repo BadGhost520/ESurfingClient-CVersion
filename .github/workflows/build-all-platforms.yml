@@ -117,6 +117,7 @@ jobs:
       apk_matrix: ${{ steps.matrix.outputs.apk_matrix }}
       luci_matrix: ${{ steps.luci_matrix.outputs.luci_matrix }}
       android_matrix: ${{ steps.android_matrix.outputs.android_matrix }}
+      macos_matrix: ${{ steps.macos_matrix.outputs.macos_matrix }}
     steps:
       - uses: actions/checkout@v7
 
@@ -228,7 +229,7 @@ jobs:
           echo "luci_matrix=$RESULT" >> "$GITHUB_OUTPUT"
           echo "LuCI 矩阵: $RESULT"
 
-      - name: 生成 Android 编译
+      - name: 生成 Android 编译动态矩阵
         id: android_matrix
         shell: bash
         env:
@@ -258,6 +259,36 @@ jobs:
           RESULT=$(printf '%s' "$RESULT" | jq -c .)
           echo "android_matrix=$RESULT" >> "$GITHUB_OUTPUT"
           echo "Android 矩阵: $RESULT"
+
+      - name: 生成 MacOS 编译动态矩阵
+        id: macos_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86_64", "tail_wind_labs_architecture":"x64",   "runs_on":"15-intel"},
+            {"architecture":"aarch64","tail_wind_labs_architecture":"arm64", "runs_on":"latest"}
+          ]'
+
+          case "$INPUT" in
+            all|macos)
+              RESULT="$ALL"
+              ;;
+            macos-*)
+              ARCH="${INPUT#macos-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "macos_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "MacOS 矩阵: $RESULT"
 
   # 桌面端
   windows-x86_64:
@@ -290,25 +321,18 @@ jobs:
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
-  macos-x86_64:
+  macos:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-x86_64'
-    uses: ./.github/workflows/build-desktop-x86_64-macos.yml
+    uses: ./.github/workflows/build-macos-all.yml
     secrets: inherit
     needs: get-version
     with:
       full_version: ${{ needs.get-version.outputs.full_version }}
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
-
-  macos-aarch64:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-aarch64'
-    uses: ./.github/workflows/build-desktop-aarch64-macos.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      full_version: ${{ needs.get-version.outputs.full_version }}
-      curl_version: ${{ needs.get-version.outputs.curl_version }}
-      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      tail_wind_labs_architecture: ${{ matrix.tail_wind_labs_architecture }}
+      runs_on: ${{ matrix.runs_on }}
+      architecture: ${{ matrix.architecture }}
 
   # Android
   android:
@@ -384,8 +408,7 @@ jobs:
       - windows-x86_64
       - linux-x86_64
       - linux-loongarch64
-      - macos-x86_64
-      - macos-aarch64
+      - macos
       - android
       - openwrt-luci
       - openwrt-packages-ipk
