@@ -322,7 +322,11 @@ jobs:
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
   macos:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'macos-x86_64'
+    if: needs.get-version.outputs.macos_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.macos_matrix) }}
     uses: ./.github/workflows/build-macos-all.yml
     secrets: inherit
     needs: get-version
