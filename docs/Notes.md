@@ -43,15 +43,25 @@
   查询模式比日志等级更硬：`load_cfg()` 会用配置里的 `log_lv` 调 `set_logger_level()`，
   查询模式必须在那之后依然生效。
 - **OpenWrt 上的归档由 init 脚本负责，时机是"这一轮运行结束之后"**
-  （`files/etc/init.d/esurfingclient` 的 `archive_previous_log`）。`run.log` 是多进程共用的，
-  改名只能由一方来做，而 AUTH / WEB 角色在 `clean_logger()` 里刻意不改名（交给监管进程）；
-  OpenWrt 上 procd 只跑 `--role auth`，没有监管进程，所以由这个脚本充当。
-  两点容易踩：
-  - `stop_service` 是在 procd 杀实例**之前**被调用的（上游提交 `base-files: calling stop_service
-    before procd_kill`），所以脚本要自己先 `kill` 实例、等它们退出，再改名；给一个还在写的
-    `run.log` 改名会把新日志一起卷进归档。
-  - `start_service` 里那次归档只是兜底（被强杀 / 结束超时 / 掉电时上一轮没走到停止），
-    正常停止/重启时它是空操作，所以一次运行只会留下一个归档文件。
+  （`files/etc/init.d/esurfingclient` 的 `archive_previous_log`，挂在 `service_stopped` 上）。
+  `run.log` 是多进程共用的，改名只能由一方来做，而 AUTH / WEB 角色在 `clean_logger()` 里刻意
+  不改名（交给监管进程）；OpenWrt 上 procd 只跑 `--role auth`，没有监管进程，所以由脚本充当。
+  四点容易踩：
+  - **别在 `stop_service` 里自己 `kill` 实例**。procd 分得清"服务被停"和"实例自己没了"：
+    脚本抢先把进程杀掉，procd 会把它当成实例意外退出，按 `respawn 60 5 5` 排一次 5 秒后的重新
+    拉起；这一次到底会不会被拉起来，取决于紧接着的 `procd_kill` 有没有赶在 5 秒内把服务删掉
+    —— 也就是取决于实例退得快不快，"有时候会多重启一次"就是这么来的（实测：绕开脚本直接
+    `kill` 认证进程，procd 5 秒后确实拉起了新实例）。停止交给 `procd_kill`，它会把实例标记成
+    正在停止，不触发 respawn，跟退出快慢无关。
+  - 归档要等实例真的退出再改名：`service_stopped` 是 rc.common 在 `procd_kill` **之后**才调的
+    钩子（上游 `stop()` 的顺序是 `stop_service` -> `procd_kill` -> `service_stopped`），
+    在这里等实例消失再改名，才不会给一个还在写的 `run.log` 改名、把新日志卷进归档。
+  - `procd_set_param term_timeout 15` 是配套的：procd 默认只等 5 秒就 SIGKILL，而登出请求
+    可能慢过 5 秒，被砍掉的话账号会挂在服务端在线（这一条补上了以前脚本自己等 15 秒的效果）。
+  - 安装/升级只重启一次：opkg 升级时 `prerm` 停旧实例、`postinst` 起新实例（都是 base-files 的
+    `default_prerm` / `default_postinst` 代劳），包自己的 `postinst` 因此**不能**再停/起服务。
+    实测留一条：包脚本里那次 `restart`/`reload` 会让 init 脚本在一次安装里打印**两次**
+    "已启动 N 个认证进程实例"，外加一次注定失败的 `ubus call service delete ... (Not found)`。
 
 ## 看门狗
 
@@ -149,6 +159,21 @@
   `.gitattributes` 里按角色钉了 `**/etc/init.d/*`、`**/*.init`、`*.sh`。
 - **版本号唯一源是 `esurfingclient/app/CMakeLists.txt` 的 `set(PROGRAM_VERSION_*)` 四行**，
   改完跑 `scripts/sync-version.sh` 分发到两个包的 Makefile 与两处 LuCI 页面（那些是生成物）。
+- **安装/升级时谁负责重启服务，opkg 与 apk 不一样**（`files/etc/init.d/esurfingclient`）：
+  - **opkg（24.10 及更早）**：升级时 base-files 的 `default_prerm` 会停旧实例、`default_postinst`
+    会起新实例，一次安装/升级正好一次重启。所以**包脚本里不能再停/起服务**，实测加了那次
+    `restart` 会让 init 脚本打印**两次**"已启动 N 个认证进程实例"，外加一次注定失败的
+    `ubus call service delete ... (Not found)`。
+  - **apk（25.12 起）**：升级只跑 `post-upgrade` 钩子，**不会先停服务**；而 procd 只在实例定义
+    （命令行/参数）变了的时候才重启实例 —— 换个二进制它是不管的。于是只把包脚本里那次重启
+    删掉的话，升级完老实例还挂在已经删掉的旧程序上跑（`/proc/<pid>/exe` 会显示 `.… (deleted)`），
+    新版本等于没生效，直到有人手动重启。
+    所以由 init 脚本自己认这件事：`running_old_binary` 检查有没有实例的 exe 带 "(deleted)"
+    标记，有就先停一次（归档日志、等实例登出）再起新的，整个升级仍然只有一次重启。
+    opkg 那边 `prerm` 已经把实例停干净，这个检查检测不到东西，是空操作。
+  - **apk 的 `pre-deinstall` / `post-deinstall` 只在真卸载时跑**（升级不跑），所以升级不会
+    执行 `postrm` 里那段清理，`/etc/config/esurfingclient` 与自启软链接都原样保留
+    （`PKG_UPGRADE` 那道保险只需要对付 opkg）。
 - **`luci-app` 的 `/tmp/luci-staging` 中转是故意的**：postinst 在目标机上探测属于哪一代 LuCI，
   再决定装 JS 那套还是 Lua/HTM 那套，别"顺手清理"。
 - **portal 的网页资源**：`app/portal` 里是源（`index.html` 引用 CDN、`input.css` 是 Tailwind

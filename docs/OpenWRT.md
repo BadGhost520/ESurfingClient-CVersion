@@ -130,7 +130,8 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 > 程序在 OpenWrt 上把日志写在配置里 `log_dir` 指定的目录【下面的 logs 里】, 不写时是默认的
 > `/var/log/esurfing/logs`
 > 
-> 每次启动服务时, 上一轮的 run.log 会被归档成 `<时间戳>.log` 放在同一个目录里
+> 每次停止/重启服务时, 这一轮的 run.log 会被归档成 `<时间戳>.log` 放在同一个目录里
+> (停止时先等认证进程退出再改名, 所以归档里是完整的一轮日志)
 > 
 > 所以那个目录下的文件会随着重启变多, 这是正常的, LuCI 的日志页面可以切换查看
 

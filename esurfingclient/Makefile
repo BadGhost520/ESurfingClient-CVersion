@@ -55,12 +55,10 @@ if [ -f "/etc/config/esurfingclient.apk-new" ]; then
 	echo "-> /etc/config/esurfingclient.apk-new"
 fi
 
-if [ -f "/etc/config/esurfingclient.opkg" ]; then
+if [ -f "/etc/config/esurfingclient-opkg" ]; then
 	echo "有新的模板文件, 可查看是否有更新"
-	echo "-> /etc/config/esurfingclient.opkg"
+	echo "-> /etc/config/esurfingclient-opkg"
 fi
-
-[ "$$PKG_UPGRADE" = "1" ] && /etc/init.d/esurfingclient restart
 
 exit 0
 endef

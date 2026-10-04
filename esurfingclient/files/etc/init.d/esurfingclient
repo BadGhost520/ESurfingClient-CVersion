@@ -53,6 +53,13 @@ boot() {
 }
 
 start_service() {
+  # 在跑的老实例可能还挂在被包管理器换掉的旧程序上, 先停一次再起新的
+  # (细节与 apk/opkg 的差别见下面的 running_old_binary)
+  if running_old_binary; then
+      echo "esurfingclient: 实例还在跑被换掉的旧程序, 先停一次"
+      ( "${initscript:-/etc/init.d/esurfingclient}" stop )
+  fi
+
   if ! wait_network; then
       echo "esurfingclient: 等待网络服务超时"
       return 1
@@ -75,6 +82,8 @@ start_service() {
       procd_open_instance "account${idx}"
       procd_set_param command $PROG --role auth --account $idx
       procd_set_param respawn 60 5 5
+      # 收尾时要发登出请求, procd 默认只等 5 秒就 SIGKILL, 被砍掉的话账号会挂在服务端在线
+      procd_set_param term_timeout 15
       procd_set_param stdout 1
       procd_set_param stderr 1
       procd_close_instance
@@ -85,6 +94,8 @@ start_service() {
   echo "esurfingclient: 已启动 ${count} 个认证进程实例: ${flat}"
 }
 
+# 列出正在跑的认证实例 pid (停止时等它们退出用; 按 argv[0] 认, 绝对路径与光名字
+# 两种写法都认, 免得手工启动的实例被漏掉)
 auth_pids() {
   local p cmd base
   base="${PROG##*/}"
@@ -97,17 +108,43 @@ auth_pids() {
   done
 }
 
-stop_service() {
-  local pids i=0
-  pids="$(auth_pids)"
-  [ -n "$pids" ] && kill $pids 2>/dev/null
+# 实例是不是还挂在被换掉的旧程序上
+#
+# 包管理器升级是"换文件": 老进程手里的 /proc/<pid>/exe 会变成 "<路径> (deleted)"。
+# 为什么非自己管这件事不可:
+# - apk (25.12 起) 升级只跑 post-upgrade 钩子, 不会先停服务, 而 procd 只在实例定义
+#   (命令行/参数) 变了的时候才重启实例 —— 换个二进制它是不管的, 新版本于是"装上了没生效",
+#   老实例会一直跑着已经删掉的旧程序, 直到有人手动重启
+# - opkg (24.10 及更早) 升级时 prerm 已经把实例停干净了, 这里根本检测不到旧实例, 是空操作
+# 检测到就由 start_service 自己先停一次 (整个升级里唯一的一次重启)
+running_old_binary() {
+  local p exe
+  for p in $(auth_pids); do
+      exe="$(readlink "/proc/$p/exe" 2>/dev/null)"
+      case "$exe" in
+          *"(deleted)") return 0 ;;
+      esac
+  done
+  return 1
+}
 
+# 实例被 procd 回收之后 rc.common 才会调到这里 (stop_service 之后才轮到 procd_kill),
+# 所以停止与归档都放在这里: 等实例真的退出, 再把这一轮的 run.log 归档成 <时间戳>.log
+#
+# 不像以前那样在 stop_service 里自己 kill: procd 分得清"服务被停"和"实例自己没了",
+# 脚本抢先把实例杀掉, procd 会当成实例意外退出、按 respawn 的延时把它再拉起来
+# (拉不拉得起来取决于紧接着的 procd_kill 有没有赶在 5 秒内把服务删掉, 也就是实例退得快不快
+#  —— "有时候会多重启一次"就是这么来的); 交给 procd_kill 停, 它会把实例标记成正在停止,
+# 与退出快慢无关
+service_stopped() {
+  local i=0
   while [ $i -lt 15 ]; do
       [ -n "$(auth_pids)" ] || break
       sleep 1
       i=$((i + 1))
   done
 
+  # 没等到实例退出就先不归档: 留给下次停止再说, 总比给一个还在写的文件改名强
   [ -n "$(auth_pids)" ] || archive_previous_log
 }
 
