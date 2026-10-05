@@ -6,7 +6,7 @@
 ### 我还是比较建议使用已有的 github action 来编译的
 
 > [!WARNING]
-> 必须要使用 `build-all-platforms.yml` 去选择对应架构去编译
+> 必须要使用 `0-build-manager.yml` 去选择对应架构去编译
 > 
 > 否则会出现不可预测的错误
 

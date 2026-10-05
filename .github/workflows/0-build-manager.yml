@@ -40,8 +40,6 @@ on:
           - android-arm64-v8a
           - android-armeabi-v7a
           - android-x86_64
-          - openwrt-luci-ipk
-          - openwrt-luci-apk
           - openwrt-aarch64_cortex-a53-ipk
           - openwrt-aarch64_cortex-a53-apk
           - openwrt-aarch64_cortex-a72-ipk
@@ -112,6 +110,8 @@ on:
           - openwrt-riscv64_generic-apk
           - openwrt-x86_64-ipk
           - openwrt-x86_64-apk
+          - openwrt-luci-ipk
+          - openwrt-luci-apk
 
 jobs:
   get-version:
@@ -140,8 +140,130 @@ jobs:
         id: version
         run: |
           bash scripts/sync-version.sh --print >> "$GITHUB_OUTPUT"
-          
 
+      - name: 生成 Windows 桌面端编译动态矩阵
+        id: windows_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86"},
+            {"architecture":"x86_64"},
+            {"architecture":"aarch64"}
+          ]'
+
+          case "$INPUT" in
+            all|windows)
+              RESULT="$ALL"
+              ;;
+            windows-*)
+              ARCH="${INPUT#windows-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "windows_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Windows 矩阵: $RESULT"
+
+      - name: 生成 Linux 桌面端编译动态矩阵
+        id: linux_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86_64"},
+            {"architecture":"aarch64"},
+            {"architecture":"armv7"},
+            {"architecture":"loongarch64"}
+          ]'
+
+          case "$INPUT" in
+            all|linux)
+              RESULT="$ALL"
+              ;;
+            linux-*)
+              ARCH="${INPUT#linux-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "linux_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Linux 矩阵: $RESULT"
+
+      - name: 生成 MacOS 编译动态矩阵
+        id: macos_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86_64", "tail_wind_labs_architecture":"x64",   "runs_on":"15-intel"},
+            {"architecture":"aarch64","tail_wind_labs_architecture":"arm64", "runs_on":"latest"}
+          ]'
+
+          case "$INPUT" in
+            all|macos)
+              RESULT="$ALL"
+              ;;
+            macos-*)
+              ARCH="${INPUT#macos-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "macos_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "MacOS 矩阵: $RESULT"
+
+      - name: 生成 Android 编译动态矩阵
+        id: android_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"abi":"arm64-v8a"},
+            {"abi":"armeabi-v7a"},
+            {"abi":"x86_64"}
+          ]'
+
+          case "$INPUT" in
+            all|android)
+              RESULT="$ALL"
+              ;;
+            android-*)
+              ABI="${INPUT#android-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ABI" '[.[] | select(.abi == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "android_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Android 矩阵: $RESULT"
 
       - name: 生成 OpenWRT 主程序插件包编译动态矩阵
         id: matrix
@@ -244,130 +366,6 @@ jobs:
           echo "luci_matrix=$RESULT" >> "$GITHUB_OUTPUT"
           echo "LuCI 矩阵: $RESULT"
 
-      - name: 生成 Android 编译动态矩阵
-        id: android_matrix
-        shell: bash
-        env:
-          INPUT: ${{ github.event.inputs.platforms }}
-        run: |
-          set -euo pipefail
-
-          ALL='[
-            {"abi":"arm64-v8a"},
-            {"abi":"armeabi-v7a"},
-            {"abi":"x86_64"}
-          ]'
-
-          case "$INPUT" in
-            all|android)
-              RESULT="$ALL"
-              ;;
-            android-*)
-              ABI="${INPUT#android-}"
-              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ABI" '[.[] | select(.abi == $a)]')
-              ;;
-            *)
-              RESULT="[]"
-              ;;
-          esac
-
-          RESULT=$(printf '%s' "$RESULT" | jq -c .)
-          echo "android_matrix=$RESULT" >> "$GITHUB_OUTPUT"
-          echo "Android 矩阵: $RESULT"
-
-      - name: 生成 MacOS 编译动态矩阵
-        id: macos_matrix
-        shell: bash
-        env:
-          INPUT: ${{ github.event.inputs.platforms }}
-        run: |
-          set -euo pipefail
-
-          ALL='[
-            {"architecture":"x86_64", "tail_wind_labs_architecture":"x64",   "runs_on":"15-intel"},
-            {"architecture":"aarch64","tail_wind_labs_architecture":"arm64", "runs_on":"latest"}
-          ]'
-
-          case "$INPUT" in
-            all|macos)
-              RESULT="$ALL"
-              ;;
-            macos-*)
-              ARCH="${INPUT#macos-}"
-              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
-              ;;
-            *)
-              RESULT="[]"
-              ;;
-          esac
-
-          RESULT=$(printf '%s' "$RESULT" | jq -c .)
-          echo "macos_matrix=$RESULT" >> "$GITHUB_OUTPUT"
-          echo "MacOS 矩阵: $RESULT"
-
-      - name: 生成 Windows 桌面端编译动态矩阵
-        id: windows_matrix
-        shell: bash
-        env:
-          INPUT: ${{ github.event.inputs.platforms }}
-        run: |
-          set -euo pipefail
-
-          ALL='[
-            {"architecture":"x86"},
-            {"architecture":"x86_64"},
-            {"architecture":"aarch64"}
-          ]'
-
-          case "$INPUT" in
-            all|windows)
-              RESULT="$ALL"
-              ;;
-            windows-*)
-              ARCH="${INPUT#windows-}"
-              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
-              ;;
-            *)
-              RESULT="[]"
-              ;;
-          esac
-
-          RESULT=$(printf '%s' "$RESULT" | jq -c .)
-          echo "windows_matrix=$RESULT" >> "$GITHUB_OUTPUT"
-          echo "Windows 矩阵: $RESULT"
-
-      - name: 生成 Linux 桌面端编译动态矩阵
-        id: linux_matrix
-        shell: bash
-        env:
-          INPUT: ${{ github.event.inputs.platforms }}
-        run: |
-          set -euo pipefail
-
-          ALL='[
-            {"architecture":"x86_64"},
-            {"architecture":"aarch64"},
-            {"architecture":"armv7"},
-            {"architecture":"loongarch64"}
-          ]'
-
-          case "$INPUT" in
-            all|linux)
-              RESULT="$ALL"
-              ;;
-            linux-*)
-              ARCH="${INPUT#linux-}"
-              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
-              ;;
-            *)
-              RESULT="[]"
-              ;;
-          esac
-
-          RESULT=$(printf '%s' "$RESULT" | jq -c .)
-          echo "linux_matrix=$RESULT" >> "$GITHUB_OUTPUT"
-          echo "Linux 矩阵: $RESULT"
-
   # Windows
   windows:
     if: needs.get-version.outputs.windows_matrix != '[]'
@@ -375,7 +373,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.get-version.outputs.windows_matrix) }}
-    uses: ./.github/workflows/build-desktop-windows.yml
+    uses: ./.github/workflows/1-build-windows-all.yml
     secrets: inherit
     needs: get-version
     with:
@@ -392,7 +390,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.get-version.outputs.linux_matrix) }}
-    uses: ./.github/workflows/build-desktop-linux.yml
+    uses: ./.github/workflows/2-build-linux-all.yml
     secrets: inherit
     needs: get-version
     with:
@@ -408,7 +406,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.get-version.outputs.macos_matrix) }}
-    uses: ./.github/workflows/build-macos-all.yml
+    uses: ./.github/workflows/3-build-macos-all.yml
     secrets: inherit
     needs: get-version
     with:
@@ -426,7 +424,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.get-version.outputs.android_matrix) }}
-    uses: ./.github/workflows/build-android-all.yml
+    uses: ./.github/workflows/4-build-android-all.yml
     secrets: inherit
     needs: get-version
     with:
@@ -435,23 +433,6 @@ jobs:
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
       abi:                    ${{ matrix.abi }}
 
-  # OpenWRT LuCI
-  openwrt-luci:
-    if: needs.get-version.outputs.luci_matrix != '[]'
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(needs.get-version.outputs.luci_matrix) }}
-    uses: ./.github/workflows/build-openwrt-luci-packages.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      version:      ${{ needs.get-version.outputs.version }}
-      release:      ${{ needs.get-version.outputs.release }}
-      sdk_version:  ${{ matrix.sdk_version }}
-      target:       ${{ matrix.target }}
-      package_type: ${{ matrix.package_type }}
-
   # OpenWRT IPK
   openwrt-packages-ipk:
     if: needs.get-version.outputs.ipk_matrix != '[]'
@@ -459,7 +440,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.get-version.outputs.ipk_matrix) }}
-    uses: ./.github/workflows/build-openwrt-packages.yml
+    uses: ./.github/workflows/5-build-openwrt-packages-all.yml
     secrets: inherit
     needs: get-version
     with:
@@ -477,7 +458,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.get-version.outputs.apk_matrix) }}
-    uses: ./.github/workflows/build-openwrt-packages.yml
+    uses: ./.github/workflows/5-build-openwrt-packages-all.yml
     secrets: inherit
     needs: get-version
     with:
@@ -488,15 +469,32 @@ jobs:
       architecture: ${{ matrix.architecture }}
       package_type: "apk"
 
+  # OpenWRT LuCI
+  openwrt-luci:
+    if: needs.get-version.outputs.luci_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.luci_matrix) }}
+    uses: ./.github/workflows/6-build-openwrt-luci-packages-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version:      ${{ needs.get-version.outputs.version }}
+      release:      ${{ needs.get-version.outputs.release }}
+      sdk_version:  ${{ matrix.sdk_version }}
+      target:       ${{ matrix.target }}
+      package_type: ${{ matrix.package_type }}
+
   release:
     needs:
       - windows
       - linux
       - macos
       - android
-      - openwrt-luci
       - openwrt-packages-ipk
       - openwrt-packages-apk
+      - openwrt-luci
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: always() && !cancelled()
