@@ -6,6 +6,7 @@ permissions:
 
 env:
   CURL_VERSION: "8.20.0"
+  LLVM_MINGW_VERSION: "20260922"
   OPENWRT_IPK_SDK_VERSION: "24.10.8"
   OPENWRT_APK_SDK_VERSION: "25.12.5"
   TAIL_WIND_LABS_VERSION: "v4.3.0"
@@ -20,10 +21,14 @@ on:
         default: 'all'
         options:
           - all
+          - windows
+          - windows-x86
           - windows-x86_64
+          - windows-aarch64
           - linux
           - linux-x86_64
           - linux-aarch64
+          - linux-armv7
           - linux-loongarch64
           - macos-x86_64
           - macos-aarch64
@@ -112,6 +117,7 @@ jobs:
       release: ${{ steps.version.outputs.release }}
       full_version: ${{ steps.version.outputs.full_version }}
       curl_version: ${{ env.CURL_VERSION }}
+      llvm_mingw_version: ${{ env.LLVM_MINGW_VERSION }}
       openwrt_ipk_sdk_version: ${{ env.OPENWRT_IPK_SDK_VERSION }}
       openwrt_apk_sdk_version: ${{ env.OPENWRT_APK_SDK_VERSION }}
       tail_wind_labs_version: ${{ env.TAIL_WIND_LABS_VERSION }}
@@ -120,6 +126,7 @@ jobs:
       luci_matrix: ${{ steps.luci_matrix.outputs.luci_matrix }}
       android_matrix: ${{ steps.android_matrix.outputs.android_matrix }}
       macos_matrix: ${{ steps.macos_matrix.outputs.macos_matrix }}
+      windows_matrix: ${{ steps.windows_matrix.outputs.windows_matrix }}
       linux_matrix: ${{ steps.linux_matrix.outputs.linux_matrix }}
     steps:
       - uses: actions/checkout@v7
@@ -293,6 +300,37 @@ jobs:
           echo "macos_matrix=$RESULT" >> "$GITHUB_OUTPUT"
           echo "MacOS 矩阵: $RESULT"
 
+      - name: 生成 Windows 桌面端编译动态矩阵
+        id: windows_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86"},
+            {"architecture":"x86_64"},
+            {"architecture":"aarch64"}
+          ]'
+
+          case "$INPUT" in
+            all|windows)
+              RESULT="$ALL"
+              ;;
+            windows-*)
+              ARCH="${INPUT#windows-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "windows_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Windows 矩阵: $RESULT"
+
       - name: 生成 Linux 桌面端编译动态矩阵
         id: linux_matrix
         shell: bash
@@ -304,6 +342,7 @@ jobs:
           ALL='[
             {"architecture":"x86_64"},
             {"architecture":"aarch64"},
+            {"architecture":"armv7"},
             {"architecture":"loongarch64"}
           ]'
 
@@ -325,15 +364,21 @@ jobs:
           echo "Linux 矩阵: $RESULT"
 
   # Windows
-  windows-x86_64:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
-    uses: ./.github/workflows/build-desktop-x86_64-windows.yml
+  windows:
+    if: needs.get-version.outputs.windows_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.windows_matrix) }}
+    uses: ./.github/workflows/build-desktop-windows.yml
     secrets: inherit
     needs: get-version
     with:
-      full_version: ${{ needs.get-version.outputs.full_version }}
-      curl_version: ${{ needs.get-version.outputs.curl_version }}
+      full_version:           ${{ needs.get-version.outputs.full_version }}
+      curl_version:           ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      llvm_mingw_version:     ${{ needs.get-version.outputs.llvm_mingw_version }}
+      architecture:           ${{ matrix.architecture }}
 
   # Linux
   linux:
@@ -440,7 +485,7 @@ jobs:
 
   release:
     needs:
-      - windows-x86_64
+      - windows
       - linux
       - macos
       - android

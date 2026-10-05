@@ -39,7 +39,7 @@ luci-app-esurfingclient/     OpenWrt 包②: LuCI 页面 (同样自包含)
 
 ci/                          构建输入, 不是文档内容
 ├── openwrt/all.config       打包用的 defconfig 片段
-└── toolchains/mingw64.cmake Windows 交叉编译工具链
+└── toolchains/mingw.cmake   Windows 交叉编译工具链
 scripts/                     构建脚本 (CI 与本地共用)
 ├── build-portal.sh          网页资源构建 (下载 + tailwind + CDN 本地化)
 └── sync-version.sh          版本号分发 (从 CMakeLists 到各包与页面)
@@ -82,9 +82,20 @@ sudo apt install -y cmake \
 ### 2. 直接使用仓库里的工具链文件
 
 ```shell
-# 工具链文件在 ci/toolchains/mingw64.cmake, 不用再手抄一份到 app/ 下面
-cat /path/to/ci/toolchains/mingw64.cmake
+# 工具链文件在 ci/toolchains/mingw.cmake, 不用再手抄一份到 app/ 下面
+cat /path/to/ci/toolchains/mingw.cmake
 ```
+
+可覆盖的变量都有默认值, 默认即 x86_64 + GCC, 也就是上面这套流程:
+
+```shell
+-DMINGW_ARCH=x86_64                 # 写入 CMAKE_SYSTEM_PROCESSOR
+-DMINGW_TRIPLE=x86_64-w64-mingw32   # 目标三元组
+-DMINGW_PREFIX=/usr/<三元组>         # libcurl 静态库的安装前缀
+-DMINGW_CC=gcc                      # gcc 或 clang (CI 用 clang, 即 llvm-mingw)
+```
+
+换架构或换编译器时, libcurl 必须用同一套工具链重新编译, 否则链接会失败或运行时出错。
 
 ### 3. 使用指定配置编译安装 libcurl 
 
@@ -167,7 +178,7 @@ cmake \
     -G Ninja \
     -B build \
     -S . \
-    -DCMAKE_TOOLCHAIN_FILE=../../ci/toolchains/mingw64.cmake \
+    -DCMAKE_TOOLCHAIN_FILE=../../ci/toolchains/mingw.cmake \
     -DBUILD_SHARED_LIBS=OFF
 
 cmake --build build --target ESurfingClient -j$(nproc)

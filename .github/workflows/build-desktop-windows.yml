@@ -1,4 +1,4 @@
-name: Build Desktop Linux Binary
+name: Build Desktop Windows Binary
 
 permissions:
   contents: write
@@ -15,6 +15,9 @@ on:
         required: true
         type: string
       tail_wind_labs_version:
+        required: true
+        type: string
+      llvm_mingw_version:
         required: true
         type: string
       architecture:
@@ -39,21 +42,17 @@ jobs:
           set -euo pipefail
 
           case "$ARCH" in
+            x86)
+              TRIPLE="i686-w64-mingw32"
+              PE_MACHINE="014c"
+              ;;
             x86_64)
-              TRIPLE=""
-              READELF_MACHINE="X86-64"
+              TRIPLE="x86_64-w64-mingw32"
+              PE_MACHINE="8664"
               ;;
             aarch64)
-              TRIPLE="aarch64-linux-gnu"
-              READELF_MACHINE="AArch64"
-              ;;
-            armv7)
-              TRIPLE="arm-linux-gnueabihf"
-              READELF_MACHINE="ARM"
-              ;;
-            loongarch64)
-              TRIPLE="loongarch64-linux-gnu"
-              READELF_MACHINE="LoongArch"
+              TRIPLE="aarch64-w64-mingw32"
+              PE_MACHINE="aa64"
               ;;
             *)
               echo "::error::不支持的架构: $ARCH"
@@ -61,41 +60,22 @@ jobs:
               ;;
           esac
 
-          if [ -z "$TRIPLE" ]; then
-            CURL_PREFIX="/usr/local"
-            TOOLCHAIN=""
-            EXTRA_PACKAGES=""
-          else
-            CURL_PREFIX="/usr/${TRIPLE}"
-            TOOLCHAIN="../../ci/toolchains/${ARCH}.cmake"
-            EXTRA_PACKAGES="gcc-${TRIPLE} g++-${TRIPLE} binutils-${TRIPLE}"
-
-            if [ ! -f "ci/toolchains/${ARCH}.cmake" ]; then
-              echo "::error::缺少 toolchain 文件: ci/toolchains/${ARCH}.cmake"
-              exit 1
-            fi
-          fi
-
           echo "triple=$TRIPLE" >> "$GITHUB_OUTPUT"
-          echo "curl_prefix=$CURL_PREFIX" >> "$GITHUB_OUTPUT"
-          echo "toolchain=$TOOLCHAIN" >> "$GITHUB_OUTPUT"
-          echo "extra_packages=$EXTRA_PACKAGES" >> "$GITHUB_OUTPUT"
-          echo "readelf_machine=$READELF_MACHINE" >> "$GITHUB_OUTPUT"
+          echo "pe_machine=$PE_MACHINE" >> "$GITHUB_OUTPUT"
+          echo "curl_prefix=/opt/sysroot/$TRIPLE" >> "$GITHUB_OUTPUT"
 
           {
             echo "cache_paths<<EOF"
-            echo "${CURL_PREFIX}/lib/libcurl.a"
-            echo "${CURL_PREFIX}/include/curl"
+            echo "/opt/sysroot/$TRIPLE/lib/libcurl.a"
+            echo "/opt/sysroot/$TRIPLE/include/curl"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-          echo "架构: $ARCH | 三元组: ${TRIPLE:-native} | libcurl 前缀: $CURL_PREFIX"
+          echo "架构: $ARCH | 三元组: $TRIPLE | PE Machine: 0x$PE_MACHINE"
 
       - name: 安装软件包 (最多重试 3 次)
-        env:
-          EXTRA_PACKAGES: ${{ steps.params.outputs.extra_packages }}
         run: |
-          PACKAGES="build-essential cmake wget make upx-ucl binutils file $EXTRA_PACKAGES"
+          PACKAGES="build-essential cmake ninja-build wget make xz-utils upx-ucl file zip perl libperl-dev"
 
           ok=0
           for i in 1 2 3; do
@@ -114,12 +94,45 @@ jobs:
             exit 1
           fi
 
+      - name: 获取 llvm-mingw 缓存
+        id: cache-llvm-mingw
+        uses: actions/cache@v6
+        with:
+          path: /opt/llvm-mingw
+          key: llvm-mingw-${{ inputs.llvm_mingw_version }}-msvcrt-ubuntu-22.04-x86_64
+
+      - name: 下载 llvm-mingw
+        if: steps.cache-llvm-mingw.outputs.cache-hit != 'true'
+        env:
+          LLVM_MINGW_VERSION: ${{ inputs.llvm_mingw_version }}
+        run: |
+          ASSET="llvm-mingw-${LLVM_MINGW_VERSION}-msvcrt-ubuntu-22.04-x86_64"
+
+          wget "https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/${ASSET}.tar.xz"
+          tar -xf "${ASSET}.tar.xz"
+          rm -f "${ASSET}.tar.xz"
+
+          mkdir -p /opt
+          rm -rf /opt/llvm-mingw
+          mv "$ASSET" /opt/llvm-mingw
+
+      - name: 配置 llvm-mingw 环境变量
+        run: echo "/opt/llvm-mingw/bin" >> "$GITHUB_PATH"
+
+      - name: 检查工具链
+        env:
+          TRIPLE: ${{ steps.params.outputs.triple }}
+        run: |
+          cat ci/toolchains/mingw.cmake
+          "$TRIPLE-clang" --version
+          "$TRIPLE-objdump" --version
+
       - name: 获取 libcurl 缓存
         id: cache-curl
         uses: actions/cache@v6
         with:
           path: ${{ steps.params.outputs.cache_paths }}
-          key: curl-${{ inputs.curl_version }}-linux-${{ inputs.architecture }}
+          key: curl-${{ inputs.curl_version }}-${{ steps.params.outputs.triple }}
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
@@ -127,17 +140,19 @@ jobs:
           TRIPLE: ${{ steps.params.outputs.triple }}
           CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
         run: |
+          cd /tmp
           wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
           tar -xzf curl-${{ inputs.curl_version }}.tar.gz
           cd curl-${{ inputs.curl_version }}
 
-          if [ -n "$TRIPLE" ]; then
-            HOST_ARG="--host=$TRIPLE"
-          else
-            HOST_ARG=""
-          fi
+          export CC="$TRIPLE-clang"
+          export CXX="$TRIPLE-clang++"
+          export AR="$TRIPLE-ar"
+          export RANLIB="$TRIPLE-ranlib"
+          export STRIP="$TRIPLE-strip"
 
-          ./configure $HOST_ARG --prefix="$CURL_PREFIX" \
+          ./configure --host="$TRIPLE" \
+            --prefix="$CURL_PREFIX" \
             --enable-static \
             --disable-shared \
             --without-ssl \
@@ -188,11 +203,11 @@ jobs:
             --disable-rt \
             --disable-threaded-resolver \
             --disable-ipv6 \
-            --disable-unix-sockets \
             --disable-manual \
             --disable-docs \
             --disable-verbose \
-            --disable-versioned-symbols
+            --disable-versioned-symbols \
+            --disable-sspi
 
           make -j$(nproc)
           make install
@@ -200,44 +215,44 @@ jobs:
       - name: 构建 ESurfingClient 程序
         env:
           ARCH: ${{ inputs.architecture }}
-          TOOLCHAIN: ${{ steps.params.outputs.toolchain }}
+          TRIPLE: ${{ steps.params.outputs.triple }}
+          PE_MACHINE: ${{ steps.params.outputs.pe_machine }}
           CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
-          EXPECTED_MACHINE: ${{ steps.params.outputs.readelf_machine }}
         run: |
-          BIN="ESurfingClient-${{ inputs.full_version }}-linux-${ARCH}"
-
-          if [ -n "$TOOLCHAIN" ]; then
-            TOOLCHAIN_ARGS="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
-            PREFIX_ARGS=""
-          else
-            TOOLCHAIN_ARGS=""
-            PREFIX_ARGS="-DCMAKE_PREFIX_PATH=$CURL_PREFIX"
-          fi
+          BIN="ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe"
 
           cd esurfingclient/app
 
-          cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
+          cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=../../ci/toolchains/mingw.cmake \
+            -DMINGW_ARCH="$ARCH" \
+            -DMINGW_TRIPLE="$TRIPLE" \
+            -DMINGW_PREFIX="$CURL_PREFIX" \
+            -DMINGW_CC=clang \
             -DBUILD_SHARED_LIBS=OFF \
-            $TOOLCHAIN_ARGS \
-            $PREFIX_ARGS \
             -B build \
             -S .
 
           cmake --build build -j$(nproc)
 
-          cp build/ESurfingClient "../../$BIN"
+          cp build/ESurfingClient.exe "../../$BIN"
 
           cd ../..
 
           file "$BIN"
-          readelf -h "$BIN" | grep -E 'Class|Machine|Type' || true
 
-          if ! readelf -h "$BIN" | grep -qF "$EXPECTED_MACHINE"; then
-            echo "::error::架构不符: 期望 readelf Machine 含 '$EXPECTED_MACHINE', 实际如上"
+          pe_off=$(od -An -tu4 -j 60 -N 4 "$BIN" | tr -d ' ')
+          machine=$(od -An -tx2 -j $((pe_off + 4)) -N 2 "$BIN" | tr -d ' ')
+          echo "PE Machine: 0x$machine"
+
+          if [ "$machine" != "$PE_MACHINE" ]; then
+            echo "::error::架构不符: 期望 PE Machine 0x$PE_MACHINE, 实际 0x$machine"
             exit 1
           fi
-          echo "架构校验通过: $EXPECTED_MACHINE"
+          echo "架构校验通过: 0x$machine"
+
+          "$TRIPLE-objdump" -p "$BIN" | grep "DLL Name" | head -20 || true
 
           upx --best --lzma "$BIN" || echo "::warning::upx 压缩跳过 (该架构可能不被支持)"
 
@@ -245,16 +260,29 @@ jobs:
 
       - name: 验证
         env:
-          BIN: ESurfingClient-${{ inputs.full_version }}-linux-${{ inputs.architecture }}
+          ARCH: ${{ inputs.architecture }}
+          TRIPLE: ${{ steps.params.outputs.triple }}
         run: |
+          BIN="ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe"
+
           if [ ! -f "$BIN" ]; then
             echo "::error::未找到二进制文件 $BIN"
             exit 1
           fi
 
           echo "构建成功"
-          echo "文件大小: $(du -h "$BIN" | cut -f1)"
-          file "$BIN"
+          echo "文件大小: $(stat -c%s "$BIN") bytes"
+
+          deps=$("$TRIPLE-objdump" -p "$BIN" | grep "DLL Name" || true)
+          echo "$deps" | head -20
+
+          if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
+            echo "::error::链接了第三方动态库"
+            echo "$deps" | grep -E "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
+            exit 1
+          fi
+
+          echo "完全静态: 没有链接第三方动态库"
 
       - name: 获取 web 处理缓存
         id: cache-web
@@ -277,18 +305,18 @@ jobs:
         run: |
           cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
-      - name: 打包成 tar.gz 压缩包
+      - name: 打包成 zip 压缩包
         env:
           ARCH: ${{ inputs.architecture }}
         run: |
-          tar -czf "esurfingclient-${{ inputs.full_version }}-linux-${ARCH}.tar.gz" \
-            "ESurfingClient-${{ inputs.full_version }}-linux-${ARCH}" \
+          zip -r "esurfingclient-${{ inputs.full_version }}-windows-${ARCH}.zip" \
+            "ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe" \
             ESurfingClient.json \
             portal/
 
-      - name: Upload build artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: esurfingclient-${{ inputs.full_version }}-linux-${{ inputs.architecture }}
-          path: esurfingclient-${{ inputs.full_version }}-linux-${{ inputs.architecture }}.tar.gz
+          name: esurfingclient-${{ inputs.full_version }}-windows-${{ inputs.architecture }}
+          path: esurfingclient-${{ inputs.full_version }}-windows-${{ inputs.architecture }}.zip
           retention-days: 30
