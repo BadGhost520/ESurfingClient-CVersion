@@ -21,7 +21,9 @@ on:
         options:
           - all
           - windows-x86_64
+          - linux
           - linux-x86_64
+          - linux-aarch64
           - linux-loongarch64
           - macos-x86_64
           - macos-aarch64
@@ -118,6 +120,7 @@ jobs:
       luci_matrix: ${{ steps.luci_matrix.outputs.luci_matrix }}
       android_matrix: ${{ steps.android_matrix.outputs.android_matrix }}
       macos_matrix: ${{ steps.macos_matrix.outputs.macos_matrix }}
+      linux_matrix: ${{ steps.linux_matrix.outputs.linux_matrix }}
     steps:
       - uses: actions/checkout@v7
 
@@ -290,6 +293,37 @@ jobs:
           echo "macos_matrix=$RESULT" >> "$GITHUB_OUTPUT"
           echo "MacOS 矩阵: $RESULT"
 
+      - name: 生成 Linux 桌面端编译动态矩阵
+        id: linux_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86_64"},
+            {"architecture":"aarch64"},
+            {"architecture":"loongarch64"}
+          ]'
+
+          case "$INPUT" in
+            all|linux)
+              RESULT="$ALL"
+              ;;
+            linux-*)
+              ARCH="${INPUT#linux-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "linux_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Linux 矩阵: $RESULT"
+
   # 桌面端
   windows-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
@@ -301,25 +335,23 @@ jobs:
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
-  linux-x86_64:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-x86_64'
-    uses: ./.github/workflows/build-desktop-x86_64-linux.yml
+  # 桌面端 Linux: x86_64 / aarch64 / loongarch64 共用一个工作流, 由矩阵分发
+  # job 级 if 取不到 matrix 上下文, 所以平台筛选在 get-version 里就做完了,
+  # 这里只判矩阵是否为空 (与 macos / android / openwrt 同一套写法)
+  linux:
+    if: needs.get-version.outputs.linux_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.linux_matrix) }}
+    uses: ./.github/workflows/build-desktop-linux.yml
     secrets: inherit
     needs: get-version
     with:
-      full_version: ${{ needs.get-version.outputs.full_version }}
-      curl_version: ${{ needs.get-version.outputs.curl_version }}
+      full_version:           ${{ needs.get-version.outputs.full_version }}
+      curl_version:           ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
-
-  linux-loongarch64:
-    if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'linux-loongarch64'
-    uses: ./.github/workflows/build-desktop-loongarch64-linux.yml
-    secrets: inherit
-    needs: get-version
-    with:
-      full_version: ${{ needs.get-version.outputs.full_version }}
-      curl_version: ${{ needs.get-version.outputs.curl_version }}
-      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      architecture:           ${{ matrix.architecture }}
 
   macos:
     if: needs.get-version.outputs.macos_matrix != '[]'
@@ -410,8 +442,7 @@ jobs:
   release:
     needs:
       - windows-x86_64
-      - linux-x86_64
-      - linux-loongarch64
+      - linux
       - macos
       - android
       - openwrt-luci

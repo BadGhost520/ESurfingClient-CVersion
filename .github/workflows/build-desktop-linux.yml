@@ -1,0 +1,327 @@
+name: Build Desktop Linux Binary
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: '目标架构'
+        type: choice
+        required: true
+        default: x86_64
+        options:
+          - x86_64
+          - aarch64
+          - loongarch64
+      full_version:
+        description: '完整版本号 (如 2.1.5-r5)'
+        type: string
+        required: true
+        default: '0.0.0-r0'
+      curl_version:
+        description: 'libcurl 版本'
+        type: string
+        required: true
+        default: '8.20.0'
+      tail_wind_labs_version:
+        description: 'tailwindcss 版本'
+        type: string
+        required: true
+        default: 'v4.3.0'
+
+  workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
+      curl_version:
+        required: true
+        type: string
+      tail_wind_labs_version:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # 三个架构只差几个派生量 (三元组 / libcurl 前缀 / toolchain 文件 / 额外包),
+      # 集中在这里推导一次, 后面各步骤直接用, 免得工作流里到处写 if
+      - name: 解析架构参数
+        id: params
+        shell: bash
+        env:
+          ARCH: ${{ inputs.architecture }}
+        run: |
+          set -euo pipefail
+
+          case "$ARCH" in
+            x86_64)
+              TRIPLE=""
+              READELF_MACHINE="X86-64"
+              ;;
+            aarch64)
+              TRIPLE="aarch64-linux-gnu"
+              READELF_MACHINE="AArch64"
+              ;;
+            loongarch64)
+              TRIPLE="loongarch64-linux-gnu"
+              READELF_MACHINE="LoongArch"
+              ;;
+            *)
+              echo "::error::不支持的架构: $ARCH"
+              exit 1
+              ;;
+          esac
+
+          if [ -z "$TRIPLE" ]; then
+            # 原生编译: 不设交叉前缀, libcurl 装在 /usr/local
+            CURL_PREFIX="/usr/local"
+            TOOLCHAIN=""
+            EXTRA_PACKAGES=""
+          else
+            CURL_PREFIX="/usr/${TRIPLE}"
+            TOOLCHAIN="../../ci/toolchains/${ARCH}.cmake"
+            EXTRA_PACKAGES="gcc-${TRIPLE} g++-${TRIPLE} binutils-${TRIPLE}"
+
+            if [ ! -f "ci/toolchains/${ARCH}.cmake" ]; then
+              echo "::error::缺少 toolchain 文件: ci/toolchains/${ARCH}.cmake"
+              exit 1
+            fi
+          fi
+
+          echo "triple=$TRIPLE" >> "$GITHUB_OUTPUT"
+          echo "curl_prefix=$CURL_PREFIX" >> "$GITHUB_OUTPUT"
+          echo "toolchain=$TOOLCHAIN" >> "$GITHUB_OUTPUT"
+          echo "extra_packages=$EXTRA_PACKAGES" >> "$GITHUB_OUTPUT"
+          echo "readelf_machine=$READELF_MACHINE" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "cache_paths<<EOF"
+            echo "${CURL_PREFIX}/lib/libcurl.a"
+            echo "${CURL_PREFIX}/include/curl"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "架构: $ARCH | 三元组: ${TRIPLE:-native} | libcurl 前缀: $CURL_PREFIX"
+
+      - name: 安装软件包 (最多重试 3 次)
+        env:
+          EXTRA_PACKAGES: ${{ steps.params.outputs.extra_packages }}
+        run: |
+          PACKAGES="build-essential cmake wget make upx-ucl binutils file $EXTRA_PACKAGES"
+
+          ok=0
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在安装 $PACKAGES"
+            if apt-get update && apt-get install -y $PACKAGES; then
+              echo "所有软件包已完成安装"
+              ok=1
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
+
+          # 三次都失败必须让这一步红掉: 原来的写法循环结束即成功,
+          # 后面会以"找不到编译器"之类的迷惑错误失败, 看不出真正原因是源/网络
+          if [ "$ok" != "1" ]; then
+            echo "::error::依赖安装连续失败 3 次"
+            exit 1
+          fi
+
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.params.outputs.cache_paths }}
+          key: curl-${{ inputs.curl_version }}-linux-${{ inputs.architecture }}
+
+      - name: 构建 libcurl 静态链接库
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        env:
+          TRIPLE: ${{ steps.params.outputs.triple }}
+          CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
+        run: |
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
+
+          if [ -n "$TRIPLE" ]; then
+            HOST_ARG="--host=$TRIPLE"
+          else
+            HOST_ARG=""
+          fi
+
+          ./configure $HOST_ARG --prefix="$CURL_PREFIX" \
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            --enable-http \
+            --enable-proxy \
+            --enable-cookies \
+            --enable-basic-auth \
+            --enable-digest-auth \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-websockets \
+            --disable-bearer-auth \
+            --disable-kerberos-auth \
+            --disable-negotiate-auth \
+            --disable-ntlm \
+            --disable-tls-srp \
+            --disable-aws \
+            --disable-rtmp \
+            --without-brotli \
+            --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-librtmp \
+            --without-libidn2 \
+            --without-nghttp2 \
+            --without-ngtcp2 \
+            --without-nghttp3 \
+            --without-quiche \
+            --without-msh3 \
+            --without-libgsasl \
+            --without-libssh \
+            --without-wolfssh \
+            --without-hyper \
+            --without-zlib \
+            --disable-ares \
+            --disable-rt \
+            --disable-threaded-resolver \
+            --disable-ipv6 \
+            --disable-unix-sockets \
+            --disable-manual \
+            --disable-docs \
+            --disable-verbose \
+            --disable-versioned-symbols
+
+          make -j$(nproc)
+          make install
+
+      - name: 构建 ESurfingClient 程序
+        env:
+          ARCH: ${{ inputs.architecture }}
+          TOOLCHAIN: ${{ steps.params.outputs.toolchain }}
+          CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
+          EXPECTED_MACHINE: ${{ steps.params.outputs.readelf_machine }}
+        run: |
+          BIN="ESurfingClient-${{ inputs.full_version }}-linux-${ARCH}"
+
+          if [ -n "$TOOLCHAIN" ]; then
+            # 交叉编译: libcurl 靠 toolchain 的 CMAKE_FIND_ROOT_PATH 在 /usr/<triple> 下找到
+            TOOLCHAIN_ARGS="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
+            PREFIX_ARGS=""
+          else
+            # 原生编译: libcurl 在 /usr/local, 必须显式告诉 CMake
+            TOOLCHAIN_ARGS=""
+            PREFIX_ARGS="-DCMAKE_PREFIX_PATH=$CURL_PREFIX"
+          fi
+
+          cd esurfingclient/app
+
+          cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            $TOOLCHAIN_ARGS \
+            $PREFIX_ARGS \
+            -B build \
+            -S .
+
+          cmake --build build -j$(nproc)
+
+          cp build/ESurfingClient "../../$BIN"
+
+          cd ../..
+
+          # 交叉编译最容易出的问题是"工具链其实没生效, 产出的是宿主架构":
+          # 文件名对、file 也认, 装到目标机上直接 exec format error。
+          # 必须在 upx 之前查 —— upx 会改写 ELF 头, 之后再 readelf 就不准了
+          file "$BIN"
+          readelf -h "$BIN" | grep -E 'Class|Machine|Type' || true
+
+          if ! readelf -h "$BIN" | grep -qF "$EXPECTED_MACHINE"; then
+            echo "::error::架构不符: 期望 readelf Machine 含 '$EXPECTED_MACHINE', 实际如上"
+            exit 1
+          fi
+          echo "架构校验通过: $EXPECTED_MACHINE"
+
+          # upx 对各架构的支持随版本而异 (loongarch64/aarch64 常不支持), 压缩失败不该拖垮构建
+          upx --best --lzma "$BIN" || echo "::warning::upx 压缩跳过 (该架构可能不被支持)"
+
+          ls -lh "$BIN"
+
+      - name: 验证
+        env:
+          BIN: ESurfingClient-${{ inputs.full_version }}-linux-${{ inputs.architecture }}
+        run: |
+          if [ ! -f "$BIN" ]; then
+            echo "::error::未找到二进制文件 $BIN"
+            exit 1
+          fi
+
+          echo "构建成功"
+          echo "文件大小: $(du -h "$BIN" | cut -f1)"
+          file "$BIN"
+
+      - name: 获取 web 处理缓存
+        id: cache-web
+        uses: actions/cache@v6
+        with:
+          path: tailwindcss-linux-x64
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
+
+      - name: 下载 tailwind_labs 打包程序
+        if: steps.cache-web.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+
+      - name: 处理 web 文件
+        run: |
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
+
+      - name: 复制配置文件到根目录
+        run: |
+          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
+
+      - name: 打包成 tar.gz 压缩包
+        env:
+          ARCH: ${{ inputs.architecture }}
+        run: |
+          tar -czf "esurfingclient-${{ inputs.full_version }}-linux-${ARCH}.tar.gz" \
+            "ESurfingClient-${{ inputs.full_version }}-linux-${ARCH}" \
+            ESurfingClient.json \
+            portal/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: esurfingclient-${{ inputs.full_version }}-linux-${{ inputs.architecture }}
+          path: esurfingclient-${{ inputs.full_version }}-linux-${{ inputs.architecture }}.tar.gz
+          retention-days: 30
