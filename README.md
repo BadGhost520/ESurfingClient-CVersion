@@ -96,7 +96,7 @@
 - 可控制日志存放路径, OpenWRT 系统默认在 /var/log/esurfing 新建 logs 目录, 非 OpenWRT 系统默认在程序目录新建 logs 目录
 - 程序运行时, logs 目录下会生成实时更新的 run.log 日志文件
 - 程序退出时, run.log 日志文件会被重命名为 <时间>.log (比如 19700101-114514.log)
-- 日志行数超过 1000 行会进行轮转操作
+- 日志行数超过 10000 行会进行轮转操作
 
 ## 广东天翼校园网 QQ 交流群 (转自 [ESurfingPy-CLI](https://github.com/Pandaft/ESurfingPy-CLI))
 
