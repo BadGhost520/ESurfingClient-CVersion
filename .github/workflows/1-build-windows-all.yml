@@ -1,4 +1,4 @@
-name: Build Desktop Windows Binary
+name: 1 Build Desktop Windows Binary
 
 permissions:
   contents: write

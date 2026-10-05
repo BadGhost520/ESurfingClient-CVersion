@@ -1,4 +1,4 @@
-name: Build OpenWRT LuCI packages
+name: 6 Build OpenWRT LuCI packages
 
 permissions:
   contents: write

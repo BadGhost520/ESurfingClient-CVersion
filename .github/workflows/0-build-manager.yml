@@ -1,4 +1,4 @@
-name: Build Manager
+name: 0 Build Manager
 
 permissions:
   actions: write

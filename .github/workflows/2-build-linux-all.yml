@@ -1,4 +1,4 @@
-name: Build Desktop Linux Binary
+name: 2 Build Desktop Linux Binary
 
 permissions:
   contents: write
