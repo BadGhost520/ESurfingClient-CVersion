@@ -1,4 +1,4 @@
-name: Build Desktop macOS Binary
+name: Build Desktop MacOS Binary
 
 permissions:
   contents: write
