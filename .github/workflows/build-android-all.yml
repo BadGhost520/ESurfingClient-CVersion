@@ -61,15 +61,22 @@ jobs:
           PACKAGES="build-essential cmake wget make binutils file unzip"
 
           sudo apt-get update
+          ok=0
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
             if sudo apt-get install -y $PACKAGES; then
               echo "所有软件包已完成安装"
+              ok=1
               break
             fi
             echo "尝试 $i 失败"
             sleep 3
           done
+
+          if [ "$ok" != "1" ]; then
+            echo "::error::依赖安装连续失败 3 次"
+            exit 1
+          fi
 
       - name: 获取 Android NDK 缓存
         id: cache-ndk
@@ -205,14 +212,38 @@ jobs:
       - name: 验证
         run: |
           BIN="ESurfingClient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}"
-          if [ -f "$BIN" ]; then
-            echo "构建成功"
-            echo "文件大小: $(du -h "$BIN" | cut -f1)"
-            file "$BIN"
-          else
-            echo "未找到二进制文件"
+
+          if [ ! -f "$BIN" ]; then
+            echo "::error::未找到二进制文件 $BIN"
             exit 1
           fi
+
+          case "${{ steps.abi.outputs.abi }}" in
+            arm64-v8a)   EXPECTED="AArch64" ;;
+            armeabi-v7a) EXPECTED="ARM" ;;
+            x86_64)      EXPECTED="X86-64" ;;
+            *)
+              echo "::error::未知 ABI: ${{ steps.abi.outputs.abi }}"
+              exit 1
+              ;;
+          esac
+
+          MACHINE=$(readelf -h "$BIN" | sed -n 's/^[[:space:]]*Machine:[[:space:]]*//p')
+
+          echo "构建成功"
+          echo "文件大小: $(du -h "$BIN" | cut -f1)"
+          file "$BIN"
+          echo "Machine: $MACHINE"
+
+          case "$MACHINE" in
+            *"$EXPECTED"*)
+              echo "架构校验通过: $MACHINE"
+              ;;
+            *)
+              echo "::error::架构不符: 期望含 $EXPECTED, 实际 $MACHINE"
+              exit 1
+              ;;
+          esac
 
       - name: 获取 web 处理缓存
         id: cache-web

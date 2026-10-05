@@ -106,9 +106,33 @@ jobs:
 
           cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
 
-          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} || true
+          BIN="../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}"
 
-          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
+          case "${{ inputs.architecture }}" in
+            x86_64)  EXPECTED="x86_64" ;;
+            aarch64) EXPECTED="arm64" ;;
+            *)
+              echo "::error::未知架构: ${{ inputs.architecture }}"
+              exit 1
+              ;;
+          esac
+
+          ARCH_INFO=$(file "$BIN")
+          echo "$ARCH_INFO"
+
+          case "$ARCH_INFO" in
+            *"$EXPECTED"*)
+              echo "架构校验通过: $EXPECTED"
+              ;;
+            *)
+              echo "::error::架构不符: 期望含 $EXPECTED, 实际 $ARCH_INFO"
+              exit 1
+              ;;
+          esac
+
+          upx --best --lzma "$BIN" || echo "::warning::upx 压缩跳过 (该架构可能不被支持)"
+
+          ls -lh "$BIN"
 
       - name: 验证
         run: |

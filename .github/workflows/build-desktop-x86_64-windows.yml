@@ -31,15 +31,22 @@ jobs:
         run: |
           PACKAGES="cmake make ninja-build gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 mingw-w64-tools upx-ucl wget file zip perl libperl-dev"
 
+          ok=0
           for i in 1 2 3; do
             echo "尝试 $i: 正在安装 $PACKAGES"
             if apt-get update && apt-get install -y $PACKAGES; then
               echo "所有软件包已完成安装"
+              ok=1
               break
             fi
             echo "尝试 $i 失败"
             sleep 3
           done
+
+          if [ "$ok" != "1" ]; then
+            echo "::error::依赖安装连续失败 3 次"
+            exit 1
+          fi
 
       - name: 检查工具链
         run: |
