@@ -28,80 +28,70 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: debian:13
+      image: openwrt/sdk:${{ inputs.target }}-${{ inputs.sdk_version }}
+      options: --user root
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: 更新版本号
+      - name: 同步版本号
         run: |
-          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ inputs.version }}/" luci-app-esurfingclient/Makefile
-          sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=${{ inputs.release }}/" luci-app-esurfingclient/Makefile
-          sed -i "s/E('p', { class: 'desc' }, 'LuCI 版本.*/E('p', { class: 'desc' }, 'LuCI 版本: ${{ inputs.version }}-r${{ inputs.release }}'),/" luci-app-esurfingclient/luci/www/luci-static/resources/view/esurfingclient.js
-          sed -i "s%<p class='desc'>LuCI 版本.*%<p class='desc'>LuCI 版本: ${{ inputs.version }}-r${{ inputs.release }}</p>%" luci-app-esurfingclient/legacy-luci/usr/lib/lua/luci/view/esurfingclient.htm
+          bash scripts/sync-version.sh "${{ inputs.version }}-r${{ inputs.release }}"
 
-      - name: 安装软件包 (最多重试 3 次)
-        run: |
-          PACKAGES="build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev rsync wget ca-certificates unzip file zstd python3-setuptools swig curl"
-
-          for i in 1 2 3; do
-            echo "尝试 $i: 正在安装 $PACKAGES"
-            if apt-get update && apt-get install -y $PACKAGES; then
-              echo "所有软件包已完成安装"
-              break
-            fi
-            echo "尝试 $i 失败"
-            sleep 3
-          done
-
-      - name: 获取 OpenWrt SDK 压缩包缓存
-        id: cache-openwrt-sdk
+      - name: 缓存 luci feed
+        id: cache-feeds-luci
         uses: actions/cache@v6
         with:
           path: |
-            openwrt-sdk.tar.zst
-          key: openwrt-${{ inputs.package_type }}-sdk-${{ inputs.sdk_version }}
+            /builder/feeds/luci/
+            /builder/feeds/luci.index
+          key: openwrt-feeds-luci-${{ inputs.sdk_version }}
 
-      - name: 下载 SDK (最多重试 3 次)
-        if: steps.cache-openwrt-sdk.outputs.cache-hit != 'true'
+      - name: 缓存 LuCI 编译产物
+        id: cache-luci-sdk
+        uses: actions/cache@v6
+        with:
+          path: |
+            /builder/staging_dir/host/
+            /builder/staging_dir/hostpkg/
+            /builder/staging_dir/target-*/usr/lib/lua/
+            /builder/staging_dir/target-*/usr/lib/opkg/
+            /builder/staging_dir/target-*/packages/
+            /builder/staging_dir/target-*/stamp/
+          key: openwrt-luci-sdk-${{ inputs.package_type }}-${{ inputs.sdk_version }}
+
+      - name: 初始化 SDK
         run: |
-          BASE="https://downloads.openwrt.org/releases/${{ inputs.sdk_version }}/targets/${{ inputs.target }}"
-          FILE=$(curl -s "$BASE/" | grep -oE 'openwrt-sdk-[^"<]+\.tar\.zst' | head -n1)
+          cd /builder
+          [ -f .config ] || make defconfig
 
-          for i in 1 2 3; do
-            echo "尝试 $i: 正在下载 OpenWRT SDK 包"
-            if wget -O openwrt-sdk.tar.zst "$BASE/$FILE"; then
-              echo "OpenWRT SDK 包下载完成"
-              break
-            fi
-            echo "尝试 $i 失败"
-            sleep 3
-          done
-
-      - name: 解压 SDK
+      - name: 更新 luci feed 并安装 luci-base
         run: |
-          mkdir -p openwrt-sdk
-
-          tar --zstd -xf openwrt-sdk.tar.zst -C openwrt-sdk --strip-components=1
-
-      - name: 准备构建环境
-        run: |
-          cd openwrt-sdk
-          scripts/feeds update packages
+          cd /builder
+          scripts/feeds update luci
           scripts/feeds install luci-base
           make defconfig
 
-      - name: 部署 LuCI 包
-        run: |
-          cp -r luci-app-esurfingclient openwrt-sdk/package/
-          cd openwrt-sdk
-          scripts/feeds install luci-app-esurfingclient
-
       - name: 编译 luci-app-esurfingclient
         run: |
-          cd openwrt-sdk
+          cp -r $GITHUB_WORKSPACE/luci-app-esurfingclient /builder/package/
+          cd /builder
+          scripts/feeds install luci-app-esurfingclient
           make package/luci-app-esurfingclient/compile V=sc -j$(nproc)
-          find bin/packages -name "luci-app-esurfingclient*.${{ inputs.package_type }}" -exec cp {} ../luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }} \;
+          find bin/packages -name "luci-app-esurfingclient*.${{ inputs.package_type }}" \
+            -exec cp {} $GITHUB_WORKSPACE/luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }} \;
+
+      - name: OpenWRT APK 包签名
+        if: inputs.package_type == 'apk'
+        run: |
+          cd /builder
+          cat > /tmp/openwrt-apk-private-key.pem << 'EOF'
+          ${{ secrets.OPENWRT_APK_PRIVATE_KEY }}
+          EOF
+          chmod 600 /tmp/openwrt-apk-private-key.pem
+          staging_dir/host/bin/apk adbsign --allow-untrusted \
+            --sign-key /tmp/openwrt-apk-private-key.pem \
+            $GITHUB_WORKSPACE/luci-app-esurfingclient_${{ inputs.version }}-${{ inputs.release }}_all.${{ inputs.package_type }}
 
       - name: 上传工件
         uses: actions/upload-artifact@v7

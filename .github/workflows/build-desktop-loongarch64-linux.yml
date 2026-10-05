@@ -1,0 +1,185 @@
+name: Build Desktop loongarch64 Linux Binary
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
+      curl_version:
+        required: true
+        type: string
+      tail_wind_labs_version:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装软件包 (最多重试 3 次)
+        run: |
+          PACKAGES="build-essential cmake wget make gcc-loongarch64-linux-gnu g++-loongarch64-linux-gnu binutils-loongarch64-linux-gnu upx-ucl binutils file"
+
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在安装 $PACKAGES"
+            if apt-get update && apt-get install -y $PACKAGES; then
+              echo "所有软件包已完成安装"
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
+
+      - name: 检查工具链
+        run: |
+          cat ci/toolchains/loongarch64.cmake
+
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v6
+        with:
+          path: |
+            /usr/loongarch64-linux-gnu/lib/libcurl.a
+            /usr/loongarch64-linux-gnu/include/curl
+          key: curl-${{ inputs.curl_version }}-loongarch64-linux
+
+      - name: 构建 libcurl 静态链接库
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        run: |
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
+
+          ./configure --host=loongarch64-linux-gnu \
+            --prefix=/usr/loongarch64-linux-gnu \
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            --enable-http \
+            --enable-proxy \
+            --enable-cookies \
+            --enable-basic-auth \
+            --enable-digest-auth \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-websockets \
+            --disable-bearer-auth \
+            --disable-kerberos-auth \
+            --disable-negotiate-auth \
+            --disable-ntlm \
+            --disable-tls-srp \
+            --disable-aws \
+            --disable-rtmp \
+            --without-brotli \
+            --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-librtmp \
+            --without-libidn2 \
+            --without-nghttp2 \
+            --without-ngtcp2 \
+            --without-nghttp3 \
+            --without-quiche \
+            --without-msh3 \
+            --without-libgsasl \
+            --without-libssh \
+            --without-wolfssh \
+            --without-hyper \
+            --without-zlib \
+            --disable-ares \
+            --disable-rt \
+            --disable-threaded-resolver \
+            --disable-ipv6 \
+            --disable-unix-sockets \
+            --disable-manual \
+            --disable-docs \
+            --disable-verbose \
+            --disable-versioned-symbols
+
+          make -j$(nproc)
+          make install
+
+      - name: 构建 ESurfingClient 程序
+        run: |
+          cd esurfingclient/app
+
+          cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=../../ci/toolchains/loongarch64.cmake \
+            -DBUILD_SHARED_LIBS=OFF \
+            -B build \
+            -S .
+
+          cmake --build build -j$(nproc)
+
+          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-linux-loongarch64
+
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-linux-loongarch64 || true
+
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-linux-loongarch64
+
+      - name: 验证
+        run: |
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-linux-loongarch64" ]; then
+            echo "构建成功"
+            echo "文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-linux-loongarch64 | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-linux-loongarch64
+          else
+            echo "未找到二进制文件"
+            exit 1
+          fi
+
+      - name: 获取 web 处理缓存
+        id: cache-web
+        uses: actions/cache@v6
+        with:
+          path: tailwindcss-linux-x64
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
+
+      - name: 下载 tailwind_labs 打包程序
+        if: steps.cache-web.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+
+      - name: 处理 web 文件
+        run: |
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
+
+      - name: 复制配置文件到根目录
+        run: |
+          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
+
+      - name: 打包成 tar.gz 压缩包
+        run: |
+          tar -czf esurfingclient-${{ inputs.full_version }}-linux-loongarch64.tar.gz ESurfingClient-${{ inputs.full_version }}-linux-loongarch64 ESurfingClient.json portal/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: esurfingclient-${{ inputs.full_version }}-linux-loongarch64
+          path: esurfingclient-${{ inputs.full_version }}-linux-loongarch64.tar.gz
+          retention-days: 30

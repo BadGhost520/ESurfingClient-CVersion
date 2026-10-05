@@ -1,0 +1,12 @@
+@import "tailwindcss" source(none);
+@source "./index.html";
+@source "./assets/js/main.js";
+@source "./assets/js/toggleTheme.js";
+
+@plugin "./daisyui.mjs" {
+    themes: light --default, synthwave --prefersdark;
+}
+
+[x-cloak] {
+    display: none !important;
+}

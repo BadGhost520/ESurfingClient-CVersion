@@ -49,7 +49,7 @@ jobs:
               echo "target=x86_64-linux-android" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "❌ 不支持的 ABI: ${{ inputs.abi }}"
+              echo "不支持的 ABI: ${{ inputs.abi }}"
               exit 1
               ;;
           esac
@@ -182,7 +182,7 @@ jobs:
         run: |
           set -e
 
-          cd esurfingclient/main
+          cd esurfingclient/app
 
           cmake -B build -S . \
             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
@@ -206,11 +206,11 @@ jobs:
         run: |
           BIN="ESurfingClient-${{ inputs.full_version }}-android-${{ steps.abi.outputs.abi }}"
           if [ -f "$BIN" ]; then
-            echo "✅ 构建成功"
-            echo "📏 文件大小: $(du -h "$BIN" | cut -f1)"
+            echo "构建成功"
+            echo "文件大小: $(du -h "$BIN" | cut -f1)"
             file "$BIN"
           else
-            echo "❌ 未找到二进制文件"
+            echo "未找到二进制文件"
             exit 1
           fi
 
@@ -229,35 +229,11 @@ jobs:
 
       - name: 处理 web 文件
         run: |
-          cp -r esurfingclient/main/portal ./
-          mkdir -p portal/assets/css
-
-          wget --tries=5 --waitretry=3 -O portal/assets/js/alpine.js https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js
-          wget --tries=5 --waitretry=3 -O portal/daisyui.mjs https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
-
-          ./tailwindcss-linux-x64 -i portal/input.css -o portal/assets/css/tailwind.css --minify
-          rm portal/input.css
-          rm portal/daisyui.mjs
-
-          sed -i '/daisyui@5\/themes.css/d' portal/index.html
-          sed -i 's#https://cdn.jsdelivr.net/npm/daisyui@5#assets/css/tailwind.css#g' portal/index.html
-          sed -i 's#<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>##g' portal/index.html
-          sed -i 's#https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js#assets/js/alpine.js#g' portal/index.html
-
-          if grep -nE 'cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|fonts\.googleapis\.com' portal/index.html; then
-            echo "[错误] index.html 里还有 CDN 引用, 脱机时会加载失败"
-            exit 1
-          fi
-          grep -q 'href="assets/css/tailwind.css"' portal/index.html || { echo "[错误] index.html 未引用 assets/css/tailwind.css"; exit 1; }
-          grep -q 'src="assets/js/alpine.js"' portal/index.html || { echo "[错误] index.html 未引用 assets/js/alpine.js"; exit 1; }
-          test -s portal/assets/css/tailwind.css || { echo "[错误] tailwind.css 未生成"; exit 1; }
-          test -s portal/assets/js/alpine.js || { echo "[错误] alpine.js 未下载"; exit 1; }
-          echo "web 文件处理完成 (CDN 引用已全部替换为本地文件)"
-          ls -l portal/assets/css/tailwind.css portal/assets/js/alpine.js
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
 
       - name: 复制配置文件到根目录
         run: |
-          cp esurfingclient/config/ESurfingClient.json ./ESurfingClient.json
+          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
       - name: 打包成 tar.gz 压缩包
         run: |

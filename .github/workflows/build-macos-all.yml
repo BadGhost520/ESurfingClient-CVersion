@@ -1,0 +1,154 @@
+name: Build Desktop macOS Binary
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
+      curl_version:
+        required: true
+        type: string
+      tail_wind_labs_version:
+        required: true
+        type: string
+      tail_wind_labs_architecture:
+        required: true
+        type: string
+      runs_on:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: macos-${{ inputs.runs_on }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 准备安装目录
+        run: |
+          sudo mkdir -p /usr/local/opt/curl-built
+          sudo chown -R $(whoami) /usr/local/opt/curl-built
+
+      - name: 安装编译工具
+        run: |
+          brew install make upx binutils
+
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v6
+        with:
+          path: /usr/local/opt/curl-built
+          key: curl-${{ inputs.curl_version }}-macos-${{ inputs.architecture }}
+
+      - name: 构建 libcurl 静态链接库
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp
+          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
+
+          ./configure \
+            --prefix=/usr/local/opt/curl-built \
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            --enable-http --enable-proxy --enable-cookies \
+            --enable-basic-auth --enable-digest-auth \
+            --disable-ftp --disable-file --disable-ldap --disable-ldaps \
+            --disable-rtsp --disable-dict --disable-telnet --disable-tftp \
+            --disable-pop3 --disable-imap --disable-smb --disable-smtp \
+            --disable-gopher --disable-mqtt --disable-websockets \
+            --disable-bearer-auth --disable-kerberos-auth --disable-negotiate-auth \
+            --disable-ntlm --disable-tls-srp --disable-aws --disable-rtmp \
+            --without-brotli --without-zstd --without-libpsl --without-libssh2 \
+            --without-librtmp --without-libidn2 --without-nghttp2 \
+            --without-ngtcp2 --without-nghttp3 --without-quiche --without-msh3 \
+            --without-libgsasl --without-libssh --without-wolfssh --without-hyper \
+            --without-zlib \
+            --disable-ares --disable-rt --disable-threaded-resolver \
+            --disable-ipv6 --disable-unix-sockets \
+            --disable-manual --disable-docs --disable-verbose --disable-versioned-symbols \
+            LDFLAGS="-framework CoreFoundation -framework SystemConfiguration" \
+            CC=clang
+
+          make -j$(sysctl -n hw.logicalcpu)
+          make install
+
+      - name: 构建 ESurfingClient 程序
+        run: |
+          export CMAKE_PREFIX_PATH=/usr/local/opt/openssl-built:/usr/local/opt/curl-built:$CMAKE_PREFIX_PATH
+          export PKG_CONFIG_PATH=/usr/local/opt/curl-built/lib/pkgconfig:$PKG_CONFIG_PATH
+
+          cd esurfingclient/app
+
+          cmake -DCMAKE_VERBOSE_MAKEFILE=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCURL_INCLUDE_DIR=/usr/local/opt/curl-built/include \
+            -DCURL_LIBRARY=/usr/local/opt/curl-built/lib/libcurl.a \
+            -B build \
+            -S .
+
+          cmake --build build -j$(sysctl -n hw.logicalcpu)
+
+          cp build/ESurfingClient ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
+
+          upx --best --lzma ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} || true
+
+          ls -lh ../../ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
+
+      - name: 验证
+        run: |
+          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}" ]; then
+            echo "构建成功"
+            echo "文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} | cut -f1)"
+            file ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
+          else
+            echo "未找到二进制文件"
+            exit 1
+          fi
+
+      - name: 获取 web 处理缓存
+        id: cache-web
+        uses: actions/cache@v6
+        with:
+          path: tailwindcss-macos-${{ inputs.architecture }}
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-macos-${{ inputs.architecture }}
+
+      - name: 下载 tailwind_labs 打包程序
+        if: steps.cache-web.outputs.cache-hit != 'true'
+        run: |
+          wget -O tailwindcss-macos-${{ inputs.architecture }} https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-${{ inputs.tail_wind_labs_architecture }}
+          chmod +x tailwindcss-macos-${{ inputs.architecture }}
+
+      - name: 处理 web 文件
+        run: |
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-macos-${{ inputs.architecture }}
+
+      - name: 复制配置文件到根目录
+        run: |
+          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
+
+      - name: 打包成 tar.gz
+        run: |
+          tar -czf esurfingclient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} ESurfingClient.json portal/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: esurfingclient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
+          path: esurfingclient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}.tar.gz
+          retention-days: 30
