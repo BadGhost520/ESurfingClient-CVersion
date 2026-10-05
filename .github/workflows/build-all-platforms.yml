@@ -4,6 +4,10 @@ permissions:
   actions: write
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CURL_VERSION: "8.20.0"
   LLVM_MINGW_VERSION: "20260922"
@@ -112,6 +116,7 @@ on:
 jobs:
   get-version:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}
       release: ${{ steps.version.outputs.release }}
@@ -493,6 +498,7 @@ jobs:
       - openwrt-packages-ipk
       - openwrt-packages-apk
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: always() && !cancelled()
     steps:
       - uses: actions/checkout@v7

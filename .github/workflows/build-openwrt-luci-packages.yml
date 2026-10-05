@@ -27,6 +27,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     container:
       image: openwrt/sdk:${{ inputs.target }}-${{ inputs.sdk_version }}
       options: --user root

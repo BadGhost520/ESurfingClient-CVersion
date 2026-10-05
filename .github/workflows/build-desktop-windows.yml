@@ -4,6 +4,9 @@ permissions:
   contents: write
   actions: write
 
+env:
+  WGET_OPTS: "-t 3 --timeout=30 --waitretry=5 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -27,6 +30,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     container:
       image: debian:13
 
@@ -108,7 +112,7 @@ jobs:
         run: |
           ASSET="llvm-mingw-${LLVM_MINGW_VERSION}-msvcrt-ubuntu-22.04-x86_64"
 
-          wget "https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/${ASSET}.tar.xz"
+          wget $WGET_OPTS "https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/${ASSET}.tar.xz"
           tar -xf "${ASSET}.tar.xz"
           rm -f "${ASSET}.tar.xz"
 
@@ -132,7 +136,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ steps.params.outputs.cache_paths }}
-          key: curl-${{ inputs.curl_version }}-${{ steps.params.outputs.triple }}
+          key: curl-${{ inputs.curl_version }}-windows-${{ inputs.architecture }}
 
       - name: 构建 libcurl 静态链接库
         if: steps.cache-curl.outputs.cache-hit != 'true'
@@ -141,7 +145,7 @@ jobs:
           CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
         run: |
           cd /tmp
-          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          wget $WGET_OPTS https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
           tar -xzf curl-${{ inputs.curl_version }}.tar.gz
           cd curl-${{ inputs.curl_version }}
 
@@ -294,7 +298,7 @@ jobs:
       - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
-          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          wget $WGET_OPTS https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
           chmod +x tailwindcss-linux-x64
 
       - name: 处理 web 文件
@@ -314,7 +318,7 @@ jobs:
             ESurfingClient.json \
             portal/
 
-      - name: Upload build artifacts
+      - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
           name: esurfingclient-${{ inputs.full_version }}-windows-${{ inputs.architecture }}

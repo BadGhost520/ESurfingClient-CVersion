@@ -4,6 +4,11 @@ permissions:
   contents: write
   actions: write
 
+env:
+  WGET_OPTS: "-t 3 --timeout=30 --waitretry=5 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -30,6 +35,7 @@ on:
 jobs:
   build:
     runs-on: macos-${{ inputs.runs_on }}
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v7
@@ -54,7 +60,7 @@ jobs:
         if: steps.cache-curl.outputs.cache-hit != 'true'
         run: |
           cd /tmp
-          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          wget $WGET_OPTS https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
           tar -xzf curl-${{ inputs.curl_version }}.tar.gz
           cd curl-${{ inputs.curl_version }}
 
@@ -135,15 +141,17 @@ jobs:
           ls -lh "$BIN"
 
       - name: 验证
+        env:
+          BIN: ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
         run: |
-          if [ -f "ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}" ]; then
-            echo "构建成功"
-            echo "文件大小: $(du -h ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} | cut -f1)"
-            file ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}
-          else
-            echo "未找到二进制文件"
+          if [ ! -f "$BIN" ]; then
+            echo "::error::未找到二进制文件 $BIN"
             exit 1
           fi
+
+          echo "构建成功"
+          echo "文件大小: $(du -h "$BIN" | cut -f1)"
+          file "$BIN"
 
       - name: 获取 web 处理缓存
         id: cache-web
@@ -155,7 +163,7 @@ jobs:
       - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
-          wget -O tailwindcss-macos-${{ inputs.architecture }} https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-${{ inputs.tail_wind_labs_architecture }}
+          wget $WGET_OPTS -O tailwindcss-macos-${{ inputs.architecture }} https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-macos-${{ inputs.tail_wind_labs_architecture }}
           chmod +x tailwindcss-macos-${{ inputs.architecture }}
 
       - name: 处理 web 文件
@@ -166,7 +174,7 @@ jobs:
         run: |
           cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
-      - name: 打包成 tar.gz
+      - name: 打包成 tar.gz 压缩包
         run: |
           tar -czf esurfingclient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }}.tar.gz ESurfingClient-${{ inputs.full_version }}-darwin-${{ inputs.architecture }} ESurfingClient.json portal/
 

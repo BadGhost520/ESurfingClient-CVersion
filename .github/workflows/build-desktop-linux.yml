@@ -4,6 +4,9 @@ permissions:
   contents: write
   actions: write
 
+env:
+  WGET_OPTS: "-t 3 --timeout=30 --waitretry=5 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -24,6 +27,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     container:
       image: debian:13
 
@@ -114,6 +118,18 @@ jobs:
             exit 1
           fi
 
+      - name: 检查工具链
+        env:
+          ARCH: ${{ inputs.architecture }}
+          TRIPLE: ${{ steps.params.outputs.triple }}
+        run: |
+          if [ -n "$TRIPLE" ]; then
+            cat "ci/toolchains/${ARCH}.cmake"
+            "$TRIPLE-gcc" --version | head -1
+          else
+            gcc --version | head -1
+          fi
+
       - name: 获取 libcurl 缓存
         id: cache-curl
         uses: actions/cache@v6
@@ -127,7 +143,7 @@ jobs:
           TRIPLE: ${{ steps.params.outputs.triple }}
           CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
         run: |
-          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          wget $WGET_OPTS https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
           tar -xzf curl-${{ inputs.curl_version }}.tar.gz
           cd curl-${{ inputs.curl_version }}
 
@@ -266,7 +282,7 @@ jobs:
       - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
-          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          wget $WGET_OPTS https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
           chmod +x tailwindcss-linux-x64
 
       - name: 处理 web 文件

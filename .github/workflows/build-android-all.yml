@@ -25,10 +25,12 @@ env:
   NDK_VERSION: r30
   NDK_DIR: android-ndk-r30
   ANDROID_API: 24
+  WGET_OPTS: "-t 3 --timeout=30 --waitretry=5 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v7
@@ -89,7 +91,7 @@ jobs:
         if: steps.cache-ndk.outputs.cache-hit != 'true'
         run: |
           set -e
-          wget -q https://dl.google.com/android/repository/${NDK_DIR}-linux.zip
+          wget $WGET_OPTS -q https://dl.google.com/android/repository/${NDK_DIR}-linux.zip
           unzip -q ${NDK_DIR}-linux.zip
           rm ${NDK_DIR}-linux.zip
           ls -d ${NDK_DIR}
@@ -98,6 +100,10 @@ jobs:
         run: |
           echo "ANDROID_NDK_HOME=$GITHUB_WORKSPACE/$NDK_DIR" >> $GITHUB_ENV
           echo "TOOLCHAIN=$GITHUB_WORKSPACE/$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64" >> $GITHUB_ENV
+
+      - name: 检查工具链
+        run: |
+          $TOOLCHAIN/bin/${{ steps.abi.outputs.target }}${{ steps.abi.outputs.api }}-clang --version | head -1
 
       - name: 获取 libcurl 缓存
         id: cache-curl
@@ -119,7 +125,7 @@ jobs:
           export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
           export STRIP=$TOOLCHAIN/bin/llvm-strip
 
-          wget https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          wget $WGET_OPTS https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
           tar -xzf curl-${{ inputs.curl_version }}.tar.gz
           cd curl-${{ inputs.curl_version }}
 
@@ -255,7 +261,7 @@ jobs:
       - name: 下载 tailwind_labs 打包程序
         if: steps.cache-web.outputs.cache-hit != 'true'
         run: |
-          wget https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          wget $WGET_OPTS https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
           chmod +x tailwindcss-linux-x64
 
       - name: 处理 web 文件
