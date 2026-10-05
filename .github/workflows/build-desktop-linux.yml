@@ -8,29 +8,21 @@ on:
   workflow_dispatch:
     inputs:
       architecture:
-        description: '目标架构'
         type: choice
         required: true
-        default: x86_64
         options:
           - x86_64
           - aarch64
           - loongarch64
       full_version:
-        description: '完整版本号 (如 2.1.5-r5)'
         type: string
         required: true
-        default: '0.0.0-r0'
       curl_version:
-        description: 'libcurl 版本'
         type: string
         required: true
-        default: '8.20.0'
       tail_wind_labs_version:
-        description: 'tailwindcss 版本'
         type: string
         required: true
-        default: 'v4.3.0'
 
   workflow_call:
     inputs:
@@ -56,8 +48,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # 三个架构只差几个派生量 (三元组 / libcurl 前缀 / toolchain 文件 / 额外包),
-      # 集中在这里推导一次, 后面各步骤直接用, 免得工作流里到处写 if
       - name: 解析架构参数
         id: params
         shell: bash
@@ -86,7 +76,6 @@ jobs:
           esac
 
           if [ -z "$TRIPLE" ]; then
-            # 原生编译: 不设交叉前缀, libcurl 装在 /usr/local
             CURL_PREFIX="/usr/local"
             TOOLCHAIN=""
             EXTRA_PACKAGES=""
@@ -134,8 +123,6 @@ jobs:
             sleep 3
           done
 
-          # 三次都失败必须让这一步红掉: 原来的写法循环结束即成功,
-          # 后面会以"找不到编译器"之类的迷惑错误失败, 看不出真正原因是源/网络
           if [ "$ok" != "1" ]; then
             echo "::error::依赖安装连续失败 3 次"
             exit 1
@@ -234,11 +221,9 @@ jobs:
           BIN="ESurfingClient-${{ inputs.full_version }}-linux-${ARCH}"
 
           if [ -n "$TOOLCHAIN" ]; then
-            # 交叉编译: libcurl 靠 toolchain 的 CMAKE_FIND_ROOT_PATH 在 /usr/<triple> 下找到
             TOOLCHAIN_ARGS="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN"
             PREFIX_ARGS=""
           else
-            # 原生编译: libcurl 在 /usr/local, 必须显式告诉 CMake
             TOOLCHAIN_ARGS=""
             PREFIX_ARGS="-DCMAKE_PREFIX_PATH=$CURL_PREFIX"
           fi
@@ -259,9 +244,6 @@ jobs:
 
           cd ../..
 
-          # 交叉编译最容易出的问题是"工具链其实没生效, 产出的是宿主架构":
-          # 文件名对、file 也认, 装到目标机上直接 exec format error。
-          # 必须在 upx 之前查 —— upx 会改写 ELF 头, 之后再 readelf 就不准了
           file "$BIN"
           readelf -h "$BIN" | grep -E 'Class|Machine|Type' || true
 
@@ -271,7 +253,6 @@ jobs:
           fi
           echo "架构校验通过: $EXPECTED_MACHINE"
 
-          # upx 对各架构的支持随版本而异 (loongarch64/aarch64 常不支持), 压缩失败不该拖垮构建
           upx --best --lzma "$BIN" || echo "::warning::upx 压缩跳过 (该架构可能不被支持)"
 
           ls -lh "$BIN"

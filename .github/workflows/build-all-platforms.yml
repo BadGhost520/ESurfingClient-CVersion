@@ -324,7 +324,7 @@ jobs:
           echo "linux_matrix=$RESULT" >> "$GITHUB_OUTPUT"
           echo "Linux 矩阵: $RESULT"
 
-  # 桌面端
+  # Windows
   windows-x86_64:
     if: github.event.inputs.platforms == 'all' || github.event.inputs.platforms == 'windows-x86_64'
     uses: ./.github/workflows/build-desktop-x86_64-windows.yml
@@ -335,9 +335,7 @@ jobs:
       curl_version: ${{ needs.get-version.outputs.curl_version }}
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
 
-  # 桌面端 Linux: x86_64 / aarch64 / loongarch64 共用一个工作流, 由矩阵分发
-  # job 级 if 取不到 matrix 上下文, 所以平台筛选在 get-version 里就做完了,
-  # 这里只判矩阵是否为空 (与 macos / android / openwrt 同一套写法)
+  # Linux
   linux:
     if: needs.get-version.outputs.linux_matrix != '[]'
     strategy:
@@ -353,6 +351,7 @@ jobs:
       tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
       architecture:           ${{ matrix.architecture }}
 
+  # MacOS
   macos:
     if: needs.get-version.outputs.macos_matrix != '[]'
     strategy:
