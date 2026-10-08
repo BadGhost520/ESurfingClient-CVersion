@@ -24,6 +24,31 @@ uint64_t get_cur_tm_ms()
 #endif
 }
 
+uint64_t get_steady_tm_ms()
+{
+#ifdef _WIN32
+    /**
+     * QueryPerformanceCounter: 单调递增, 不受系统时间调整影响。
+     * 频率由 QueryPerformanceFrequency 给出, 不一定是 1000, 所以要换算,
+     * 不能像 get_cur_tm_ms() 那样直接把计数当毫秒用
+     */
+    LARGE_INTEGER freq, counter;
+    if (QueryPerformanceFrequency(&freq) == 0 || freq.QuadPart == 0) return 0;
+    QueryPerformanceCounter(&counter);
+    return (uint64_t)(counter.QuadPart / freq.QuadPart * 1000
+        + counter.QuadPart % freq.QuadPart * 1000 / freq.QuadPart);
+#else
+    /**
+     * CLOCK_MONOTONIC: 从启动起单调递增, NTP / settimeofday 改墙钟时它不动。
+     * 这里不能用 gettimeofday(): OpenWrt 开机后 NTP 校时会把墙钟整体前跳,
+     * 那一下会被当成"已经过了很久"
+     */
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return 0;
+    return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
+#endif
+}
+
 void sleep_ms(const uint64_t ms, const bool can_stop)
 {
     if (ms == 0) return;

@@ -127,10 +127,20 @@ uint64_t str2uint64(const char* str);
 char* uint642str(uint64_t num);
 
 /**
- * @brief 获取当前时间的毫秒时间戳
+ * @brief 获取当前时间的毫秒时间戳 (墙钟, 会被 NTP / 改时钟影响, 只用于显示)
  * @return 64位时间戳
  */
 uint64_t get_cur_tm_ms();
+
+/**
+ * @brief 获取单调递增的毫秒时间戳 (从系统启动算起, 不受改时钟影响)
+ *
+ * 凡是"测间隔"的地方都必须用它, 不能用 get_cur_tm_ms():
+ * OpenWrt 没有 RTC, 开机后 NTP 一同步就会把墙钟整体前跳 (几十秒到几十年都可能),
+ * 拿墙钟做减法的超时判断会当场误判。
+ * @return 毫秒时间戳, 失败时返回 0
+ */
+uint64_t get_steady_tm_ms();
 
 /**
  * @brief 获取随机字节

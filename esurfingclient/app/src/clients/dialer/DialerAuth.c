@@ -130,9 +130,15 @@ AuthStatus auth()
     }
     LOG_DEBUG("完成登录");
 
-    g_prog_status[tl_thread_idx].auth_cfg.tick = get_cur_tm_ms(); // 获取当前 tick
-    g_prog_status[tl_thread_idx].auth_cfg.auth_time = get_cur_tm_ms(); // 获取认证时间
-    LOG_DEBUG("登录时间戳: %" PRIu64, g_prog_status[tl_thread_idx].auth_cfg.auth_time);
+    /**
+     * tick / auth_time 都存【单调钟】而不是墙钟: 它们只被用来做减法测间隔
+     * (心跳间隔、会话时长), 而 OpenWrt 上 NTP 校时会把墙钟整体前跳,
+     * 墙钟一减就会凭空多出几十小时 —— 表现是"刚登录就提示认证时间超过 1 天 23 时",
+     * 或者心跳节律被那一次跳变带乱
+     */
+    g_prog_status[tl_thread_idx].auth_cfg.tick = get_steady_tm_ms(); // 获取当前 tick
+    g_prog_status[tl_thread_idx].auth_cfg.auth_time = get_steady_tm_ms(); // 获取认证时间
+    LOG_DEBUG("登录时刻 (单调钟): %" PRIu64, g_prog_status[tl_thread_idx].auth_cfg.auth_time);
 
     g_prog_status[tl_thread_idx].runtime_status.is_authed = true;
     LOG_INFO("已认证登录");

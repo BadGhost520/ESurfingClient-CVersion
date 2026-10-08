@@ -41,8 +41,8 @@ static RunStatus run()
     static uint8_t retry_auth = 1;
     static uint64_t retry_auth_time = 0;
 
-    // 时间控制/重置请求优先于一切网络操作：
-    // 到点下线后不应再发送心跳包，也不应继续认证或重试。
+    // 时间控制/重置请求优先于一切网络操作:
+    // 到点下线后不应再发送心跳包，也不应继续认证或重试
     if (g_prog_status[tl_thread_idx].runtime_status.is_time_disabled)
     {
         g_prog_status[tl_thread_idx].runtime_status.is_need_reauth = true;
@@ -68,8 +68,11 @@ static RunStatus run()
                 /**
                  * 检测经过的时间是否达到重试时间
                  * 达到就发送心跳包
+                 *
+                 * 用单调钟: 墙钟被 NTP 校时跳一下, 这个减法就会凭空多出几十小时,
+                 * 于是刚发完心跳又立刻再发一次 (或反过来把心跳拖后很久)
                  */
-                if (get_cur_tm_ms() - g_prog_status[tl_thread_idx].auth_cfg.tick >= g_prog_status[tl_thread_idx].auth_cfg.keep_retry * 1000)
+                if (get_steady_tm_ms() - g_prog_status[tl_thread_idx].auth_cfg.tick >= g_prog_status[tl_thread_idx].auth_cfg.keep_retry * 1000)
                 {
                     LOG_INFO("发送心跳包");
                     uint8_t retry_heartbeat = 1;
@@ -89,7 +92,7 @@ static RunStatus run()
                     }
                     LOG_INFO("下一次重试: %" PRIu64 " 秒后",
                         g_prog_status[tl_thread_idx].auth_cfg.keep_retry);
-                    g_prog_status[tl_thread_idx].auth_cfg.tick = get_cur_tm_ms(); // 重新给 tick 赋值
+                    g_prog_status[tl_thread_idx].auth_cfg.tick = get_steady_tm_ms(); // 重新给 tick 赋值 (与上面同源, 都用单调钟)
                 }
             }
         }
@@ -380,10 +383,15 @@ void work()
         {
             /**
              * 认证时间超过 172200000 毫秒 (1 天 23 时 50 分) 自动重启认证
+             *
+             * 同样是单调钟: 墙钟被校时前跳的话, 这个判断会立刻成立,
+             * 于是每次 NTP 校时都白重启一次认证
              */
-            if (get_cur_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 172200000 && g_prog_status[i].auth_cfg.auth_time != 0)
+            if (get_steady_tm_ms() - g_prog_status[i].auth_cfg.auth_time >= 172200000 && g_prog_status[i].auth_cfg.auth_time != 0)
             {
-                LOG_DEBUG("当前时间戳: %" PRIu64, get_cur_tm_ms());
+                LOG_DEBUG("当前时刻 (单调钟): %" PRIu64 ", 已认证: %" PRIu64 " 毫秒",
+                    get_steady_tm_ms(),
+                    get_steady_tm_ms() - g_prog_status[i].auth_cfg.auth_time);
                 LOG_WARN("认证时间超过 172200000 毫秒 (1 天 23 时 50 分), 为避免被远程服务器踢下线, 正在重新进行认证");
                 for (uint8_t j = 0; j < g_prog_cnt; j++)
                 {
