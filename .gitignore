@@ -19,6 +19,8 @@ logs/
 **/portal/assets/css/
 **/portal/assets/js/alpine.js
 **/portal/daisyui.mjs
+**/portal/assets/traffic.json
+**/portal/assets/traffic.json.*.tmp
 
 .idea/
 .vscode/

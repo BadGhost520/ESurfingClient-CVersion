@@ -77,6 +77,8 @@
 
 # 文档
 
+[**Windows 可选工具：实时网速与手机热点**](tools/windows-network-panel/README.md) — 独立面板，热点由用户手动开关，原客户端无需替换。
+
 [**Windows, Linux, MacOS 环境使用教程**](docs/Desktop.md)
 
 [**OpenWRT 环境使用教程**](docs/OpenWRT.md)

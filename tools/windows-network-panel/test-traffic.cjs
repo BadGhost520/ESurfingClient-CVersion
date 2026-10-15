@@ -1,0 +1,16 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const context = { document: { addEventListener() {} } };
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname, '../../esurfingclient/app/portal/assets/js/traffic.js'), 'utf8'), context);
+assert.equal(context.trafficRateText(null), '—');
+assert.equal(context.trafficRateText(-1), '—');
+assert.equal(context.trafficRateText(0), '0 B/s');
+assert.equal(context.trafficRateText(1024), '1.00 KiB/s');
+assert.equal(context.trafficRateText(1048576), '1.00 MiB/s');
+assert.equal(context.trafficIsFresh({ timestamp: 1000 }, 5000), true);
+assert.equal(context.trafficIsFresh({ timestamp: 1000 }, 8000), false);
+assert.equal(context.trafficIsFresh({ timestamp: 9000 }, 1000), false);
+assert.equal(context.trafficIsFresh({}, 1000), false);
+console.log('PASS: 9 traffic formatting/freshness assertions');
