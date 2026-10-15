@@ -1,8 +1,7 @@
 #include "control/Control.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
-#include "utils/PlatformUtils.h"
 
 #include <cJSON/cJSON.h>
 

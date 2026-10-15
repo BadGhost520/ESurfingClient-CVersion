@@ -1,9 +1,10 @@
 #include "control/Control.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/time/TimeUtils.h"
+#include "utils/log/Logger.h"
 
 #include "supervisor/SupervisorInternal.h"
 

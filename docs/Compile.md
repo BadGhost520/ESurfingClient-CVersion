@@ -25,9 +25,10 @@ esurfingclient/              OpenWrt 包①: 主程序
 ├── LICENSE                  包内自带, 不能引用仓库根的 LICENSE
 ├── files/                   目标 rootfs 的镜像
 │   └── etc/{config,init.d}/ 部署到设备上就是这两个位置
-└── main/                    CMake 工程
+└── app/                    CMake 工程 (CI 从这里构建四个桌面/移动平台)
     ├── CMakeLists.txt        ★ 版本号唯一真相源 (set(PROGRAM_VERSION_*))
-    ├── src/                 第一方源码 (cipher/clients/control/states/...)
+    ├── src/                 第一方源码 (cipher / core / config / control / dialer / net /
+    │                        supervisor / utils / webserver, 外加 Main.c)
     ├── include/             第一方头文件, 与 src/ 同构
     ├── portal/              内置网页界面的源
     └── third_party/         vendored: cJSON / mongoose / 7z

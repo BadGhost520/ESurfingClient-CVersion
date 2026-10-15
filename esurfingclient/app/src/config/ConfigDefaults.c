@@ -1,10 +1,10 @@
-#include "utils/PlatformUtils.h"
+#include "utils/text/TextUtils.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
 #include "config/ConfigInternal.h"
 
-#include "utils/Logger.h"
+#include "utils/log/Logger.h"
 
 #include "cJSON/cJSON.h"
 

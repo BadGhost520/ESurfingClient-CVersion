@@ -1,9 +1,12 @@
 #include "supervisor/Supervisor.h"
 
-#include "states/States.h"
+#include "config/Config.h"
 
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "core/States.h"
+
+#include "utils/log/Logger.h"
+#include "utils/text/TextUtils.h"
+#include "utils/time/TimeUtils.h"
 
 #include "supervisor/SupervisorInternal.h"
 

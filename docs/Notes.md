@@ -4,6 +4,23 @@
 清理掉的**约束与踩坑记录**。它们不是背景故事，而是"改错了会静默出问题"的东西，所以
 从代码里搬到这里集中保存。改到相关代码前先看一眼。
 
+## 目录怎么分
+
+`esurfingclient/app/` 下按"谁在用"分模块，`include/` 与 `src/` 同构（同名 `.h` 放在对应目录）：
+
+- `core/` 全局运行状态（`g_prog_*`）与状态刷新；`config/` 配置读写与补全；
+  `control/` 认证进程与 Web 进程之间的控制通道。
+- `dialer/` 认证流程（登录 / 心跳 / 登出 / 会话存档 / 位置发现）；`net/` HTTP 客户端与联网探测。
+- `cipher/` 加解密工厂与算法（按平台放 `algo/<平台>/`）；`supervisor/` 监管进程；
+  `webserver/` 网页服务与接口；`Main.c` 在 `src/` 根上。
+- `utils/` 是通用件，再按用途细分：`log/`（日志系统）、`platform/`（程序位置、父进程、网卡）、
+  `runtime/`（装服务、关闭钩子、看门狗）、`time/`（时间与时间窗）、`text/`（字符串 / 字节 / XML）、
+  `sim/`（自实现的 EVP 与线程、进程封装）。
+- 跨模块的公共头都在 `include/utils/` 下：`platform/PlatformUtils.h`（`SEP`、平台系统头、
+  程序路径等）、`time/TimeUtils.h`、`text/TextUtils.h`、`log/Logger.h`（含 `PATH_MAX`、
+  `DEFAULT_LOG_DIR` 与 `print_log_dir`）。
+  头文件按模块自己包含所需依赖，不再靠"谁包含了谁"顺带拿到声明。
+
 ## 平台与编译器
 
 - **`winsock2.h` 必须先于 `windows.h` 引入**（`src/control/ControlInternal.h`）。
@@ -11,11 +28,11 @@
 - **`SimEvp.h` 与 `<openssl/evp.h>` 互斥**（`include/utils/sim/SimEvp.h`）。
   该头文件是 `evp.h` 的替代品，不能与它同时包含；libcurl 仍链 libcrypto 时链接层面
   不冲突，靠的是头文件里的名称重映射。
-- **枚举成员名要避开 Windows 宏**（`src/clients/dialer/DialerInternal.h` 的 `WaitResult`）。
+- **枚举成员名要避开 Windows 宏**（`src/dialer/DialerInternal.h` 的 `WaitResult`）。
   `windows.h` 定义了 `WAIT_FAILED`（`((DWORD)0xFFFFFFFF)`）等同名宏，而该模块会经
   `NetClient.h` → `curl.h` → `winsock2.h` 把 `windows.h` 带进来，成员名撞上就会被宏替换掉，
   报 `expected identifier before '(' token`。Linux 上不出现，只在 Windows 构建时炸。
-- **线程间共享状态刻意只用 32 位量**（`src/utils/Watchdog.c`）。
+- **线程间共享状态刻意只用 32 位量**（`src/utils/runtime/Watchdog.c`）。
   OpenWrt 路由器多是 32 位 MIPS，64 位量跨线程读写会被撕裂，可能算出错误超时。
   写入顺序是"先写预算、再自增序号"；读侧先读序号、再读预算、最后确认序号没变。
 
@@ -23,19 +40,19 @@
 
 - **默认参数必须与 `esurfingclient/files/etc/config/esurfingclient` 及 `s_default_cfg` 三处一致**
   （`src/config/ConfigDefaults.c`）。缺哪个参数，用户下次打开配置文件就会看到它被补上。
-- **`s_cfg_log_dir` 只存配置里的原样文本**（定义在 `src/utils/LogCore.c`，声明在 `src/utils/LoggerInternal.h`）。
+- **`s_cfg_log_dir` 只存配置里的原样文本**（定义在 `src/utils/log/LogCore.c`，声明在 `src/utils/log/LoggerInternal.h`）。
   它是给页面回显用的，不能回显解析后的绝对路径 —— 否则用户改一次配置就被写成一长串路径。
 
 ## 日志
 
-- **OpenWrt 默认日志目录选 `/var/log/esurfing`**（`src/utils/LoggerDir.c`）。
+- **OpenWrt 默认日志目录选 `/var/log/esurfing`**（`src/utils/log/LoggerDir.c`）。
   因为 `/var/log` 是 tmpfs：重启即清、不磨闪存、小容量设备不会被日志占满。
   配置里的 `log_dir` 同样生效（想把日志放 U 盘时用）。
   ⚠️ `files/etc/init.d/esurfingclient` 与 LuCI 的日志页都拿这个值兜底，改要一起改。
-- **单条日志必须只用一次 `write` 写出**（`src/utils/LogCore.c`，`LOG_LINE_MAX` + 静态断言）。
+- **单条日志必须只用一次 `write` 写出**（`src/utils/log/LogCore.c`，`LOG_LINE_MAX` + 静态断言）。
   多进程共用同一个 `run.log`，分多次写会让不同进程的行互相穿插。
 - **查询模式（`--print-log-dir` / `--list-accounts`）一行都不落盘，改写到 stderr**
-  （`src/utils/LogControl.c` 里的 `set_logger_query_mode` + `LogCore.c` 的 `s_query_mode`）。这两个模式必须调 `load_cfg()` 才知道答案，而解析配置一定会写日志；
+  （`src/utils/log/LogControl.c` 里的 `set_logger_query_mode` + `LogCore.c` 的 `s_query_mode`）。这两个模式必须调 `load_cfg()` 才知道答案，而解析配置一定会写日志；
   那几行落进 `run.log` 后，OpenWrt 的 init 脚本会把这文件当成上一轮运行的日志归档走
   （它的判断就是"`run.log` 非空就归档"）—— 没有旧日志时凭空多出一个只有查询输出的 `.log`，
   有旧日志时归档里混进这几行。之所以是"改写 stderr"而不是"什么都不写"：配置有问题时得让人
@@ -65,7 +82,7 @@
 
 ## 看门狗
 
-- **为什么需要它**（`include/utils/Watchdog.h`）：外部监管者（procd / systemd / SCM）只能看到
+- **为什么需要它**（`include/utils/runtime/Watchdog.h`）：外部监管者（procd / systemd / SCM）只能看到
   "进程退出了没有"。进程卡死（死锁、无超时阻塞调用、绕不出来的死循环）时它照样活着，
   监管者认为一切正常、永远不会重启。OpenWrt 上尤其明显：那边连监管进程都没有，只有 procd
   在看进程在不在。
@@ -75,7 +92,7 @@
   仍未打卡才判卡死。
 - **判定卡死后 `_exit(1)`，不能调 `shut()`**：`shut()` 会 join 线程，可能正好卡在同一个死锁上；
   退出后交给外部监管者按 respawn 策略拉起。
-- **"当前线程是不是看门狗自己"这个标记必须有**（`src/utils/Watchdog.c`，线程局部变量）：
+- **"当前线程是不是看门狗自己"这个标记必须有**（`src/utils/runtime/Watchdog.c`，线程局部变量）：
   看门狗线程自己也要睡眠，而 `sleep_ms()` 会按睡眠时长打卡 —— 不排除自己，就等于看门狗给自己
   打卡、序号每个 tick 都在变，"有新打卡"分支永远成立，`watchdog_fire` 成了不可达代码。
   表现是"装了看门狗但卡死依然没人管"，且不报任何错。用线程局部量是因为只有本线程该被排除。
@@ -98,9 +115,9 @@
   信号处理函数里不能做 join / 打日志 / rename / exit 这些不是 async-signal-safe 的事，
   真正的关闭动作由各角色的主循环来做。
 - **模块内共享状态的定义只放一处，头文件里只放 `extern` 声明**
-  （`src/supervisor/SupervisorState.c`、`src/utils/LogCore.c` 等）。若把可变状态定义在头文件里，每个 `.c` 会拿到
+  （`src/supervisor/SupervisorState.c`、`src/utils/log/LogCore.c` 等）。若把可变状态定义在头文件里，每个 `.c` 会拿到
   自己的一份副本，`s_child_count` 之类的计数就各算各的，行为与拆分前不同。
-- **`_Thread_local` 的限定符在声明与定义两侧都必须带**（`src/clients/net/NetClient.c` 的
+- **`_Thread_local` 的限定符在声明与定义两侧都必须带**（`src/net/NetClient.c` 的
   `s_request_url`，声明在 `NetClientInternal.h`）。少了它就不是线程局部对象，`header_cb` 拼 Location
   时的基准地址会串到别的线程去。
 
@@ -128,7 +145,7 @@
 
 - **内置网页界面（`app/portal/assets/js/main.js`）里的常量要和后端常量对齐**：
   `DEFAULT_CONN_TIMEOUT` / `DEFAULT_OP_TIMEOUT` / `DEFAULT_WEB_PORT` / `MAX_TIME_WINDOWS`
-  对齐 `include/states/States.h`；默认日志目录对齐 `include/utils/Logger.h` 的 `DEFAULT_LOG_DIR`（`"./"` 表示
+  对齐 `include/core/States.h`；默认日志目录对齐 `include/utils/log/Logger.h` 的 `DEFAULT_LOG_DIR`（`"./"` 表示
   程序所在目录）；日志目录长度按后端 `PATH_MAX` 校验，超了会退回默认目录。
 - **认证通道取值统一用 `windows/linux/android/ios/macos`**：前端下拉框、`index.html`、
   后端 `parse_channel_json` 三处一致（后端默认值是 Android）。

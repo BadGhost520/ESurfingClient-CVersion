@@ -1,7 +1,7 @@
 #ifndef ESURFINGCLIENT_SUPERVISORINTERNAL_H
 #define ESURFINGCLIENT_SUPERVISORINTERNAL_H
 
-#include "states/States.h"
+#include "core/States.h"
 
 #ifdef _WIN32
 

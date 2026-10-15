@@ -2,8 +2,9 @@
 
 #include <mongoose/mongoose.h>
 
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/text/TextUtils.h"
+#include "utils/log/Logger.h"
 
 int str_case_cmp(const char* a, const char* b)
 {

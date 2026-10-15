@@ -1,9 +1,9 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
-#include "utils/Logger.h"
+#include "utils/log/Logger.h"
 
 #include <7z/LzmaDec.h>
 

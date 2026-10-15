@@ -410,3 +410,12 @@
 5. 去掉了 `cfg_halt` 的挂起等待: 等配置这件事交给各主流程的"等配置"循环, 等的时候网页是活的, Ctrl+C / 停止服务照样能打断
 6. 网页界面: "保存并应用"之后的提示改成"程序正在重新加载配置"(以前写的是"程序即将重启", 与现在的行为不符); `docs/Desktop.md` 补上"配置还没弄好也能先用网页填"的说明
 7. 补掉第 2 点里的一个漏洞: 程序刚加载完配置、还在等网络进入"需要认证"的阶段时 (这时认证线程还没创建), 网页上的"保存并应用"没人接 —— 把 `enabled` 改回 false 之后程序照旧往下走。现在 `wait_need_auth` 会认"配置变了"并把控制权交回主循环 (新的 `WAIT_CFG_CHANGED`), 预认证阶段、线程守护、认证进程三处都会重新加载并按结果决定是继续还是回到"等配置"; 网页的"保存并应用"只要认证进程还在就放行, 不再要求"正在认证" (刚加载完配置、还没开始认证也是正常状态)
+
+### 2026.10.15 (源码目录重构)
+1. `src/` 顶层扁平化: `clients/dialer/` → `dialer/`, `clients/net/` → `net/`, `states/` → `core/`; `clients/` 与 `states/` 这两层目录不再需要 (各模块本来就只有一两个子目录)
+2. `utils/` 这个 20 个文件的杂货铺按用途细分: `log/`(日志系统 7 个) `platform/`(程序位置 / 父进程 / 网卡 4 个) `runtime/`(装服务、关闭钩子、看门狗 3 个) `time/`(时间与时间窗 2 个) `text/`(字符串 / 字节 / XML 3 个) `sim/`(自实现的 EVP 与线程 / 进程封装, 原地不动)
+3. `LogoutState.c/.h` 从 `utils/` 挪到 `dialer/`: 它只服务认证会话 (会话存档 - 补登出), 引用它的三个文件本来就都在 dialer 里
+4. `include/` 与 `src/` 同构, 头文件跟着源码一起搬
+5. `PlatformUtils.h` 原来是大杂烩 (22 个函数分在 7 个 `.c` 里, 被 35 个文件引用), 按归属拆成 `utils/platform/PlatformUtils.h`(程序路径 / 父进程 / 网卡, 含 `SEP` 与平台系统头)、`utils/time/TimeUtils.h`(墙钟 / 单调钟 / 睡眠 / 格式化)、`utils/text/TextUtils.h`(字符串 / URL 参数 / base64 / 随机数 / 门户 XML); `print_log_dir` 并进 `utils/log/Logger.h`
+6. 拆分顺带暴露并修掉了一批"靠 `PlatformUtils.h` 顺带包含"的隐式依赖 (平台系统头、`core/States.h`、`config/Config.h`、`inttypes.h` 等): 现在每个文件都直接包含自己用到的东西, 编译器 (`-Wimplicit-function-declaration` 在 GCC 14+ 是错误) 逐条盯着
+7. `CMakeLists.txt` 的源文件清单与 `target_sources` 按新目录重排; `docs/Compile.md` 的目录说明、`docs/Notes.md` 里的源码路径引用一并更新, 并在 Notes 开头补了一节"目录怎么分"

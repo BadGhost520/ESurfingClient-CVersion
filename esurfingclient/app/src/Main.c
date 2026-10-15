@@ -1,9 +1,10 @@
+#include "config/Config.h"
 #include "control/Control.h"
-
-#include "states/States.h"
-
-#include "utils/PlatformUtils.h"
-#include "utils/Service.h"
+#include "core/States.h"
+#include "utils/log/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/time/TimeUtils.h"
+#include "utils/runtime/Service.h"
 
 #include <stdio.h>
 

@@ -6,11 +6,11 @@
 
 #include "control/Control.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
 #include "utils/sim/SimThread.h"
 
-#include "utils/Logger.h"
+#include "utils/log/Logger.h"
 
 static sim_thread_t* web_thread;
 

@@ -1,7 +1,7 @@
 #ifndef ESURFINGCLIENT_CONFIGINTERNAL_H
 #define ESURFINGCLIENT_CONFIGINTERNAL_H
 
-#include "states/States.h"
+#include "core/States.h"
 
 #include <cJSON/cJSON.h>
 

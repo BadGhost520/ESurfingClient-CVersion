@@ -2,8 +2,9 @@
 
 #include <mongoose/mongoose.h>
 
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/text/TextUtils.h"
+#include "utils/log/Logger.h"
 
 static const char log_current_name[] = "run.log";
 
