@@ -186,6 +186,10 @@ extern bool g_need_restart;
 
 extern bool g_cfg_loaded;
 
+extern bool g_need_reload;
+
+extern bool g_waiting_cfg;
+
 extern long g_conn_timeout;
 
 extern long g_op_timeout;

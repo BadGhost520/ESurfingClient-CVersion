@@ -17,7 +17,8 @@ typedef enum
     WAIT_READY = 0,
     WAIT_RETRY_EXHAUSTED = 1,
     WAIT_EXIT = 2,
-    WAIT_TIME_CLOSED = 3
+    WAIT_TIME_CLOSED = 3,
+    WAIT_CFG_CHANGED = 4
 } WaitResult;
 
 /*

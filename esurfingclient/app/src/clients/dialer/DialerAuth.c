@@ -281,6 +281,18 @@ int work_auth()
             if (wait_result == WAIT_EXIT) break;
             if (wait_result == WAIT_TIME_CLOSED) continue;
 
+            /**
+             * Web 端请求"应用新配置": 还会在等网络的时候把配置重新读一遍 ——
+             * 配置里若已经没有本实例负责的账号, load_cfg 会失败, 进程退出交给
+             * 外部监管者 (与下面认证线程跑完那一轮的处置一致)
+             */
+            if (wait_result == WAIT_CFG_CHANGED)
+            {
+                LOG_INFO("配置已变更, 重新加载");
+                if (load_cfg() == false) shut(1);
+                continue;
+            }
+
             network_ready = true;
         }
 

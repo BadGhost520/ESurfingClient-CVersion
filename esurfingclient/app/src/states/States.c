@@ -50,6 +50,10 @@ bool g_need_restart = false;
 
 bool g_cfg_loaded = false;
 
+bool g_need_reload = false;
+
+bool g_waiting_cfg = false;
+
 long g_conn_timeout = DEFAULT_CONN_TIMEOUT;
 
 long g_op_timeout = DEFAULT_OP_TIMEOUT;

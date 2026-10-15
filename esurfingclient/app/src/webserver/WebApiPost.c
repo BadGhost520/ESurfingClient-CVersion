@@ -107,7 +107,18 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
         {
             if (cJSON_IsBool(apply))
             {
-                if (g_prog_status == NULL)
+                /**
+                 * 配置不可用时程序正停在"等配置"的状态, 网页开着就是为了让用户
+                 * 把配置改回来 —— 这时"保存并应用"就是让主流程重新读一遍配置的
+                 * 开关: 没有认证线程可下发, 也不需要下发
+                 */
+                if (g_waiting_cfg)
+                {
+                    g_need_reload = true;
+                    LOG_INFO("收到 Web 应用配置文件请求, 主流程将重新加载配置文件");
+                    mg_http_reply(c, 204, "", "");
+                }
+                else if (g_prog_status == NULL)
                 {
                     LOG_WARN("收到 Web 应用配置文件请求, 但程序尚未加载完成, 拒绝操作");
                     mg_http_reply(c, 403, "", "");
@@ -117,15 +128,18 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                     bool is_authed = false;
                     const bool reachable = query_is_authed(&is_authed);
 
+                    /**
+                     * 只要认证进程在 (reachable), 就把"重新加载配置"的请求发下去。
+                     *
+                     * 不要求"正在认证": 配置刚加载完时认证线程还没起 (要等网络进入
+                     * "需要认证"的状态), 而这恰恰是用户会去改配置的时候 ——
+                     * 卡在这里的话, 用户在等网络时把程序关掉会收到一个"应用失败",
+                     * 程序却照旧拿着旧配置往下走
+                     */
                     if (reachable == false)
                     {
                         LOG_WARN("收到 Web 应用配置文件请求, 但认证进程不可达");
                         mg_http_reply(c, 503, "", "");
-                    }
-                    else if (is_authed == false)
-                    {
-                        LOG_WARN("收到 Web 应用配置文件请求, 但没有线程在认证, 拒绝操作");
-                        mg_http_reply(c, 403, "", "");
                     }
                     else if (request_apply_config() == false)
                     {
@@ -134,7 +148,8 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                     }
                     else
                     {
-                        LOG_INFO("收到 Web 应用配置文件请求, 程序将重新加载配置文件并进行认证");
+                        LOG_INFO("收到 Web 应用配置文件请求 (当前%s), 程序将重新加载配置文件",
+                            is_authed ? "已认证" : "未认证");
                         mg_http_reply(c, 204, "", "");
                     }
                 }

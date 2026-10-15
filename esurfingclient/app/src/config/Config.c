@@ -103,53 +103,121 @@ const char* get_config_file_path(void)
 
 bool s_list_only = false;
 
-/**
- * @brief 处理无法继续的配置问题
- *
- * 单进程模式下挂起等待人工处理: 配置没填好时反复重启只会刷屏,
- * 等用户改完配置手动重启即可。
- *
- * 挂起期间必须仍然能被 Ctrl+C / 关窗口 / 服务停止打断 —— 有专门的回归用例
- * 盯着这一点 (test-windows-runtime.sh 第 8 节), 因为漏掉时会表现成
- * "程序假死 + 日志不落盘", 只能去任务管理器杀进程。
- *
- * 以下情况直接返回失败, 由调用方退出:
- * - 列举账号: init 脚本调用, 挂起会卡住开机
- * - 认证 / Web / 监管进程: 它们都在外部监管者 (procd / systemd / SCM) 之下,
- *   退出后按 respawn 或重启策略处理。挂住的进程监管者是不会重启的,
- *   那样只会看起来"服务在跑"却什么都不干
- */
-void cfg_halt()
-{
-    if (s_list_only ||
-        g_prog_role == ROLE_AUTH ||
-        g_prog_role == ROLE_WEB ||
-        g_prog_role == ROLE_SUPERVISOR)
-    {
-        return;
-    }
-
-    while (true)
-    {
-        if (g_need_exit) return;
-
-        /**
-         * 信号处理函数现在只置 g_stop_requested (不再直接调 shut() —— 那里面的
-         * join / 打日志 / rename / exit 都不是 async-signal-safe 的),
-         * 而 g_need_exit 只有 shut() 会置。单进程模式下 shut() 要等 load_cfg()
-         * 返回之后才调用, 所以这里只等 g_need_exit 的话会永远等不到:
-         * Ctrl+C 毫无反应, 关窗口被系统强杀, 日志也就不会被改名。
-         * 返回后由调用方 (work() 里的 shut(1)) 走正常关闭流程。
-         */
-        if (g_stop_requested) return;
-
-        sleep_ms(10000, true);
-    }
-}
-
 const char* get_config_path(void)
 {
     return config_file;
+}
+
+static uint64_t s_cfg_hash = 0;
+
+static bool s_cfg_waiting = false;
+
+#define CFG_WAIT_TICK_MS 1000
+
+/**
+ * @brief 读取配置文件的原文
+ *
+ * 程序还没把配置读起来时 (停在"等配置"状态, 或者网页刚保存、重新加载还没跑完),
+ * 网页直接展示文件里的内容: 内存里那份是空的或者旧的, 显示成空账号的话,
+ * 用户一保存就把自己写过的账号密码覆盖掉了
+ * @return 文件内容 (需要 free), 读不到或文件为空时返回 NULL
+ */
+char* read_cfg_file()
+{
+    FILE* file = fopen(config_file, "rb");
+    if (file == NULL) return NULL;
+
+    fseek(file, 0, SEEK_END);
+    const long len = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    if (len <= 0)
+    {
+        fclose(file);
+        return NULL;
+    }
+
+    char* text = malloc((size_t)len + 1);
+    if (text == NULL)
+    {
+        fclose(file);
+        return NULL;
+    }
+
+    const size_t read_len = fread(text, 1, (size_t)len, file);
+    fclose(file);
+    text[read_len] = '\0';
+
+    return text;
+}
+
+/**
+ * @brief 取配置文件内容的指纹 (FNV-1a)
+ *
+ * 等配置的程序靠它判断配置文件有没有被改过: 没改就不必重新解析 (解析一次要写好几行
+ * 日志, 一秒一次的话等一晚上日志就炸了)。
+ *
+ * 看内容而不是修改时间, 有两个原因:
+ * - 修改时间在有些文件系统上只精确到秒 (FAT32 之类), 同一秒里改完保存会被漏掉,
+ *   程序就一直等下去了
+ * - 网页保存与手工编辑两条路都不用额外发信号, 内容变了就一定会被发现
+ * 配置文件只有几百字节, 一秒读一次的开销可以忽略
+ * @return 指纹值 (文件不存在或读不到时为 0)
+ */
+uint64_t cfg_file_hash()
+{
+    FILE* file = fopen(config_file, "rb");
+    if (file == NULL) return 0;
+
+    uint64_t hash = 14695981039346656037ull;
+    int ch;
+    while ((ch = fgetc(file)) != EOF)
+    {
+        hash ^= (uint64_t)(uint8_t)ch;
+        hash *= 1099511628211ull;
+    }
+    fclose(file);
+
+    // 0 留给"读不到", 免得空文件与打不开撞在一起
+    return hash == 0 ? 1 : hash;
+}
+
+/**
+ * @brief 等配置文件变成可用 (每次最多等一个固定的间隔)
+ *
+ * 配置没变就不重新解析: 解析一次要写好几行日志, 一秒一次的话等一晚上日志就炸了。
+ * 网页上的"保存并应用"会置 g_need_reload, 那条路不必等下一次轮询
+ * @return true 表示配置已可用 (此时 load_cfg 已经跑完)
+ */
+bool wait_cfg_usable(void)
+{
+    /**
+     * 进入"等配置"状态时先记下配置文件的指纹:
+     * 之后只有它变了 (网页保存 / 手工编辑 / 点了"保存并应用") 才重新解析
+     */
+    if (s_cfg_waiting == false)
+    {
+        s_cfg_waiting = true;
+        s_cfg_hash = cfg_file_hash();
+        g_need_reload = false;
+    }
+
+    sleep_ms(CFG_WAIT_TICK_MS, false);
+
+    const uint64_t hash = cfg_file_hash();
+    if (g_need_reload == false && hash == s_cfg_hash) return false;
+
+    g_need_reload = false;
+    s_cfg_hash = hash;
+
+    if (load_cfg() == true)
+    {
+        s_cfg_waiting = false;
+        LOG_INFO("配置已可用, 继续往下走");
+        return true;
+    }
+
+    LOG_WARN("配置仍不可用, 请在网页界面上改好后再点「保存并应用」");
+    return false;
 }
 
 bool load_cfg()
@@ -165,7 +233,6 @@ bool load_cfg()
         if (g_prog_status == NULL)
         {
             LOG_FATAL("分配内存失败");
-            cfg_halt();
             return false;
         }
     }
@@ -175,7 +242,6 @@ bool load_cfg()
     if (get_exec_dir(dir) == false)
     {
         LOG_ERROR("获取可执行文件路径失败, 请检查权限后重启");
-        cfg_halt();
         return false;
     }
     snprintf(config_file, PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE), "%s%c%s", safe_str(dir), SEP, DIALER_CONFIG_FILE);
@@ -191,13 +257,11 @@ bool load_cfg()
         if (!new_cfg)
         {
             LOG_FATAL("无法生成文件: %s, 请检查权限后重启", config_file);
-            cfg_halt();
             return false;
         }
         fprintf(new_cfg, "%s", s_default_cfg);
         fclose(new_cfg);
-        LOG_INFO("创建完成, 请在 %s 填写账号数据, 然后重启", config_file);
-        cfg_halt();
+        LOG_INFO("创建完成, 请在 %s 填写账号数据后重启", config_file);
         return false;
     }
 
@@ -215,7 +279,6 @@ bool load_cfg()
     if (!cfg_json)
     {
         LOG_FATAL("JSON 解析失败, 请检查后重启");
-        cfg_halt();
         return false;
     }
 
@@ -240,6 +303,60 @@ bool load_cfg()
     }
 
     /**
+     * Web 服务端口与是否允许外部访问
+     *
+     * 只有桌面端有 Web 服务 (OpenWrt 版不带 Web 服务), 那边这两个参数
+     * 解析出来也没人用, 但配置文件的格式是同一套, 这里就一起读掉。
+     *
+     * 必须排在下面所有"配置不可用"的判断之前: 配置被禁用 / 账号没填好时,
+     * 程序会带着网页停在"等配置"的状态, 网页要按配置里的端口监听 ——
+     * 排在后面的话就只能按默认端口开出去了
+     */
+    const cJSON* web_port = cJSON_GetObjectItem(cfg_json, "web_port");
+    if (web_port)
+    {
+        if (cJSON_IsNumber(web_port) && web_port->valueint >= 1 && web_port->valueint <= 65535)
+        {
+            g_web_port = (uint16_t)web_port->valueint;
+        }
+        else
+        {
+            LOG_WARN("web_port 参数不正确 (应为 1 - 65535), 使用默认参数 (%d)", DEFAULT_WEB_PORT);
+        }
+    }
+    else
+    {
+        LOG_DEBUG("web_port 参数不存在, 使用默认参数 (%d)", DEFAULT_WEB_PORT);
+    }
+
+    const cJSON* web_external_acc = cJSON_GetObjectItem(cfg_json, "web_external_acc");
+    if (web_external_acc)
+    {
+        if (cJSON_IsBool(web_external_acc))
+        {
+            g_web_external_acc = cJSON_IsTrue(web_external_acc);
+        }
+        else
+        {
+            LOG_WARN("web_external_acc 参数不正确 (应为 true / false), 使用默认参数 (关闭)");
+        }
+    }
+    else
+    {
+        LOG_DEBUG("web_external_acc 参数不存在, 使用默认参数 (关闭)");
+    }
+
+    /**
+     * 从这里开始"尽力解析": 配置不可用 (被禁用 / 账号没填全) 时不再半路返回,
+     * 而是把能读出来的值照样填进内存, 只用 usable 记下它不可用。
+     *
+     * 之所以要这样: 配置不可用时程序会带着网页停下来等用户改, 而配置页读的
+     * 就是这块内存 —— 空着的话用户在网页上点一次保存, 就把自己写过的账号密码
+     * 覆盖成空的了
+     */
+    bool usable = true;
+
+    /**
      * 下面这些"参数不存在"的分支现在基本走不到了 (上面已经补全),
      * 留着是给补全时分配内存失败之类的极端情况兜底
      */
@@ -248,17 +365,18 @@ bool load_cfg()
     {
         LOG_WARN("enabled 参数不存在, 请填写后重启程序");
         g_prog_enabled = false;
-        cfg_halt();
-        return false;
+        usable = false;
     }
-    if (cJSON_IsFalse(enabled))
+    else if (cJSON_IsFalse(enabled))
     {
         LOG_WARN("配置文件中禁用了程序启动, 请开启后重启程序");
         g_prog_enabled = false;
-        cfg_halt();
-        return false;
+        usable = false;
     }
-    g_prog_enabled = true;
+    else
+    {
+        g_prog_enabled = true;
+    }
 
     const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
     if (log_lv)
@@ -337,53 +455,16 @@ bool load_cfg()
         LOG_WARN("op_timeout 参数不存在, 使用默认参数 (%d 秒)", DEFAULT_OP_TIMEOUT);
     }
 
-    /**
-     * Web 服务端口与是否允许外部访问
-     *
-     * 只有桌面端有 Web 服务 (OpenWrt 版不带 Web 服务), 那边这两个参数
-     * 解析出来也没人用, 但配置文件的格式是同一套, 这里就一起读掉
-     */
-    const cJSON* web_port = cJSON_GetObjectItem(cfg_json, "web_port");
-    if (web_port)
-    {
-        if (cJSON_IsNumber(web_port) && web_port->valueint >= 1 && web_port->valueint <= 65535)
-        {
-            g_web_port = (uint16_t)web_port->valueint;
-        }
-        else
-        {
-            LOG_WARN("web_port 参数不正确 (应为 1 - 65535), 使用默认参数 (%d)", DEFAULT_WEB_PORT);
-        }
-    }
-    else
-    {
-        LOG_DEBUG("web_port 参数不存在, 使用默认参数 (%d)", DEFAULT_WEB_PORT);
-    }
-
-    const cJSON* web_external_acc = cJSON_GetObjectItem(cfg_json, "web_external_acc");
-    if (web_external_acc)
-    {
-        if (cJSON_IsBool(web_external_acc))
-        {
-            g_web_external_acc = cJSON_IsTrue(web_external_acc);
-        }
-        else
-        {
-            LOG_WARN("web_external_acc 参数不正确 (应为 true / false), 使用默认参数 (关闭)");
-        }
-    }
-    else
-    {
-        LOG_DEBUG("web_external_acc 参数不存在, 使用默认参数 (关闭)");
-    }
-
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
+
+    /**
+     * 账号整段缺失 / 是空的 / 根本不是数组: 记下不可用, 但不再半路返回 ——
+     * 后面按"一个可用账号都没有"处理, 网页上还能把账号补上
+     */
     if (accounts == NULL || cJSON_IsArray(accounts) == false || cJSON_GetArraySize(accounts) == 0)
     {
         LOG_FATAL("没有找到账号数据, 请添加后重启程序");
-        cJSON_Delete(cfg_json);
-        cfg_halt();
-        return false;
+        usable = false;
     }
 
     const uint8_t cnt = cJSON_GetArraySize(accounts);
@@ -537,15 +618,43 @@ bool load_cfg()
         const cJSON* chn = cJSON_GetObjectItem(account, "channel");
         const cJSON* time_windows_item = cJSON_GetObjectItem(account, "time_windows");
 
+        /**
+         * 先把这一项里用户写过的东西按原样填进内存, 再判它能不能用。
+         *
+         * 配置不可用时程序会带着网页停在"等配置"的状态, 网页上的配置页正是从
+         * 这块内存取值的 —— 不填的话网页显示的是空账号, 用户点一次保存就把
+         * 自己写过的账号密码覆盖成空的了
+         */
+        login_cfg_t* login = &g_prog_status[0].login_cfg;
+        snprintf(login->usr, USR_LEN, "%s", safe_str(usr != NULL ? usr->valuestring : ""));
+        snprintf(login->pwd, PWD_LEN, "%s", safe_str(pwd != NULL ? pwd->valuestring : ""));
+        login->chn = parse_channel_json(chn, i + 1);
+        apply_channel_ua(login, i + 1);
+
+        // 记真实序号: 首个配置可能不可用而被跳过, 写死 1 会让日志报错配置号
+        login->idx = i + 1;
+
+        // 检查时间控制字段
+        if (apply_time_windows(time_windows_item, login) == false)
+        {
+            LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
+            login->time_window_count = 0;
+            login->has_time_control = false;
+            usable = false;
+            continue;
+        }
+
         // 检查账号
         if (usr == NULL)
         {
             LOG_WARN("配置 %" PRIu8 " username 参数不存在, 跳过当前配置", i + 1);
+            usable = false;
             continue;
         }
         if (usr->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
+            usable = false;
             continue;
         }
 
@@ -553,33 +662,19 @@ bool load_cfg()
         if (pwd == NULL)
         {
             LOG_WARN("配置 %" PRIu8 " password 参数不存在, 跳过当前配置", i + 1);
+            usable = false;
             continue;
         }
         if (pwd->valuestring[0] == '\0')
         {
             LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
+            usable = false;
             continue;
         }
 
-        // 检查时间控制字段
-        if (apply_time_windows(time_windows_item, &g_prog_status[0].login_cfg) == false)
-        {
-            LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
-            cJSON_Delete(cfg_json);
-            return false;
-        }
-
-        snprintf(g_prog_status[0].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
-        snprintf(g_prog_status[0].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
-
-        g_prog_status[0].login_cfg.chn = parse_channel_json(chn, i + 1);
-        apply_channel_ua(&g_prog_status[0].login_cfg, i + 1);
-
-        LOG_DEBUG("使用 UA: %s", g_prog_status[0].login_cfg.user_agent);
+        LOG_DEBUG("使用 UA: %s", login->user_agent);
         LOG_DEBUG("当前使用下标: 0");
 
-        // 记真实序号: 首个配置可能不可用而被跳过, 写死 1 会让日志报错配置号
-        g_prog_status[0].login_cfg.idx = i + 1;
         LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
         valid_cnt++;
         break;
@@ -611,7 +706,6 @@ bool load_cfg()
         if (pick < 0)
         {
             LOG_FATAL("配置 %" PRIu8 " 不存在或该配置不可用, 请检查配置文件", g_prog_account);
-            cfg_halt();
             return false;
         }
 
@@ -635,11 +729,17 @@ bool load_cfg()
     if (valid_cnt == 0)
     {
         LOG_FATAL("无可用配置, 请检查后重启程序");
-        cfg_halt();
-        return false;
+        usable = false;
     }
 
     g_prog_cnt = valid_cnt;
+
+    /**
+     * 配置不可用: 返回 false, 但内存里能读出来的值已经填好了。
+     * 调用方 (单进程 / Web 进程 / 监管进程) 会带着 Web 服务停下来等用户改配置,
+     * 认证进程则直接退出, 交给监管者按退避策略处理
+     */
+    if (usable == false) return false;
 
     g_cfg_loaded = true;
 

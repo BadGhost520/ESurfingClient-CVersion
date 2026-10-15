@@ -239,6 +239,54 @@ void print_banner()
 #ifndef __OPENWRT__
 
 /**
+ * @brief 带着网页停下来等用户把配置改好
+ *
+ * 配置不可用时程序不能一走了之 (用户还得靠网页把配置改回来), 也不能死等:
+ * 网页上的"保存并应用"会叫醒下面的循环, 用户改好之后自动重新加载并接着往下走。
+ * 配置一直改不好时, 收到退出请求 (Ctrl+C / 停止服务) 就交回调用方
+ *
+ * @return true 表示配置已经可用了, false 表示期间收到了退出请求
+ */
+static bool wait_for_cfg()
+{
+    LOG_WARN("配置暂不可用, 请在网页界面上改好后点「保存并应用」");
+    LOG_INFO("配置文件路径: %s", get_config_path());
+
+    g_waiting_cfg = true;
+    while (g_stop_requested == 0 && g_need_exit == false)
+    {
+        if (wait_cfg_usable()) break;
+    }
+    g_waiting_cfg = false;
+
+    return g_cfg_loaded;
+}
+
+#endif
+
+/**
+ * @brief 配置不可用时停住等用户改 (桌面端) 或者退出交给外部监管者 (OpenWrt)
+ *
+ * @return true 表示配置已经可用了, false 表示已经/正在退出, 调用方不必再往下走
+ */
+static bool hold_for_cfg()
+{
+#ifdef __OPENWRT__
+
+    // OpenWrt 上没有网页可以等, 退出交给 procd 按 respawn 策略处理
+    shut(1);
+    return false;
+
+#else
+
+    return wait_for_cfg();
+
+#endif
+}
+
+#ifndef __OPENWRT__
+
+/**
  * @brief Web 进程主流程
  *
  * 只提供网页服务, 不参与认证:
@@ -258,17 +306,39 @@ static int work_web()
 
     print_banner();
 
-    if (load_cfg() == false) shut(1);
-
-    LOG_INFO("以 Web 进程运行, 展示配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
+    /**
+     * 与单进程模式同一套顺序: 先加载配置 (即使不可用, Web 服务的端口也已经就位),
+     * 再把网页起起来, 配置不可用时就停在这里等用户改。
+     *
+     * 不能一见配置不可用就退出: 监管者只会按退避策略反复拉起, 而用户需要的
+     * 恰恰是这个网页 —— 它是把配置改回来的入口
+     */
+    const bool cfg_ok = load_cfg();
 
     if (start_web_server_remote() == false) shut(1);
+
+    if (cfg_ok == false)
+    {
+        if (hold_for_cfg() == false) shut(0);
+    }
+
+    LOG_INFO("以 Web 进程运行, 展示配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
 
     // Web 服务在独立线程里跑, 主线程只等退出
     while (g_need_exit == false && g_stop_requested == 0)
     {
         if (supervisor_gone()) break;
-        sleep_ms(1000, false);
+
+        /**
+         * 跟着配置文件走: 用户在网页上保存过配置之后, 本进程展示的值也要跟上
+         * (认证与"应用配置"是认证进程那边的事, 这里只是把配置重新读一遍);
+         * 配置变得不可用时回到"等配置"状态 —— 这样网页上的"保存并应用"就能像
+         * 启动时那样直接把配置重新读起来, 而不是回一句"认证进程不可达"
+         */
+        if (wait_cfg_usable() == false && g_cfg_loaded == false)
+        {
+            if (hold_for_cfg() == false) shut(0);
+        }
     }
 
     LOG_INFO("Web 进程退出");
@@ -313,18 +383,27 @@ void work()
     print_banner();
 
     /**
-     * 先加载配置再起 Web 服务
+     * 先加载配置, 再起 Web 服务
      *
-     * 监听端口与是否允许外部访问 (配置里的 web_port / web_external_acc) 要在
-     * 绑端口之前就位, 顺序反过来就只能按默认端口开出去了。
-     * 顺带解决了"配置没读好却已经对外提供网页"这件事: 配置有问题时 cfg_halt
-     * 会挂住等用户改配置, 那种状态下网页上的账号信息本来就是空的
+     * 顺序不能反: 监听端口与是否允许外部访问 (配置里的 web_port / web_external_acc)
+     * 要在绑端口之前就位, 反过来就只能按默认端口开出去了 —— load_cfg 把这两个
+     * 参数的解析排在所有"配置不可用"的判断之前, 配置有问题时照样能拿到它们。
+     *
+     * 但 Web 服务也不能等配置加载成功才起: 网页正是用户改配置的入口 (程序被
+     * enabled 关掉 / 账号没填 / JSON 写坏时更是唯一的入口), 排在后面的话这些
+     * 情况连网页都打不开, 只剩手改 JSON 一条路
      */
-    if (load_cfg() == false) shut(1); // 加载配置文件
+    const bool cfg_ok = load_cfg(); // 加载配置文件
 
 #ifndef __OPENWRT__
     if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
 #endif
+
+    // 配置不可用: 桌面端带着网页停下来等用户改, OpenWrt 上退出交给 procd
+    if (cfg_ok == false)
+    {
+        if (hold_for_cfg() == false) shut(0);
+    }
 
     time_control_sync(); // 冷启动时先按当前时间同步各账号的时间控制状态
     if (time_control_init() == false) shut(1); // 启动时间控制定时线程
@@ -332,9 +411,42 @@ void work()
     logout_previous_session(); // 前台模式的强杀登出流程
 
     /**
-     * 检测网络状态, 进入需要认证的状态后才继续
+     * 预认证阶段: 等网络进入"需要认证"的状态
+     *
+     * 写成循环是为了配置: 这时还没有认证线程, 网页上的"保存并应用"没人接 ——
+     * 用户把程序关掉之后要能停在这里, 而不是拿着旧配置一直往下走
      */
-    if (wait_need_auth() == WAIT_RETRY_EXHAUSTED) shut(1);
+    while (true)
+    {
+        const WaitResult wait_result = wait_need_auth();
+
+        if (wait_result == WAIT_CFG_CHANGED)
+        {
+            LOG_INFO("配置已变更, 重新加载");
+
+            if (load_cfg() == false)
+            {
+                if (hold_for_cfg() == false) shut(0);
+            }
+            else
+            {
+                /**
+                 * 还没有线程在跑, "需要重新认证"这个请求没有对象, 清掉 ——
+                 * 留着的话线程刚起来就会立刻退出一次
+                 */
+                for (uint8_t i = 0; i < g_prog_cnt; i++)
+                {
+                    g_prog_status[i].runtime_status.is_need_reauth = false;
+                }
+            }
+
+            time_control_sync(); // 换了配置, 各账号的时段状态重新算一遍
+            continue;
+        }
+
+        if (wait_result == WAIT_RETRY_EXHAUSTED) shut(1);
+        break;
+    }
 
     // 等待期间收到退出请求
     if (g_stop_requested) shut(0);
@@ -424,13 +536,13 @@ void work()
                     LOG_INFO("认证线程 %" PRIu8 " 已结束", i);
                 }
 
-                if (g_prog_status[i].runtime_status.is_time_disabled)
-                {
-                    // 时间控制禁用中，不重启该线程；等时间控制线程在允许时段再放行
-                    continue;
-                }
-
-                LOG_INFO("由于线程守护已开启，将会重新启动认证线程 %" PRIu8, i);
+                /**
+                 * 先处理"配置变了" (网页上的"保存并应用"会把 g_cfg_loaded 置为
+                 * false), 再判要不要拉起线程。
+                 *
+                 * 顺序很重要: "不在允许时段"那条分支是 continue, 排在前面的话
+                 * 重新加载会被整个跳过去, 程序就一直拿着旧配置跑
+                 */
                 if (g_cfg_loaded == false)
                 {
                     LOG_WARN("配置文件未完成加载, 令所有线程退出并加载");
@@ -442,8 +554,28 @@ void work()
                             sleep_ms(100, true);
                         }
                     }
-                    load_cfg();
+
+                    /**
+                     * 新配置也可能是不可以用的 (用户刚在网页上把程序关掉, 或者把
+                     * 账号删了): 那就不能拿着旧配置接着认证, 得回到"等配置"状态 ——
+                     * 网页还开着, 用户改好之后点「保存并应用」照样能接着跑
+                     */
+                    if (load_cfg() == false)
+                    {
+                        if (hold_for_cfg() == false) shut(0);
+                    }
+
+                    // 重新加载可能把账号数改小了, 下标要重新对一次
+                    if (i >= (uint8_t)g_prog_cnt) break;
                 }
+
+                if (g_prog_status[i].runtime_status.is_time_disabled)
+                {
+                    // 时间控制禁用中，不重启该线程；等时间控制线程在允许时段再放行
+                    continue;
+                }
+
+                LOG_INFO("由于线程守护已开启，将会重新启动认证线程 %" PRIu8, i);
                 g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
                 uint8_t retry_ct = 1;
                 while (g_prog_status[i].thread == NULL)

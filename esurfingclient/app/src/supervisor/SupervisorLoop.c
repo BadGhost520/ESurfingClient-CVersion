@@ -7,6 +7,14 @@
 
 #include "supervisor/SupervisorInternal.h"
 
+#define SUPERVISOR_CFG_CHECK_MS 1000
+
+static bool s_cfg_usable = false;
+
+static uint64_t s_cfg_hash = 0;
+
+static uint64_t s_cfg_check_time = 0;
+
 /* ------------------------------------------------------------------
  * 回收与重启
  * ------------------------------------------------------------------ */
@@ -57,6 +65,26 @@ static void supervisor_reap()
 
 #endif
 
+/**
+ * @brief 这个子进程现在能不能拉起来
+ *
+ * 配置不可用时认证子进程拉起来也是白拉 (它自己会退出), 留着让用户先把配置改好。
+ * 账号还可能在网页上被改过, 所以拉起之前按当前配置对一次号 ——
+ * 拿一个已经不存在的序号去拉, 子进程只会反复退出
+ * @param child 子进程
+ * @param index 该子进程在表里的下标
+ * @return 是否可以拉起
+ */
+static bool supervisor_child_ready(child_t* child, const int index)
+{
+    if (child->kind != CHILD_AUTH) return true;
+    if (s_cfg_usable == false) return false;
+
+    child->account = (index < g_prog_cnt) ? g_prog_status[index].login_cfg.idx : 0;
+
+    return child->account != 0;
+}
+
 static void supervisor_restart_due()
 {
     const uint64_t now = get_cur_tm_ms();
@@ -66,6 +94,7 @@ static void supervisor_restart_due()
         child_t* child = &s_children[i];
         if (child->running) continue;
         if (now < child->next_start_time) continue;
+        if (supervisor_child_ready(child, i) == false) continue;
 
         char name[32];
         child_name(child, name, sizeof(name));
@@ -74,6 +103,49 @@ static void supervisor_restart_due()
         {
             LOG_INFO("%s 已重新拉起", name);
         }
+    }
+}
+
+/**
+ * @brief 按配置文件的变化调整子进程
+ *
+ * 监管者与子进程之间没有通道, 网页上的"保存并应用"传不到这里, 只能盯着配置文件:
+ * 内容变了才重新解析一次 (解析一次要写好几行日志, 每 200 毫秒来一次会把日志刷满)。
+ *
+ * 配置从不可用变回可用时要主动把认证子进程拉起来 —— 它们没有"待机"的形态,
+ * 不可用期间压根没被拉起来过
+ */
+static void supervisor_sync_cfg()
+{
+    // 测间隔用单调钟: 墙钟被 NTP 校时跳一下, 这里就会白等 (或立刻重来)
+    const uint64_t now = get_steady_tm_ms();
+    if (now - s_cfg_check_time < SUPERVISOR_CFG_CHECK_MS) return;
+    s_cfg_check_time = now;
+
+    const uint64_t hash = cfg_file_hash();
+    if (hash == s_cfg_hash) return;
+    s_cfg_hash = hash;
+
+    const bool usable = load_cfg();
+
+    if (usable == s_cfg_usable) return;
+    s_cfg_usable = usable;
+
+    if (usable)
+    {
+        LOG_INFO("配置已可用, 认证进程开始拉起");
+
+        // 退避清零: 之前拉不起来是因为配置不可用, 不该按失败次数继续等下去
+        for (int i = 0; i < s_child_count; i++)
+        {
+            if (s_children[i].kind != CHILD_AUTH) continue;
+            s_children[i].restarts = 0;
+            s_children[i].next_start_time = 0;
+        }
+    }
+    else
+    {
+        LOG_WARN("配置已不可用, 认证进程不再拉起 (网页仍可访问)");
     }
 }
 
@@ -114,25 +186,28 @@ static void supervisor_shutdown()
 
 /**
  * @brief 按配置里的可用账号构建子进程表
- * @return 是否至少构建出一个子进程
+ *
+ * 认证子进程要排在 Web 子进程前面: 控制端口是按表里的顺序分配的 (第 i 个认证进程用
+ * 端口 + i), 而 Web 进程连的是第 0 个认证进程的端口 —— 顺序反了它就连不上认证进程了
+ * @return 是否构建成功
  */
 static bool supervisor_build_children()
 {
-    if (g_prog_cnt <= 0)
-    {
-        LOG_FATAL("没有可用账号, 无法启动认证进程");
-        return false;
-    }
-
     s_child_count = 0;
 
-    for (uint8_t i = 0; i < g_prog_cnt && s_child_count < SUPERVISOR_MAX_CHILDREN; i++)
+    /**
+     * 一个账号都没有时也留一个认证进程的位置: 用户在网页上把账号填好之后
+     * 就能直接把它拉起来, 不必重启服务
+     */
+    const uint8_t auth_slots = (g_prog_cnt > 0) ? (uint8_t)g_prog_cnt : 1;
+
+    for (uint8_t i = 0; i < auth_slots && s_child_count < SUPERVISOR_MAX_CHILDREN; i++)
     {
         child_t* child = &s_children[s_child_count];
         memset(child, 0, sizeof(*child));
         child->handle = CHILD_HANDLE_INVALID;
         child->kind = CHILD_AUTH;
-        child->account = g_prog_status[i].login_cfg.idx;
+        child->account = (i < g_prog_cnt) ? g_prog_status[i].login_cfg.idx : 0;
         child->control_port = child_control_port(CHILD_AUTH, s_child_count);
         s_child_count++;
     }
@@ -164,16 +239,22 @@ int work_supervisor()
     LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
     LOG_INFO(" - 以守护进程运行: 认证与 Web 各起独立进程");
 
-    if (load_cfg() == false) return 1;
-
     /**
-     * 这里的失败路径刻意【不】调 clean_logger()。
+     * 配置不可用时仍然要起来 (启动 Web 子进程), 所以这里不返回失败:
+     * 网页正是用户把配置改回来的入口, 而服务模式下没有网页就等于没有出路。
      *
-     * 它会做两件事: 关句柄 (exit() 本来也会关) 和把 run.log 改名归档。
-     * 而配置有问题时监管者会被反复重启 (systemd/procd/SCM 的重启策略),
-     * 每次都归档就会在日志目录里堆一堆只有横幅的垃圾文件。
-     * 不退化成重启循环的话, 下一次正常退出时的归档会把日志一起收走。
+     * 配置有问题时监管者会被反复重启 (systemd/procd/SCM 的重启策略),
+     * 失败路径刻意【不】调 clean_logger(): 它会做两件事 —— 关句柄 (exit() 本来也会关)
+     * 和把 run.log 改名归档, 每次都归档就会在日志目录里堆一堆只有横幅的垃圾文件
      */
+    s_cfg_usable = load_cfg();
+    s_cfg_hash = cfg_file_hash();
+
+    if (s_cfg_usable == false)
+    {
+        LOG_WARN("配置暂不可用, 先只启动 Web 进程, 请在网页界面上改好配置");
+        LOG_INFO("配置文件路径: %s", get_config_path());
+    }
 
     /**
      * 生成一次性令牌下发给子进程:
@@ -194,6 +275,9 @@ int work_supervisor()
     int started = 0;
     for (int i = 0; i < s_child_count; i++)
     {
+        // 配置不可用时只拉 Web 子进程, 认证子进程等配置可用了再补
+        if (supervisor_child_ready(&s_children[i], i) == false) continue;
+
         char name[32];
         if (child_spawn(&s_children[i]))
         {
@@ -213,10 +297,17 @@ int work_supervisor()
         return 1;
     }
 
-    LOG_INFO("守护进程已就绪, 共 %d 个子进程 (认证 %" PRId8 " 个 + Web 1 个)", started, g_prog_cnt);
+    if (s_cfg_usable)
+    {
+        LOG_INFO("守护进程已就绪, 共 %d 个子进程 (认证 %" PRId8 " 个 + Web 1 个)", started, g_prog_cnt);
+    }
+    else
+    {
+        LOG_INFO("守护进程已就绪, 当前只有 Web 进程; 配置可用后会自动补上认证进程");
+    }
 
     /**
-     * 主循环: 回收退出的子进程 -> 到点重新拉起 -> 睡一小会儿
+     * 主循环: 回收退出的子进程 -> 到点重新拉起 -> 看配置有没有变过 -> 睡一小会儿
      *
      * 两个退出条件:
      * - s_stop_requested: 自己装的信号处理 (POSIX 的 SIGTERM 等)
@@ -228,6 +319,7 @@ int work_supervisor()
     {
         supervisor_reap();
         supervisor_restart_due();
+        supervisor_sync_cfg();
         sleep_ms(SUPERVISOR_TICK_MS, true);
     }
 

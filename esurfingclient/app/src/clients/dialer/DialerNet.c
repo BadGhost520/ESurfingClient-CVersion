@@ -230,6 +230,13 @@ WaitResult wait_need_auth()
          */
         watchdog_pet_network();
 
+        /**
+         * 配置被改过 (网页上的"保存并应用"会把 g_cfg_loaded 置为 false):
+         * 交回主循环重新加载, 不能拿着旧配置继续等网络 ——
+         * 用户在网页上把程序关掉之后, 这里要能停下来
+         */
+        if (g_cfg_loaded == false) return WAIT_CFG_CHANGED;
+
         if (supervisor_gone())
         {
             LOG_WARN("守护进程已退出, 本进程一并退出");

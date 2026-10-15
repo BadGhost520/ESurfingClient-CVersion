@@ -170,6 +170,31 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
     // 获取配置
     if (mg_match(hm->uri, mg_str("/api/getConfigs"), NULL))
     {
+        /**
+         * 配置还没加载起来时 (停在"等配置"状态, 或者网页刚保存、重新加载还没跑完)
+         * 直接返回配置文件里的内容: 内存里那份是空的或者旧的, 显示成空账号的话,
+         * 用户一保存就把自己写过的账号密码覆盖掉了
+         *
+         * 文件内容要能解析才敢返回 —— 配置写坏时网页至少要能打开, 那时按内存里的
+         * 默认值显示, 用户在网页上重新填一份保存就是
+         */
+        if (g_cfg_loaded == false)
+        {
+            char* cfg_text = read_cfg_file();
+            if (cfg_text != NULL)
+            {
+                cJSON* probe = cJSON_Parse(cfg_text);
+                if (probe != NULL)
+                {
+                    cJSON_Delete(probe);
+                    mg_http_reply(c, 200, HEADER_JSON, "%s", cfg_text);
+                    free(cfg_text);
+                    return true;
+                }
+                free(cfg_text);
+            }
+        }
+
         cJSON* configs = cJSON_CreateObject();
 
         cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);

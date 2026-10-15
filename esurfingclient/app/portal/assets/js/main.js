@@ -117,6 +117,7 @@ function defaultConfigs() {
                 username: '',
                 password: '',
                 channel: 3,
+                mark: '',
                 time_windows: []
             }
         ]
@@ -568,6 +569,7 @@ document.addEventListener('alpine:init', () => {
                         password: String(account.password || ''),
                         // 通道统一成 LuCI 的写法 (windows/linux/android/ios/macos)
                         channel: normalizeChannel(account.channel),
+                        mark: '',
                         time_windows: (account.time_windows || []).map(window => ({
                             start: String(window.start || ''),
                             end: String(window.end || '')
@@ -647,7 +649,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 const code = await api.applyConfigs();
                 if (code === 204) {
-                    notify.info('已请求应用配置, 程序即将重启');
+                    notify.info('已请求应用配置, 程序正在重新加载配置');
                     this.waitForRestart();
                     return true;
                 }
@@ -704,7 +706,7 @@ document.addEventListener('alpine:init', () => {
                 }
             }
             if (!offline) {
-                notify.info('配置已应用, 程序未重启 (若修改了账号信息请手动重启程序)');
+                notify.info('配置已应用, 认证状态稍后自动刷新');
             } else {
                 notify.warning('等待程序重启超时, 请检查程序是否正常运行');
             }
