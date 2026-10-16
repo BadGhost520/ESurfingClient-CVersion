@@ -633,9 +633,9 @@ jobs:
             done
 
             # --- macOS (文件名使用 darwin) ---
-            declare -A MAC_MIN=(["x86_64"]="macOS 12" ["arm64"]="macOS 12")
-            declare -A MAC_REC=(["x86_64"]="macOS 13" ["arm64"]="macOS 14")
-            for arch in x86_64 arm64; do
+            declare -A MAC_MIN=(["x86_64"]="macOS 12" ["aarch64"]="macOS 12")
+            declare -A MAC_REC=(["x86_64"]="macOS 13" ["aarch64"]="macOS 14")
+            for arch in x86_64 aarch64; do
               f="esurfingclient-${FULL_VERSION}-darwin-${arch}.tar.gz"
               if [ -f "release_files/$f" ]; then
                 echo "| macOS | $arch | 便携二进制文件 | ${MAC_MIN[$arch]} | ${MAC_REC[$arch]} | [Download](${BASE_URL}/${f}) |"
