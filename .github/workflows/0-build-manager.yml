@@ -112,6 +112,19 @@ on:
           - openwrt-x86_64-apk
           - openwrt-luci-ipk
           - openwrt-luci-apk
+      release_type:
+        description: '发布类型'
+        type: choice
+        required: true
+        default: 'prerelease'
+        options:
+          - latest
+          - prerelease
+      release_notes:
+        description: '主要更新内容 (多行请用 \n 分隔, 例如: 1. xxx\n2. yyy)'
+        type: string
+        required: false
+        default: '1. 新增了更多架构支持\n2. 优化合并了工作流'
 
 jobs:
   get-version:
@@ -488,6 +501,7 @@ jobs:
 
   release:
     needs:
+      - get-version
       - windows
       - linux
       - macos
@@ -511,50 +525,244 @@ jobs:
           echo "已下载工件:"
           find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.apk" -o -name "*.tar.gz" \) | sort
 
-      - name: 创建 Release 包
+      - name: 展平发布文件
         run: |
-          export TZ='Asia/Shanghai'
-          TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
-          RELEASE_NAME="ESurfing Client Build - $(date +'%Y-%m-%d %H:%M:%S CST')"
-          echo "RELEASE_NAME=${RELEASE_NAME}" >> $GITHUB_ENV
-          
-          echo "Release 名称: ${RELEASE_NAME}"
-          
-          mkdir -p release_package
-          
-          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.apk" -o -name "*.tar.gz" \) -exec cp {} release_package/ \;
-          
-          cd release_package
+          mkdir -p release_files
+          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.apk" -o -name "*.tar.gz" \) -exec cp {} release_files/ \;
+          echo "=== release_files 目录内容 ==="
+          ls -la release_files/
+          echo "=============================="
+
+      - name: 生成 Release 正文
+        id: body
+        env:
+          FULL_VERSION: ${{ needs.get-version.outputs.full_version }}
+          RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+          RAW_NOTES: ${{ github.event.inputs.release_notes }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # ===== 1. 确定 tag 与 prerelease 标志 =====
+          TAG="v${FULL_VERSION}"
+          if [ "$RELEASE_TYPE" = "prerelease" ]; then
+            PRERELEASE="true"
+          else
+            PRERELEASE="false"
+          fi
+
+          echo "tag=$TAG"             >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+          # OpenWrt 包名格式: 2.1.5-r6 -> 2.1.5-6
+          OPENWRT_VER=$(echo "$FULL_VERSION" | sed -E 's/-r([0-9]+)$/-\1/')
+
+          echo "Tag: $TAG"
+          echo "OpenWrt 版本: $OPENWRT_VER"
+
+          # ===== 2. 查找上一个正式 Release (排除自己, 排除 pre-release) =====
+          PREV_TAG=$(gh release list \
+              --exclude-pre-releases \
+              --limit 50 \
+              --json tagName \
+              --jq ".[] | select(.tagName != \"$TAG\") | .tagName" \
+              2>/dev/null | head -n1 || true)
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "上一个正式 Release: $PREV_TAG"
+            echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "未找到上一个正式 Release (首次发布)"
+          fi
+
+          # ===== 3. 组装正文 =====
+          {
+            echo "## 主要更新内容"
+            echo ""
+            printf '%b\n' "$RAW_NOTES"
+            echo ""
+            echo "### 完整更新日志 -> [吃什么](https://github.com/${REPO}/blob/master/CHANGELOG.md)"
+            echo ""
+            echo "> [!WARNING]"
+            echo "> 每次更新最好都看一看教程有没有新内容"
+            echo ""
+            echo "## 根据自己需要下载"
+            echo ""
+            echo "> [!NOTE]"
+            echo '> 点下面的 `Read more` 再点开表, 预览会有问题'
+            echo ""
+            echo "<details>"
+            echo "<summary>"
+            echo "主程序插件包"
+            echo "</summary>"
+            echo ""
+            echo "|  系统   |           架构            |    包管理器    |     理论最低支持版本      |        推荐版本         |                                                                                                                                             下载                                                                                                                                              |"
+            echo "|:-------:|:-------------------------:|:--------------:|:-------------------------:|:-----------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|"
+
+            # --- Windows ---
+            declare -A WIN_MIN=(["x86"]="Windows Vista x86" ["x86_64"]="Windows Vista x64" ["aarch64"]="Windows 10 1709 (16299)")
+            declare -A WIN_REC=(["x86"]="Windows 10 22H2" ["x86_64"]="Windows 10 22H2 / 11" ["aarch64"]="Windows 11 ARM64")
+            for arch in x86 x86_64 aarch64; do
+              f="esurfingclient-${FULL_VERSION}-windows-${arch}.zip"
+              if [ -f "release_files/$f" ]; then
+                echo "| Windows | $arch | 便携二进制文件 | ${WIN_MIN[$arch]} | ${WIN_REC[$arch]} | [Download](${BASE_URL}/${f}) |"
+              fi
+            done
+
+            # --- Linux ---
+            declare -A LIN_MIN=(["x86_64"]="glibc 2.36" ["aarch64"]="glibc 2.36" ["armv7"]="glibc 2.36" ["loongarch64"]="glibc 2.36")
+            declare -A LIN_REC=(["x86_64"]="glibc 2.39" ["aarch64"]="glibc 2.39" ["armv7"]="glibc 2.39" ["loongarch64"]="glibc 2.39")
+            for arch in x86_64 aarch64 armv7 loongarch64; do
+              f="esurfingclient-${FULL_VERSION}-linux-${arch}.tar.gz"
+              if [ -f "release_files/$f" ]; then
+                echo "| Linux | $arch | 便携二进制文件 | ${LIN_MIN[$arch]} | ${LIN_REC[$arch]} | [Download](${BASE_URL}/${f}) |"
+              fi
+            done
+
+            # --- Android ---
+            declare -A AND_MIN=(["x86_64"]="Android 7" ["arm64-v8a"]="Android 7" ["armeabi-v7a"]="Android 7")
+            declare -A AND_REC=(["x86_64"]="Android 10" ["arm64-v8a"]="Android 10" ["armeabi-v7a"]="Android 10")
+            for abi in x86_64 arm64-v8a armeabi-v7a; do
+              f="esurfingclient-${FULL_VERSION}-android-${abi}.tar.gz"
+              if [ -f "release_files/$f" ]; then
+                echo "| Android | $abi | 便携二进制文件 | ${AND_MIN[$abi]} | ${AND_REC[$abi]} | [Download](${BASE_URL}/${f}) |"
+              fi
+            done
+
+            # --- macOS (文件名使用 darwin) ---
+            declare -A MAC_MIN=(["x86_64"]="macOS 12" ["arm64"]="macOS 12")
+            declare -A MAC_REC=(["x86_64"]="macOS 13" ["arm64"]="macOS 14")
+            for arch in x86_64 arm64; do
+              f="esurfingclient-${FULL_VERSION}-darwin-${arch}.tar.gz"
+              if [ -f "release_files/$f" ]; then
+                echo "| macOS | $arch | 便携二进制文件 | ${MAC_MIN[$arch]} | ${MAC_REC[$arch]} | [Download](${BASE_URL}/${f}) |"
+              fi
+            done
+
+            # --- OpenWrt 主程序 ---
+            OPENWRT_ARCHES="aarch64_cortex-a53 aarch64_cortex-a72 aarch64_cortex-a76 aarch64_generic \
+              arm_arm1176jzf-s_vfp arm_arm926ej-s arm_cortex-a15_neon-vfpv4 arm_cortex-a5_vfpv4 \
+              arm_cortex-a7 arm_cortex-a7_neon-vfpv4 arm_cortex-a7_vfpv4 arm_cortex-a8_vfpv3 \
+              arm_cortex-a9 arm_cortex-a9_neon arm_cortex-a9_vfpv3-d16 arm_fa526 arm_xscale \
+              armeb_xscale i386_pentium-mmx i386_pentium4 loongarch64_generic \
+              mips64_mips64r2 mips64_octeonplus mips64el_mips64r2 mips_24kc mips_mips32 \
+              mipsel_24kc mipsel_24kc_24kf mipsel_74kc mipsel_mips32 powerpc64_e5500 \
+              powerpc_464fp powerpc_8548 riscv64_generic x86_64"
+
+            for arch in $OPENWRT_ARCHES; do
+              ipk="esurfingclient_${OPENWRT_VER}_${arch}.ipk"
+              apk="esurfingclient_${OPENWRT_VER}_${arch}.apk"
+              ipk_link=""
+              apk_link=""
+              [ -f "release_files/$ipk" ] && ipk_link="[ipk](${BASE_URL}/${ipk})"
+              [ -f "release_files/$apk" ] && apk_link="[apk](${BASE_URL}/${apk})"
+              if [ -n "$ipk_link" ] || [ -n "$apk_link" ]; then
+                dl="$ipk_link"
+                if [ -n "$apk_link" ]; then
+                  if [ -n "$dl" ]; then dl="${dl}/${apk_link}"; else dl="$apk_link"; fi
+                fi
+                echo "| OpenWrt | $arch | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 | ${dl} |"
+              fi
+            done
+
+            echo ""
+            echo "</details>"
+            echo ""
+
+            # --- LuCI ---
+            echo "<details>"
+            echo "<summary>"
+            echo "OpenWRT LuCI 插件包"
+            echo "</summary>"
+            echo ""
+            echo "|  系统   | 架构 | 包管理器 |     理论最低支持版本      |        推荐版本         |                                                                                                                                下载                                                                                                                                 |"
+            echo "|:-------:|:----:|:--------:|:-------------------------:|:-----------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|"
+
+            luci_ipk="luci-app-esurfingclient_${OPENWRT_VER}_all.ipk"
+            luci_apk="luci-app-esurfingclient_${OPENWRT_VER}_all.apk"
+            luci_dl=""
+            [ -f "release_files/$luci_ipk" ] && luci_dl="[ipk](${BASE_URL}/${luci_ipk})"
+            if [ -f "release_files/$luci_apk" ]; then
+              if [ -n "$luci_dl" ]; then luci_dl="${luci_dl}/[apk](${BASE_URL}/${luci_apk})"; else luci_dl="[apk](${BASE_URL}/${luci_apk})"; fi
+            fi
+            if [ -n "$luci_dl" ]; then
+              echo "| OpenWrt | All | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 | ${luci_dl} |"
+            fi
+            echo ""
+            echo "</details>"
+            echo ""
+
+            # --- Full Changelog ---
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${TAG}"
+            else
+              echo "**Full Changelog**: 首次发布"
+            fi
+          } > release_body.md
+
+          echo "===== Release Body ====="
+          cat release_body.md
+          echo "========================"
+
+      - name: 打包 master-latest.zip
+        run: |
+          cd release_files
           zip -r "../master-latest.zip" .
           cd ..
-          
-          echo "已创建压缩包: master-latest.zip"
-          ls -lh "master-latest.zip"
+          ls -lh master-latest.zip
 
-      - name: 清理 GitHub Prerelease
+      - name: 删除同名 Release (如果存在)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete master-latest -y --cleanup-tag
+          gh release delete "${{ steps.body.outputs.tag }}" -y --cleanup-tag 2>/dev/null \
+            && echo "已删除同名 Release" \
+            || echo "无同名 Release, 跳过"
 
-      - name: 创建 GitHub Prerelease
+      - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: 'master-latest'
-          name: ${{ env.RELEASE_NAME }}
-          files: master-latest.zip
+          tag_name: ${{ steps.body.outputs.tag }}
+          name: ${{ steps.body.outputs.tag }}
+          body_path: release_body.md
           draft: false
-          prerelease: true
-          body: |
-            # 这里是预发布版本下载
-            
-            **能在这里下载最新编译的包, 可以尝鲜, 尝试新功能**
-            
-            > [!WARNING]
-            > 未经完全测试, 可能不稳定, 仅供尝鲜!
-            
-            ### 全部包的下载 ☞ [吱吱吱](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/download/master-latest/master-latest.zip)
-            
-            ### 最新正式版下载链接 ☞ [吱吱吱](https://github.com/BadGhost520/ESurfingClient-CVersion/releases/latest)
+          prerelease: ${{ steps.body.outputs.prerelease }}
+          files: |
+            release_files/*
+            master-latest.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 给上一个正式 Release 加上"旧版"标记
+        if: github.event.inputs.release_type == 'latest' && steps.body.outputs.prev_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PREV_TAG="${{ steps.body.outputs.prev_tag }}"
+          REPO="${{ github.repository }}"
+
+          echo "处理上一个正式 Release: $PREV_TAG"
+
+          BODY=$(gh release view "$PREV_TAG" --json body --jq .body)
+
+          if [[ "$BODY" == "# 这是旧版"* ]]; then
+            echo "该 Release 已经被标记为旧版, 跳过"
+            exit 0
+          fi
+
+          HEADER="# 这是旧版，[最新版](https://github.com/${REPO}/releases/latest)"
+
+          {
+            printf '%s\n' "$HEADER"
+            printf '\n'
+            printf '%s\n' "$BODY"
+          } > new_body.md
+
+          gh release edit "$PREV_TAG" --notes-file new_body.md
+          echo "已将 $PREV_TAG 标记为旧版"

@@ -419,3 +419,6 @@
 5. `PlatformUtils.h` 原来是大杂烩 (22 个函数分在 7 个 `.c` 里, 被 35 个文件引用), 按归属拆成 `utils/platform/PlatformUtils.h`(程序路径 / 父进程 / 网卡, 含 `SEP` 与平台系统头)、`utils/time/TimeUtils.h`(墙钟 / 单调钟 / 睡眠 / 格式化)、`utils/text/TextUtils.h`(字符串 / URL 参数 / base64 / 随机数 / 门户 XML); `print_log_dir` 并进 `utils/log/Logger.h`
 6. 拆分顺带暴露并修掉了一批"靠 `PlatformUtils.h` 顺带包含"的隐式依赖 (平台系统头、`core/States.h`、`config/Config.h`、`inttypes.h` 等): 现在每个文件都直接包含自己用到的东西, 编译器 (`-Wimplicit-function-declaration` 在 GCC 14+ 是错误) 逐条盯着
 7. `CMakeLists.txt` 的源文件清单与 `target_sources` 按新目录重排; `docs/Compile.md` 的目录说明、`docs/Notes.md` 里的源码路径引用一并更新, 并在 Notes 开头补了一节"目录怎么分"
+
+### 2026.10.17 (v2.1.7-r2)
+1. 尝试将 release 自动化

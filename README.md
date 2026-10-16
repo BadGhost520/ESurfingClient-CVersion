@@ -51,16 +51,16 @@
 > [!NOTE]
 > 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](docs/OpenWRT_targets.md)
 
-### 主程序插件包
+### 主程序 (插件包)
 
-|  系统   |              架构              |    包管理器    |     理论最低支持版本      |        推荐版本         |
-|:-------:|:------------------------------:|:--------------:|:-------------------------:|:-----------------------:|
-| Windows |             x86_64             | 便携二进制文件 |     Windows Vista x64     |     Windows 10 x64	      |
-|  Linux  |       x86_64/loongarch64       | 便携二进制文件 |        glibc 2.36         |       glibc 2.39        |
-| Android |  x86_64/arm64-v8a/armeabi-v7a  | 便携二进制文件 |         Android 7         |       Android 10        |
-|  macOS  |             x86_64             | 便携二进制文件 |         macOS 12          |        macOS 13         |
-|  macOS  |            aarch64             | 便携二进制文件 |         macOS 13          |        macOS 14         |
-| OpenWRT | [All](docs/OpenWRT_targets.md) |    opkg/apk    | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
+|  系统   |               架构               | 包管理器 |     理论最低支持版本      |        推荐版本         |
+|:-------:|:--------------------------------:|:--------:|:-------------------------:|:-----------------------:|
+| Windows |        x86_64/x86/aarch64        | portable |     Windows Vista x64     |     Windows 10 x64	      |
+|  Linux  | x86_64/aarch64/armv7/loongarch64 | portable |        glibc 2.36         |       glibc 2.39        |
+| Android |   x86_64/arm64-v8a/armeabi-v7a   | portable |         Android 7         |       Android 10        |
+|  macOS  |              x86_64              | portable |         macOS 12          |        macOS 13         |
+|  macOS  |             aarch64              | portable |         macOS 13          |        macOS 14         |
+| OpenWRT |  [All](docs/OpenWRT_targets.md)  | opkg/apk | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
 
 ### OpenWRT LuCI 插件包
 
