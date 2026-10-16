@@ -1,5 +1,5 @@
 #include "utils/platform/PlatformUtils.h"
-#include "utils/log/LoggerInternal.h"
+#include "LoggerInternal.h"
 
 #include "utils/text/TextUtils.h"
 

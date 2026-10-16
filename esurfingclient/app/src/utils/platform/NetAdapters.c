@@ -2,7 +2,7 @@
 
 #include "core/States.h"
 
-#include "utils/platform/PlatformInternal.h"
+#include "PlatformInternal.h"
 #include "utils/log/Logger.h"
 
 #include "cJSON/cJSON.h"

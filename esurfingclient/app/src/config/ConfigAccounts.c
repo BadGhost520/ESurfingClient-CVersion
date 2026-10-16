@@ -1,9 +1,8 @@
-
 #include "core/States.h"
 
 #include "config/Config.h"
 
-#include "config/ConfigInternal.h"
+#include "ConfigInternal.h"
 
 #include "utils/log/Logger.h"
 

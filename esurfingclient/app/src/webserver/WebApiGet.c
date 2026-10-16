@@ -1,4 +1,4 @@
-#include "webserver/WebInternal.h"
+#include "WebInternal.h"
 
 #include <mongoose/mongoose.h>
 

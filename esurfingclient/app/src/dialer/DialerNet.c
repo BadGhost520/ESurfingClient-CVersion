@@ -1,4 +1,4 @@
-#include "dialer/DialerInternal.h"
+#include "DialerInternal.h"
 
 #include "net/NetClient.h"
 

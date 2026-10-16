@@ -1,4 +1,4 @@
-#include "net/NetClientInternal.h"
+#include "NetClientInternal.h"
 
 #include "core/States.h"
 

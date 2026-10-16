@@ -1,6 +1,6 @@
 #include "dialer/DialerClient.h"
 
-#include "dialer/DialerInternal.h"
+#include "DialerInternal.h"
 
 #include "config/Config.h"
 

@@ -9,7 +9,7 @@
 
 #include <cJSON/cJSON.h>
 
-#include "control/ControlInternal.h"
+#include "ControlInternal.h"
 
 #define TL_IDX_CONTROL (-3)
 

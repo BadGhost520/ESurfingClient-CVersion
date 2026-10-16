@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-#include "control/ControlInternal.h"
+#include "ControlInternal.h"
 
 /* ------------------------------------------------------------------
  * Web 进程侧: 控制客户端

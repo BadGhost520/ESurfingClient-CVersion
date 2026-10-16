@@ -1,6 +1,6 @@
 #include "net/NetClient.h"
 
-#include "net/NetClientInternal.h"
+#include "NetClientInternal.h"
 
 #include "core/States.h"
 

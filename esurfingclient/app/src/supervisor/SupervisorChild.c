@@ -6,7 +6,7 @@
 #include "utils/time/TimeUtils.h"
 #include "utils/log/Logger.h"
 
-#include "supervisor/SupervisorInternal.h"
+#include "SupervisorInternal.h"
 
 /* ------------------------------------------------------------------
  * 子进程名称 (日志用)

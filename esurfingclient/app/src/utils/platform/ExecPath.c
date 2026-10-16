@@ -1,7 +1,7 @@
 #include "utils/platform/PlatformUtils.h"
 #include "utils/text/TextUtils.h"
 
-#include "utils/platform/PlatformInternal.h"
+#include "PlatformInternal.h"
 #include "utils/log/Logger.h"
 
 #include <stdio.h>

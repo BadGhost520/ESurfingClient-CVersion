@@ -8,7 +8,7 @@
 #include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
 
-#include "supervisor/SupervisorInternal.h"
+#include "SupervisorInternal.h"
 
 #define SUPERVISOR_CFG_CHECK_MS 1000
 
