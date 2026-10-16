@@ -5,10 +5,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifndef PATH_MAX
-#define PATH_MAX 260
-#endif
-
 #define DEFAULT_LOG_DIR "./"
 
 typedef enum {

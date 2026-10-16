@@ -25,7 +25,7 @@ extern bool s_console_enabled;
 extern bool s_query_mode;
 
 /** @brief 日志等级名 (LogCore.c) */
-const char* get_level_str(const LogLevel lv);
+const char* get_level_str(LogLevel lv);
 
 /** @brief 日志互斥 (LogCore.c, 平台分支各一份实现) */
 void logger_lock(void);
@@ -33,9 +33,9 @@ void logger_lock(void);
 void logger_unlock(void);
 
 /** @brief 组装日志里的"是谁写的" / "是哪个线程"那两段 (LogMeta.c) */
-void get_proc_str(char* buf, const size_t len);
+void get_proc_str(char* buf, size_t len);
 
-void get_thread_str(char* buf, const size_t len);
+void get_thread_str(char* buf, size_t len);
 
 /** @brief 日志文件句柄的打开与轮转 (LogFile.c) */
 bool open_log_file();

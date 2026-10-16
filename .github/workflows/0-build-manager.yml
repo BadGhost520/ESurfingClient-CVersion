@@ -511,7 +511,7 @@ jobs:
       - openwrt-luci
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: always() && !cancelled()
+    if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     steps:
       - uses: actions/checkout@v7
 
