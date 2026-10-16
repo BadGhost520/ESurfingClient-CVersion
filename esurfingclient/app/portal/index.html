@@ -156,6 +156,70 @@
           </div>
         </div>
       </div>
+      <div id="traffic-card" class="card bg-base-300 shadow-md" x-data="trafficPanel" x-show="$store.networkTools.enabled" x-cloak>
+        <div class="card-body">
+          <h2 class="card-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M7 3v16m-4-4 4 4 4-4M17 21V5m-4 4 4-4 4 4"/>
+            </svg>
+            实时网速
+          </h2>
+          <div class="divider my-1"></div>
+          <div class="flex justify-between items-center py-1">
+            <span>下载速度</span>
+            <span class="font-bold" style="font-variant-numeric:tabular-nums" x-text="downloadText"></span>
+          </div>
+          <div class="flex justify-between items-center py-1">
+            <span>上传速度</span>
+            <span class="font-bold" style="font-variant-numeric:tabular-nums" x-text="uploadText"></span>
+          </div>
+          <label for="traffic-adapter" class="text-sm mt-2">上联网卡</label>
+          <select id="traffic-adapter" class="select select-bordered w-full" style="min-width:0;max-width:100%"
+                  x-model="selectedId" @change="selectAdapter()" :disabled="!adapters.length">
+            <option value="" x-show="!adapters.length">等待网卡数据</option>
+            <option :value="selectedId" x-show="selectedId &amp;&amp; !adapter">所选网卡已断开</option>
+            <template x-for="item in adapters" :key="item.id">
+              <option :value="item.id" x-text="item.name"></option>
+            </template>
+          </select>
+          <p class="text-sm mt-2" role="status" x-text="message"></p>
+          <p class="text-xs">包含热点共享流量；不是套餐带宽或测速结果。</p>
+        </div>
+      </div>
+      <div id="hotspot-card" class="card bg-base-300 shadow-md" x-data="hotspotPanel" x-show="$store.networkTools.enabled &amp;&amp; $store.networkTools.hotspotControls" x-cloak>
+        <div class="card-body">
+          <h2 class="card-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8 16a6 6 0 0 1 8 0"/><circle cx="12" cy="20" r="1"/>
+            </svg>
+            热点功能
+          </h2>
+          <div class="divider my-1"></div>
+          <div class="flex justify-between items-center py-1">
+            <span>热点状态</span>
+            <span class="badge" :class="online &amp;&amp; adapter?.state === 'On' ? 'badge-success' : 'badge-ghost'" x-text="stateText"></span>
+          </div>
+          <div class="flex justify-between items-center py-1" style="gap:8px">
+            <span style="flex-shrink:0">热点名称</span>
+            <span style="overflow-wrap:anywhere;text-align:right" x-text="online ? (adapter?.ssid || '—') : '—'"></span>
+          </div>
+          <label for="hotspot-adapter" class="text-sm mt-2">共享上联网卡</label>
+          <select id="hotspot-adapter" class="select select-bordered w-full" style="min-width:0;max-width:100%"
+                  x-model="selectedId" :disabled="!online || locked || !adapters.length">
+            <option value="" x-show="!adapters.length">暂无可用网卡</option>
+            <template x-for="item in adapters" :key="item.id">
+              <option :value="item.id" x-text="item.name"></option>
+            </template>
+          </select>
+          <div class="card-actions mt-2">
+            <button class="btn btn-sm btn-soft btn-info" :disabled="!canStart" @click="change('start')">开启热点</button>
+            <button class="btn btn-sm btn-soft btn-neutral" :disabled="!canStop" @click="change('stop')">关闭热点</button>
+            <a class="btn btn-sm btn-soft btn-neutral" href="ms-settings:network-mobilehotspot">名称 / 密码设置</a>
+          </div>
+          <p class="text-sm mt-2" role="status" x-text="error || message"></p>
+          <p class="text-xs">首次开启可能引发无线重连，建议使用有线上联。</p>
+        </div>
+      </div>
       <div class="card bg-base-300 shadow-md">
         <div class="card-body">
           <h2 class="card-title">
@@ -864,6 +928,8 @@
 
 <script src="assets/js/toggleTheme.js"></script>
 <script src="assets/js/main.js"></script>
+<script src="assets/js/traffic.js"></script>
+<script src="assets/js/hotspot.js"></script>
 <script>
   // 兜底: 如果 Alpine.js 没能加载 (例如离线环境访问不了 CDN),
   // 3 秒后取消 x-cloak, 至少让页面内容可见而不是空白
