@@ -34,11 +34,11 @@
 > [!TIP]
 > 经实测, 运行十天后运行内存占用仅增加 28 kB 左右
 >
-> 初运行 (单进程)
+> 初运行 (单账号)
 >
 > VmPeak: 912 kB, VmSize: 800 kB, VmHWM: 536 kB, VmRSS: 536 kB
 >
-> 十天后
+> 十天后 (单账号)
 >
 > VmPeak: 1088 kB, VmSize: 884 kB, VmHWM: 668 kB, VmRSS: 564 kB
 > 
