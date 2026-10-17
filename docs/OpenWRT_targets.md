@@ -27,6 +27,31 @@ ramips/rt305x
 
 ## 架构包含的目标平台自查表
 
+> [!NOTE]
+> 先使用快速自查指令找, 找不到再看自查表
+
+### OpenWRT 快速架构自查指令
+
+#### opkg 包管理器
+
+```shell
+# 指令
+opkg print-architecture
+# 示例输出
+arch all 1
+arch noarch 1
+arch mipsel_24kc 10 # mipsel_24kc 即为要下载的架构
+```
+
+#### apk 包管理器
+
+```shell
+# 指令
+cat /etc/apk/arch
+# 示例输出
+mipsel_24kc # mipsel_24kc 即为要下载的架构
+```
+
 <details>
 <summary>
 All

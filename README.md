@@ -48,9 +48,6 @@
 
 # 目前支持的系统和架构
 
-> [!NOTE]
-> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](docs/OpenWRT_targets.md)
-
 ### 主程序 (插件包)
 
 |  系统   |               架构               | 包管理器 |     理论最低支持版本      |        推荐版本         |
@@ -67,6 +64,31 @@
 |  系统   |              架构              | 包管理器 |     理论最低支持版本      |        推荐版本         |
 |:-------:|:------------------------------:|:--------:|:-------------------------:|:-----------------------:|
 | OpenWRT | [All](docs/OpenWRT_targets.md) | opkg/apk | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
+
+### OpenWRT 快速架构自查指令
+
+#### opkg 包管理器
+
+```shell
+# 指令
+opkg print-architecture
+# 示例输出
+arch all 1
+arch noarch 1
+arch mipsel_24kc 10 # mipsel_24kc 即为要下载的架构
+```
+
+#### apk 包管理器
+
+```shell
+# 指令
+cat /etc/apk/arch
+# 示例输出
+mipsel_24kc # mipsel_24kc 即为要下载的架构
+```
+
+> [!NOTE]
+> 实在找不到可以在这查 ☞ [吃什么](docs/OpenWRT_targets.md)
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
