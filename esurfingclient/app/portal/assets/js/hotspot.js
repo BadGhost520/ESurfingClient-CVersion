@@ -19,15 +19,17 @@ document.addEventListener('alpine:init', () => {
         },
         destroy() { this.disposed = true; clearInterval(this.timer); },
         get adapter() { return this.adapters.find(row => row.id === this.selectedId); },
+        get helperFresh() { return trafficIsFresh({ timestamp: Alpine.store('networkTools').timestamp }); },
         get locked() { return this.sending || this.busy || this.adapters.some(row => ['On', 'InTransition'].includes(row.state)); },
-        get canStart() { return this.online && !this.locked && this.adapter?.state === 'Off' && this.adapter?.capability === 'Enabled' && this.adapter?.connected; },
-        get canStop() { return this.online && !this.sending && !this.busy && this.adapter?.state === 'On'; },
+        get canStart() { return this.online && this.helperFresh && !this.locked && this.adapter?.state === 'Off' && this.adapter?.capability === 'Enabled' && this.adapter?.connected; },
+        get canStop() { return this.online && this.helperFresh && !this.sending && !this.busy && this.adapter?.state === 'On'; },
         get stateText() {
             if (!this.online) return '未连接';
             if (this.busy || this.sending) return '正在切换';
             return ({ On: '已开启', Off: '已关闭', InTransition: '正在切换', Unknown: '未知' })[this.adapter?.state] || '不可用';
         },
         async call(path, method = 'GET') {
+            if (method === 'POST' && !this.helperFresh) throw new Error('采集数据已过期，请重新启动辅助程序。');
             const base = hotspotBridgeEndpoint(Alpine.store('networkTools').hotspotBridge?.url);
             if (!base) throw new Error('热点控制地址无效，请重新启动辅助程序。');
             const controller = new AbortController();
@@ -45,6 +47,12 @@ document.addEventListener('alpine:init', () => {
         async refresh() {
             if (this.polling || this.disposed) return;
             if (!Alpine.store('networkTools')?.hotspotControls) return;
+            if (!this.helperFresh) {
+                this.online = false;
+                this.token = '';
+                this.message = '采集数据已过期，热点控制已暂停，请重新启动辅助程序。';
+                return;
+            }
             const bridge = Alpine.store('networkTools').hotspotBridge;
             if (!bridge?.ready || !hotspotBridgeEndpoint(bridge.url) || !bridge.origins?.includes(location.origin)) {
                 this.online = false;

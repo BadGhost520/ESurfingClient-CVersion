@@ -26,3 +26,16 @@ if ($defaultOrigins -notcontains 'http://localhost' -or $defaultOrigins -notcont
 if ((Get-BridgeFailure 5).code -ne 'AccessDenied') { throw 'Permission failure must be actionable.' }
 if ((Get-BridgeFailure 183).code -ne 'PortUnavailable') { throw 'Port conflict must be distinguished.' }
 Write-Output 'PASS: custom origins, localhost, access checks and startup diagnostics; no network mutations.'
+
+# A failed listener must be isolated from the telemetry loop and disabled, without retrying mutations.
+$script:pollCount = 0
+$script:closedAfterFailure = $false
+function Poll-HotspotBridge { $script:pollCount++; throw 'Simulated listener failure' }
+function Stop-HotspotBridge { $script:closedAfterFailure = $true }
+$availability = @{ ready = $true; code = ''; message = '' }
+Update-HotspotBridgeAvailability $availability -WarningAction SilentlyContinue
+Update-HotspotBridgeAvailability $availability -WarningAction SilentlyContinue
+if ($availability.ready -or $availability.code -ne 'RuntimeFailure' -or -not $script:closedAfterFailure -or $script:pollCount -ne 1) {
+    throw 'A failed bridge must stop polling and leave its caller running.'
+}
+Write-Output 'PASS: runtime listener failure containment; no network mutations.'

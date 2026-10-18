@@ -134,6 +134,19 @@ function Poll-HotspotBridge {
     }
 }
 
+function Update-HotspotBridgeAvailability {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][hashtable]$Availability)
+    if (-not $Availability.ready) { return }
+    try { Poll-HotspotBridge } catch {
+        $Availability.ready = $false
+        $Availability.code = 'RuntimeFailure'
+        $Availability.message = '热点控制服务已停止，网速采集继续运行。请重新启动辅助程序或使用系统热点设置。'
+        try { Stop-HotspotBridge } catch { }
+        Write-Warning $Availability.message
+    }
+}
+
 function Stop-HotspotBridge {
     if ($null -ne $script:bridgeListener) { $script:bridgeListener.Close() }
     # Do not stop tethering: closing the helper preserves the user's hotspot state.

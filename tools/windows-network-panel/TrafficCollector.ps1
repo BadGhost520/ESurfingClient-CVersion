@@ -81,7 +81,7 @@ try {
         $iteration++
         if ($Samples -gt 0 -and $iteration -ge $Samples) { break }
         for ($poll = 0; $poll -lt 10; $poll++) {
-            if ($HotspotControls) { Poll-HotspotBridge }
+            if ($HotspotControls) { Update-HotspotBridgeAvailability $bridgeInfo }
             Start-Sleep -Milliseconds 100
         }
     }

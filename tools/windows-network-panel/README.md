@@ -27,7 +27,7 @@ Start-Dashboard.cmd "C:\ESurfingClient\ESurfingClient.exe"
 
 客户端已运行时只补充采集；未运行时启动原客户端。采集随客户端退出，重复启动通过互斥锁避免重复采集。入口同时启用可选的网页热点控制，启动时不会自动打开热点。
 
-手工更新旧客户端时，需将更新后的 `portal/index.html`、`portal/assets/js/traffic.js` 和 `portal/assets/js/hotspot.js` 部署到客户端对应页面目录，保留原有 CSS、Alpine 和 main.js。只启用网速而不启用网页热点控制时，可直接运行：
+手工更新旧客户端时，使用发布包中已构建的 `portal` 文件；源码中的 index.html 仍有开发用 CDN 引用，不能直接当作离线发布页面复制。自行构建页面请使用 `scripts/build-portal.sh`。只启用网速而不启用网页热点控制时，可直接运行：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\TrafficCollector.ps1 -ClientPath "C:\ESurfingClient\ESurfingClient.exe"
@@ -56,6 +56,8 @@ Start-Dashboard.cmd "C:\ESurfingClient\ESurfingClient.exe" -WebPort 9999 -Bridge
 `WebPort` 必须与客户端已有的 Web 端口一致；启动工具不会修改客户端配置。此例允许 `http://127.0.0.1:9999` 和 `http://localhost:9999`，不允许其他端口或外部网站。页面从采集数据中读取桥接地址，只接受 HTTP 的 `127.0.0.1` 地址，不向外部地址发送热点请求。
 
 开启/关闭请求异步调用 Windows WinRT；忙碌、不可用、服务失联时禁用相应按钮，失败显示原因，不自动重试开关。启动辅助进程、刷新网页和退出辅助进程均不会主动改变热点状态。不要将此服务绑定到外网。端口被占用或 Windows 不允许监听时网速采集继续，页面显示对应原因，不会连接占用该端口的其他进程。可换用 `BridgePort`，或使用系统设置/独立窗口；工具不自动提权或配置 URL ACL。
+
+采集数据过期或读取失败时，热点控制会暂停并清除旧操作令牌，不使用过期状态发送开关请求。运行中的热点桥接出现监听异常时停止该桥接，网速采集继续；恢复需重新启动辅助程序，不自动重试热点开关。
 
 验证覆盖只读真实状态、来源/令牌/方法拒绝、无效网卡、浏览器模拟开关与失败；真实热点切换和手机联网仍须用户按需点击验证。
 
