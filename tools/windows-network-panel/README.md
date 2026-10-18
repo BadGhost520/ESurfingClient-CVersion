@@ -79,9 +79,9 @@ node .\test-hotspot.cjs
 
 ## 支持范围与限制
 
-- 这是 Windows 10/11 的可选辅助工具，不提供 Linux、macOS、OpenWRT 的热点实现。
-- 已验证 Windows 11 上的只读网速和热点能力、访问校验、界面模拟开关；没有通过测试程序实际切换热点或验证手机联网。
-- 不修改 C 认证流程，不需要替换已工作的客户端二进制文件；本次未重新编译或验证全部 C 构建目标。
+- 这是 Windows 10/11 的可选辅助工具，不提供 Linux、macOS、OpenWRT 的热点实现。云端验证覆盖 Windows x86、x64、ARM64 构建包；Windows 10、原生 32 位系统仍未实测。
+- 用户已在一台设备上手动验证热点手机上网与电脑校园网正常；自动化页面测试仅模拟热点控制，不会切换热点。
+- 不修改 C 认证流程，不需要替换已工作的客户端二进制文件。本次云端编译了 Windows x86、x64、ARM64 客户端；未覆盖全部平台/打包目标。
 - Web 热点桥接可能需要 Windows URL 监听权限；权限不足或端口占用时保留网速统计，热点控制显示未连接。不自动提权、不改 URL ACL 或防火墙。
 
 实现依据：[Windows 移动热点接口](https://learn.microsoft.com/en-us/uwp/api/windows.networking.networkoperators.networkoperatortetheringmanager)、[网卡统计接口](https://learn.microsoft.com/en-us/dotnet/api/system.net.networkinformation.networkinterface.getipstatistics)。
