@@ -17,7 +17,9 @@
 
 只有读取到辅助工具生成的数据后才显示网速卡片；热点卡片另外要求采集启用 `-HotspotControls`。没有部署辅助工具的平台保持原仪表盘，且不请求本机热点控制接口。停止采集后保留最后的数据文件，页面可显示已过期提示。
 
-使用本目录提供的通用入口，传入实际客户端路径（不限定文件名或版本）：
+Windows 发布压缩包已包含辅助工具。完整解压后，双击根目录的 **Start-Dashboard.cmd**；只有一个 `ESurfingClient*.exe` 时自动定位，不需要手工复制脚本。原 EXE 仍可单独运行。
+
+源码目录或存在多个客户端时，使用本目录的入口并传入实际客户端路径（不限定文件名或版本）：
 
 ```cmd
 Start-Dashboard.cmd "C:\ESurfingClient\ESurfingClient.exe"
@@ -25,7 +27,7 @@ Start-Dashboard.cmd "C:\ESurfingClient\ESurfingClient.exe"
 
 客户端已运行时只补充采集；未运行时启动原客户端。采集随客户端退出，重复启动通过互斥锁避免重复采集。入口同时启用可选的网页热点控制，启动时不会自动打开热点。
 
-部署时需将更新后的 `portal/index.html`、`portal/assets/js/traffic.js` 和 `portal/assets/js/hotspot.js` 部署到客户端对应页面目录，保留原有 CSS、Alpine 和 main.js。只启用网速而不启用网页热点控制时，可直接运行：
+手工更新旧客户端时，需将更新后的 `portal/index.html`、`portal/assets/js/traffic.js` 和 `portal/assets/js/hotspot.js` 部署到客户端对应页面目录，保留原有 CSS、Alpine 和 main.js。只启用网速而不启用网页热点控制时，可直接运行：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\TrafficCollector.ps1 -ClientPath "C:\ESurfingClient\ESurfingClient.exe"
@@ -37,9 +39,23 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\TrafficCollector.ps1 -
 
 仪表盘顺序为：连接状态、实时网速、热点功能、当前账号、程序信息。热点卡片支持选择共享网卡、查看状态与名称、手动开启/关闭；“名称 / 密码设置”打开 Windows 原生移动热点设置，网页不返回密码。
 
-`Start-Dashboard.cmd` 使用 `-HotspotControls`。此选项在网速辅助进程内启动 `http://127.0.0.1:18889` 桥接，仅允许 `http://127.0.0.1:8888` 来源，操作额外校验每次进程启动生成的令牌。当前网页桥接仅支持这两个默认地址；更换页面端口或使用 localhost 别名需要修改来源配置，默认不会接受其他来源。省略此选项仍可单独采集网速。
+`Start-Dashboard.cmd` 使用 `-HotspotControls`，默认在 `http://127.0.0.1:18889` 启动桥接。来源只允许配置的页面端口，支持 `127.0.0.1` 与 `localhost` 两种地址；修改操作额外校验每次启动生成的令牌。省略此选项仍可单独采集网速。
 
-开启/关闭请求异步调用 Windows WinRT；忙碌、不可用、服务失联时禁用相应按钮，失败显示原因，不自动重试开关。启动辅助进程、刷新网页和退出辅助进程均不会主动改变热点状态。不要将此服务绑定到外网。端口被占用或 Windows 不允许监听时网速采集继续，热点卡片提示服务未连接。
+页面使用自定义端口或桥接端口冲突时，可在压缩包根目录执行：
+
+```cmd
+Start-Dashboard.cmd -WebPort 9999 -BridgePort 19999
+```
+
+或从源码目录指定客户端：
+
+```cmd
+Start-Dashboard.cmd "C:\ESurfingClient\ESurfingClient.exe" -WebPort 9999 -BridgePort 19999
+```
+
+`WebPort` 必须与客户端已有的 Web 端口一致；启动工具不会修改客户端配置。此例允许 `http://127.0.0.1:9999` 和 `http://localhost:9999`，不允许其他端口或外部网站。页面从采集数据中读取桥接地址，只接受 HTTP 的 `127.0.0.1` 地址，不向外部地址发送热点请求。
+
+开启/关闭请求异步调用 Windows WinRT；忙碌、不可用、服务失联时禁用相应按钮，失败显示原因，不自动重试开关。启动辅助进程、刷新网页和退出辅助进程均不会主动改变热点状态。不要将此服务绑定到外网。端口被占用或 Windows 不允许监听时网速采集继续，页面显示对应原因，不会连接占用该端口的其他进程。可换用 `BridgePort`，或使用系统设置/独立窗口；工具不自动提权或配置 URL ACL。
 
 验证覆盖只读真实状态、来源/令牌/方法拒绝、无效网卡、浏览器模拟开关与失败；真实热点切换和手机联网仍须用户按需点击验证。
 
@@ -50,9 +66,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\TrafficCollector.ps1 -
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Test-NetworkPanel.ps1
 powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\NetworkPanel.ps1 -Check
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Test-HotspotBridge.ps1
+node .\test-traffic.cjs
+node .\test-hotspot.cjs
 ```
 
 第一条验证采样差值、计时、计数器重置和单位；第二条构造界面并只读采样网卡/热点能力，输出后退出。两条都不会开启或关闭热点。真实手机联网需由用户手动点击开启后验证。
+
+其余检查覆盖来源与令牌校验、localhost/自定义端口、桥接地址限制和启动失败状态。压缩包入口支持 `Start-Dashboard.cmd -Check -WebPort 9999 -BridgePort 19999`，只检查路径和参数，不启动客户端或热点。
 
 ## 支持范围与限制
 

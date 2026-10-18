@@ -11,7 +11,7 @@ function trafficIsFresh(data, now = Date.now()) {
 
 document.addEventListener('alpine:init', () => {
     // The optional Windows helper opts in; other client platforms keep their dashboard.
-    Alpine.store('networkTools', { enabled: false, hotspotControls: false });
+    Alpine.store('networkTools', { enabled: false, hotspotControls: false, hotspotBridge: null });
     Alpine.data('trafficPanel', () => ({
         adapters: [], selectedId: '', fresh: false, timestamp: 0,
         message: '正在读取网速…', timer: null, request: null, disposed: false, lastProbe: 0,
@@ -49,6 +49,7 @@ document.addEventListener('alpine:init', () => {
                 if (!Array.isArray(data.adapters)) throw new Error('网速数据格式无效。');
                 Alpine.store('networkTools').enabled = true;
                 Alpine.store('networkTools').hotspotControls = data.hotspotControls === true;
+                Alpine.store('networkTools').hotspotBridge = data.hotspotBridge || null;
                 if (!trafficIsFresh(data) || !Array.isArray(data.adapters)) throw new Error('网速数据已过期，请重新启动网速采集。');
                 this.adapters = data.adapters;
                 if (!this.selectedId) this.selectedId = data.defaultId || this.adapters[0]?.id || '';

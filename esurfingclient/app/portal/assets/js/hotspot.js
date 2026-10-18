@@ -1,3 +1,12 @@
+// Telemetry may configure the port, but must never redirect control requests off this computer.
+function hotspotBridgeEndpoint(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === 'http:' && url.hostname === '127.0.0.1' && !url.username && !url.password &&
+            url.pathname === '/' && !url.search && !url.hash ? url.origin : null;
+    } catch (_) { return null; }
+}
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('hotspotPanel', () => ({
         adapters: [], selectedId: '', token: '', online: false, busy: false,
@@ -19,10 +28,12 @@ document.addEventListener('alpine:init', () => {
             return ({ On: '已开启', Off: '已关闭', InTransition: '正在切换', Unknown: '未知' })[this.adapter?.state] || '不可用';
         },
         async call(path, method = 'GET') {
+            const base = hotspotBridgeEndpoint(Alpine.store('networkTools').hotspotBridge?.url);
+            if (!base) throw new Error('热点控制地址无效，请重新启动辅助程序。');
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
             try {
-                const response = await fetch('http://127.0.0.1:18889' + path, {
+                const response = await fetch(base + path, {
                     method, cache: 'no-store', signal: controller.signal,
                     headers: method === 'POST' ? { 'X-ESurfing-Token': this.token } : {}
                 });
@@ -34,6 +45,12 @@ document.addEventListener('alpine:init', () => {
         async refresh() {
             if (this.polling || this.disposed) return;
             if (!Alpine.store('networkTools')?.hotspotControls) return;
+            const bridge = Alpine.store('networkTools').hotspotBridge;
+            if (!bridge?.ready || !hotspotBridgeEndpoint(bridge.url) || !bridge.origins?.includes(location.origin)) {
+                this.online = false;
+                this.message = bridge?.message || (!bridge ? '请更新 Windows 辅助程序以启用热点控制。' : '页面地址与辅助程序配置不一致，请核对 WebPort。');
+                return;
+            }
             this.polling = true;
             try {
                 const data = await this.call('/status');

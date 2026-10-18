@@ -309,6 +309,9 @@ jobs:
         run: |
           cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
+      - name: 复制可选 Windows 网速与热点工具
+        run: bash scripts/package-windows-helper.sh .
+
       - name: 打包成 zip 压缩包
         env:
           ARCH: ${{ inputs.architecture }}
@@ -316,7 +319,9 @@ jobs:
           zip -r "esurfingclient-${{ inputs.full_version }}-windows-${ARCH}.zip" \
             "ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe" \
             ESurfingClient.json \
-            portal/
+            portal/ \
+            Start-Dashboard.cmd \
+            tools/windows-network-panel/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
