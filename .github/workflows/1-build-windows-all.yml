@@ -9,6 +9,32 @@ env:
 
 on:
   workflow_dispatch:
+    inputs:
+      full_version:
+        description: Artifact version (does not publish a release)
+        required: true
+        type: string
+      curl_version:
+        description: curl release version
+        required: true
+        default: '8.20.0'
+        type: string
+      tail_wind_labs_version:
+        description: Tailwind CSS release tag
+        required: true
+        default: 'v4.3.0'
+        type: string
+      llvm_mingw_version:
+        description: LLVM MinGW release tag
+        required: true
+        default: '20260922'
+        type: string
+      architecture:
+        description: Windows architecture
+        required: true
+        default: x86_64
+        type: choice
+        options: [x86, x86_64, aarch64]
   workflow_call:
     inputs:
       full_version:
@@ -309,6 +335,9 @@ jobs:
         run: |
           cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
 
+      - name: 复制可选 Windows 网速与热点工具
+        run: bash scripts/package-windows-helper.sh .
+
       - name: 打包成 zip 压缩包
         env:
           ARCH: ${{ inputs.architecture }}
@@ -316,7 +345,9 @@ jobs:
           zip -r "esurfingclient-${{ inputs.full_version }}-windows-${ARCH}.zip" \
             "ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe" \
             ESurfingClient.json \
-            portal/
+            portal/ \
+            Start-Dashboard.cmd \
+            tools/windows-network-panel/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7

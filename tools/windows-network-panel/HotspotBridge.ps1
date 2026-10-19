@@ -1,12 +1,28 @@
 ﻿# Optional local bridge. Loading this file alone has no network side effects.
+function Get-BridgeOrigins([ValidateRange(1, 65535)][int]$WebPort = 8888) {
+    foreach ($name in @('127.0.0.1', 'localhost')) { ([Uri]("http://${name}:$WebPort")).GetLeftPart([UriPartial]::Authority) }
+}
+
+function Get-BridgeFailure([int]$ErrorCode) {
+    if ($ErrorCode -eq 5) {
+        return @{ code = 'AccessDenied'; message = 'Windows 拒绝监听权限。网速仍可使用，请使用系统热点设置或独立热点窗口。' }
+    }
+    if ($ErrorCode -in @(32, 183)) {
+        return @{ code = 'PortUnavailable'; message = '热点控制端口已被占用，请使用其他 BridgePort 后重新启动辅助程序。' }
+    }
+    return @{ code = 'Unavailable'; message = '热点控制启动失败。网速仍可使用，请检查端口或使用系统热点设置。' }
+}
+
 function Test-BridgeAccess($Origin, $Address, $Method, $Token, [bool]$HasBody) {
-    if ($Origin -cne $script:bridgeOrigin -or $HasBody) { return $false }
-    if (-not [Net.IPAddress]::IsLoopback([Net.IPAddress]::Parse($Address))) { return $false }
+    if ($script:bridgeOrigins -cnotcontains $Origin -or $HasBody) { return $false }
+    $parsedAddress = $null
+    if (-not [Net.IPAddress]::TryParse($Address, [ref]$parsedAddress) -or -not [Net.IPAddress]::IsLoopback($parsedAddress)) { return $false }
     if ($Method -eq 'GET' -or $Method -eq 'OPTIONS') { return $true }
     return ($Method -eq 'POST' -and $Token -ceq $script:bridgeToken)
 }
 
 function Start-HotspotBridge {
+    param([ValidateRange(1, 65535)][int]$WebPort = 8888, [ValidateRange(1, 65535)][int]$BridgePort = 18889)
     Add-Type -AssemblyName System.Runtime.WindowsRuntime
     [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager,Windows.Networking.NetworkOperators,ContentType=WindowsRuntime] > $null
     [Windows.Networking.NetworkOperators.NetworkOperatorTetheringOperationResult,Windows.Networking.NetworkOperators,ContentType=WindowsRuntime] > $null
@@ -15,13 +31,13 @@ function Start-HotspotBridge {
         $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'
     } | Select-Object -First 1
     $script:bridgeAsTask = $method.MakeGenericMethod([Windows.Networking.NetworkOperators.NetworkOperatorTetheringOperationResult])
-    $script:bridgeOrigin = 'http://127.0.0.1:8888'
+    $script:bridgeOrigins = @(Get-BridgeOrigins $WebPort)
     $script:bridgeToken = [Guid]::NewGuid().ToString('N')
     $script:bridgeEntries = @{}
     $script:bridgeTask = $null
     $script:bridgeMessage = ''
     $script:bridgeListener = New-Object Net.HttpListener
-    $script:bridgeListener.Prefixes.Add('http://127.0.0.1:18889/')
+    $script:bridgeListener.Prefixes.Add("http://127.0.0.1:$BridgePort/")
     $script:bridgeListener.Start()
     $script:bridgeRequest = $script:bridgeListener.GetContextAsync()
 }
@@ -86,7 +102,7 @@ function Poll-HotspotBridge {
         if (-not (Test-BridgeAccess $request.Headers['Origin'] $request.RemoteEndPoint.Address.ToString() $request.HttpMethod $request.Headers['X-ESurfing-Token'] $request.HasEntityBody)) {
             Send-BridgeResponse $context 403 @{ message = '只允许本机校园网页面操作。' }; return
         }
-        $context.Response.Headers['Access-Control-Allow-Origin'] = $script:bridgeOrigin
+        $context.Response.Headers['Access-Control-Allow-Origin'] = $request.Headers['Origin']
         $context.Response.Headers['Vary'] = 'Origin'
         $context.Response.Headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
         $context.Response.Headers['Access-Control-Allow-Headers'] = 'X-ESurfing-Token'
@@ -115,6 +131,19 @@ function Poll-HotspotBridge {
         Send-BridgeResponse $context 202 @{ message = $script:bridgeMessage }
     } catch {
         try { Send-BridgeResponse $context 500 @{ message = '热点操作未完成，请打开 Windows 热点设置检查。' } } catch { }
+    }
+}
+
+function Update-HotspotBridgeAvailability {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][hashtable]$Availability)
+    if (-not $Availability.ready) { return }
+    try { Poll-HotspotBridge } catch {
+        $Availability.ready = $false
+        $Availability.code = 'RuntimeFailure'
+        $Availability.message = '热点控制服务已停止，网速采集继续运行。请重新启动辅助程序或使用系统热点设置。'
+        try { Stop-HotspotBridge } catch { }
+        Write-Warning $Availability.message
     }
 }
 

@@ -11,7 +11,7 @@ function trafficIsFresh(data, now = Date.now()) {
 
 document.addEventListener('alpine:init', () => {
     // The optional Windows helper opts in; other client platforms keep their dashboard.
-    Alpine.store('networkTools', { enabled: false, hotspotControls: false });
+    Alpine.store('networkTools', { enabled: false, hotspotControls: false, hotspotBridge: null, timestamp: 0 });
     Alpine.data('trafficPanel', () => ({
         adapters: [], selectedId: '', fresh: false, timestamp: 0,
         message: '正在读取网速…', timer: null, request: null, disposed: false, lastProbe: 0,
@@ -38,7 +38,10 @@ document.addEventListener('alpine:init', () => {
             if (this.request || this.disposed) return;
             if (!Alpine.store('networkTools').enabled && Date.now() - this.lastProbe < 5000) return;
             this.lastProbe = Date.now();
-            if (!trafficIsFresh({ timestamp: this.timestamp })) this.fresh = false;
+            if (!trafficIsFresh({ timestamp: this.timestamp })) {
+                this.fresh = false;
+                Alpine.store('networkTools').timestamp = 0;
+            }
             this.request = new AbortController();
             const timeout = setTimeout(() => this.request?.abort(), 4000);
             try {
@@ -49,7 +52,9 @@ document.addEventListener('alpine:init', () => {
                 if (!Array.isArray(data.adapters)) throw new Error('网速数据格式无效。');
                 Alpine.store('networkTools').enabled = true;
                 Alpine.store('networkTools').hotspotControls = data.hotspotControls === true;
+                Alpine.store('networkTools').hotspotBridge = data.hotspotBridge || null;
                 if (!trafficIsFresh(data) || !Array.isArray(data.adapters)) throw new Error('网速数据已过期，请重新启动网速采集。');
+                Alpine.store('networkTools').timestamp = data.timestamp;
                 this.adapters = data.adapters;
                 if (!this.selectedId) this.selectedId = data.defaultId || this.adapters[0]?.id || '';
                 this.fresh = true;
@@ -59,6 +64,7 @@ document.addEventListener('alpine:init', () => {
                     this.adapter.down === null ? '正在采样，稍后显示速度。' : '每秒更新 · 当前网卡全部流量';
             } catch (error) {
                 this.fresh = false;
+                Alpine.store('networkTools').timestamp = 0;
                 this.message = error.name === 'AbortError' ? '读取超时，正在重试…' : error.message;
             } finally {
                 clearTimeout(timeout);

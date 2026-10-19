@@ -3,6 +3,8 @@ param(
     [Parameter(Mandatory=$true)][string]$ClientPath,
     [switch]$StartClient,
     [switch]$HotspotControls,
+    [ValidateRange(1, 65535)][int]$WebPort = 8888,
+    [ValidateRange(1, 65535)][int]$BridgePort = 18889,
     [ValidateRange(0, 2147483647)][int]$Samples = 0,
     [string]$OutputDirectory
 )
@@ -31,9 +33,20 @@ try {
         Start-Process -FilePath $ClientPath -WorkingDirectory ([IO.Path]::GetDirectoryName($ClientPath)) -WindowStyle Hidden
     }
     [Windows.Networking.Connectivity.NetworkInformation,Windows.Networking.Connectivity,ContentType=WindowsRuntime] > $null
+    $bridgeInfo = $null
     if ($HotspotControls) {
         . "$PSScriptRoot\HotspotBridge.ps1"
-        try { Start-HotspotBridge } catch { Write-Warning '热点控制不可用；网速采集继续运行。请检查 18889 端口或 Windows 权限。' }
+        $bridgeInfo = @{ url = "http://127.0.0.1:$BridgePort"; origins = @(Get-BridgeOrigins $WebPort); ready = $false; code = ''; message = '' }
+        try {
+            Start-HotspotBridge -WebPort $WebPort -BridgePort $BridgePort
+            $bridgeInfo.ready = $true
+        } catch {
+            $failure = Get-BridgeFailure $_.Exception.GetBaseException().NativeErrorCode
+            $bridgeInfo.code = $failure.code
+            $bridgeInfo.message = $failure.message
+            Stop-HotspotBridge
+            Write-Warning $failure.message
+        }
     }
     $clock = [Diagnostics.Stopwatch]::StartNew()
     $previous = @{}
@@ -59,7 +72,7 @@ try {
             }
         })
         $previous = $next
-        $json = @{ timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(); defaultId = $defaultId; adapters = $rows; hotspotControls = [bool]$HotspotControls } | ConvertTo-Json -Depth 4 -Compress
+        $json = @{ timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(); defaultId = $defaultId; adapters = $rows; hotspotControls = [bool]$HotspotControls; hotspotBridge = $bridgeInfo } | ConvertTo-Json -Depth 4 -Compress
         [IO.File]::WriteAllText($temporary, $json, (New-Object Text.UTF8Encoding($false)))
         try {
             if ([IO.File]::Exists($output)) { [IO.File]::Replace($temporary, $output, [NullString]::Value) }
@@ -68,7 +81,7 @@ try {
         $iteration++
         if ($Samples -gt 0 -and $iteration -ge $Samples) { break }
         for ($poll = 0; $poll -lt 10; $poll++) {
-            if ($HotspotControls) { Poll-HotspotBridge }
+            if ($HotspotControls) { Update-HotspotBridgeAvailability $bridgeInfo }
             Start-Sleep -Milliseconds 100
         }
     }
