@@ -5,6 +5,13 @@
 
 #include "utils/log/Logger.h"
 
+/**
+ * @brief 按 algo_id 造出对应的加解密器
+ *
+ * 这里故意保持成一串 if: 80 个算法分支分布在 20 个工厂函数上, 每个分支带的
+ * key / iv 常量都不一样, 参数个数也不同 —— 做成"algo_id → 工厂"的表反而要为
+ * 每个分支再写一个包装函数, 代码更多、还多一层间接。加算法时照下面抄一段即可。
+ */
 static cipher_interface_t* create_cipher_factory(const char* algo_id)
 {
     if (!algo_id) return NULL;

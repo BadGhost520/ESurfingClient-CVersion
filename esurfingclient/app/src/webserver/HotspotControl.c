@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "utils/log/Logger.h"
+#include "utils/text/TextUtils.h"
 #include "utils/platform/PlatformUtils.h"
 #include "utils/runtime/ChildRun.h"
 #include "utils/sim/SimThread.h"
@@ -76,31 +77,6 @@ static size_t hotspot_utf8_to_utf16le(const char* text, unsigned char* out, cons
     return (size_t)chars * 2 - 2; // 去掉结尾的 L'\0'
 }
 
-/**
- * @brief Base64 编码 (PowerShell -EncodedCommand 的格式)
- */
-static bool hotspot_base64(const unsigned char* data, const size_t data_len, char* out, const size_t out_len)
-{
-    static const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    const size_t need = (data_len + 2) / 3 * 4 + 1;
-    if (out == NULL || out_len < need) return false;
-
-    size_t used = 0;
-    for (size_t i = 0; i < data_len; i += 3)
-    {
-        const unsigned int b0 = data[i];
-        const unsigned int b1 = (i + 1 < data_len) ? data[i + 1] : 0;
-        const unsigned int b2 = (i + 2 < data_len) ? data[i + 2] : 0;
-        const unsigned int triple = (b0 << 16) | (b1 << 8) | b2;
-        out[used++] = table[(triple >> 18) & 0x3F];
-        out[used++] = table[(triple >> 12) & 0x3F];
-        out[used++] = (i + 1 < data_len) ? table[(triple >> 6) & 0x3F] : '=';
-        out[used++] = (i + 2 < data_len) ? table[triple & 0x3F] : '=';
-    }
-    out[used] = '\0';
-    return true;
-}
-
 static bool hotspot_powershell(char* out, const size_t out_len)
 {
     char system_root[PATH_MAX];
@@ -136,12 +112,13 @@ static bool hotspot_run_script(const char* action, const char* adapter_id, char*
     const size_t utf16_len = hotspot_utf8_to_utf16le(source, utf16, sizeof(utf16));
     if (utf16_len == 0) { LOG_WARN("热点脚本 UTF-16 转换失败 (源码 %d 字节)", (int)strlen(source)); return false; }
 
-    char encoded[HOTSPOT_SCRIPT_MAX * 3];
-    if (hotspot_base64(utf16, utf16_len, encoded, sizeof(encoded)) == false) { LOG_WARN("热点脚本 base64 失败 (%d 字节)", (int)utf16_len); return false; }
+    char* encoded = bytes2base64(utf16, utf16_len);
+    if (encoded == NULL) { LOG_WARN("热点脚本 base64 编码失败 (%d 字节)", (int)utf16_len); return false; }
 
-    char args[HOTSPOT_SCRIPT_MAX * 3 + 128];
+    char args[HOTSPOT_SCRIPT_MAX * 4 + 128];
     const int arg_len = snprintf(args, sizeof(args),
                                  "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encoded);
+    free(encoded);
     if (arg_len <= 0 || (size_t)arg_len >= sizeof(args)) { LOG_WARN("热点命令行过长 (%d 字节)", (int)arg_len); return false; }
 
     const int timeout = (strcmp(action, "state") == 0) ? HOTSPOT_STATUS_TIMEOUT_MS : HOTSPOT_ACTION_TIMEOUT_MS;
