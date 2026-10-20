@@ -1,5 +1,5 @@
 const CHANNEL_TEXT = {
-    windows: 'Windows (未实现, Android 替代)',
+    windows: 'Windows',
     linux: 'Linux',
     android: 'Android',
     ios: 'iOS',
@@ -491,9 +491,9 @@ document.addEventListener('alpine:init', () => {
                 // 查不到认证状态有好几种原因, 由后端给出 reason, 这里换成对应的说法,
                 // 不然"配置还没填"也会被显示成"认证进程未运行"
                 const reasonText = {
-                    config: '配置未就绪（请在设置里填好账号并启用，点“保存并应用”）',
-                    'no-account': '没有可用账号（请到设置里填写）',
-                    disabled: '程序已禁用（请到设置里启用）',
+                    config: '配置未就绪',
+                    'no-account': '没有可用账号',
+                    disabled: '程序已禁用',
                     'not-running': '认证进程未运行'
                 };
                 const reason = data && data.reason ? data.reason : '';
