@@ -18,7 +18,7 @@
 #endif
 
 extern const char s_file_name[];
-extern char s_cfg_log_dir[PATH_MAX];
+extern char s_cfg_log_dir[LOG_PATH_MAX];
 extern bool s_logger_inited;
 extern log_cfg_t s_logger_cfg;
 extern bool s_console_enabled;

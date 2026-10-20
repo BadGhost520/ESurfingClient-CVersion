@@ -94,7 +94,7 @@ void clean_logger()
     }
     char cur_tm[32];
     get_fmt_time(cur_tm, FILE_FORMAT);
-    char new_file_name[PATH_MAX];
+    char new_file_name[LOG_PATH_MAX];
     snprintf(new_file_name, sizeof(new_file_name), "%s%c%s.log", safe_str(s_logger_cfg.log_dir), SEP, safe_str(cur_tm));
     rename(s_logger_cfg.log_file, new_file_name);
 

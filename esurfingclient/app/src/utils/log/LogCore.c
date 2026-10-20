@@ -10,7 +10,7 @@
 
 const char s_file_name[] = "run.log";
 
-char s_cfg_log_dir[PATH_MAX] = "";
+char s_cfg_log_dir[LOG_PATH_MAX] = "";
 
 bool s_logger_inited = false;
 

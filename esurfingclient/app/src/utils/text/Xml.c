@@ -41,7 +41,16 @@ char* create_xml_payload(const XmlChoose choose)
 {
     char cur_tm[32];
     get_fmt_time(cur_tm, CONSOLE_FORMAT);
-    static char xml[XML_BUFFER_SIZE] = "";
+
+    // 每次调用都给一块自己的缓冲: 单进程多账号时几个认证线程会同时走到这里,
+    // 用静态缓冲会互相覆盖 (调用方负责 free)
+    char* xml = malloc(XML_BUFFER_SIZE);
+    if (xml == NULL)
+    {
+        LOG_ERROR("XML 缓冲区分配失败");
+        return NULL;
+    }
+
     LOG_DEBUG("XML 选择代码: %d", choose);
     uint16_t xml_len = 0;
     switch (choose)

@@ -220,6 +220,10 @@ void logFn(const char ch, void *param)
     }
     else if (ch != '\r')
     {
-        buffer[pos++] = ch;
+        // 防御: 单行超过缓冲长度时截断, 不能让 pos 越过 buffer (原来没有边界检查)
+        if (pos < sizeof(buffer) - 1)
+        {
+            buffer[pos++] = ch;
+        }
     }
 }

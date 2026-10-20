@@ -5,9 +5,22 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/**
+ * 兜底: 有些模块 (Config.c / LogoutState.c 等) 通过这个头拿到 PATH_MAX 就不另
+ * include <limits.h> 了。日志自己的结构体不再用它, 但为了不打断这些调用方保留。
+ */
 #ifndef PATH_MAX
 #define PATH_MAX 1024
 #endif
+
+/**
+ * 日志模块自己的路径长度上限
+ *
+ * 不能用 PATH_MAX: 它由 <limits.h> 定义、Windows 上是 260、其它平台是 1024,
+ * 而 log_cfg_t 是跨编译单元的结构体 —— 一个 TU 见过 limits.h、另一个没见过,
+ * 结构体尺寸就不一致了。固定成项目自己的常量才能保证布局稳定。
+ */
+#define LOG_PATH_MAX 1024
 
 #define DEFAULT_LOG_DIR "./"
 
@@ -23,8 +36,8 @@ typedef enum {
 
 typedef struct {
     LogLevel    lv;
-    char        log_dir[PATH_MAX];
-    char        log_file[PATH_MAX];
+    char        log_dir[LOG_PATH_MAX];
+    char        log_file[LOG_PATH_MAX];
     FILE*       file_handle;
     size_t      max_lines;
     size_t      cur_lines;

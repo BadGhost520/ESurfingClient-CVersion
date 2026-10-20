@@ -20,7 +20,7 @@
 
 bool term()
 {
-    const char* xml = create_xml_payload(TERM); // 创建 term 配置 xml
+    char* xml = create_xml_payload(TERM); // 创建 term 配置 xml
     if (xml == NULL)
     {
         LOG_ERROR("登出 XML 创建失败");
@@ -28,6 +28,7 @@ bool term()
     }
 
     char* encrypt = session_encrypt(xml); // 加密 xml
+    free(xml);
     if (encrypt == NULL)
     {
         LOG_ERROR("登出 XML 加密失败");
@@ -64,7 +65,7 @@ bool term()
 
 bool heartbeat()
 {
-    const char* xml = create_xml_payload(HEART_BEAT); // 创建 heartbeat 配置 xml
+    char* xml = create_xml_payload(HEART_BEAT); // 创建 heartbeat 配置 xml
     if (xml == NULL)
     {
         LOG_ERROR("心跳 XML 创建失败");
@@ -72,6 +73,7 @@ bool heartbeat()
     }
 
     char* encrypt = session_encrypt(xml); // 加密 xml
+    free(xml);
     if (encrypt == NULL)
     {
         LOG_ERROR("加密心跳 XML 失败");
@@ -121,7 +123,7 @@ bool heartbeat()
 
 bool login()
 {
-    const char* xml = create_xml_payload(LOGIN); // 创建 login 配置 xml
+    char* xml = create_xml_payload(LOGIN); // 创建 login 配置 xml
     if (xml == NULL)
     {
         LOG_ERROR("登录 XML 创建失败");
@@ -129,6 +131,7 @@ bool login()
     }
 
     char* encrypt = session_encrypt(xml); // 加密 xml
+    free(xml);
     if (encrypt == NULL)
     {
         LOG_ERROR("加密登录 XML 失败");

@@ -19,7 +19,7 @@ bool get_ticket()
 {
     LOG_DEBUG("get_ticket 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
 
-    const char* xml = create_xml_payload(GET_TICKET); // 创建 get_ticket 用的 xml
+    char* xml = create_xml_payload(GET_TICKET); // 创建 get_ticket 用的 xml
     if (xml == NULL)
     {
         LOG_ERROR("创建获取 Ticket XML 失败");
@@ -27,6 +27,7 @@ bool get_ticket()
     }
 
     char* encrypt = session_encrypt(xml); // 加密 xml
+    free(xml);
     if (encrypt == NULL)
     {
         LOG_ERROR("加密获取 Ticket XML 失败");

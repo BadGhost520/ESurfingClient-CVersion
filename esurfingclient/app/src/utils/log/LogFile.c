@@ -152,7 +152,7 @@ void rotate()
 
     char cur_tm[32];
     get_fmt_time(cur_tm, FILE_FORMAT);
-    char rotate_file_name[PATH_MAX];
+    char rotate_file_name[LOG_PATH_MAX];
 #ifdef _WIN32
     const unsigned long proc_id = (unsigned long)GetCurrentProcessId();
 #else

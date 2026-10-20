@@ -62,7 +62,7 @@ static bool prefix_eq(const char* text, const char* prefix)
  */
 static bool make_dirs(const char* path)
 {
-    char buf[PATH_MAX];
+    char buf[LOG_PATH_MAX];
     const int len = snprintf(buf, sizeof(buf), "%s", path);
     if (len <= 0 || (size_t)len >= sizeof(buf)) return false;
 
@@ -202,12 +202,12 @@ static void strip_tail_sep(char* path)
  * - OpenWrt 上是 /var/log/esurfing: 那边的程序装在只读的 /usr/bin 里, 拿它当基准
  *   既写不了也没意义
  * @param cfg_dir 配置里的取值 (空字符串 / "." / "./" 都表示用默认值)
- * @param out 输出缓冲 (至少 PATH_MAX 字节)
+ * @param out 输出缓冲 (至少 LOG_PATH_MAX 字节)
  * @return 是否解析成功
  */
 static bool resolve_log_dir(const char* cfg_dir, char* out)
 {
-    char base[PATH_MAX];
+    char base[LOG_PATH_MAX];
 
 #ifdef __OPENWRT__
     if (snprintf(base, sizeof(base), "%s", s_default_base) >= (int)sizeof(base)) return false;
@@ -217,7 +217,7 @@ static bool resolve_log_dir(const char* cfg_dir, char* out)
 
     if (cfg_dir == NULL || cfg_dir[0] == '\0' || strcmp(cfg_dir, ".") == 0)
     {
-        return snprintf(out, PATH_MAX, "%s", base) < PATH_MAX;
+        return snprintf(out, LOG_PATH_MAX, "%s", base) < LOG_PATH_MAX;
     }
 
 #ifdef _WIN32
@@ -245,7 +245,7 @@ static bool resolve_log_dir(const char* cfg_dir, char* out)
 
     if (is_abs_path(cfg_dir))
     {
-        if (snprintf(out, PATH_MAX, "%s", cfg_dir) >= PATH_MAX) return false;
+        if (snprintf(out, LOG_PATH_MAX, "%s", cfg_dir) >= LOG_PATH_MAX) return false;
         strip_tail_sep(out);
         return true;
     }
@@ -257,11 +257,11 @@ static bool resolve_log_dir(const char* cfg_dir, char* out)
 
     if (rel[0] == '\0')
     {
-        return snprintf(out, PATH_MAX, "%s", base) < PATH_MAX;
+        return snprintf(out, LOG_PATH_MAX, "%s", base) < LOG_PATH_MAX;
     }
 
-    const int len = snprintf(out, PATH_MAX, "%s%c%s", base, SEP, rel);
-    if (len <= 0 || (size_t)len >= PATH_MAX) return false;
+    const int len = snprintf(out, LOG_PATH_MAX, "%s%c%s", base, SEP, rel);
+    if (len <= 0 || (size_t)len >= LOG_PATH_MAX) return false;
     strip_tail_sep(out);
     return true;
 }
@@ -273,12 +273,12 @@ static bool resolve_log_dir(const char* cfg_dir, char* out)
  * 桌面端的基目录默认是程序所在目录 (那里还放着程序本体 / 配置文件 / portal,
  * 直接往里写会把目录搅乱); OpenWrt 上默认是 /var/log/esurfing, 于是日志仍旧落在
  * /var/log/esurfing/logs。
- * @param out 输出缓冲 (至少 PATH_MAX 字节)
+ * @param out 输出缓冲 (至少 LOG_PATH_MAX 字节)
  * @return 目录是否可用
  */
 bool get_log_dir(char* out)
 {
-    char base[PATH_MAX];
+    char base[LOG_PATH_MAX];
 
     if (resolve_log_dir(s_cfg_log_dir, base) == false)
     {
@@ -286,8 +286,8 @@ bool get_log_dir(char* out)
         return false;
     }
 
-    const int len = snprintf(out, PATH_MAX, "%s%c%s", base, SEP, s_log_sub_dir);
-    if (len <= 0 || (size_t)len >= PATH_MAX)
+    const int len = snprintf(out, LOG_PATH_MAX, "%s%c%s", base, SEP, s_log_sub_dir);
+    if (len <= 0 || (size_t)len >= LOG_PATH_MAX)
     {
         fprintf(stderr, "[ERROR] 日志目录路径太长: %s%c%s\n", base, SEP, s_log_sub_dir);
         return false;
@@ -306,9 +306,9 @@ bool set_logger_dir(const char* dir)
     // 配置里没写就是默认目录, 什么都不用做
     if (dir == NULL || dir[0] == '\0') return false;
 
-    if (strlen(dir) >= PATH_MAX)
+    if (strlen(dir) >= LOG_PATH_MAX)
     {
-        LOG_WARN("log_dir 过长 (最多 %d 个字符), 使用默认日志目录 (%s)", PATH_MAX - 1, DEFAULT_LOG_DIR);
+        LOG_WARN("log_dir 过长 (最多 %d 个字符), 使用默认日志目录 (%s)", LOG_PATH_MAX - 1, DEFAULT_LOG_DIR);
         return false;
     }
 
@@ -317,9 +317,9 @@ bool set_logger_dir(const char* dir)
     /**
      * 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里
      */
-    char new_base[PATH_MAX];
-    char new_dir[PATH_MAX];
-    char new_file[PATH_MAX];
+    char new_base[LOG_PATH_MAX];
+    char new_dir[LOG_PATH_MAX];
+    char new_file[LOG_PATH_MAX];
     if (resolve_log_dir(dir, new_base) == false)
     {
         LOG_WARN("log_dir (%s) 不可用, 使用默认日志目录 (%s)", safe_str(dir), DEFAULT_LOG_DIR);
@@ -378,8 +378,8 @@ bool set_logger_dir(const char* dir)
      */
     logger_lock();
 
-    char old_dir[PATH_MAX];
-    char old_file[PATH_MAX];
+    char old_dir[LOG_PATH_MAX];
+    char old_file[LOG_PATH_MAX];
     snprintf(old_dir, sizeof(old_dir), "%s", s_logger_cfg.log_dir);
     snprintf(old_file, sizeof(old_file), "%s", s_logger_cfg.log_file);
 
