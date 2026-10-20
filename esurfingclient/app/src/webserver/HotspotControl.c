@@ -462,6 +462,140 @@ static bool hotspot_do_action(const char* action, const char* adapter_id, char**
     return true;
 }
 
+#elif defined(__APPLE__)
+
+/* ------------------------------------------------------------------ macOS (互联网共享) */
+
+/**
+ * macOS 的"互联网共享"没有受支持的命令行开关:
+ * 状态可以查 launchd 里 com.apple.InternetSharing 这个 job 有没有在跑,
+ * 开关只能尝试 launchctl (需要管理员权限, 没有免密 sudo 时会失败)。
+ * 实验性功能, 没有在真机上验证过。
+ */
+#define HOTSPOT_MAC_PLIST "/System/Library/LaunchDaemons/com.apple.InternetSharing.plist"
+#define HOTSPOT_MAC_LABEL "com.apple.InternetSharing"
+
+/**
+ * @brief 去掉外部命令输出末尾的换行
+ */
+static void hotspot_trim_platform(char* text)
+{
+    if (text == NULL) return;
+    size_t len = strlen(text);
+    while (len > 0 && (text[len - 1] == '\n' || text[len - 1] == '\r')) text[--len] = '\0';
+}
+
+/**
+ * @brief 互联网共享现在是不是开着
+ * @return 是否查询成功 (查询失败时 *running 为 false)
+ */
+static bool hotspot_mac_running(bool* running)
+{
+    char output[2048];
+    int exit_code = -1;
+    *running = false;
+
+    if (child_run_capture("launchctl", "list " HOTSPOT_MAC_LABEL, output, sizeof(output), 5000, &exit_code, true) == false)
+    {
+        return false;
+    }
+    if (exit_code != 0) return true; // 没这个 job → 视为关闭
+    // 运行中的 job 会带一行 "PID" = <数字>
+    *running = strstr(output, "\"PID\"") != NULL;
+    return true;
+}
+
+static bool hotspot_platform_available(void)
+{
+    // 有 InternetSharing 的 launchd 描述才算这个系统支持互联网共享
+    return access(HOTSPOT_MAC_PLIST, R_OK) == 0;
+}
+
+/**
+ * @brief 列出可以用来"共享出去"的网卡 (en* 这类真实网卡)
+ */
+static char* hotspot_query_status(void)
+{
+    bool running = false;
+    hotspot_mac_running(&running);
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON* adapters = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "adapters", adapters);
+    cJSON_AddStringToObject(root, "defaultId", "");
+    cJSON_AddBoolToObject(root, "experimental", true);
+
+    struct ifaddrs* list = NULL;
+    if (getifaddrs(&list) == 0)
+    {
+        for (struct ifaddrs* ifa = list; ifa != NULL; ifa = ifa->ifa_next)
+        {
+            if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_LINK) continue;
+            if ((ifa->ifa_flags & IFF_LOOPBACK) != 0) continue;
+            if ((ifa->ifa_flags & IFF_UP) == 0) continue;
+            // 只留 en0/en1 这类真实网卡, 跳过 awdl/utun/bridge 之流
+            if (strncmp(ifa->ifa_name, "en", 2) != 0) continue;
+
+            cJSON* item = cJSON_CreateObject();
+            cJSON_AddStringToObject(item, "id", ifa->ifa_name);
+            cJSON_AddStringToObject(item, "name", ifa->ifa_name);
+            cJSON_AddStringToObject(item, "state", running ? "On" : "Off");
+            cJSON_AddStringToObject(item, "capability", "Enabled");
+            cJSON_AddBoolToObject(item, "connected", (ifa->ifa_flags & IFF_RUNNING) != 0);
+            cJSON_AddItemToArray(adapters, item);
+        }
+        freeifaddrs(list);
+    }
+
+    if (cJSON_GetArraySize(adapters) == 0)
+    {
+        cJSON_AddStringToObject(root, "message", "没有可用的无线网卡（实验性功能，未在真机验证）。");
+    }
+    else
+    {
+        cJSON_AddStringToObject(root, "message", "macOS 的热点通过「互联网共享」提供，为实验性功能（未在真机验证）。");
+    }
+
+    char* json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json;
+}
+
+static bool hotspot_do_action(const char* action, const char* adapter_id, char** message)
+{
+    (void)adapter_id; // macOS 的共享网卡在系统设置里选, 这里只控制总开关
+    *message = NULL;
+
+    char args[512];
+    char output[HOTSPOT_OUTPUT_MAX];
+    int exit_code = -1;
+
+    if (strcmp(action, "start") == 0)
+    {
+        snprintf(args, sizeof(args), "-n launchctl load -w %s", HOTSPOT_MAC_PLIST);
+    }
+    else
+    {
+        snprintf(args, sizeof(args), "-n launchctl unload -w %s", HOTSPOT_MAC_PLIST);
+    }
+
+    // sudo -n: 没有免密授权时立刻失败, 不会卡在密码提示上
+    const bool ran = child_run_capture("sudo", args, output, sizeof(output), HOTSPOT_ACTION_TIMEOUT_MS, &exit_code, true);
+    hotspot_trim_platform(output);
+    if (ran == false || exit_code != 0)
+    {
+        LOG_WARN("macOS 互联网共享开关失败 (退出码 %d): %s", exit_code, output);
+        *message = strdup("需要管理员权限：请在「系统设置 → 通用 → 共享 → 互联网共享」里手动开启/关闭"
+                          "（macOS 热点为实验性功能，未在真机验证）。");
+        return false;
+    }
+
+    *message = strdup(strcmp(action, "start") == 0
+                          ? "已请求开启互联网共享（实验性功能，请在系统设置里确认热点名称与密码）。"
+                          : "已请求关闭互联网共享（实验性功能）。");
+    return true;
+}
+
 #else
 
 /* ------------------------------------------------------------------ 其它平台 */

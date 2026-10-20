@@ -257,8 +257,12 @@ char* net_traffic_json(void)
     traffic_unlock();
 
     cJSON_AddItemToObject(root, "adapters", adapters);
-    // 热点卡片是否显示, 由"这个平台能不能控制热点"决定 (目前只有 Windows 能)
+    // 热点卡片是否显示, 由"这个平台能不能控制热点"决定 (Windows / Linux 已有实现)
     cJSON_AddBoolToObject(root, "hotspotControls", hotspot_control_available());
+#ifdef __APPLE__
+    // macOS 的采样没有真机验证过, 页面上打个"实验性"标记
+    cJSON_AddBoolToObject(root, "experimental", true);
+#endif
 
     char* json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

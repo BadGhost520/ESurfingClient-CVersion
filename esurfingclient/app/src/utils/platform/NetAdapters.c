@@ -381,11 +381,128 @@ uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* defaul
     return count;
 }
 
+#elif defined(__APPLE__)
+
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <net/route.h>
+#include <sys/sysctl.h>
+
+/**
+ * @brief 系统自带的虚拟接口 (AirDrop / 无线直连 / VPN / 隧道), 不是用户想看的网卡
+ */
+static bool adapter_is_virtual_name(const char* name)
+{
+    static const char* prefixes[] = {"awdl", "llw", "utun", "gif", "stf", "ap", "anpi", "ipsec"};
+    for (size_t i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); i++)
+    {
+        if (strncmp(name, prefixes[i], strlen(prefixes[i])) == 0) return true;
+    }
+    return false;
+}
+
+/**
+ * @brief 默认出口接口 (路由表里目标前缀长度为 0 的那条)
+ *
+ * 走 sysctl(NET_RT_DUMP), 不起外部进程
+ */
+static void adapter_default_route(char* out, const size_t out_len)
+{
+    if (out == NULL || out_len == 0) return;
+    out[0] = '\0';
+
+    int mib[6] = {CTL_NET, PF_ROUTE, 0, 0, NET_RT_DUMP, 0};
+    size_t needed = 0;
+    if (sysctl(mib, 6, NULL, &needed, NULL, 0) != 0 || needed == 0) return;
+
+    char* buffer = malloc(needed);
+    if (buffer == NULL) return;
+    if (sysctl(mib, 6, buffer, &needed, NULL, 0) != 0)
+    {
+        free(buffer);
+        return;
+    }
+
+    for (char* cursor = buffer; cursor < buffer + needed;)
+    {
+        const struct rt_msghdr* route = (const struct rt_msghdr*)cursor;
+        if (route->rtm_msglen <= 0) break;
+        // 默认路由 = 目标地址是全零的那条 (macOS 的 rt_msghdr 没有"前缀长度"字段,
+        // 前缀长度藏在 RTA_DST 那个 sockaddr 里; 默认路由的地址本身就是 0)
+        if ((route->rtm_flags & RTF_UP) != 0 && route->rtm_index != 0 && (route->rtm_addrs & RTA_DST) != 0)
+        {
+            const struct sockaddr* dst = (const struct sockaddr*)(route + 1);
+            const bool is_default =
+                (dst->sa_family == AF_INET && ((const struct sockaddr_in*)dst)->sin_addr.s_addr == 0) ||
+                (dst->sa_family == AF_INET6 && IN6_IS_ADDR_UNSPECIFIED(&((const struct sockaddr_in6*)dst)->sin6_addr));
+            if (is_default)
+            {
+                char name[IFNAMSIZ] = {0};
+                if (if_indextoname(route->rtm_index, name) != NULL)
+                {
+                    snprintf(out, out_len, "%s", name);
+                    break;
+                }
+            }
+        }
+        cursor += route->rtm_msglen;
+    }
+    free(buffer);
+}
+
+uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* default_id, const size_t default_id_len)
+{
+    if (out == NULL || max == 0) return 0;
+
+    if (default_id != NULL && default_id_len > 0) adapter_default_route(default_id, default_id_len);
+
+    struct ifaddrs* list = NULL;
+    if (getifaddrs(&list) != 0) return 0;
+
+    /**
+     * 累计字节数在 AF_LINK 那条记录上 (ifa_data 指向 if_data)。
+     * 注意它是 32 位计数器, 4GB 会回绕: 上层按"计数器变小就重设基线"处理,
+     * 所以回绕的那一帧会显示一次"正在采样" —— 实验性功能, 先这样。
+     */
+    uint8_t count = 0;
+    for (struct ifaddrs* ifa = list; ifa != NULL && count < max; ifa = ifa->ifa_next)
+    {
+        if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_LINK) continue;
+        if ((ifa->ifa_flags & IFF_LOOPBACK) != 0) continue;
+        if ((ifa->ifa_flags & IFF_UP) == 0) continue;
+        if (adapter_is_virtual_name(ifa->ifa_name)) continue;
+        if (ifa->ifa_data == NULL) continue;
+
+        bool seen = false;
+        for (uint8_t i = 0; i < count; i++)
+        {
+            if (strcmp(out[i].id, ifa->ifa_name) == 0)
+            {
+                seen = true;
+                break;
+            }
+        }
+        if (seen) continue;
+
+        const struct if_data* data = (const struct if_data*)ifa->ifa_data;
+        adapter_stats_t* item = &out[count];
+        memset(item, 0, sizeof(*item));
+        snprintf(item->id, sizeof(item->id), "%s", ifa->ifa_name);
+        snprintf(item->name, sizeof(item->name), "%s", ifa->ifa_name);
+        item->connected = (ifa->ifa_flags & IFF_RUNNING) != 0;
+        item->rx_bytes = data->ifi_ibytes;
+        item->tx_bytes = data->ifi_obytes;
+        count++;
+    }
+
+    freeifaddrs(list);
+    return count;
+}
+
 #else
 
 uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* default_id, const size_t default_id_len)
 {
-    // macOS 等平台待实现 (macOS 读 sysctl(NET_RT_IFLIST2))
     (void)out;
     (void)max;
     if (default_id != NULL && default_id_len > 0) default_id[0] = '\0';

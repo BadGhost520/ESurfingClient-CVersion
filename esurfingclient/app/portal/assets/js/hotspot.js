@@ -2,7 +2,7 @@
 // 不再需要回环桥接进程, 也就不需要令牌与来源校验
 document.addEventListener('alpine:init', () => {
     Alpine.data('hotspotPanel', () => ({
-        adapters: [], selectedId: '', online: false, busy: false,
+        adapters: [], selectedId: '', online: false, busy: false, experimental: false,
         sending: false, polling: false, message: '', error: '', timer: null, disposed: false,
         init() {
             this.refresh();
@@ -52,6 +52,7 @@ document.addEventListener('alpine:init', () => {
                     this.selectedId = this.adapters.find(row => row.state === 'On')?.id || data.defaultId || this.adapters[0]?.id || '';
                 }
                 this.busy = data.busy === true;
+                this.experimental = data.experimental === true;
                 this.message = data.message || (this.adapter?.capability !== 'Enabled' ? '此网卡暂不支持热点，请打开系统热点设置检查。' : '按需手动开启，关闭网页不会关闭热点。');
                 this.online = true;
             } catch (_) {

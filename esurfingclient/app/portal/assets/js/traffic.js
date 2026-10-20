@@ -13,7 +13,7 @@ document.addEventListener('alpine:init', () => {
     // 数据来自本程序的 /api/traffic; 平台没实现采样 (或还没来得及采第一帧) 时保持原样
     Alpine.store('networkTools', { enabled: false, hotspotControls: false, timestamp: 0 });
     Alpine.data('trafficPanel', () => ({
-        adapters: [], selectedId: '', fresh: false, timestamp: 0,
+        adapters: [], selectedId: '', fresh: false, timestamp: 0, experimental: false,
         message: '正在读取网速…', timer: null, request: null, disposed: false, lastProbe: 0,
         init() {
             try { this.selectedId = localStorage.getItem('esurfing-traffic-adapter') || ''; } catch (_) {}
@@ -52,6 +52,7 @@ document.addEventListener('alpine:init', () => {
                 if (!Array.isArray(data.adapters)) throw new Error('网速数据格式无效。');
                 Alpine.store('networkTools').enabled = true;
                 Alpine.store('networkTools').hotspotControls = data.hotspotControls === true;
+                this.experimental = data.experimental === true;
                 if (!trafficIsFresh(data) || !Array.isArray(data.adapters)) throw new Error('网速数据已过期，正在重试…');
                 Alpine.store('networkTools').timestamp = data.timestamp;
                 this.adapters = data.adapters;

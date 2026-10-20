@@ -501,3 +501,10 @@
 3. `HotspotControl.c` 重构成"平台无关骨架 + 每个平台两个原语" (`hotspot_query_status` / `hotspot_do_action` / `hotspot_platform_available`); 内嵌 PowerShell 脚本挪到独立文件 `webserver/HotspotScript.inc`; 顺带修两处: 状态刷新改成 200ms 心跳 (首个请求后约半秒就有真实状态, 而不是等 5 秒整拍), 网卡名在接口层就校验 (含非法字符直接 400, 不再先回 202 再在后台失败)
 4. OpenWrt 走桩分支 (`__OPENWRT__` 下不探测 nmcli): 路由器上的热点另有配置入口, 页面不显示热点卡片 (`hotspotControls=false`)
 5. 实测 (WSL, 用假的 `nmcli` 覆盖"没有无线网卡"的环境): `/api/traffic` 的 `hotspotControls=true`; `/api/hotspot/status` 返回 `wlan0 / Off / Enabled / connected=true`; `POST start` → 202 → 状态变 `On` 并提示 "SSID: ESurfingHotspot, 密码在系统的网络设置里查看或修改"; `POST stop` → `Off`; 非法网卡名 `wlan0;id` → 400 且 nmcli 调用记录里没有它; Windows (7/7 回归)、Linux、OpenWrt 三套构建均通过
+
+### 2026.10.21 (macOS 网速采样与热点, 实验性)
+1. macOS 网速采样: `get_adapters_stats()` 补 `__APPLE__` 分支 —— 用 `getifaddrs()` 的 AF_LINK 记录取 `en*` 等真实网卡的累计字节数与 `IFF_RUNNING`, 默认出口用 `sysctl(NET_RT_DUMP)` 解析路由表里目标全零的那条 (不走外部命令)。注意 macOS 的 `if_data` 是 32 位计数器, 4GB 会回绕一次 (按"计数器变小就重设基线"处理, 回绕那一帧显示"正在采样")
+2. macOS 热点: 走系统的"互联网共享" —— 状态查 launchd 的 `com.apple.InternetSharing` job 有没有在跑, 开关用 `sudo -n launchctl load/unload -w /System/Library/LaunchDaemons/com.apple.InternetSharing.plist`; 没有免密 sudo 时不会卡住, 而是提示去「系统设置 → 通用 → 共享 → 互联网共享」手动操作
+3. 实验性标记: `/api/traffic` 与 `/api/hotspot/status` 在 macOS 上多返回 `"experimental": true`, 网页上"实时网速""热点功能"两张卡片标题旁显示"实验性"角标; 因为手头没有 macOS 设备, 这两块**未在真机验证**
+4. 编译验证: 用 zig 的 macOS 目标 (x86_64 与 aarch64) 对改动过的 4 个文件做 `-Wall -Wextra` 编译, 全部零警告 (期间修掉一个真错误: macOS 的 `rt_msghdr` 没有 `rtm_dst_len` 字段, 默认路由改成判断 RTA_DST 地址是否全零)
+5. 回归: Windows (最小发布包 7/7)、Linux、OpenWrt 构建均通过; 页面 JS 语法检查通过
