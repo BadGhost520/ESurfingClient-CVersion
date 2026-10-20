@@ -17,6 +17,7 @@ extern bool get_service_mode();
 extern void restart_process();
 extern void stop_web_server();
 #include "control/Control.h"
+#include "webserver/DashboardHelper.h"
 #endif
 
 void shut(const int8_t exit_code)
@@ -51,6 +52,12 @@ void shut(const int8_t exit_code)
     }
 
 #ifndef __OPENWRT__
+    /**
+     * 先停掉随包的 Dashboard 辅助脚本: 它是本程序拉起的子进程, 不会自己走,
+     * 而且它的输出还要记进这份日志 —— 必须赶在日志收尾之前停干净
+     */
+    dashboard_helper_stop();
+
     control_server_stop(); // 先停止接受控制请求
 
     if (g_is_webserver_running)

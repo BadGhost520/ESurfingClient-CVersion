@@ -209,6 +209,8 @@ curl_resp_t get(const char* url, const bool connect_only)
     if (connect_only == true) // 判断是否为仅连接模式 (检测网络状态用)
     {
         resolve = curl_slist_append(resolve, "connect.rom.miui.com:80:220.181.104.183");
+        resolve = curl_slist_append(resolve, "connectivitycheck.platform.hicloud.com:80:183.61.185.93");
+
         curl_easy_setopt(curl, CURLOPT_RESOLVE, resolve); // 自定义解析地址
 
         curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L); // 仅连接

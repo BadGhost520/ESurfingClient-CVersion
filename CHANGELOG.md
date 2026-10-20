@@ -436,3 +436,17 @@
 1. 修掉 `Start-Dashboard.ps1` 自动定位客户端失败的问题: 原来只认发布包布局 (`<包根>\tools\windows-network-panel\`), 在本地构建目录 (`<构建目录>\windows-network-panel\`, 也就是 CMake 的 `CopyWNP` 目标复制的位置) 或把工具目录直接拷到客户端旁边时一律报 "Pass one explicit client path…", 用户只能手工传路径。现在依次尝试两种布局 (`..\..` 发布包 / `..` 客户端旁边), 都找不到才报错
 2. 报错信息改成中文并说清"找过哪些路径、共找到几个 exe", 同时给出显式传参的例子; 本文件其它用户可见提示也一并改成中文。脚本写成 UTF-8 BOM (与 `NetworkPanel.ps1` / `TrafficCollector.ps1` / `HotspotBridge.ps1` 一致 —— PowerShell 5.1 在没有 BOM 时按 ANSI 解码, 中文会成乱码)
 3. `tools/windows-network-panel/README.md` 补一句布局说明: 发布包布局与"客户端旁边的布局"都能自动定位, 本地 CMake 构建后直接双击 `<构建目录>\windows-network-panel\Start-Dashboard.cmd` 即可
+
+### 2026.10.21 (辅助工具: 由主程序托管)
+1. `TrafficCollector.ps1` 新增 `-StopFile <路径>`: 主程序关闭前先创建这个信号文件, 采集循环看到它就收尾退出 (热点桥接、临时文件、互斥锁照旧由 `finally` 清理, 实测从建文件到进程退出约 0.4 秒); 不传这个参数时行为完全不变 (仍靠"客户端进程是否还在"判断)
+2. 采集脚本与启动脚本补上生命周期日志, 供主程序逐行转发进自己的日志文件: `[dashboard] 启动采集` / `采集已启动` / `热点桥接已启动` / `热点控制未启用: 原因` / `采集结束: 原因` (达到采样次数 / 收到主程序的停止请求 / 客户端进程已退出) / `已有另一个采集实例在运行`; 统一走 `[Console]::Out` 并逐行 flush (`Write-Host` / `Write-Warning` 在无控制台宿主里不可靠)
+3. 输出被重定向时 (主程序接管) 自动切 UTF-8, 否则中文到了日志里会变成问号; 直接在控制台里跑时保持控制台编码, 避免不支持 UTF-8 的终端显示乱码
+4. `Start-Dashboard.ps1` 新增 `-StopFile` 并透传给采集脚本, `-Check` 的回显里也带上它; `NetworkPanel.ps1` / `Start-NetworkPanel.cmd` 这些面板脚本未改动
+
+### 2026.10.21 (辅助工具: 主程序侧接入)
+1. 新增 `webserver/DashboardHelper.c` / `include/webserver/DashboardHelper.h`: Windows 下由主程序把随包的 `Start-Dashboard.ps1` 作为后台子进程拉起 (`powershell.exe -NoProfile -ExecutionPolicy Bypass -File … -ClientPath <自身> -WebPort <实际端口> -BridgePort 18889 -StopFile <日志目录>\dashboard-<pid>.stop`), 用 `CREATE_NO_WINDOW` 不弹窗; 脚本不在包里 (不是发布包/构建目录布局)、没有 `portal/assets`、非 Windows 时只记一条日志就跳过, 不影响认证主流程
+2. 脚本的 stdout/stderr 走匿名管道, 由一条转发线程按行写进本程序的日志 —— 与主程序共用同一份 `run.log`, 行首仍带脚本自己的 `[dashboard]` 前缀; 路径一律用 W 版 Win32 接口 (目录名可能带中文)
+3. 关闭顺序: `shut()` 里**先**停脚本再关 Web 服务与其它资源 —— 写停止信号文件让脚本自己收尾, 等 3 秒, 超时强杀; 之后才 `clean_logger()`, 保证脚本最后几行也落在这份日志里
+4. 接入位置: 单进程模式 (`work()`) 与服务模式的 Web 子进程 (`work_web()`) 在 Web 服务起来之后拉起, `shut()` 统一停; 监管进程/认证进程不碰它
+5. 实测 (Windows 构建 + 真实运行): 单进程 16/16 断言通过 (脚本被拉起、参数正确、`traffic.json` 正常、16 行 `[dashboard]` 输出进了 `run.log`、关闭时"关闭 Dashboard 辅助脚本 → 脚本采集结束 → 已退出 → 关闭 Web 服务器 → 退出程序"顺序正确、无残留 `.stop`); 服务模式 Web 子进程同样验证通过 (脚本先停, Web 后停)
+6. 补充: 直接关闭控制台窗口时 Windows 会以 `STATUS_CONTROL_C_EXIT` 直接杀掉进程, 收尾流程来不及跑 —— 这种硬杀场景下脚本会在 1 秒内发现客户端不在了自行退出 (已实测), 不会留下孤儿进程

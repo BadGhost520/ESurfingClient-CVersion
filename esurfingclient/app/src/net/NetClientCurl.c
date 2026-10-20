@@ -307,7 +307,7 @@ network_status_t curl_err_msg_out(const CURLcode curl_code)
         LOG_ERROR("curl 错误码: 23, 错误信息: 写入数据失败");
         break;
     case CURLE_OPERATION_TIMEDOUT:
-        LOG_ERROR("curl 错误码: 28, 错误信息: 操作超时");
+        LOG_WARN("curl 错误码: 28, 错误信息: 操作超时");
         break;
     case CURLE_ABORTED_BY_CALLBACK:
         LOG_ERROR("curl 错误码: 42, 错误信息: 回调函数中止");

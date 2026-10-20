@@ -129,6 +129,7 @@ if (NOT __OPENWRT__)
             src/supervisor/SupervisorLoop.c
             src/utils/runtime/Service.c
             src/utils/sim/SimProcess.c
+            src/webserver/DashboardHelper.c
             src/webserver/WebLogFiles.c
             src/webserver/WebApiPost.c
             src/webserver/WebApiGet.c
