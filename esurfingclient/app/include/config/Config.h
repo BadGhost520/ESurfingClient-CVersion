@@ -72,4 +72,7 @@ int list_accounts();
  */
 const char* get_config_file_path(void);
 
+/** 通道序号 → 名字 (1 windows / 2 linux / 3 android / 4 ios / 5 macos) */
+const char* channel_name(uint8_t chn);
+
 #endif

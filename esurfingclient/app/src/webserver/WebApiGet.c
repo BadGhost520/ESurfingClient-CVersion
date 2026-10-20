@@ -303,31 +303,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
 
         cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
         cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
-        {
-            const char* channel_name = "android";
-            switch (g_prog_status[0].login_cfg.chn)
-            {
-            case 1:
-                channel_name = "windows";
-                break;
-            case 2:
-                channel_name = "linux";
-                break;
-            case 3:
-                channel_name = "android";
-                break;
-            case 4:
-                channel_name = "ios";
-                break;
-            case 5:
-                channel_name = "macos";
-                break;
-            default:
-                channel_name = "android";
-                break;
-            }
-            cJSON_AddStringToObject(account, "channel", channel_name);
-        }
+        cJSON_AddStringToObject(account, "channel", channel_name(g_prog_status[0].login_cfg.chn));
 
         cJSON* time_windows = cJSON_CreateArray();
         for (uint8_t i = 0; i < g_prog_status[0].login_cfg.time_window_count; i++)
