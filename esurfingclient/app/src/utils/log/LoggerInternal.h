@@ -25,7 +25,7 @@ extern bool g_console_enabled;
 extern bool g_query_mode;
 
 /** @brief 日志等级名 (LogCore.c) */
-const char* get_level_str(LogLevel lv);
+const char* get_level_str(log_level_t lv);
 
 /** @brief 日志互斥 (LogCore.c, 平台分支各一份实现) */
 void logger_lock(void);

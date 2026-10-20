@@ -453,7 +453,7 @@ bool load_cfg(void)
         g_prog_enabled = true;
     }
 
-    set_logger_level((LogLevel)cfg_read_num(cfg_json, "log_lv", LOG_LEVEL_INFO));
+    set_logger_level((log_level_t)cfg_read_num(cfg_json, "log_lv", LOG_LEVEL_INFO));
 
     /**
      * 日志目录

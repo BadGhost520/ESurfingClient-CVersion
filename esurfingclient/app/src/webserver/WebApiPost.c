@@ -1,19 +1,14 @@
 #include "WebInternal.h"
 
-#include <mongoose/mongoose.h>
-
 #include "config/Config.h"
-
 #include "control/Control.h"
-
 #include "core/States.h"
-
-#include "utils/platform/PlatformUtils.h"
 #include "utils/log/Logger.h"
-
+#include "utils/platform/PlatformUtils.h"
 #include "webserver/HotspotControl.h"
 
 #include <cJSON/cJSON.h>
+#include <mongoose/mongoose.h>
 
 /**
  * @brief 请求重新认证

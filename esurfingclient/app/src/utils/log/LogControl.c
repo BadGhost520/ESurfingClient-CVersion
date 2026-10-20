@@ -7,12 +7,12 @@
 
 #include "utils/time/TimeUtils.h"
 
-LogLevel get_logger_level(void)
+log_level_t get_logger_level(void)
 {
     return g_logger_cfg.lv;
 }
 
-void set_logger_level(const LogLevel lv)
+void set_logger_level(const log_level_t lv)
 {
     if (g_logger_cfg.lv != lv)
     {

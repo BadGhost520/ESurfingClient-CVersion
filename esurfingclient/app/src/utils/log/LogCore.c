@@ -34,7 +34,7 @@ bool g_console_enabled = true;
 
 bool g_query_mode = false;
 
-const char* get_level_str(const LogLevel lv)
+const char* get_level_str(const log_level_t lv)
 {
     switch (lv)
     {
@@ -161,7 +161,7 @@ void log_raw_line(const char* text)
     write_2_file(line_buf, size);
 }
 
-void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
+void log_out(const log_level_t level, const char* file, const uint32_t line, const char* fmt, ...)
 {
     if (level > g_logger_cfg.lv) return;
     va_list local_args;

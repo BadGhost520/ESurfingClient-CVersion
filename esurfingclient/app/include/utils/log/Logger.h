@@ -32,10 +32,10 @@ typedef enum {
     LOG_LEVEL_INFO  = 4,
     LOG_LEVEL_DEBUG = 5,
     LOG_LEVEL_VERBOSE = 6
-} LogLevel;
+} log_level_t;
 
 typedef struct {
-    LogLevel    lv;
+    log_level_t    lv;
     char        log_dir[LOG_PATH_MAX];
     char        log_file[LOG_PATH_MAX];
     FILE*       file_handle;
@@ -81,7 +81,7 @@ log_out(LOG_LEVEL_ERROR, file, line, fmt, ##__VA_ARGS__)
  * @param fmt 格式
  * @param ... 其它参数
  */
-void log_out(LogLevel level, const char* file, uint32_t line, const char* fmt, ...);
+void log_out(log_level_t level, const char* file, uint32_t line, const char* fmt, ...);
 
 /**
  * @brief 不走常规日志流程, 直接往日志文件写一行
@@ -97,13 +97,13 @@ void log_raw_line(const char* text);
  * @brief 获取当前日志等级
  * @return 日志等级
  */
-LogLevel get_logger_level(void);
+log_level_t get_logger_level(void);
 
 /**
  * @brief 设置日志等级
  * @param lv 日志等级
  */
-void set_logger_level(LogLevel lv);
+void set_logger_level(log_level_t lv);
 
 /**
  * @brief 按配置文件里的 log_dir 设置日志目录
