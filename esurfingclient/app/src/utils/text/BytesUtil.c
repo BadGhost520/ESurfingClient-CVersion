@@ -2,6 +2,15 @@
 
 #include "core/States.h"
 
+#include "utils/platform/PlatformInternal.h"
+
+#include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>

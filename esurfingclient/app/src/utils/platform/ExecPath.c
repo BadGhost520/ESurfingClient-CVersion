@@ -1,8 +1,9 @@
 #include "utils/platform/PlatformUtils.h"
+
+#include "utils/log/Logger.h"
 #include "utils/text/TextUtils.h"
 
 #include "PlatformInternal.h"
-#include "utils/log/Logger.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,6 +1,6 @@
-#include "utils/platform/PlatformUtils.h"
 #include "LoggerInternal.h"
 
+#include "utils/platform/PlatformUtils.h"
 #include "utils/text/TextUtils.h"
 
 static const char s_log_sub_dir[] = "logs";

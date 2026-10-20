@@ -1,9 +1,8 @@
-#include "utils/platform/PlatformUtils.h"
 #include "LoggerInternal.h"
 
-#include "utils/text/TextUtils.h"
-
 #include "core/States.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
 
 #include <inttypes.h>

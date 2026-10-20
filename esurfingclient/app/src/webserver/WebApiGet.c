@@ -1,26 +1,19 @@
 #include "WebInternal.h"
 
-#include <mongoose/mongoose.h>
-
+#include "config/Config.h"
+#include "control/Control.h"
+#include "core/States.h"
+#include "dialer/ErrorCode.h"
 #include "net/NetClient.h"
 #include "net/NetTraffic.h"
-
-#include "config/Config.h"
-
-#include "control/Control.h"
-
-#include "core/States.h"
-
-#include "dialer/ErrorCode.h"
-
+#include "utils/log/Logger.h"
 #include "utils/platform/PlatformUtils.h"
 #include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
-#include "utils/log/Logger.h"
-
 #include "webserver/HotspotControl.h"
 
 #include <cJSON/cJSON.h>
+#include <mongoose/mongoose.h>
 
 #define LOG_FILE_MAX 64
 #define LOG_READ_MAX (256 * 1024)
