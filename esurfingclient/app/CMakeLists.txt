@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 1)
 set(PROGRAM_VERSION_PATCH 10)
-set(PROGRAM_VERSION_RELEASE 1)
+set(PROGRAM_VERSION_RELEASE 2)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -97,7 +97,6 @@ add_executable(ESurfingClient
         src/dialer/DialerAuth.c
         src/dialer/DialerNet.c
         src/net/NetClientCurl.c
-        src/net/NetTraffic.c
         src/net/CheckNetwork.c
         src/net/NetClient.c
         src/utils/log/LogControl.c
@@ -109,7 +108,6 @@ add_executable(ESurfingClient
         src/utils/platform/NetAdapters.c
         src/utils/platform/ProcessInfo.c
         src/utils/platform/ExecPath.c
-        src/utils/runtime/ChildRun.c
         src/utils/runtime/Shutdown.c
         src/utils/runtime/Watchdog.c
         src/utils/sim/SimEvpCipher.c
@@ -120,7 +118,6 @@ add_executable(ESurfingClient
         src/utils/text/BytesUtil.c
         src/utils/text/StrUtil.c
         src/utils/text/Xml.c
-        src/webserver/HotspotControl.c
         src/utils/time/TimeControl.c
         src/utils/time/TimeUtil.c
         src/Main.c
@@ -137,6 +134,9 @@ if (NOT __OPENWRT__)
             src/supervisor/SupervisorLoop.c
             src/utils/runtime/Service.c
             src/utils/sim/SimProcess.c
+            src/net/NetTraffic.c
+            src/utils/runtime/ChildRun.c
+            src/webserver/HotspotControl.c
             src/webserver/WebLogFiles.c
             src/webserver/WebApiPost.c
             src/webserver/WebApiGet.c

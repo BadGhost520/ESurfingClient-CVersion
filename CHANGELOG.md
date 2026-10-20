@@ -519,3 +519,11 @@
    等待用 `sleep_ms(..., true)` 分段 5 秒实现, 网页"保存并应用"/退出都会把等待打断
 4. 界面: `/api/status/auth` 新增 `errorCode` / `subError` / `errorMessage` / `errorKind` / `errorAt`, 网页"连接状态"卡片多一行"失败原因" (带 Error-Code 与 Sub-Error 原文)
 5. 验证: 新增 `TEMP/test-errorcode.c` 单元测试 (23/23 通过, 覆盖大小写/多余空格/超长截断/负数码/码表分类/Sub-Error 优先/记录与清空); Windows 最小发布包 7/7 回归; Linux / OpenWrt / Windows 三平台编译通过
+
+### 2026.10.21 (OpenWrt 去掉网速采样与热点管理)
+1. OpenWrt 上这两块本来就没用: LuCI 自带流量/网速页面, 热点也在路由器那边配. 现在把它们从 OpenWrt 构建里彻底摘掉:
+   - `src/net/NetTraffic.c`、`src/webserver/HotspotControl.c`、`src/utils/runtime/ChildRun.c` 从公共源清单挪进 `NOT __OPENWRT__` 清单 (ChildRun 只被热点模块用到)
+   - `Shutdown.c` 的 `hotspot_control_stop()` / `net_traffic_stop()` 及其 include 加 `#ifndef __OPENWRT__` (调用点原本就在 `#ifndef __OPENWRT__` 的 `work()` / `work_web()` 里)
+   - `get_adapters_stats()` 与它依赖的类型一起进 `#ifndef __OPENWRT__`: `NetAdapters.c` 的 Linux 分支条件改成 `defined(__linux__) && !defined(__OPENWRT__)`, 兜底桩也跟着包起来, `PlatformUtils.h` 里的 `ADAPTER_ID_LEN` / `adapter_stats_t` / 声明同样处理
+2. Linux **保持原样**: `get_adapters_stats()` 仍然走 sysfs 计数器 + `/proc/net/route`, 网页的实时网速卡片照旧可用 (实测 adapters=2)
+3. 验证: OpenWrt 构建零警告且链接列表里已无 `NetTraffic.c` / `HotspotControl.c` / `ChildRun.c`; Linux 构建 + 运行 `/api/traffic` 正常; Windows 最小发布包 7/7 回归

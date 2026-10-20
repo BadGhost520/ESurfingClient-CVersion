@@ -29,6 +29,7 @@
 
 #define NAME_LENGTH 256
 
+#ifndef __OPENWRT__
 /** 网卡标识的最大长度 (Windows 上是 GUID 字符串, 其它平台是接口名) */
 #define ADAPTER_ID_LEN 64
 
@@ -48,6 +49,7 @@ typedef struct
     uint64_t rx_bytes;        // 累计接收字节数
     uint64_t tx_bytes;        // 累计发送字节数
 } adapter_stats_t;
+#endif
 
 /**
  * @brief 采集各网卡的累计收发字节数, 以及当前默认出口网卡
@@ -65,7 +67,9 @@ typedef struct
  * @param default_id_len default_id 的缓冲长度
  * @return 采集到的网卡数量
  */
+#ifndef __OPENWRT__
 uint8_t get_adapters_stats(adapter_stats_t* out, uint8_t max, char* default_id, size_t default_id_len);
+#endif
 
 /**
  * @brief 打包适配器数据

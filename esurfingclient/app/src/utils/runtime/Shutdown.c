@@ -18,8 +18,10 @@ extern void restart_process();
 extern void stop_web_server();
 #include "control/Control.h"
 
+#ifndef __OPENWRT__
 #include "net/NetTraffic.h"
 #include "webserver/HotspotControl.h"
+#endif
 #endif
 
 void shut(const int8_t exit_code)
@@ -58,8 +60,10 @@ void shut(const int8_t exit_code)
      * 先停掉网速采样与热点状态线程: 它们会写日志, 必须赶在日志收尾之前停干净
      * (热点那边可能还有一次 PowerShell 在跑, 它是独立进程, 自己会结束)
      */
+#ifndef __OPENWRT__
     hotspot_control_stop();
     net_traffic_stop();
+#endif
 
     control_server_stop(); // 先停止接受控制请求
 

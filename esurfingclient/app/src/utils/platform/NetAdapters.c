@@ -225,7 +225,7 @@ uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* defaul
     return count;
 }
 
-#elif defined(__linux__)
+#elif defined(__linux__) && !defined(__OPENWRT__)
 
 /**
  * @brief 从 sysfs 读一块网卡的累计收发字节数
@@ -501,6 +501,7 @@ uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* defaul
 
 #else
 
+#ifndef __OPENWRT__
 uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* default_id, const size_t default_id_len)
 {
     (void)out;
@@ -508,6 +509,7 @@ uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* defaul
     if (default_id != NULL && default_id_len > 0) default_id[0] = '\0';
     return 0;
 }
+#endif
 
 #endif
 
