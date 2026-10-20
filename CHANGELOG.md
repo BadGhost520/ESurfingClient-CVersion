@@ -425,3 +425,14 @@
 
 ### 2026.10.17
 1. 更新 README, 添加快速自查架构指令
+
+### 2026.10.19 (Windows 辅助工具整理)
+1. 仓库清洁: Windows 网速/热点工具的 6 个开发期测试脚本 (`Test-NetworkPanel.ps1`、`Test-HotspotBridge.ps1`、`Test-ReleasePackage.ps1`、`test-traffic.cjs`、`test-hotspot.cjs`、`test-packaged-page.cjs`) 从 `tools/windows-network-panel/` 移出, 放到不被 git 跟踪的 `TEMP/tools-tests/` (连同说明), 仓库里只留运行必需的文件
+2. 打包脚本 `scripts/package-windows-helper.sh` 加了完整性校验: 复制完逐个核对发布包里的工具文件是否齐全、目录里有没有混进多余文件 (比如测试脚本), 缺一个或混进一个都直接让打包失败, 不再等用户双击才发现包不完整
+3. 修掉一个只在 CI 上出现的隐患: `.cmd` 的仓库 blob 是 LF, 而 CI 在 Linux 上检出后直接打包, 用户拿到的批处理可能只有 LF —— 现在 `.gitattributes` 把 `*.cmd` / `*.ps1` 钉成 `eol=crlf`, 打包脚本复制完还会再把 `.cmd` 归一成 CRLF
+4. `tools/windows-network-panel/README.md` 随之调整: 去掉用户既不需要也拿不到的"开发验证命令", 换成随包可用的只读自查 (`Start-Dashboard.cmd -Check`、`NetworkPanel.ps1 -Check`) 与兼容性实测入口 (`HARDWARE-VALIDATION.md` + `Get-ValidationEnvironment.ps1`, 这两个照旧随包发布)
+
+### 2026.10.20 (辅助工具启动器修复)
+1. 修掉 `Start-Dashboard.ps1` 自动定位客户端失败的问题: 原来只认发布包布局 (`<包根>\tools\windows-network-panel\`), 在本地构建目录 (`<构建目录>\windows-network-panel\`, 也就是 CMake 的 `CopyWNP` 目标复制的位置) 或把工具目录直接拷到客户端旁边时一律报 "Pass one explicit client path…", 用户只能手工传路径。现在依次尝试两种布局 (`..\..` 发布包 / `..` 客户端旁边), 都找不到才报错
+2. 报错信息改成中文并说清"找过哪些路径、共找到几个 exe", 同时给出显式传参的例子; 本文件其它用户可见提示也一并改成中文。脚本写成 UTF-8 BOM (与 `NetworkPanel.ps1` / `TrafficCollector.ps1` / `HotspotBridge.ps1` 一致 —— PowerShell 5.1 在没有 BOM 时按 ANSI 解码, 中文会成乱码)
+3. `tools/windows-network-panel/README.md` 补一句布局说明: 发布包布局与"客户端旁边的布局"都能自动定位, 本地 CMake 构建后直接双击 `<构建目录>\windows-network-panel\Start-Dashboard.cmd` 即可

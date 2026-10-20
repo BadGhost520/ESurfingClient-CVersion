@@ -4,6 +4,11 @@ esurfingclient/files/etc/init.d/* text eol=lf
 
 *.sh text eol=lf
 
+# Windows 侧的启动脚本与发布包里的 .cmd 必须带上 CRLF:
+# CI 在 Linux 上检出, 只有 LF 的批处理在 cmd.exe 上可能被解析错
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
 *.png binary
 *.jpg binary
 *.jpeg binary

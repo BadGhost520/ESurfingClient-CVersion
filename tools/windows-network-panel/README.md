@@ -25,6 +25,14 @@ Windows 发布压缩包已包含辅助工具。完整解压后，双击根目录
 Start-Dashboard.cmd "C:\ESurfingClient\ESurfingClient.exe"
 ```
 
+启动器按顺序找两处（都只认**恰好一个** `ESurfingClient*.exe`，找到多个会要求显式传路径）：
+
+1. 发布包布局：`<包根>\tools\windows-network-panel\` → 客户端在 `<包根>`
+2. 客户端旁边的布局：`<客户端目录>\windows-network-panel\` → 客户端在上一级
+
+所以本地用 CMake 构建（Windows 构建时会把本目录自动复制到构建目录下的 `windows-network-panel\`）时，
+直接双击 `<构建目录>\windows-network-panel\Start-Dashboard.cmd` 就能用，不用手工传路径。
+
 客户端已运行时只补充采集；未运行时启动原客户端。采集随客户端退出，重复启动通过互斥锁避免重复采集。入口同时启用可选的网页热点控制，启动时不会自动打开热点。
 
 手工更新旧客户端时，使用发布包中已构建的 `portal` 文件；源码中的 index.html 仍有开发用 CDN 引用，不能直接当作离线发布页面复制。自行构建页面请使用 `scripts/build-portal.sh`。只启用网速而不启用网页热点控制时，可直接运行：
@@ -61,21 +69,30 @@ Start-Dashboard.cmd "C:\ESurfingClient\ESurfingClient.exe" -WebPort 9999 -Bridge
 
 验证覆盖只读真实状态、来源/令牌/方法拒绝、无效网卡、浏览器模拟开关与失败；真实热点切换和手机联网仍须用户按需点击验证。
 
-## 开发验证命令
+## 自查（不启动客户端、不开热点）
 
-在本目录用 **Windows PowerShell 5.1** 执行：
+包根的启动器支持只读自查，只核对客户端路径、`portal/assets` 与参数，既不启动客户端也不切换热点：
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Test-NetworkPanel.ps1
-powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\NetworkPanel.ps1 -Check
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Test-HotspotBridge.ps1
-node .\test-traffic.cjs
-node .\test-hotspot.cjs
+```cmd
+Start-Dashboard.cmd -Check
+Start-Dashboard.cmd -Check -WebPort 9999 -BridgePort 19999
 ```
 
-第一条验证采样差值、计时、计数器重置和单位；第二条构造界面并只读采样网卡/热点能力，输出后退出。两条都不会开启或关闭热点。真实手机联网需由用户手动点击开启后验证。
+自查通过会打印解析到的客户端路径、端口与 `portal/assets` 路径；端口不合法、找不到唯一的
+`ESurfingClient*.exe`、或缺少 `portal/assets` 时直接报错，方便在动手前确认包是完整的。
 
-其余检查覆盖来源与令牌校验、localhost/自定义端口、桥接地址限制和启动失败状态。压缩包入口支持 `Start-Dashboard.cmd -Check -WebPort 9999 -BridgePort 19999`，只检查路径和参数，不启动客户端或热点。
+只想确认网卡与热点能力时，也可以让面板只读地建一次界面并采样后退出（不会开关热点）：
+
+```powershell
+powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\NetworkPanel.ps1 -Check
+```
+
+需要给兼容性实测留下记录时，用 `HARDWARE-VALIDATION.md` 的步骤，配合
+`Get-ValidationEnvironment.ps1` 采集系统版本、原生架构与 PowerShell 位数：
+
+```powershell
+powershell.exe -NoProfile -File .\Get-ValidationEnvironment.ps1 -ClientPath '.\ESurfingClient-版本-windows-架构.exe'
+```
 
 ## 支持范围与限制
 

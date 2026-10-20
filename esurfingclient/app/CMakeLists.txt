@@ -144,7 +144,18 @@ if (NOT __OPENWRT__)
             COMMENT "Copy 'portal' to build dir"
     )
 
-    add_dependencies(ESurfingClient CopyPortal)
+    add_custom_target(CopyWNP ALL
+            COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/windows-network-panel"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/windows-network-panel"
+            "${CMAKE_CURRENT_BINARY_DIR}/windows-network-panel"
+            COMMENT "Copy 'windows-network-panel' to portal dir"
+    )
+
+    add_dependencies(ESurfingClient
+            CopyPortal
+            CopyWNP
+    )
 endif ()
 
 target_include_directories(ESurfingClient PRIVATE
