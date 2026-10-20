@@ -4,6 +4,8 @@
 
 #include "core/States.h"
 
+#include "dialer/DialerClient.h"
+
 #include "utils/log/Logger.h"
 #include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
@@ -233,13 +235,8 @@ static bool supervisor_build_children()
 
 int work_supervisor()
 {
-    g_thread_keep_alive = true;
+    if (app_bootstrap() == false) return 1;
 
-    g_prog_status = calloc(1, sizeof(prog_status_t));
-
-    if (init_logger() == false) return 1;
-
-    LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
     LOG_INFO(" - 以守护进程运行: 认证与 Web 各起独立进程");
 
     /**

@@ -1,5 +1,7 @@
 #include "DialerInternal.h"
 
+#include "dialer/DialerClient.h"
+
 #include "net/NetClient.h"
 
 #include "config/Config.h"
@@ -177,14 +179,7 @@ AuthStatus auth()
  */
 int work_auth()
 {
-    g_thread_keep_alive = true;
-
-    g_prog_status = calloc(1, sizeof(prog_status_t));
-    init_shutdown_hook();
-
-    if (init_logger() == false) return 1;
-
-    print_banner();
+    if (app_bootstrap() == false) return 1;
 
     if (load_cfg() == false) shut(1);
 

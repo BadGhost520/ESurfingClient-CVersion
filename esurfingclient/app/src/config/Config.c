@@ -55,6 +55,54 @@ static const char s_default_cfg[] = "{\n"
  * @param cfg_json 配置对象
  * @return 是否写成功
  */
+/**
+ * @brief 读一个整数字段, 缺失/类型不对就用默认值 (并打一行日志)
+ */
+static long cfg_read_num(const cJSON* obj, const char* name, const long def)
+{
+    const cJSON* item = cJSON_GetObjectItem(obj, name);
+    if (item == NULL)
+    {
+        LOG_DEBUG("%s 参数不存在, 使用默认值 %ld", name, def);
+        return def;
+    }
+    if (cJSON_IsNumber(item) == false)
+    {
+        LOG_WARN("%s 参数不正确, 使用默认值 %ld", name, def);
+        return def;
+    }
+    return item->valueint;
+}
+
+/**
+ * @brief 读一个布尔字段, 缺失/类型不对就用默认值 (并打一行日志)
+ */
+static bool cfg_read_bool(const cJSON* obj, const char* name, const bool def)
+{
+    const cJSON* item = cJSON_GetObjectItem(obj, name);
+    if (item == NULL)
+    {
+        LOG_DEBUG("%s 参数不存在, 使用默认值 %s", name, def ? "true" : "false");
+        return def;
+    }
+    if (cJSON_IsBool(item) == false)
+    {
+        LOG_WARN("%s 参数不正确 (应为 true / false), 使用默认值 %s", name, def ? "true" : "false");
+        return def;
+    }
+    return cJSON_IsTrue(item);
+}
+
+/**
+ * @brief 读一个字符串字段 (返回 NULL 表示缺失或类型不对)
+ */
+static const char* cfg_read_str(const cJSON* obj, const char* name)
+{
+    const cJSON* item = cJSON_GetObjectItem(obj, name);
+    if (item == NULL || cJSON_IsString(item) == false || item->valuestring == NULL) return NULL;
+    return item->valuestring;
+}
+
 static bool write_cfg_json(const cJSON* cfg_json)
 {
     char* cfg_text = cJSON_Print(cfg_json);
@@ -329,39 +377,9 @@ bool load_cfg()
      * 程序会带着网页停在"等配置"的状态, 网页要按配置里的端口监听 ——
      * 排在后面的话就只能按默认端口开出去了
      */
-    const cJSON* web_port = cJSON_GetObjectItem(cfg_json, "web_port");
-    if (web_port)
-    {
-        if (cJSON_IsNumber(web_port) && web_port->valueint >= 1 && web_port->valueint <= 65535)
-        {
-            g_web_port = (uint16_t)web_port->valueint;
-        }
-        else
-        {
-            LOG_WARN("web_port 参数不正确 (应为 1 - 65535), 使用默认参数 (%d)", DEFAULT_WEB_PORT);
-        }
-    }
-    else
-    {
-        LOG_DEBUG("web_port 参数不存在, 使用默认参数 (%d)", DEFAULT_WEB_PORT);
-    }
-
-    const cJSON* web_external_acc = cJSON_GetObjectItem(cfg_json, "web_external_acc");
-    if (web_external_acc)
-    {
-        if (cJSON_IsBool(web_external_acc))
-        {
-            g_web_external_acc = cJSON_IsTrue(web_external_acc);
-        }
-        else
-        {
-            LOG_WARN("web_external_acc 参数不正确 (应为 true / false), 使用默认参数 (关闭)");
-        }
-    }
-    else
-    {
-        LOG_DEBUG("web_external_acc 参数不存在, 使用默认参数 (关闭)");
-    }
+    const long web_port = cfg_read_num(cfg_json, "web_port", DEFAULT_WEB_PORT);
+    g_web_port = (web_port >= 1 && web_port <= 65535) ? (uint16_t)web_port : DEFAULT_WEB_PORT;
+    g_web_external_acc = cfg_read_bool(cfg_json, "web_external_acc", DEFAULT_WEB_EXTERNAL_ACC);
 
     /**
      * 从这里开始"尽力解析": 配置不可用 (被禁用 / 账号没填全) 时不再半路返回,
@@ -395,22 +413,7 @@ bool load_cfg()
         g_prog_enabled = true;
     }
 
-    const cJSON* log_lv = cJSON_GetObjectItem(cfg_json, "log_lv");
-    if (log_lv)
-    {
-        if (cJSON_IsNumber(log_lv))
-        {
-            set_logger_level(log_lv->valueint);
-        }
-        else
-        {
-            LOG_WARN("log_lv 参数不正确, 使用默认参数 (INFO)");
-        }
-    }
-    else
-    {
-        LOG_WARN("log_lv 参数不存在, 使用默认参数 (INFO)");
-    }
+    set_logger_level((LogLevel)cfg_read_num(cfg_json, "log_lv", LOG_LEVEL_INFO));
 
     /**
      * 日志目录
@@ -421,56 +424,18 @@ bool load_cfg()
      * set_logger_dir 会把已经写下的那几行一起搬到新目录去。
      * OpenWrt 上基目录是写死的, 那边只有写了别的目录才会提一句。
      */
-    const cJSON* log_dir = cJSON_GetObjectItem(cfg_json, "log_dir");
-    if (log_dir)
-    {
-        if (cJSON_IsString(log_dir) && log_dir->valuestring != NULL)
-        {
-            set_logger_dir(log_dir->valuestring);
-        }
-        else
-        {
-            LOG_WARN("log_dir 参数不正确, 使用默认值 (%s)", get_logger_dir_cfg());
-        }
-    }
-    else
+    const char* log_dir = cfg_read_str(cfg_json, "log_dir");
+    if (log_dir == NULL)
     {
         LOG_DEBUG("log_dir 参数不存在, 使用默认值 (%s)", get_logger_dir_cfg());
     }
-
-    const cJSON* conn_timeout = cJSON_GetObjectItem(cfg_json, "conn_timeout");
-    if (conn_timeout)
-    {
-        if (cJSON_IsNumber(conn_timeout))
-        {
-            g_conn_timeout = conn_timeout->valueint;
-        }
-        else
-        {
-            LOG_WARN("conn_timeout 参数不正确, 使用默认参数 (%d 秒)", DEFAULT_CONN_TIMEOUT);
-        }
-    }
     else
     {
-        LOG_WARN("conn_timeout 参数不存在, 使用默认参数 (%d 秒)", DEFAULT_CONN_TIMEOUT);
+        set_logger_dir(log_dir);
     }
 
-    const cJSON* op_timeout = cJSON_GetObjectItem(cfg_json, "op_timeout");
-    if (op_timeout)
-    {
-        if (cJSON_IsNumber(op_timeout))
-        {
-            g_op_timeout = op_timeout->valueint;
-        }
-        else
-        {
-            LOG_WARN("op_timeout 参数不正确, 使用默认参数 (%d 秒)", DEFAULT_OP_TIMEOUT);
-        }
-    }
-    else
-    {
-        LOG_WARN("op_timeout 参数不存在, 使用默认参数 (%d 秒)", DEFAULT_OP_TIMEOUT);
-    }
+    g_conn_timeout = cfg_read_num(cfg_json, "conn_timeout", DEFAULT_CONN_TIMEOUT);
+    g_op_timeout = cfg_read_num(cfg_json, "op_timeout", DEFAULT_OP_TIMEOUT);
 
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
 

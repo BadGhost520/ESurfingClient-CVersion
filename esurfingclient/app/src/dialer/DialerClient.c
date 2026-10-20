@@ -50,6 +50,31 @@ typedef enum
 static const uint64_t table[] = {1, 3, 5, 10, 20, 30};
 
 /**
+ * @brief 各角色入口的公共起步动作
+ *
+ * 取全局状态、装关闭钩子、起日志、打横幅。单进程 / 认证进程 / Web 进程 / 监管进程
+ * 四处原本各抄一份, 已经出现过细节漂移 (监管进程自己手写了横幅)。
+ * @return 日志系统是否初始化成功
+ */
+bool app_bootstrap(void)
+{
+    g_thread_keep_alive = true;
+
+    if (g_prog_status == NULL)
+    {
+        g_prog_status = calloc(1, sizeof(prog_status_t));
+        if (g_prog_status == NULL) return false;
+    }
+
+    init_shutdown_hook();
+
+    if (init_logger() == false) return false;
+
+    print_banner();
+    return true;
+}
+
+/**
  * @brief 认证失败后等待, 期间可被热重载 / 退出 / 停止打断
  *
  * 分段睡是为了及时响应: sleep_ms(..., true) 自己也会在 is_need_reauth /
@@ -371,14 +396,7 @@ static bool hold_for_cfg()
  */
 static int work_web()
 {
-    g_thread_keep_alive = true;
-
-    g_prog_status = calloc(1, sizeof(prog_status_t));
-    init_shutdown_hook();
-
-    if (init_logger() == false) return 1;
-
-    print_banner();
+    if (app_bootstrap() == false) return 1;
 
     /**
      * 与单进程模式同一套顺序: 先加载配置 (即使不可用, Web 服务的端口也已经就位),
@@ -450,15 +468,7 @@ void work()
 
 #endif
 
-    g_thread_keep_alive = true;
-
-    g_prog_status = calloc(1, sizeof(prog_status_t)); // 初始化 g_prog_status 指针并分配 1 个空间
-
-    init_shutdown_hook(); // 初始化关闭钩子
-
-    if (init_logger() == false) return; // 初始化日志系统
-
-    print_banner();
+    if (app_bootstrap() == false) return;
 
     /**
      * 先加载配置, 再起 Web 服务
