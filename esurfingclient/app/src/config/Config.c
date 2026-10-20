@@ -43,18 +43,6 @@ static const char s_default_cfg[] = "{\n"
                                     "   ]\n"
                                     "}\n";
 
-/* ------------------------------------------------------------------
- * 配置文件的读写与补全
- * ------------------------------------------------------------------ */
-
-/**
- * @brief 把配置对象写回配置文件
- *
- * 网页界面保存与"启动时补全配置"都走这里: 输出的是 cJSON 的格式 (Tab 缩进),
- * 与网页界面保存出来的完全一致
- * @param cfg_json 配置对象
- * @return 是否写成功
- */
 /**
  * @brief 读一个整数字段, 缺失/类型不对就用默认值 (并打一行日志)
  */
@@ -272,6 +260,60 @@ bool wait_cfg_usable(void)
     return false;
 }
 
+/** 一个账号的解析结果 */
+typedef enum
+{
+    ACCOUNT_READY = 0,  // 填好了, 可用
+    ACCOUNT_SKIP,       // 账号或密码没填 → 跳过这个账号
+    ACCOUNT_INVALID     // time_windows 非法 (整份配置都算不可用)
+} account_state_t;
+
+/**
+ * @brief 把一个账号对象里能填的填进 cfg, 并校验必填项
+ *
+ * OpenWrt 与桌面两条分支原本各写了一遍这段 (取字段 / 校验账号密码 / 应用信道
+ * 与 UA / 解析时间窗口), 日志文案都一字不差。这里只抽"填 + 校验",
+ * 至于放进哪个槽位、标记值怎么分配、失败之后是退出还是标记不可用, 仍由各自循环决定。
+ *
+ * @param account 账号对象
+ * @param cfg_no 配置序号 (从 1 开始, 只用于日志)
+ * @param cfg 输出
+ * @return 解析结果
+ */
+static account_state_t fill_account(const cJSON* account, const uint8_t cfg_no, login_cfg_t* cfg)
+{
+    const cJSON* usr = cJSON_GetObjectItem(account, "username");
+    const cJSON* pwd = cJSON_GetObjectItem(account, "password");
+    const cJSON* chn = cJSON_GetObjectItem(account, "channel");
+
+    // 先把用户写过的东西按原样填进去: 配置不可用时网页要靠这块内存回显
+    cfg->idx = cfg_no;
+    cfg->chn = parse_channel_json(chn, cfg_no);
+    apply_channel_ua(cfg, cfg_no);
+    snprintf(cfg->usr, USR_LEN, "%s", safe_str(usr != NULL ? usr->valuestring : ""));
+    snprintf(cfg->pwd, PWD_LEN, "%s", safe_str(pwd != NULL ? pwd->valuestring : ""));
+    LOG_DEBUG("配置 %" PRIu8 " 使用 UA: %s", cfg_no, cfg->user_agent);
+
+    if (usr == NULL || cJSON_IsString(usr) == false || usr->valuestring[0] == '\0')
+    {
+        LOG_WARN("配置 %" PRIu8 " username 参数缺失或为空, 跳过当前配置", cfg_no);
+        return ACCOUNT_SKIP;
+    }
+    if (pwd == NULL || cJSON_IsString(pwd) == false || pwd->valuestring[0] == '\0')
+    {
+        LOG_WARN("配置 %" PRIu8 " password 参数缺失或为空, 跳过当前配置", cfg_no);
+        return ACCOUNT_SKIP;
+    }
+
+    if (apply_time_windows(cJSON_GetObjectItem(account, "time_windows"), cfg) == false)
+    {
+        LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", cfg_no);
+        return ACCOUNT_INVALID;
+    }
+
+    return ACCOUNT_READY;
+}
+
 bool load_cfg()
 {
     g_cfg_loaded = false;
@@ -480,55 +522,18 @@ bool load_cfg()
     for (uint8_t i = 0, valid_i = 0; i < cnt; i++)
     {
         const cJSON* account = cJSON_GetArrayItem(accounts, i);
-
-        const cJSON* usr = cJSON_GetObjectItem(account, "username");
-        const cJSON* pwd = cJSON_GetObjectItem(account, "password");
-        const cJSON* chn = cJSON_GetObjectItem(account, "channel");
         const cJSON* mark = cJSON_GetObjectItem(account, "mark");
-        const cJSON* time_windows_item = cJSON_GetObjectItem(account, "time_windows");
 
-        // 检查账号
-        if (usr == NULL)
+        login_cfg_t* login = &g_prog_status[valid_i].login_cfg;
+        const account_state_t state = fill_account(account, i + 1, login);
+        if (state == ACCOUNT_SKIP) continue;
+        if (state == ACCOUNT_INVALID)
         {
-            LOG_WARN("配置 %" PRIu8 " username 参数不存在, 跳过当前配置", i + 1);
-            continue;
-        }
-        if (usr->valuestring[0] == '\0')
-        {
-            LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
-            continue;
-        }
-
-        // 检查密码
-        if (pwd == NULL)
-        {
-            LOG_WARN("配置 %" PRIu8 " password 参数不存在, 跳过当前配置", i + 1);
-            continue;
-        }
-        if (pwd->valuestring[0] == '\0')
-        {
-            LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
-            continue;
-        }
-
-        // 检查时间控制字段
-        if (apply_time_windows(time_windows_item, &g_prog_status[valid_i].login_cfg) == false)
-        {
-            LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
             cJSON_Delete(cfg_json);
             return false;
         }
 
-        snprintf(g_prog_status[valid_i].login_cfg.usr, USR_LEN, "%s", safe_str(usr->valuestring));
-        snprintf(g_prog_status[valid_i].login_cfg.pwd, PWD_LEN, "%s", safe_str(pwd->valuestring));
-
-        g_prog_status[valid_i].login_cfg.chn = parse_channel_json(chn, i + 1);
-        apply_channel_ua(&g_prog_status[valid_i].login_cfg, i + 1);
-
-        LOG_DEBUG("使用 UA: %s", g_prog_status[valid_i].login_cfg.user_agent);
-        LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
-
-        // 检查标记值
+        // 标记值按"放进哪个槽位"分配, 所以留在循环里
         if (mark == NULL)
         {
             if (use_cus_mark)
@@ -536,8 +541,8 @@ bool load_cfg()
                 LOG_WARN("其它配置使用了自定义标记值, 但配置 %" PRIu8 " 未填写, 将跳过该配置", i + 1);
                 continue;
             }
-            g_prog_status[valid_i].login_cfg.mark = 0x100 + valid_i * 0x100;
-            LOG_DEBUG("使用自动标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
+            login->mark = 0x100 + valid_i * 0x100;
+            LOG_DEBUG("使用自动标记值: %" PRIu32 " (0x%x)", login->mark, login->mark);
             LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
         }
         else
@@ -549,23 +554,23 @@ bool load_cfg()
             }
             if (mark->valuestring[0] != '\0')
             {
-                g_prog_status[valid_i].login_cfg.mark = strtoul(mark->valuestring, NULL, 16);
-                g_prog_status[valid_i].login_cfg.use_cus_mark = true;
+                login->mark = strtoul(mark->valuestring, NULL, 16);
+                login->use_cus_mark = true;
                 use_cus_mark = true;
-                LOG_DEBUG("使用自定义标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
+                LOG_DEBUG("使用自定义标记值: %" PRIu32 " (0x%x)", login->mark, login->mark);
                 LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
             }
             else
             {
-                g_prog_status[valid_i].login_cfg.mark = 0x100 + valid_i * 0x100;
-                LOG_DEBUG("使用自动标记值: %" PRIu32 " (0x%x)", g_prog_status[valid_i].login_cfg.mark, g_prog_status[valid_i].login_cfg.mark);
+                login->mark = 0x100 + valid_i * 0x100;
+                LOG_DEBUG("使用自动标记值: %" PRIu32 " (0x%x)", login->mark, login->mark);
                 LOG_DEBUG("当前使用下标: %" PRIu8, valid_i);
             }
         }
 
-        // g_prog_status[valid_i].login_cfg.auto_start = auto_start->valueint;
+        // login->auto_start = auto_start->valueint;
 
-        g_prog_status[valid_i].login_cfg.idx = i + 1;
+        login->idx = i + 1;
         LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
         valid_cnt++;
         valid_i++;
@@ -595,67 +600,25 @@ bool load_cfg()
 
         const cJSON* account = cJSON_GetArrayItem(accounts, i);
 
-        const cJSON* usr = cJSON_GetObjectItem(account, "username");
-        const cJSON* pwd = cJSON_GetObjectItem(account, "password");
-        const cJSON* chn = cJSON_GetObjectItem(account, "channel");
-        const cJSON* time_windows_item = cJSON_GetObjectItem(account, "time_windows");
-
         /**
-         * 先把这一项里用户写过的东西按原样填进内存, 再判它能不能用。
-         *
-         * 配置不可用时程序会带着网页停在"等配置"的状态, 网页上的配置页正是从
-         * 这块内存取值的 —— 不填的话网页显示的是空账号, 用户点一次保存就把
-         * 自己写过的账号密码覆盖成空的了
+         * 桌面端只留一个槽位: fill_account 会先把用户写过的东西按原样填进 0 号,
+         * 这样配置不可用时网页上的配置页仍能回显, 不会被一次保存覆盖成空账号
          */
         login_cfg_t* login = &g_prog_status[0].login_cfg;
-        snprintf(login->usr, USR_LEN, "%s", safe_str(usr != NULL ? usr->valuestring : ""));
-        snprintf(login->pwd, PWD_LEN, "%s", safe_str(pwd != NULL ? pwd->valuestring : ""));
-        login->chn = parse_channel_json(chn, i + 1);
-        apply_channel_ua(login, i + 1);
+        const account_state_t state = fill_account(account, i + 1, login);
 
-        // 记真实序号: 首个配置可能不可用而被跳过, 写死 1 会让日志报错配置号
-        login->idx = i + 1;
-
-        // 检查时间控制字段
-        if (apply_time_windows(time_windows_item, login) == false)
+        if (state == ACCOUNT_INVALID)
         {
-            LOG_FATAL("配置 %" PRIu8 " time_windows 非法, 应为 [{ \"start\": \"mon 08:13\", \"end\": \"mon 23:57\" }, ...]", i + 1);
             login->time_window_count = 0;
             login->has_time_control = false;
             usable = false;
             continue;
         }
-
-        // 检查账号
-        if (usr == NULL)
+        if (state == ACCOUNT_SKIP)
         {
-            LOG_WARN("配置 %" PRIu8 " username 参数不存在, 跳过当前配置", i + 1);
             usable = false;
             continue;
         }
-        if (usr->valuestring[0] == '\0')
-        {
-            LOG_WARN("配置 %" PRIu8 " username 参数为空, 跳过当前配置", i + 1);
-            usable = false;
-            continue;
-        }
-
-        // 检查密码
-        if (pwd == NULL)
-        {
-            LOG_WARN("配置 %" PRIu8 " password 参数不存在, 跳过当前配置", i + 1);
-            usable = false;
-            continue;
-        }
-        if (pwd->valuestring[0] == '\0')
-        {
-            LOG_WARN("配置 %" PRIu8 " password 参数为空, 跳过当前配置", i + 1);
-            usable = false;
-            continue;
-        }
-
-        LOG_DEBUG("使用 UA: %s", login->user_agent);
-        LOG_DEBUG("当前使用下标: 0");
 
         LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
         valid_cnt++;
