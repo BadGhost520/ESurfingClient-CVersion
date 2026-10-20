@@ -273,9 +273,22 @@ bool load_cfg()
     const long len = ftell(cfg_file);
     fseek(cfg_file, 0, SEEK_SET);
 
-    char* cfg_data = malloc(len + 1);
-    fread(cfg_data, 1, len, cfg_file);
-    cfg_data[len] = '\0';
+    if (len < 0)
+    {
+        LOG_ERROR("读取配置文件失败: %s", config_file);
+        fclose(cfg_file);
+        return false;
+    }
+
+    char* cfg_data = malloc((size_t)len + 1);
+    if (cfg_data == NULL)
+    {
+        LOG_FATAL("分配内存失败");
+        fclose(cfg_file);
+        return false;
+    }
+    const size_t read_len = fread(cfg_data, 1, (size_t)len, cfg_file); // 短读时按实际长度截断
+    cfg_data[read_len] = '\0';
     fclose(cfg_file);
 
     cJSON* cfg_json = cJSON_Parse(cfg_data);

@@ -22,8 +22,11 @@ extern bool get_service_mode();
 #endif
 
 #ifndef __OPENWRT__
+#include "net/NetTraffic.h"
+
 #include "supervisor/Supervisor.h"
-#include "webserver/DashboardHelper.h"
+
+#include "webserver/HotspotControl.h"
 
 extern bool start_web_server_remote();
 extern bool start_web_server();
@@ -320,8 +323,9 @@ static int work_web()
 
     if (start_web_server_remote() == false) shut(1);
 
-    // 网页上的网速/热点卡片要有采集脚本才动起来, 交给主程序拉起, 用户不用另开脚本
-    dashboard_helper_start();
+    // 网页上的两张卡片: 实时网速由本进程的采样线程提供, 热点开关按需调用
+    net_traffic_start();
+    hotspot_control_start();
 
     if (cfg_ok == false)
     {
@@ -404,8 +408,9 @@ void work()
 #ifndef __OPENWRT__
     if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
 
-    // 网页上的网速/热点卡片靠采集脚本喂数据: 由主程序拉起, 关闭时先停它
-    dashboard_helper_start();
+    // 网页上的两张卡片: 实时网速由本进程的采样线程提供, 热点开关按需调用
+    net_traffic_start();
+    hotspot_control_start();
 #endif
 
     // 配置不可用: 桌面端带着网页停下来等用户改, OpenWrt 上退出交给 procd

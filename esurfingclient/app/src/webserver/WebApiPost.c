@@ -8,7 +8,10 @@
 
 #include "core/States.h"
 
+#include "utils/platform/PlatformUtils.h"
 #include "utils/log/Logger.h"
+
+#include "webserver/HotspotControl.h"
 
 #include <cJSON/cJSON.h>
 
@@ -209,6 +212,37 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
     }
 
     free(data);
+
+    /**
+     * 热点开关: 立刻回"已受理", 真正的切换在后台线程里跑 (要起一次 PowerShell,
+     * 快则一秒慢则十几秒, 不能占着 Web 线程); 页面随后轮询 /api/hotspot/status 看结果
+     */
+    if (mg_match(hm->uri, mg_str("/api/hotspot/start"), NULL) ||
+        mg_match(hm->uri, mg_str("/api/hotspot/stop"), NULL))
+    {
+        const bool is_start = mg_match(hm->uri, mg_str("/api/hotspot/start"), NULL);
+        char adapter[ADAPTER_ID_LEN] = {0};
+        const int adapter_len = mg_http_get_var(&hm->query, "adapter", adapter, sizeof(adapter));
+        if (adapter_len <= 0)
+        {
+            LOG_WARN("收到热点%s请求, 但没有指定网卡", is_start ? "开启" : "关闭");
+            mg_http_reply(c, 400, "", "");
+            return true;
+        }
+
+        char* body = NULL;
+        const int status = hotspot_request(is_start ? "start" : "stop", adapter, &body);
+        if (body != NULL)
+        {
+            mg_http_reply(c, status, HEADER_JSON, "%s", body);
+            free(body);
+        }
+        else
+        {
+            mg_http_reply(c, status, "", "");
+        }
+        return true;
+    }
 
     // 未知的 POST 路径
     mg_http_reply(c, 404, HEADER_TEXT, "Not found\n");

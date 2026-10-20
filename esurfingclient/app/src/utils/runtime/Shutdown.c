@@ -17,7 +17,9 @@ extern bool get_service_mode();
 extern void restart_process();
 extern void stop_web_server();
 #include "control/Control.h"
-#include "webserver/DashboardHelper.h"
+
+#include "net/NetTraffic.h"
+#include "webserver/HotspotControl.h"
 #endif
 
 void shut(const int8_t exit_code)
@@ -53,10 +55,11 @@ void shut(const int8_t exit_code)
 
 #ifndef __OPENWRT__
     /**
-     * 先停掉随包的 Dashboard 辅助脚本: 它是本程序拉起的子进程, 不会自己走,
-     * 而且它的输出还要记进这份日志 —— 必须赶在日志收尾之前停干净
+     * 先停掉网速采样与热点状态线程: 它们会写日志, 必须赶在日志收尾之前停干净
+     * (热点那边可能还有一次 PowerShell 在跑, 它是独立进程, 自己会结束)
      */
-    dashboard_helper_stop();
+    hotspot_control_stop();
+    net_traffic_stop();
 
     control_server_stop(); // 先停止接受控制请求
 

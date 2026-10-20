@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 1)
-set(PROGRAM_VERSION_PATCH 7)
-set(PROGRAM_VERSION_RELEASE 4)
+set(PROGRAM_VERSION_PATCH 8)
+set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -92,6 +92,7 @@ add_executable(ESurfingClient
         src/dialer/DialerAuth.c
         src/dialer/DialerNet.c
         src/net/NetClientCurl.c
+        src/net/NetTraffic.c
         src/net/CheckNetwork.c
         src/net/NetClient.c
         src/utils/log/LogControl.c
@@ -103,6 +104,7 @@ add_executable(ESurfingClient
         src/utils/platform/NetAdapters.c
         src/utils/platform/ProcessInfo.c
         src/utils/platform/ExecPath.c
+        src/utils/runtime/ChildRun.c
         src/utils/runtime/Shutdown.c
         src/utils/runtime/Watchdog.c
         src/utils/sim/SimEvpCipher.c
@@ -129,7 +131,7 @@ if (NOT __OPENWRT__)
             src/supervisor/SupervisorLoop.c
             src/utils/runtime/Service.c
             src/utils/sim/SimProcess.c
-            src/webserver/DashboardHelper.c
+            src/webserver/HotspotControl.c
             src/webserver/WebLogFiles.c
             src/webserver/WebApiPost.c
             src/webserver/WebApiGet.c
@@ -145,17 +147,8 @@ if (NOT __OPENWRT__)
             COMMENT "Copy 'portal' to build dir"
     )
 
-    add_custom_target(CopyWNP ALL
-            COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_CURRENT_BINARY_DIR}/windows-network-panel"
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/windows-network-panel"
-            "${CMAKE_CURRENT_BINARY_DIR}/windows-network-panel"
-            COMMENT "Copy 'windows-network-panel' to portal dir"
-    )
-
     add_dependencies(ESurfingClient
             CopyPortal
-            CopyWNP
     )
 endif ()
 

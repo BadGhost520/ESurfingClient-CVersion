@@ -450,3 +450,40 @@
 4. 接入位置: 单进程模式 (`work()`) 与服务模式的 Web 子进程 (`work_web()`) 在 Web 服务起来之后拉起, `shut()` 统一停; 监管进程/认证进程不碰它
 5. 实测 (Windows 构建 + 真实运行): 单进程 16/16 断言通过 (脚本被拉起、参数正确、`traffic.json` 正常、16 行 `[dashboard]` 输出进了 `run.log`、关闭时"关闭 Dashboard 辅助脚本 → 脚本采集结束 → 已退出 → 关闭 Web 服务器 → 退出程序"顺序正确、无残留 `.stop`); 服务模式 Web 子进程同样验证通过 (脚本先停, Web 后停)
 6. 补充: 直接关闭控制台窗口时 Windows 会以 `STATUS_CONTROL_C_EXIT` 直接杀掉进程, 收尾流程来不及跑 —— 这种硬杀场景下脚本会在 1 秒内发现客户端不在了自行退出 (已实测), 不会留下孤儿进程
+
+### 2026.10.21 (内置网速与热点接口, 仅 Windows)
+1. 实时网速搬进主程序: 新增 `net/NetTraffic.c`, 每秒用 `GetAdaptersAddresses` + `GetIfEntry2` 采一次累计字节数, 与上一帧做差得到 B/s; 网页改从新增的 `GET /api/traffic` 取数据, 不再读 `portal/assets/traffic.json`, 也不再需要外部采集脚本。网卡枚举复用了 `utils/platform/NetAdapters.c` (新增 `get_adapters_stats()`), 只列"已连接且有网关"的网卡, VMware/Hyper-V 之类的虚拟网卡不再出现在下拉框里
+2. 热点开关收进主程序: 新增 `GET /api/hotspot/status` 与 `POST /api/hotspot/start|stop`。开关动作异步执行 (接口立刻回 202, 页面轮询状态), 真正干活的是随包的 `HotspotControl.ps1` —— 每次动作只跑一次 WinRT, 常驻桥接进程、回环端口、令牌、来源白名单全部删掉, 页面改成同源请求
+3. 热点状态由后台线程每 5 秒刷新一次并缓存, 且只在"网页最近 20 秒内来问过"时才起 PowerShell; Web 请求只读缓存, 不会把 Web 线程卡住
+4. 新增通用件 `utils/runtime/ChildRun.c`: 跑一次子进程并把 stdout/stderr 收回来 (带超时强杀), 热点接口用它执行 PowerShell
+5. 生命周期: `work()` / `work_web()` 启动采样与热点线程, `shut()` 先停它们 (热点 → 采样) 再收尾; 删掉 `webserver/DashboardHelper.c` 及"拉起并托管脚本"的那套调用
+6. 页面: `traffic.js` 改请求 `/api/traffic`, `hotspot.js` 重写为同源 `/api/hotspot/*` (去掉桥接地址校验与令牌, 轮询从 2 秒放宽到 5 秒)
+7. 顺带修掉两个真问题: `NetClientCurl.c` 里 `snprintf(out, out_len + 5, …)` 的界限比缓冲还大 (保护失效), `Config.c` 读配置忽略 `fread` 返回值 (短读时会把未初始化内容当 JSON 解析)
+8. 实测 (Windows 构建 + 真实运行, 16/16): `/api/traffic` 返回 1 块真实网卡并逐秒更新速率; `/api/hotspot/status` 返回 `state=Off / capability=Enabled`、缺 `adapter` 参数回 400、未知路径回 404; 关闭后日志有"网速采样已启动/热点控制已就绪/网速采样已停止"、进程退出码 0、无残留 `HotspotControl.ps1` 进程
+9. 其它平台 (Linux/macOS) 暂为桩: `/api/traffic` 返回 503、网页显示"网速采集不可用"; `get_adapters_stats()` 的非 Windows 分支留了位置与注释
+
+### 2026.10.21 (热点脚本内嵌)
+1. `HotspotControl.ps1` 不再作为文件随包发布: 脚本内容直接编进程序 (`HotspotControl.c` 里的 `HOTSPOT_SCRIPT`), 调用时用 `-EncodedCommand` 把"变量前缀 + 脚本"整段交给 Windows PowerShell —— 不再依赖发布包里的 .ps1, 也不会因为文件缺失或被删导致热点按钮失效
+2. 顺带修掉三处真问题: ① PowerShell 的进度流会以 CLIXML 写到 stderr, 与 stdout 混在一起会破坏 JSON 解析 (现在只收 stdout, 脚本里也关掉了 `$ProgressPreference`); ② `ChildRun.c` 的命令行缓冲只有 `PATH_MAX * 4` 个宽字符, 装不下十几 KB 的 `-EncodedCommand`, 转换失败还会静默退化成"没带参数" (现在按 CreateProcess 上限放大, 失败会记日志); ③ 部分机器上网卡的连接名是空的, 热点列表改用描述兜底
+3. 内嵌脚本的每行字面量都必须带 `\n`: C 的相邻字符串拼接不会自动换行, 漏掉会把整段脚本压成一行 (`#` 注释会把后面全吞掉) —— 生成时踩过这个坑
+4. 验证: 15/15 通过 (网速速率逐秒更新、`/api/hotspot/status` 拿到 `state=Off / capability=Enabled`、参数与路径校验 400/404、关闭后日志完整且无残留 PowerShell 进程)
+
+### 2026.10.21 (网卡列表: 未连接的也显示)
+1. `/api/traffic` 的网卡过滤改成"只按是不是物理网卡筛": 有线 / Wi-Fi / 蜂窝都列, **未连接的也列出来** (每项多一个 `connected` 字段) —— 之前只列"已连接且有网关"的, 笔记本 Wi-Fi 没连时整块网卡消失, 看起来像没识别到
+2. 虚拟网卡仍然排除, 判据换成 `MIB_IF_ROW2.InterfaceAndOperStatusFlags.HardwareInterface`: VMware / Hyper-V / 蓝牙个人区域网都是软件网卡, 不用再靠"有没有网关"猜
+3. 页面: 下拉框里未连接的显示成"WLAN（未连接）", 选中未连接网卡时速度显示"—"并提示"所选网卡未连接，接上后自动开始统计"
+4. 默认出口 (`defaultId`) 仍按 `GetBestInterface` 取, 只会是已连接的那块
+5. 实测: 本机列表为"以太网 (connected=true, 有速率) + WLAN (connected=false, 0/0)", VMnet1/VMnet8 已排除; `/api/traffic` 等 15 项断言仍全过
+
+### 2026.10.21 (Windows 工具目录清理)
+1. 删掉已被内置实现取代的 4 个脚本: `TrafficCollector.ps1` (采样搬进 C)、`HotspotBridge.ps1` (桥接已删, 热点脚本内嵌)、`Start-Dashboard.ps1` / `Start-Dashboard.cmd` (只为拉起采集存在)。工具目录只剩 5 个文件: `NetworkPanel.ps1` + `Start-NetworkPanel.cmd` (独立窗口面板)、`Get-ValidationEnvironment.ps1` + `HARDWARE-VALIDATION.md` (实机验证)、`README.md`
+2. 打包脚本 `scripts/package-windows-helper.sh` 的清单同步收缩成这 5 个, 并且不再在包根生成 `Start-Dashboard.cmd` (已经没有采集脚本可拉); Windows 工作流的 zip 列表也去掉那一行, 免得 zip 因文件不存而报错
+3. `Get-ValidationEnvironment.ps1` 的"启动器检查"换成 `NetworkPanel.ps1 -Check` 能力探测, 输出多了 `panelAdapterCount` / `panelHotspotState` / `panelHotspotCapability`; `-ClientPath` 保留但只做"文件在不在"的检查
+4. `tools/windows-network-panel/README.md` 与 `HARDWARE-VALIDATION.md` 按现状重写: 首页卡片由客户端内置, 本目录只提供独立面板与实机验证; 命令统一带上 `-ExecutionPolicy Bypass` (默认 Restricted 策略会直接拒绝执行脚本)
+5. 实测: 打包脚本产出的工具目录正好 5 个文件、包根没有多余启动器; `NetworkPanel.ps1 -Check` 正常 (Adapters=1 / State=Off / Capability=Enabled); `Get-ValidationEnvironment.ps1` 输出 `panelCheck: Passed`; 构建目录里的工具副本也随之只剩这 5 个文件
+
+### 2026.10.21 (删除 tools/windows-network-panel)
+1. 整个 `tools/windows-network-panel/` 目录删掉 (`NetworkPanel.ps1`、`Start-NetworkPanel.cmd`、`Get-ValidationEnvironment.ps1`、`HARDWARE-VALIDATION.md`、`README.md`): 网速与热点都已内置在客户端 (网页上的两张卡片), 独立面板与实机验证清单不再需要
+2. 连带清理: 删 `scripts/package-windows-helper.sh`; `CMakeLists.txt` 去掉把工具目录复制到构建目录的 `CopyWNP` 目标 (否则 `cmake -E copy_directory` 会因目录不存在让构建失败); Windows 工作流去掉"复制可选工具"这一步, zip 列表也去掉 `tools/windows-network-panel/` (发布包现在只有 exe + 配置 + `portal/`); 根 `README.md` 去掉指向该目录的链接
+3. 客户端不依赖这些脚本: 实测用"只有 exe + ESurfingClient.json + portal/"的最小发布包运行 —— `/api/traffic` 正常 (2 块网卡)、`/api/hotspot/status` 正常 (`state=Off / capability=Enabled`)、首页可打开、退出码 0、无残留 PowerShell 进程, 7/7 断言通过
+4. Windows 与 Linux 构建均通过 (Linux 侧重新 configure, 已无 `CopyWNP`); 构建目录里遗留的 `windows-network-panel` 副本也一并清掉了

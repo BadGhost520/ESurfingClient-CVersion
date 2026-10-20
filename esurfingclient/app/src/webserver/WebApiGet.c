@@ -3,6 +3,7 @@
 #include <mongoose/mongoose.h>
 
 #include "net/NetClient.h"
+#include "net/NetTraffic.h"
 
 #include "config/Config.h"
 
@@ -14,6 +15,8 @@
 #include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
 #include "utils/log/Logger.h"
+
+#include "webserver/HotspotControl.h"
 
 #include <cJSON/cJSON.h>
 
@@ -129,6 +132,39 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         mg_http_reply(c, 200, HEADER_JSON, "%s", status_str);
         free(status_str);
         cJSON_Delete(auth);
+        return true;
+    }
+
+    // 实时网速: 由本程序自己的采样线程提供 (不再读 portal/assets/traffic.json)
+    if (mg_match(hm->uri, mg_str("/api/traffic"), NULL))
+    {
+        char* traffic = net_traffic_json();
+        if (traffic == NULL)
+        {
+            // 平台暂不支持, 或者采样还没建立起第一帧
+            mg_http_reply(c, 503, "", "");
+        }
+        else
+        {
+            mg_http_reply(c, 200, HEADER_JSON, "%s", traffic);
+            free(traffic);
+        }
+        return true;
+    }
+
+    // 热点状态: 读后台缓存的快照, 不在这里起 PowerShell, 免得把 Web 线程卡住
+    if (mg_match(hm->uri, mg_str("/api/hotspot/status"), NULL))
+    {
+        char* hotspot = hotspot_status_json();
+        if (hotspot == NULL)
+        {
+            mg_http_reply(c, 501, "", "");
+        }
+        else
+        {
+            mg_http_reply(c, 200, HEADER_JSON, "%s", hotspot);
+            free(hotspot);
+        }
         return true;
     }
 

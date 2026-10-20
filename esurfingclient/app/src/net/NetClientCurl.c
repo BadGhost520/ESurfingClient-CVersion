@@ -51,7 +51,7 @@ static void resolve_url(char* out, size_t out_len, const char* base, const char*
     {
         const char* scheme_end = strstr(base, "://");
         if (scheme_end) snprintf(out, out_len, "%.*s:%s", (int)(scheme_end - base), base, ref);
-        else snprintf(out, out_len + 5, "http:%s", ref);
+        else snprintf(out, out_len, "http:%s", ref);
         return;
     }
 

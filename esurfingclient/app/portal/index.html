@@ -166,12 +166,12 @@
           </h2>
           <div class="divider my-1"></div>
           <div class="flex justify-between items-center py-1">
-            <span>下载速度</span>
-            <span class="font-bold" style="font-variant-numeric:tabular-nums" x-text="downloadText"></span>
-          </div>
-          <div class="flex justify-between items-center py-1">
             <span>上传速度</span>
             <span class="font-bold" style="font-variant-numeric:tabular-nums" x-text="uploadText"></span>
+          </div>
+          <div class="flex justify-between items-center py-1">
+            <span>下载速度</span>
+            <span class="font-bold" style="font-variant-numeric:tabular-nums" x-text="downloadText"></span>
           </div>
           <label for="traffic-adapter" class="text-sm mt-2">上联网卡</label>
           <select id="traffic-adapter" class="select select-bordered w-full" style="min-width:0;max-width:100%"
@@ -179,7 +179,7 @@
             <option value="" x-show="!adapters.length">等待网卡数据</option>
             <option :value="selectedId" x-show="selectedId &amp;&amp; !adapter">所选网卡已断开</option>
             <template x-for="item in adapters" :key="item.id">
-              <option :value="item.id" x-text="item.name"></option>
+              <option :value="item.id" x-text="item.connected === false ? item.name + '（未连接）' : item.name"></option>
             </template>
           </select>
           <p class="text-sm mt-2" role="status" x-text="message"></p>
@@ -208,7 +208,7 @@
                   x-model="selectedId" :disabled="!online || locked || !adapters.length">
             <option value="" x-show="!adapters.length">暂无可用网卡</option>
             <template x-for="item in adapters" :key="item.id">
-              <option :value="item.id" x-text="item.name"></option>
+              <option :value="item.id" x-text="item.connected === false ? item.name + '（未连接）' : item.name"></option>
             </template>
           </select>
           <div class="card-actions mt-2">

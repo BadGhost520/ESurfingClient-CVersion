@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef _WIN32
 
@@ -28,7 +29,43 @@
 
 #define NAME_LENGTH 256
 
+/** 网卡标识的最大长度 (Windows 上是 GUID 字符串, 其它平台是接口名) */
+#define ADAPTER_ID_LEN 64
+
 /* 平台相关: 程序自身的位置、父进程、本机网络适配器 */
+
+/**
+ * 网卡流量统计的一帧
+ *
+ * 计数器是"自开机以来的累计字节数", 速率由调用方按两次采样的差值算;
+ * 界面上的网速卡片就是这么来的 (每秒采一次, 差分后变成 B/s)
+ */
+typedef struct
+{
+    char id[ADAPTER_ID_LEN];  // Windows: 网卡 GUID (小写, 不带花括号); 其它平台: 接口名
+    char name[NAME_LENGTH];   // 显示名
+    bool connected;           // 是否已连接 (未连接的也列出来, 界面上标"未连接")
+    uint64_t rx_bytes;        // 累计接收字节数
+    uint64_t tx_bytes;        // 累计发送字节数
+} adapter_stats_t;
+
+/**
+ * @brief 采集各网卡的累计收发字节数, 以及当前默认出口网卡
+ *
+ * 与 get_adapters() 的区别: 那个只给"名称 + IP"给配置页挑网卡用,
+ * 这个多带计数器, 给网页上的实时网速用。列的是"物理网卡" (有线 / Wi-Fi / 蜂窝),
+ * 未连接的也照样返回 (connected=false), 回环、隧道、VMware/Hyper-V/蓝牙这类
+ * 软件网卡不算在内。
+ *
+ * Windows 上走 GetAdaptersAddresses + GetIfEntry2; 其它平台暂未实现 (返回 0)。
+ *
+ * @param out 输出数组
+ * @param max 数组容量
+ * @param default_id 默认出口网卡的 id (可为 NULL; 取不到时写空字符串)
+ * @param default_id_len default_id 的缓冲长度
+ * @return 采集到的网卡数量
+ */
+uint8_t get_adapters_stats(adapter_stats_t* out, uint8_t max, char* default_id, size_t default_id_len);
 
 /**
  * @brief 打包适配器数据
