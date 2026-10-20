@@ -1,6 +1,9 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
+#include <stdint.h>
+#include <string.h>
+
 typedef struct {
     uint32_t k0[4];
     uint32_t k1[4];
@@ -155,7 +158,7 @@ static void ab6c8_destroy(cipher_interface_t* self)
     s_free(self);
 }
 
-cipher_interface_t* create_ab6c8_linux_cipher(const uint32_t* key0, const uint32_t* key1,
+cipher_interface_t* create_mod_xtea_cbc_triple_cipher(const uint32_t* key0, const uint32_t* key1,
                                         const uint32_t* key2, const uint32_t* iv)
 {
     if (!key0 || !key1 || !key2 || !iv) return NULL;

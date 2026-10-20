@@ -91,13 +91,10 @@ typedef struct
     char ticket[TICKET_LEN];
     char client_ip[IP_LEN];
     char ac_ip[IP_LEN];
-    bool dynamic;
     cipher_interface_t* cipher;
-    ios_zsm_blob_t blob;
     uint64_t keep_retry;
     uint64_t auth_time;
     uint64_t tick;
-    int8_t type;
 } auth_cfg_t;
 
 typedef struct

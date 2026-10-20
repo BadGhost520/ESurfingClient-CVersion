@@ -4,7 +4,7 @@
 typedef struct {
     uint8_t key[16];
     uint8_t iv[16];
-} zuc_cipher_android_old_data_t;
+} zuc_data_t;
 
 static const uint8_t ZUC_S0[256] = {
     0x3e,0x72,0x5b,0x47,0xca,0xe0,0x00,0x33,0x04,0xd1,0x54,0x98,0x09,0xb9,0x6d,0xcb,
@@ -216,7 +216,7 @@ static size_t trim_trailing_zeros_len(const uint8_t* data, size_t len)
 static char* zuc_encrypt(cipher_interface_t* self, const char* text)
 {
     if(!self || !text) return NULL;
-    const zuc_cipher_android_old_data_t* d = self->private_data;
+    const zuc_data_t* d = self->private_data;
     const size_t text_len = strlen(text);
     size_t padded_len=0;
     uint8_t* padded = zero_pad_to_4((const uint8_t*)text, text_len, &padded_len);
@@ -233,7 +233,7 @@ static char* zuc_encrypt(cipher_interface_t* self, const char* text)
 static char* zuc_decrypt(cipher_interface_t* self, const char* hex)
 {
     if(!self || !hex) return NULL;
-    const zuc_cipher_android_old_data_t* d = self->private_data;
+    const zuc_data_t* d = self->private_data;
     size_t bytes_len=0;
     uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
     if(!bytes) return NULL;
@@ -257,11 +257,11 @@ static void zuc_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_zuc_android_old_cipher(const uint8_t* key, const uint8_t* iv)
+cipher_interface_t* create_zuc_cipher(const uint8_t* key, const uint8_t* iv)
 {
     if(!key || !iv) return NULL;
     cipher_interface_t* ci = s_malloc(sizeof(cipher_interface_t));
-    zuc_cipher_android_old_data_t* d = s_malloc(sizeof(zuc_cipher_android_old_data_t));
+    zuc_data_t* d = s_malloc(sizeof(zuc_data_t));
     memcpy(d->key, key, 16);
     memcpy(d->iv, iv, 16);
     ci->encrypt = zuc_encrypt;

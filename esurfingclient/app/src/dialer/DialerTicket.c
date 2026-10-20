@@ -169,76 +169,27 @@ static bool extract_algo_id_from_zsm(const bytes_t zsm, char* algo_id)
 bool load_cipher(const bytes_t zsm)
 {
     char algo_id[ALGO_ID_LEN];
-    const uint8_t chn = g_prog_status[tl_thread_idx].login_cfg.chn;
-    const bool ios_module = looks_like_ios_zsm(zsm.data, zsm.len);
 
-    LOG_DEBUG("load 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
-    LOG_INFO("当前通道: %" PRIu8 ", ZSM 长度: %zu, 动态 ZSM 模块: %s", chn, zsm.len, ios_module ? "是" : "否");
-    if (zsm.data == NULL || zsm.len == 0) // 检查 zsm 数据是否为空, 为空则返回 false
+    if (zsm.data == NULL || zsm.len == 0)
     {
         LOG_ERROR("无效的 zsm 数据");
         return false;
     }
 
-    /**
-     * iOS PacketTunnel / macOS GDCV 的 ZSM 都是 TEA+LZMA 后的 JS 模块,
-     * 头部 UUID 只是模块 ID, 不在 Android/Linux CipherFactory 里.
-     * 通道号只决定 UA/主机名, 不决定密钥解包方式.
-     */
-    if (chn == 1)
-    {
-        if (init_win_cipher_from_zsm(zsm.data, zsm.len, algo_id))
-        {
-            snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id));
-            LOG_INFO("Windows ZSM 解包成功, Algo-ID: %s", g_prog_status[tl_thread_idx].auth_cfg.algo_id);
-            return true;
-        }
-        LOG_WARN("Windows ZSM 解包失败, 回退到通用路径");
-    }
-
-    if (chn == 4 || chn == 5 || ios_module)
-    {
-        if (chn != 4 && chn != 5)
-        {
-            LOG_WARN("通道不是 iOS/macOS, 但 ticket 返回了动态 ZSM, 按动态密钥解包, UA 不变");
-        }
-        if (init_ios_cipher_from_zsm(zsm.data, zsm.len, algo_id) == false)
-        {
-            LOG_ERROR("无法按动态 ZSM 解包出密钥 (长度 %zu, 通道 %" PRIu8 ")", zsm.len, chn);
-            if (chn == 4 || chn == 5)
-            {
-                return false;
-            }
-            LOG_WARN("动态 ZSM 解包失败, 回退到 CipherFactory");
-        }
-        else
-        {
-            snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id));
-            LOG_DEBUG("全局 AlgoID 已更新: %s", g_prog_status[tl_thread_idx].auth_cfg.algo_id);
-            return true;
-        }
-    }
-
     if (extract_algo_id_from_zsm(zsm, algo_id) == false)
     {
-        LOG_ERROR("无法从 ZSM 中提取 Algo-ID (长度 %zu)", zsm.len);
+        LOG_ERROR("无法从 ticket 响应中提取 Algo-ID (长度 %zu)", zsm.len);
         return false;
     }
     LOG_INFO("Algo ID: %s", algo_id);
 
     if (init_cipher(algo_id) == false)
     {
-        LOG_WARN("CipherFactory 没有 Algo-ID %s, 尝试按动态 ZSM 解包", algo_id);
-        if (init_ios_cipher_from_zsm(zsm.data, zsm.len, algo_id))
-        {
-            snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id));
-            LOG_DEBUG("全局 AlgoID 已更新: %s", g_prog_status[tl_thread_idx].auth_cfg.algo_id);
-            return true;
-        }
-        LOG_ERROR("未知 Algo-ID: %s, 当前通道没有对应密钥", algo_id);
+        LOG_ERROR("未知 Algo-ID: %s, 没有对应的硬编码密钥", algo_id);
         return false;
     }
-    snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id)); // 将 algo_id 填入认证配置中
+
+    snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "%s", safe_str(algo_id));
     LOG_DEBUG("全局 AlgoID 已更新: %s", g_prog_status[tl_thread_idx].auth_cfg.algo_id);
     return true;
 }

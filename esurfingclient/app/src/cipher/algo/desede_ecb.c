@@ -6,17 +6,14 @@
 typedef struct {
     uint8_t key1[24];
     uint8_t key2[24];
-    uint8_t iv1[8];
-    uint8_t iv2[8];
-} desede_cbc_android_old_data_t;
+} desede_ecb_data_t;
 
-static uint8_t* desede_encrypt_cbc(const uint8_t* data, size_t data_len, 
-                                   const uint8_t* key, const uint8_t* iv, 
-                                   size_t* out_len)
+static uint8_t* desede_encrypt_ecb(const uint8_t* data, const size_t data_len,
+                                   const uint8_t* key, size_t* out_len)
 {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx) return NULL;
-    if (EVP_EncryptInit_ex(ctx, EVP_des_ede3_cbc(), NULL, key, iv) != 1)
+    if (EVP_EncryptInit_ex(ctx, EVP_des_ede3_ecb(), NULL, key, NULL) != 1)
     {
         EVP_CIPHER_CTX_free(ctx);
         return NULL;
@@ -54,13 +51,12 @@ static uint8_t* desede_encrypt_cbc(const uint8_t* data, size_t data_len,
     return output;
 }
 
-static uint8_t* desede_decrypt_cbc(const uint8_t* data, size_t data_len, 
-                                   const uint8_t* key, const uint8_t* iv, 
-                                   size_t* out_len)
+static uint8_t* desede_decrypt_ecb(const uint8_t* data, const size_t data_len,
+                                   const uint8_t* key, size_t* out_len)
 {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (!ctx) return NULL;
-    if (EVP_DecryptInit_ex(ctx, EVP_des_ede3_cbc(), NULL, key, iv) != 1)
+    if (EVP_DecryptInit_ex(ctx, EVP_des_ede3_ecb(), NULL, key, NULL) != 1)
     {
         EVP_CIPHER_CTX_free(ctx);
         return NULL;
@@ -88,18 +84,18 @@ static uint8_t* desede_decrypt_cbc(const uint8_t* data, size_t data_len,
     return output;
 }
 
-static char* desede_cbc_encrypt(cipher_interface_t* self, const char* text)
+static char* desede_ecb_encrypt(cipher_interface_t* self, const char* text)
 {
     if (!self || !text) return NULL;
-    desede_cbc_android_old_data_t* data = self->private_data;
+    desede_ecb_data_t* data = self->private_data;
     if (!data) return NULL;
     const size_t text_len = strlen(text);
     size_t r1_len;
-    uint8_t* r1 = desede_encrypt_cbc((const uint8_t*)text, text_len, 
-                                     data->key1, data->iv1, &r1_len);
+    uint8_t* r1 = desede_encrypt_ecb((const uint8_t*)text, text_len, 
+                                     data->key1, &r1_len);
     if (!r1) return NULL;
     size_t r2_len;
-    uint8_t* r2 = desede_encrypt_cbc(r1, r1_len, data->key2, data->iv2, &r2_len);
+    uint8_t* r2 = desede_encrypt_ecb(r1, r1_len, data->key2, &r2_len);
     s_free(r1);
     if (!r2) return NULL;
     char* hex_result = bytes_2_hex(r2, r2_len);
@@ -107,20 +103,20 @@ static char* desede_cbc_encrypt(cipher_interface_t* self, const char* text)
     return hex_result;
 }
 
-static char* desede_cbc_decrypt(cipher_interface_t* self, const char* hex)
+static char* desede_ecb_decrypt(cipher_interface_t* self, const char* hex)
 {
     if (!self || !hex) return NULL;
-    desede_cbc_android_old_data_t* data = self->private_data;
+    desede_ecb_data_t* data = self->private_data;
     if (!data) return NULL;
     size_t bytes_len;
     uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
     if (!bytes) return NULL;
     size_t r1_len;
-    uint8_t* r1 = desede_decrypt_cbc(bytes, bytes_len, data->key2, data->iv2, &r1_len);
+    uint8_t* r1 = desede_decrypt_ecb(bytes, bytes_len, data->key2, &r1_len);
     s_free(bytes);
     if (!r1) return NULL;
     size_t r2_len;
-    uint8_t* r2 = desede_decrypt_cbc(r1, r1_len, data->key1, data->iv1, &r2_len);
+    uint8_t* r2 = desede_decrypt_ecb(r1, r1_len, data->key1, &r2_len);
     s_free(r1);
     if (!r2) return NULL;
     while (r2_len > 0 && r2[r2_len - 1] == 0)
@@ -134,7 +130,8 @@ static char* desede_cbc_decrypt(cipher_interface_t* self, const char* hex)
     return result;
 }
 
-static void desede_cbc_destroy(cipher_interface_t* self)
+// 销毁函数
+static void desede_ecb_destroy(cipher_interface_t* self)
 {
     if (self)
     {
@@ -143,19 +140,16 @@ static void desede_cbc_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_desede_cbc_android_old_cipher(const uint8_t* key1, const uint8_t* key2,
-                                             const uint8_t* iv1, const uint8_t* iv2)
+cipher_interface_t* create_desede_ecb_cipher(const uint8_t* key1, const uint8_t* key2)
 {
-    if (!key1 || !key2 || !iv1 || !iv2) return NULL;
+    if (!key1 || !key2) return NULL;
     cipher_interface_t* cipher = s_malloc(sizeof(cipher_interface_t));
-    desede_cbc_android_old_data_t* data = s_malloc(sizeof(desede_cbc_android_old_data_t));
+    desede_ecb_data_t* data = s_malloc(sizeof(desede_ecb_data_t));
     memcpy(data->key1, key1, 24);
     memcpy(data->key2, key2, 24);
-    memcpy(data->iv1, iv1, 8);
-    memcpy(data->iv2, iv2, 8);
-    cipher->encrypt = desede_cbc_encrypt;
-    cipher->decrypt = desede_cbc_decrypt;
-    cipher->destroy = desede_cbc_destroy;
+    cipher->encrypt = desede_ecb_encrypt;
+    cipher->decrypt = desede_ecb_decrypt;
+    cipher->destroy = desede_ecb_destroy;
     cipher->private_data = data;
     return cipher;
 }

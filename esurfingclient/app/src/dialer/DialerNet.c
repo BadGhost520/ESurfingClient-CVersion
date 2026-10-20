@@ -309,16 +309,7 @@ void logout_previous_session()
      */
     tl_thread_idx = 0;
 
-    bool inited = false;
-
-    if (g_prog_status[0].auth_cfg.dynamic == true)
-    {
-        inited = init_ios_cipher_from_blob(g_prog_status[0].auth_cfg.type, g_prog_status[0].auth_cfg.blob);
-    }
-    else
-    {
-        inited = init_cipher(g_prog_status[0].auth_cfg.algo_id);
-    }
+    const bool inited = init_cipher(g_prog_status[0].auth_cfg.algo_id);
 
     if (inited == true)
     {

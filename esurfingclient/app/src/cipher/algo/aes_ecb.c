@@ -1,22 +1,16 @@
 #include "cipher/CipherInterface.h"
 #include "cipher/CipherUtils.h"
 
-#include "utils/sim/SimEvp.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include "aes_common.h"
 
 typedef struct {
-    uint8_t key1[16];
-    uint8_t key2[16];
+    uint8_t round_keys1[176];
+    uint8_t round_keys2[176];
 } aes_ecb_linux_ctx_t;
 
-static void aes128_encrypt_block(const uint8_t* in, uint8_t* out, const uint8_t* key16)
-{
-    simssl_aes128_encrypt_block(key16, in, out);
-}
-
-static void aes128_decrypt_block(const uint8_t* in, uint8_t* out, const uint8_t* key16)
-{
-    simssl_aes128_decrypt_block(key16, in, out);
-}
 static char* aes_ecb_encrypt(cipher_interface_t* self, const char* text)
 {
     if (!self || !text) return NULL;
@@ -30,8 +24,8 @@ static char* aes_ecb_encrypt(cipher_interface_t* self, const char* text)
     for (size_t i = 0; i < padded_len; i += 16)
     {
         uint8_t tmp[16];
-        aes128_encrypt_block(padded + i, tmp, ctx->key2);
-        aes128_encrypt_block(tmp, out + i, ctx->key1);
+        aes128_encrypt_block(padded + i, tmp, ctx->round_keys2);
+        aes128_encrypt_block(tmp, out + i, ctx->round_keys1);
     }
     char* hex = bytes_2_hex(out, padded_len);
     s_free(padded);
@@ -53,8 +47,8 @@ static char* aes_ecb_decrypt(cipher_interface_t* self, const char* hex)
     for (size_t i = 0; i < in_len; i += 16)
     {
         uint8_t tmp[16];
-        aes128_decrypt_block(in + i, tmp, ctx->key1);
-        aes128_decrypt_block(tmp, out + i, ctx->key2);
+        aes128_decrypt_block(in + i, tmp, ctx->round_keys1);
+        aes128_decrypt_block(tmp, out + i, ctx->round_keys2);
     }
     size_t plain_len = in_len;
     while (plain_len > 0 && out[plain_len - 1] == 0x00) plain_len--;
@@ -73,13 +67,13 @@ static void aes_ecb_destroy(cipher_interface_t* self)
     s_free(self);
 }
 
-cipher_interface_t* create_aes_ecb_linux_cipher(const uint8_t* key1, const uint8_t* key2)
+cipher_interface_t* create_aes_ecb_cipher(const uint8_t* key1, const uint8_t* key2)
 {
     if (!key1 || !key2) return NULL;
     cipher_interface_t* ci = s_calloc(1, sizeof(cipher_interface_t));
     aes_ecb_linux_ctx_t* ctx = s_calloc(1, sizeof(aes_ecb_linux_ctx_t));
-    memcpy(ctx->key1, key1, 16);
-    memcpy(ctx->key2, key2, 16);
+    aes128_key_expansion(key1, ctx->round_keys1);
+    aes128_key_expansion(key2, ctx->round_keys2);
     ci->encrypt = aes_ecb_encrypt;
     ci->decrypt = aes_ecb_decrypt;
     ci->destroy = aes_ecb_destroy;

@@ -14,8 +14,6 @@ char* bytes_2_hex(const uint8_t* bytes, size_t len);
 
 uint8_t* hex_2_bytes(const char* hex, size_t* out_len);
 
-void zsm_blob_free(ios_zsm_blob_t* blob);
-
 void* s_malloc(size_t size);
 
 void* s_calloc(size_t count, size_t size);
