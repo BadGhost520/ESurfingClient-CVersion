@@ -38,8 +38,7 @@ static bool hotspot_platform_available(void);
 
 /**
  * @brief 查一次热点状态
- * @return JSON 文本 (需要 free): {"adapters":[{"id","name","state","capability","connected"}],
- *         "defaultId":"","message":""}; 失败返回 NULL
+ * @return JSON (需要 free): adapters[{id,name,state,capability,connected}] + defaultId + message
  */
 static char* hotspot_query_status(void);
 
@@ -444,10 +443,8 @@ static bool hotspot_do_action(const char* action, const char* adapter_id, char**
 /* ------------------------------------------------------------------ macOS (互联网共享) */
 
 /**
- * macOS 的"互联网共享"没有受支持的命令行开关:
- * 状态可以查 launchd 里 com.apple.InternetSharing 这个 job 有没有在跑,
- * 开关只能尝试 launchctl (需要管理员权限, 没有免密 sudo 时会失败)。
- * 实验性功能, 没有在真机上验证过。
+ * macOS 的"互联网共享"没有受支持的命令行开关: 状态查 launchd 里那个 job 在不在,
+ * 开关只能试 launchctl (要管理员权限)。实验性功能, 未在真机验证过。
  */
 #define HOTSPOT_MAC_PLIST "/System/Library/LaunchDaemons/com.apple.InternetSharing.plist"
 #define HOTSPOT_MAC_LABEL "com.apple.InternetSharing"

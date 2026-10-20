@@ -98,13 +98,8 @@ static int watchdog_app(void* arg)
     uint32_t budget_ms = s_budget_ms;
 
     /**
-     * 计时必须用单调钟, 不能用 get_cur_tm_ms() 的墙钟。
-     *
-     * OpenWrt 没有 RTC, 开机后一连上网 NTP 就把墙钟整体前跳 (跳几十小时很常见),
-     * 而主循环此时正安静地睡着 —— 墙钟一减就凭空多出"已经过了 47 小时",
-     * 于是一次正常的心跳等待被当场判成卡死并 _exit。实测日志里那次
-     * "声明 1000 毫秒, 已超时 171888236 毫秒"就是这么来的。
-     * 单调钟只受"真的过了多久"影响, 改时钟它不动。
+     * 计时必须用单调钟: OpenWrt 没有 RTC, NTP 一同步墙钟就会前跳几十小时,
+     * 用墙钟会把正常的心跳等待判成卡死 (曾出现过"声明 1000 毫秒, 已超时 1.7 亿毫秒").
      */
     uint64_t expected_by = get_steady_tm_ms() + budget_ms;
     uint64_t deadline = expected_by + WATCHDOG_MARGIN_MS;
@@ -218,14 +213,9 @@ bool watchdog_start(void)
 void watchdog_stop(void)
 {
     /**
-     * ⚠️ 本函数【不是】线程安全的: 先判 s_running 再置假, 两个线程同时进来
-     *    会各自去 join 同一条线程。
-     *
-     * 目前不会发生, 因为:
-     *   - 看门狗只在认证进程里启动, 而那边 dialer_app 与 shut() 都跑在主线程上, 是顺序执行的
-     *   - shut() 本身有 shutting_down 把关, 关闭流程只会被一个线程走完
-     * 但将来若出现"从 SCM 线程调 shut() 且该进程启动了看门狗"的组合, 就会踩到。
-     * 到那时要给这里补一把真正的锁 —— 用 volatile 标志假冒是不行的。
+     * ⚠️ 非线程安全: 先判 s_running 再置假, 并发进来会重复 join。
+     * 目前靠"看门狗只在认证进程启动、dialer_app 与 shut() 都在主线程顺序执行"成立;
+     * 若将来出现"从 SCM 线程调 shut() 且启用了看门狗", 这里得补真锁。
      */
     if (s_running == false) return;
 
@@ -259,9 +249,8 @@ void watchdog_pet_network(void)
     if (tl_in_watchdog) return;
 
     /**
-     * 一次网络请求最长就是连接超时 + 操作超时, 再加一点余量。
-     * 逐个请求地覆盖, 而不是估"一轮循环最多几次请求" —— 后者只要估小一次
-     * 就会把正常的慢请求误判成卡死 (而误杀比漏报严重得多)。
+     * 一次网络请求最长 = 连接超时 + 操作超时 + 余量。逐个请求覆盖, 不去估
+     * "一轮循环最多几次请求" —— 估小一次就会把慢请求误判成卡死。
      */
     const uint64_t budget = (uint64_t)(g_conn_timeout + g_op_timeout) * 1000ULL + WATCHDOG_NET_MARGIN_MS;
 

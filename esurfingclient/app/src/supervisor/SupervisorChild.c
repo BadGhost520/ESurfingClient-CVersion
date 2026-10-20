@@ -106,18 +106,11 @@ extern char** environ;
 /**
  * @brief 组装子进程的环境变量, 把控制通道令牌塞进去
  *
- * 令牌不走命令行是有原因的: Linux 上 /proc/<PID>/cmdline 是**全局可读**的,
- * 同机其它用户 ps 一下就能拿到令牌。环境变量对应的 /proc/<PID>/environ
- * 只有属主和 root 可读, 能把暴露面收窄一个数量级。
- *
- * 新环境数组必须在 fork **之前**准备好: setenv() 内部会 malloc,
- * 而 fork 之后只允许调用 async-signal-safe 的函数 ——
- * 与上面"子进程里不能打日志"是同一个原因。
- *
+ * 令牌不走命令行: /proc/<PID>/cmdline 全局可读, /proc/<PID>/environ 只有属主与
+ * root 能读。环境数组必须在 fork 之前备好 (fork 后只能调 async-signal-safe 函数)。
  * @param token_env 存放 "ESURFING_CONTROL_TOKEN=<令牌>" 的缓冲
  * @param token_env_len 缓冲长度
- * @return 环境数组 (调用方负责 free); 没有令牌或分配失败时返回 NULL,
- *         此时调用方退回继承当前环境
+ * @return 环境数组 (调用方 free); 没有令牌或分配失败返回 NULL, 调用方退回继承当前环境
  */
 static char** child_build_env(char* token_env, const size_t token_env_len)
 {
