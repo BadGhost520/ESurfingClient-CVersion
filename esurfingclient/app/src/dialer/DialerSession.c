@@ -6,6 +6,9 @@
 
 #include "core/States.h"
 
+#include "dialer/ErrorCode.h"
+
+
 #include "utils/platform/PlatformUtils.h"
 #include "utils/log/Logger.h"
 
@@ -37,6 +40,7 @@ bool init_session()
     if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL) // 响应错误或无响应数据, 则返回 false
     {
         LOG_ERROR("初始化会话失败");
+        error_code_record(&resp);
         free(resp.body_data);
         return false;
     }

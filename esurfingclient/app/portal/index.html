@@ -128,6 +128,10 @@
                   :class="$store.status.authStatusOk === true ? 'badge-success' : ($store.status.authStatusOk === false ? 'badge-error' : 'badge-ghost')"
                   x-text="$store.status.authStatusText"></span>
           </div>
+          <div class="flex justify-between items-start gap-3 py-1" x-show="$store.status.authErrorText" x-cloak>
+            <span class="opacity-70 shrink-0">失败原因</span>
+            <span class="text-right text-warning break-all" x-text="$store.status.authErrorText"></span>
+          </div>
           <div class="flex justify-between items-center py-1">
             <span class="opacity-70">联网状态</span>
             <span class="badge"

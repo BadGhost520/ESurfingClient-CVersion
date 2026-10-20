@@ -6,6 +6,9 @@
 
 #include "core/States.h"
 
+#include "dialer/ErrorCode.h"
+
+
 #include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
 #include "utils/time/TimeControl.h"
@@ -138,6 +141,7 @@ bool login()
     if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
     {
         LOG_ERROR("登录响应失败");
+        error_code_record(&resp); // 服务端把失败原因放在响应头的 Error-Code / Sub-Error 里
         free(resp.body_data);
         return false;
     }

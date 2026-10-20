@@ -6,6 +6,9 @@
 
 #include "core/States.h"
 
+#include "dialer/ErrorCode.h"
+
+
 #include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
 #include "utils/time/TimeControl.h"
@@ -24,6 +27,9 @@
 AuthStatus auth()
 {
     LOG_DEBUG("auth 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRId8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
+
+    // 新一轮尝试: 先把上一次留下的失败原因清掉, 免得没出新码时界面还挂着旧原因
+    error_code_record(NULL);
 
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";

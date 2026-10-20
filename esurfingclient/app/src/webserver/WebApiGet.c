@@ -11,6 +11,8 @@
 
 #include "core/States.h"
 
+#include "dialer/ErrorCode.h"
+
 #include "utils/platform/PlatformUtils.h"
 #include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
@@ -152,6 +154,30 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         // 认证进程不可达时额外标出来, 前端可据此提示 (不认这个字段的前端会忽略它)
         cJSON_AddBoolToObject(auth, "reachable", reachable);
         cJSON_AddStringToObject(auth, "reason", reason);
+
+        // 上一次认证失败的服务端错误码与翻译, 让网页能直接显示"为什么失败"
+        const char* error_code = "";
+        const char* sub_error = "";
+        const char* error_message = "";
+        const char* error_kind = "";
+        double error_at = 0;
+        if (g_prog_status != NULL && g_prog_cnt > 0)
+        {
+            const runtime_status_t* status = &g_prog_status[0].runtime_status;
+            error_code = status->last_error_code;
+            sub_error = status->last_sub_error;
+            error_message = status->last_error_msg;
+            if (status->last_error_kind != AUTH_ERROR_NONE)
+            {
+                error_kind = auth_error_kind_name((auth_error_kind_t)status->last_error_kind);
+            }
+            error_at = (double)status->last_error_at;
+        }
+        cJSON_AddStringToObject(auth, "errorCode", error_code);
+        cJSON_AddStringToObject(auth, "subError", sub_error);
+        cJSON_AddStringToObject(auth, "errorMessage", error_message);
+        cJSON_AddStringToObject(auth, "errorKind", error_kind);
+        cJSON_AddNumberToObject(auth, "errorAt", error_at);
         char* status_str = cJSON_Print(auth);
         mg_http_reply(c, 200, HEADER_JSON, "%s", status_str);
         free(status_str);

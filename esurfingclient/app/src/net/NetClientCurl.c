@@ -110,10 +110,63 @@ curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct 
 }
 #endif
 
+/**
+ * @brief 这一行响应头是不是某个名字 (大小写不敏感, 后面必须紧跟冒号)
+ *
+ * HTTP 头名不区分大小写, 服务端有时发 "Error-Code:", 有时发 "error-code:"
+ */
+static bool header_name_is(const char* header, const char* name)
+{
+    const size_t name_len = strlen(name);
+    for (size_t i = 0; i < name_len; i++)
+    {
+        char left = header[i];
+        char right = name[i];
+        if (left >= 'A' && left <= 'Z') left = (char)(left - 'A' + 'a');
+        if (right >= 'A' && right <= 'Z') right = (char)(right - 'A' + 'a');
+        if (left != right) return false;
+    }
+    return header[name_len] == ':';
+}
+
+/**
+ * @brief 把响应头里的值抄进定长缓冲 (跳过前导空格, 到 CR/LF 为止)
+ */
+static void header_copy_value(const char* header, const size_t name_len, char* out, const size_t out_len)
+{
+    if (out == NULL || out_len == 0) return;
+    const char* value = header + name_len + 1; // 跳过冒号
+    while (*value == ' ' || *value == '\t') value++;
+    size_t value_len = strcspn(value, "\r\n");
+    while (value_len > 0 && (value[value_len - 1] == ' ' || value[value_len - 1] == '\t')) value_len--; // 去掉尾部空白, 否则码表匹配不上
+    const size_t copy_len = value_len < out_len - 1 ? value_len : out_len - 1;
+    memcpy(out, value, copy_len);
+    out[copy_len] = '\0';
+}
+
 size_t header_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
     const size_t real_size = size * nmemb;
     const char* header = contents;
+    curl_resp_t* resp = userdata;
+
+    /**
+     * 服务端的错误码在这两个响应头上 (登录 /auth.cgi 的 POST 响应里就会出现),
+     * 记到本次请求的结果里, 由认证流程翻译成"要不要重试、要不要等用户改配置"
+     */
+    if (resp != NULL && real_size > 2)
+    {
+        if (resp->error_code[0] == '\0' && header_name_is(header, "error-code"))
+        {
+            header_copy_value(header, strlen("error-code"), resp->error_code, sizeof(resp->error_code));
+            LOG_DEBUG("响应头 Error-Code: %s", resp->error_code);
+        }
+        else if (resp->sub_error[0] == '\0' && header_name_is(header, "sub-error"))
+        {
+            header_copy_value(header, strlen("sub-error"), resp->sub_error, sizeof(resp->sub_error));
+            LOG_DEBUG("响应头 Sub-Error: %s", resp->sub_error);
+        }
+    }
 
     if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0 && !s_school_id[0])
     {

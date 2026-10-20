@@ -5,6 +5,9 @@
 
 #include <stdbool.h>
 
+/** 响应头 Error-Code / Sub-Error 的长度 (服务端最长的形如 13012000) */
+#define ERROR_CODE_LEN 24
+
 #define HTTP_OK 200
 #define HTTP_NO_CONTENT 204
 #define HTTP_MOVED_PERMANENTLY 301
@@ -30,6 +33,8 @@ typedef struct {
     CURLcode curl_code;
     char* body_data;
     size_t body_size;
+    char error_code[ERROR_CODE_LEN]; // 响应头 Error-Code (portal 侧错误码)
+    char sub_error[ERROR_CODE_LEN];  // 响应头 Sub-Error (RADIUS/ACS 侧错误码)
 } curl_resp_t;
 
 #endif

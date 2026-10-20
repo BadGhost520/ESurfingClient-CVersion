@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
 set(PROGRAM_VERSION_MINOR 1)
-set(PROGRAM_VERSION_PATCH 9)
-set(PROGRAM_VERSION_RELEASE 2)
+set(PROGRAM_VERSION_PATCH 10)
+set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
 set(PROGRAM_FULL_VERSION "${PROGRAM_VERSION}-r${PROGRAM_VERSION_RELEASE}")
@@ -90,6 +90,7 @@ add_executable(ESurfingClient
         src/config/Config.c
         src/dialer/DialerLocation.c
         src/dialer/DialerSession.c
+        src/dialer/ErrorCode.c
         src/dialer/DialerTicket.c
         src/dialer/DialerClient.c
         src/dialer/LogoutState.c

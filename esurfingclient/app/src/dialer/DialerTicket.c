@@ -6,6 +6,9 @@
 
 #include "core/States.h"
 
+#include "dialer/ErrorCode.h"
+
+
 #include "utils/text/TextUtils.h"
 #include "utils/log/Logger.h"
 
@@ -36,6 +39,7 @@ bool get_ticket()
     if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
     {
         LOG_ERROR("获取 Ticket 响应失败");
+        error_code_record(&resp);
         free(resp.body_data);
         return false;
     }

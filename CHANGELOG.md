@@ -508,3 +508,14 @@
 3. 实验性标记: `/api/traffic` 与 `/api/hotspot/status` 在 macOS 上多返回 `"experimental": true`, 网页上"实时网速""热点功能"两张卡片标题旁显示"实验性"角标; 因为手头没有 macOS 设备, 这两块**未在真机验证**
 4. 编译验证: 用 zig 的 macOS 目标 (x86_64 与 aarch64) 对改动过的 4 个文件做 `-Wall -Wextra` 编译, 全部零警告 (期间修掉一个真错误: macOS 的 `rt_msghdr` 没有 `rtm_dst_len` 字段, 默认路由改成判断 RTA_DST 地址是否全零)
 5. 回归: Windows (最小发布包 7/7)、Linux、OpenWrt 构建均通过; 页面 JS 语法检查通过
+
+### 2026.10.21 (认证失败按服务端错误码分类处理)
+1. 新增 `dialer/ErrorCode.c` + `include/dialer/ErrorCode.h`: 把故障指引里**服务端可能返回**的 48 个码 (Sub-Error 的 130xxxxx/1101xxxx、portal 的 14xxxx、网络类 1xx/3xx、账号类 4xx/2001xxxx/-600) 做成一张表, 每个码带"分类 + 中文提示语"; `error_code_lookup()` 两个码同时出现时**以 Sub-Error 为准** (比如截图里的 102 + 13012000, 真正原因是密码错)
+2. 抓码: `NetClientCurl.c` 的 `header_cb` 大小写不敏感地解析 `Error-Code` / `Sub-Error` 到 `curl_resp_t` (并裁掉首尾空白, 否则码表精确匹配会落空); 顺带补上 `post()` 之前**没有**注册 `CURLOPT_HEADERFUNCTION` 的问题 —— 错误码恰好就在 `/auth.cgi` 的 POST 响应头上
+3. 分类与等待策略 (`DialerClient.c`): 退避表改成 1/3/5/10/20/30 分钟并**取消"重试 5 次就退出"**; 三类错误分别处理:
+   - 临时错误 (网络/服务端忙) → 按表退避, 30 分钟后固定每 30 分钟重试, 无限重试
+   - 可自愈错误 (欠费/余额/体验到期/频繁登录/别处登录/被踢) → 固定 30 分钟慢重试
+   - 需人工处理 (密码错/账号不存在/版本停用/被限制共享) → **不重试**, 停在可中断等待里, 热重载或退出即恢复
+   等待用 `sleep_ms(..., true)` 分段 5 秒实现, 网页"保存并应用"/退出都会把等待打断
+4. 界面: `/api/status/auth` 新增 `errorCode` / `subError` / `errorMessage` / `errorKind` / `errorAt`, 网页"连接状态"卡片多一行"失败原因" (带 Error-Code 与 Sub-Error 原文)
+5. 验证: 新增 `TEMP/test-errorcode.c` 单元测试 (23/23 通过, 覆盖大小写/多余空格/超长截断/负数码/码表分类/Sub-Error 优先/记录与清空); Windows 最小发布包 7/7 回归; Linux / OpenWrt / Windows 三平台编译通过

@@ -117,6 +117,10 @@ typedef struct
     uint8_t idx;
 } login_cfg_t;
 
+/** 上次认证失败留下的错误码与说明 (长度) */
+#define AUTH_ERROR_CODE_LEN 24
+#define AUTH_ERROR_MSG_LEN 128
+
 typedef struct
 {
     bool is_initialized;
@@ -124,6 +128,12 @@ typedef struct
     bool is_authed;
     bool is_need_reauth;
     bool is_time_disabled;
+    /** 上次认证失败时服务端返回的码与翻译, 供日志与网页显示使用 */
+    uint8_t last_error_kind;
+    uint64_t last_error_at;
+    char last_error_code[AUTH_ERROR_CODE_LEN];
+    char last_sub_error[AUTH_ERROR_CODE_LEN];
+    char last_error_msg[AUTH_ERROR_MSG_LEN];
 } runtime_status_t;
 
 typedef struct

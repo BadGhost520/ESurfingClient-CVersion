@@ -6,6 +6,8 @@
 
 #include "net/NetClient.h"
 
+#include "dialer/ErrorCode.h"
+
 #include "core/States.h"
 
 #include "utils/time/TimeUtils.h"
@@ -39,13 +41,47 @@ typedef enum
     TIMEOUT_RETRY = 2
 } RunStatus;
 
-static const uint64_t table[] = {1, 5, 10, 20, 30};
+/**
+ * 认证失败后的退避间隔 (分钟)
+ *
+ * 网络/服务端临时故障按这张表走, 用完之后固定用最后一档 (30 分钟), 一直重试;
+ * 需要人工处理的错误不走这张表, 直接等到热重载或退出
+ */
+static const uint64_t table[] = {1, 3, 5, 10, 20, 30};
+
+/**
+ * @brief 认证失败后等待, 期间可被热重载 / 退出 / 停止打断
+ *
+ * 分段睡是为了及时响应: sleep_ms(..., true) 自己也会在 is_need_reauth /
+ * g_stop_requested / is_running 变化时提前返回, 这里每段之后再复核一次标志
+ *
+ * @param wait_minutes 等多少分钟; 传 0 表示一直等到热重载或退出 (需要人工处理的错误)
+ * @return true 正常等完 (可以接着重试), false 被打断
+ */
+static bool wait_auth_retry(const uint64_t wait_minutes)
+{
+    const uint64_t segment_ms = 5000; // 每 5 秒复核一次标志
+    const uint64_t total_ms = wait_minutes * 60000ULL;
+    uint64_t waited_ms = 0;
+
+    while (true)
+    {
+        if (g_thread_keep_alive == false || g_stop_requested != 0) return false;
+        if (g_prog_status[tl_thread_idx].runtime_status.is_running == false) return false;
+        if (g_prog_status[tl_thread_idx].runtime_status.is_need_reauth) return false;
+        if (wait_minutes != 0 && waited_ms >= total_ms) return true;
+
+        uint64_t step = segment_ms;
+        if (wait_minutes != 0 && total_ms - waited_ms < step) step = total_ms - waited_ms;
+        sleep_ms(step, true);
+        waited_ms += step;
+    }
+}
 
 static RunStatus run()
 {
     static uint8_t retry_timeout = 1;
     static uint8_t retry_auth = 1;
-    static uint64_t retry_auth_time = 0;
 
     // 时间控制/重置请求优先于一切网络操作:
     // 到点下线后不应再发送心跳包，也不应继续认证或重试
@@ -122,21 +158,53 @@ static RunStatus run()
             {
                 return RUN_FAILED;
             }
-            if (retry_auth > 5)
+
+            const runtime_status_t* status = &g_prog_status[tl_thread_idx].runtime_status;
+            const auth_error_kind_t kind = (auth_error_kind_t)status->last_error_kind;
+            if (status->last_error_msg[0] != '\0')
             {
-                LOG_FATAL("超过最多重试次数, 请检查账号密码是否正确");
-                return RUN_FAILED;
+                LOG_ERROR("配置 %" PRIu8 " 认证失败: %s (Error-Code: %s, Sub-Error: %s, 分类: %s)",
+                    g_prog_status[tl_thread_idx].login_cfg.idx,
+                    status->last_error_msg,
+                    status->last_error_code[0] != '\0' ? status->last_error_code : "-",
+                    status->last_sub_error[0] != '\0' ? status->last_sub_error : "-",
+                    auth_error_kind_name(kind));
             }
-            retry_auth_time = 60000 * table[retry_auth - 1];
-            LOG_ERROR("配置 %" PRIu8 " 认证失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次, 下一次重试时间: %" PRIu64 " 毫秒 (% " PRIu64 " 秒) 后",
-                g_prog_status[tl_thread_idx].login_cfg.idx,
-                tl_thread_idx,
-                retry_auth,
-                retry_auth_time,
-                retry_auth_time / 1000);
-            retry_auth++;
-            sleep_ms(retry_auth_time, true);
+            else
+            {
+                LOG_ERROR("配置 %" PRIu8 " 认证失败: 没拿到服务端错误码, 按网络问题处理",
+                    g_prog_status[tl_thread_idx].login_cfg.idx);
+            }
+
+            uint64_t wait_minutes = 0;
+            if (kind == AUTH_ERROR_FATAL)
+            {
+                /**
+                 * 密码错 / 账号不存在 / 版本被停用 / 被限制共享 这类错误, 重试多少次都是同一个结果,
+                 * 反而会因为反复失败触发服务端的登录频率限制, 所以停下来等用户处理:
+                 * 网页上"保存并应用"(热重载)或退出程序都会把这里的等待打断
+                 */
+                LOG_WARN("这类错误需要人工处理, 已暂停自动重试; 改好配置并保存(热重载)或退出程序后才会继续");
+            }
+            else
+            {
+                const size_t table_len = sizeof(table) / sizeof(table[0]);
+                const size_t step = (kind == AUTH_ERROR_SLOW)
+                                        ? table_len
+                                        : (retry_auth <= table_len ? retry_auth : table_len);
+                wait_minutes = table[step - 1];
+                LOG_WARN("配置 %" PRIu8 " 将在 %" PRIu64 " 分钟后重试 (第 %" PRIu8 " 次失败, 不设上限, 热重载或退出可立即打断)",
+                    g_prog_status[tl_thread_idx].login_cfg.idx, wait_minutes, retry_auth);
+                if (retry_auth < UINT8_MAX) retry_auth++;
+            }
+
+            if (wait_auth_retry(wait_minutes) == false)
+            {
+                LOG_INFO("等待被热重载/退出请求打断, 本轮认证结束");
+            }
+            return RUN_SUCCESS;
         }
+        retry_auth = 1; // 认证成功: 下次失败重新从最短间隔开始
         return RUN_SUCCESS;
     case STATUS_ERROR: // 网络错误
         retry_auth = 1;

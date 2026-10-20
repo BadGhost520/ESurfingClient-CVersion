@@ -479,6 +479,7 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.store('status', {
         authStatusText: '未知认证状态',
+        authErrorText: '',
         authStatusOk: null,
         onlineStatusText: '未知联网状态',
         onlineStatusLevel: 'error',
@@ -496,6 +497,13 @@ document.addEventListener('alpine:init', () => {
                     disabled: '程序已禁用',
                     'not-running': '认证进程未运行'
                 };
+                // 上一次服务端返回的失败原因 (Error-Code / Sub-Error 翻译过来的话)
+                const message = data && data.errorMessage ? data.errorMessage : '';
+                const code = data && data.errorCode ? data.errorCode : '';
+                const subCode = data && data.subError ? data.subError : '';
+                const detail = [code && 'Error-Code: ' + code, subCode && 'Sub-Error: ' + subCode].filter(Boolean).join(', ');
+                this.authErrorText = message ? (detail ? message + '（' + detail + '）' : message) : '';
+
                 const reason = data && data.reason ? data.reason : '';
                 if (reason && reasonText[reason]) {
                     this.authStatusOk = null;
