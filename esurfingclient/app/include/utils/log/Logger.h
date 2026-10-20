@@ -84,11 +84,10 @@ log_out(LOG_LEVEL_ERROR, file, line, fmt, ##__VA_ARGS__)
 void log_out(log_level_t level, const char* file, uint32_t line, const char* fmt, ...);
 
 /**
- * @brief 不走常规日志流程, 直接往日志文件写一行
+ * @brief 不走常规日志流程, 直接往日志文件写一行 (给看门狗用)
  *
- * 给看门狗用: 判定卡死时主线程可能正卡在某个调用里, 常规的 log_out 会去
- * 判断轮转、可能要建目录, 都不该在那种状态下做。这里只做一次 write。
- * 格式与常规日志一致, 解析日志的工具不用为它开特例。
+ * 判定卡死时主线程可能正卡在某个调用里, 这里只做一次 write: 不判轮转、不建目录。
+ * 格式与常规日志一致, 解析工具不用开特例。
  * @param text 要写出的内容 (会自动补换行)
  */
 void log_raw_line(const char* text);
@@ -106,16 +105,11 @@ log_level_t get_logger_level(void);
 void set_logger_level(log_level_t lv);
 
 /**
- * @brief 按配置文件里的 log_dir 设置日志目录
+ * @brief 按配置里的 log_dir 设置日志目录
  *
- * 通常是在 init_logger() 之后调用 (配置文件就是那时候才读的): 那时不只是记下目录,
- * 还得把已经打开的那份日志搬过去 —— 启动的那几行是在配置加载之前写下的,
- * 留在默认目录里就没人收尾了 (见实现里的说明)。
- * 在 init_logger() 之前调用也允许, 那时只记下目录, 等 init 时生效。
- *
- * log_dir 是【基目录】: 日志放在它下面的 logs 里 (OpenWrt 上就是
- * /var/log/esurfing/logs)。相对路径按【程序所在目录】解析;
- * OpenWrt 上基目录写死, 本函数不生效。
+ * log_dir 是【基目录】, 日志放在它下面的 logs 里; 相对路径按程序所在目录解析。
+ * init_logger() 之后调用会连已打开的日志一起搬过去 (启动那几行是在读配置之前写的),
+ * 之前调用则只记下目录。
  * @param dir 配置里的基目录 (空字符串表示保持默认目录)
  * @return 是否设置成功 (失败时仍旧使用默认目录)
  */
@@ -139,11 +133,9 @@ void clean_logger(void);
 const char* get_logger_dir(void);
 
 /**
- * @brief 获取配置文件里写的日志基目录
+ * @brief 取配置里写的日志基目录 (原文, 未配置时返回默认值)
  *
- * 与 get_logger_dir() 的区别: 这个返回的是配置里的原文 (没写时回默认值 "./",
- * 也就是程序所在目录), 给页面回显与写回配置用; 那个返回的是实际在用的目录
- * (基目录下的 logs), 给查看日志用
+ * 给页面回显与写回配置用; 实际在用的目录 (基目录下的 logs) 走 get_logger_dir()
  * @return 配置里的日志基目录
  */
 const char* get_logger_dir_cfg(void);
@@ -159,29 +151,19 @@ void set_logger_console(bool enabled);
 /**
  * @brief 设置查询模式 (日志一行都不落盘, 全部改写到 stderr)
  *
- * 给 --print-log-dir / --list-accounts 这类"只查询, 查完就退"的模式用。
- * 它们要靠 load_cfg() 解析配置才知道答案, 而解析配置必定会写几行日志,
- * 那几行一落进 run.log, 启动脚本就会把这份文件当成上一轮运行的日志归档走:
- * 没有旧日志时凭空多出一个只有查询输出的 .log, 有旧日志时归档里混进这几行
- *
- * 之所以改写到 stderr 而不是彻底不写: 配置有问题时得让人看得见原因。
- * stdout 不能占用 (要留给路径 / 账号列表), init 脚本调用时又都带了 2>/dev/null
- *
- * 与 set_logger_level() 的区别: 那是"过滤", 会被配置文件里的 log_lv 改掉;
- * 这是"改去向", load_cfg() 之后依然有效
+ * 给 --print-log-dir / --list-accounts 这类查询用: 它们要 load_cfg() 才能得到答案,
+ * 而解析配置会写日志 —— 落进 run.log 就会被启动脚本当成上一轮日志归档走。
+ * 改写到 stderr 而不是彻底不写, 是为了配置有问题时仍能看见原因。
  * @param enabled 是否查询模式
  */
 void set_logger_query_mode(bool enabled);
 
 /**
- * @brief 取实际使用的日志目录 (供 --print-log-dir 使用)
+ * @brief 一次性查询实际使用的日志目录 (供 --print-log-dir 使用)
  *
- * 日志目录由配置里的 log_dir 决定 (OpenWrt 上默认 /var/log/esurfing, 日志落在它下面的
- * logs 里), 因此只有读完配置才知道。外部脚本 (OpenWrt 的 init.d 要归档上一轮日志、
- * LuCI 的日志页要列文件) 需要知道这个路径, 总不能让它自己去解析 JSON。
- *
- * 配置有问题或日志系统起不来时返回 NULL, 调用方按自己的默认值兜底
- * @return 日志目录 (进程内静态缓冲, 不要 free), 失败返回 NULL
+ * 目录由配置决定, 所以这里会完整跑一遍 init_logger + load_cfg; 给 OpenWrt 的
+ * init.d 归档日志、LuCI 日志页列表用。
+ * @return 日志目录 (进程内静态缓冲, 不要 free); 配置有问题或日志起不来时返回 NULL
  */
 const char* print_log_dir(void);
 

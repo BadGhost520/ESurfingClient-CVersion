@@ -45,7 +45,7 @@ char* hotspot_status_json(void);
 /**
  * @brief 下发一次开关 (异步)
  * @param action "start" 或 "stop"
- * @param adapter_id 目标网卡 id (脚本据此找对应的连接配置)
+ * @param adapter_id 目标网卡 id (Windows 是网卡 GUID, Linux 是接口名)
  * @param out_json 返回给页面的消息 JSON (需要 free)
  * @return HTTP 状态码: 202 已受理 / 400 参数不对 / 409 正在切换 / 501 平台不支持
  */

@@ -54,12 +54,11 @@ typedef struct
 /**
  * @brief 采集各网卡的累计收发字节数, 以及当前默认出口网卡
  *
- * 与 get_adapters() 的区别: 那个只给"名称 + IP"给配置页挑网卡用,
- * 这个多带计数器, 给网页上的实时网速用。列的是"物理网卡" (有线 / Wi-Fi / 蜂窝),
- * 未连接的也照样返回 (connected=false), 回环、隧道、VMware/Hyper-V/蓝牙这类
- * 软件网卡不算在内。
+ * 与 get_adapters() 的区别: 那个只给"名称 + IP"供配置页挑网卡, 这个多带计数器,
+ * 给实时网速用。只列物理网卡 (有线 / Wi-Fi / 蜂窝), 未连接的也返回
+ * (connected=false), 回环、隧道、VMware/Hyper-V/蓝牙这类软件网卡不算。
  *
- * Windows 上走 GetAdaptersAddresses + GetIfEntry2; 其它平台暂未实现 (返回 0)。
+ * Windows 走 GetAdaptersAddresses + GetIfEntry2; Linux 走 sysfs 计数器.
  *
  * @param out 输出数组
  * @param max 数组容量
@@ -101,15 +100,11 @@ bool get_exec_path(char* path_array);
 void record_parent_pid(void);
 
 /**
- * @brief 父进程是否还在 (供被监管的子进程自查)
+ * @brief 父进程是否还在 (供被监管的子进程自查, 防止监管者被强杀后留下孤儿)
  *
- * 监管者被强杀时子进程不该留下来变成孤儿。判据是"当前父进程号是否还是启动时那个":
- * 不能简单地看是不是被过继给了 init (PID 1) —— 用 setsid 之类方式主动脱离终端的
- * 进程, 父进程本来就可能是 1, 那样会被误判成孤儿。
- *
- * Linux 上子进程另外登记了 PR_SET_PDEATHSIG, 父进程一死内核立刻发信号,
- * 这里只是兜底。
- * Windows 没有等价机制 (要彻底解决得用 Job Object), 恒返回 true。
+ * 判据是"父进程号是否还是启动时那个", 不能只看是不是变成 1 —— 用 setsid 主动
+ * 脱离终端的进程本来就可能以 1 为父。Linux 另有 PR_SET_PDEATHSIG 兜底;
+ * Windows 没有等价机制, 恒返回 true。
  * @return 父进程是否还在
  */
 bool parent_process_alive(void);

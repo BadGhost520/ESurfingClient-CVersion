@@ -96,11 +96,11 @@ char* xml_parser(const char* xml_data, const char* tag);
 char* create_xml_payload(XmlChoose choose);
 
 /**
- * @brief 清除指定标签字段
- * @param text 需要清除的文本
- * @param start_tag 开始标签
- * @param end_tag 结束标签
- * @return 清除后的文本
+ * @brief 取出两个标记之间的内容
+ * @param text 原文
+ * @param start_tag 开始标记
+ * @param end_tag 结束标记
+ * @return 取出的内容 (需要 free), 找不到标记时返回 NULL
  */
 char* extract_between_tags(const char* text, const char* start_tag, const char* end_tag);
 

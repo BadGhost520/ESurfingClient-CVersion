@@ -76,12 +76,8 @@ bool app_bootstrap(void)
 
 /**
  * @brief 认证失败后等待, 期间可被热重载 / 退出 / 停止打断
- *
- * 分段睡是为了及时响应: sleep_ms(..., true) 自己也会在 is_need_reauth /
- * g_stop_requested / is_running 变化时提前返回, 这里每段之后再复核一次标志
- *
- * @param wait_minutes 等多少分钟; 传 0 表示一直等到热重载或退出 (需要人工处理的错误)
- * @return true 正常等完 (可以接着重试), false 被打断
+ * @param wait_minutes 等多少分钟; 0 表示一直等到热重载或退出
+ * @return true 正常等完 (可继续重试), false 被打断
  */
 static bool wait_auth_retry(const uint64_t wait_minutes)
 {
@@ -340,11 +336,8 @@ void print_banner(void)
 /**
  * @brief 带着网页停下来等用户把配置改好
  *
- * 配置不可用时程序不能一走了之 (用户还得靠网页把配置改回来), 也不能死等:
- * 网页上的"保存并应用"会叫醒下面的循环, 用户改好之后自动重新加载并接着往下走。
- * 配置一直改不好时, 收到退出请求 (Ctrl+C / 停止服务) 就交回调用方
- *
- * @return true 表示配置已经可用了, false 表示期间收到了退出请求
+ * 网页上的"保存并应用"会叫醒这里的循环; 一直改不好时收到退出请求就交回调用方
+ * @return true 配置已可用, false 期间收到退出请求
  */
 static bool wait_for_cfg(void)
 {
@@ -386,12 +379,9 @@ static bool hold_for_cfg(void)
 #ifndef __OPENWRT__
 
 /**
- * @brief Web 进程主流程
+ * @brief Web 进程主流程 (只提供网页服务, 不参与认证)
  *
- * 只提供网页服务, 不参与认证:
- * - 配置由本进程自己读, 因此 /api/getConfigs 一类的接口两种模式下走的是同一段代码
- * - 认证状态与"重新认证 / 应用新配置"通过控制通道交给认证进程
- * - 不启动线程守护与时间控制线程
+ * 认证状态与"重新认证 / 应用新配置"都通过控制通道交给认证进程
  * @return 进程退出码
  */
 static int work_web(void)
