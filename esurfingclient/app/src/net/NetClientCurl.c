@@ -5,6 +5,7 @@
 #include "utils/sim/SimEvp.h"
 
 #include "utils/log/Logger.h"
+#include "utils/text/TextUtils.h"
 
 #ifdef _WIN32
 #else
@@ -117,16 +118,8 @@ curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct 
  */
 static bool header_name_is(const char* header, const char* name)
 {
-    const size_t name_len = strlen(name);
-    for (size_t i = 0; i < name_len; i++)
-    {
-        char left = header[i];
-        char right = name[i];
-        if (left >= 'A' && left <= 'Z') left = (char)(left - 'A' + 'a');
-        if (right >= 'A' && right <= 'Z') right = (char)(right - 'A' + 'a');
-        if (left != right) return false;
-    }
-    return header[name_len] == ':';
+    if (str_iprefix(header, name) == false) return false;
+    return header[strlen(name)] == ':';
 }
 
 /**

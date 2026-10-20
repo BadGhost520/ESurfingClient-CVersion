@@ -26,6 +26,33 @@
 #define LOG_READ_MAX (256 * 1024)
 
 /**
+ * @brief 把一个 cJSON 对象按 JSON 回给浏览器, 并负责释放它
+ *
+ * "Print → 回包 → free → Delete" 这套在每个接口里都写了一遍, 统一到这里,
+ * 顺手也把 Print 失败 (内存不足) 的情况处理成 500
+ */
+static void reply_json(struct mg_connection* c, cJSON* root)
+{
+    if (root == NULL)
+    {
+        mg_http_reply(c, 500, "", "");
+        return;
+    }
+
+    char* text = cJSON_Print(root);
+    if (text == NULL)
+    {
+        mg_http_reply(c, 500, "", "");
+    }
+    else
+    {
+        mg_http_reply(c, 200, HEADER_JSON, "%s", text);
+        free(text);
+    }
+    cJSON_Delete(root);
+}
+
+/**
  * @brief 查询认证状态
  * @param out 是否已认证
  * @return 是否查询成功 (Web 进程连不上认证进程时为 false)
@@ -178,10 +205,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddStringToObject(auth, "errorMessage", error_message);
         cJSON_AddStringToObject(auth, "errorKind", error_kind);
         cJSON_AddNumberToObject(auth, "errorAt", error_at);
-        char* status_str = cJSON_Print(auth);
-        mg_http_reply(c, 200, HEADER_JSON, "%s", status_str);
-        free(status_str);
-        cJSON_Delete(auth);
+        reply_json(c, auth);
         return true;
     }
 
@@ -248,10 +272,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddBoolToObject(info, "restart_pending", g_need_restart);
         cJSON_AddNumberToObject(info, "account_count", g_prog_cnt);
         cJSON_AddNumberToObject(info, "thread_count", g_prog_cnt);
-        char* info_str = cJSON_Print(info);
-        mg_http_reply(c, 200, HEADER_JSON, "%s", info_str);
-        free(info_str);
-        cJSON_Delete(info);
+        reply_json(c, info);
         return true;
     }
 
@@ -324,12 +345,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddItemToArray(accounts, account);
         cJSON_AddItemToObject(configs, "accounts", accounts);
 
-        char* config_str = cJSON_Print(configs);
-
-        mg_http_reply(c, 200, HEADER_JSON, "%s", config_str);
-
-        free(config_str);
-        cJSON_Delete(configs);
+        reply_json(c, configs);
         return true;
     }
 
@@ -382,10 +398,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         }
         cJSON_AddItemToObject(root, "files", files);
 
-        char* files_str = cJSON_Print(root);
-        mg_http_reply(c, 200, HEADER_JSON, "%s", files_str);
-        free(files_str);
-        cJSON_Delete(root);
+        reply_json(c, root);
         return true;
     }
 

@@ -48,3 +48,40 @@ const char* safe_str(const char* str)
 {
     return str ? str : "";
 }
+
+/**
+ * @brief 把一个字符折成小写 (只处理 ASCII, 项目里只比关键字/网卡名)
+ */
+static char ascii_lower(const char c)
+{
+    return (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+}
+
+bool str_ieq(const char* a, const char* b)
+{
+    if (a == NULL) a = "";
+    if (b == NULL) b = "";
+
+    while (*a != '\0' && *b != '\0')
+    {
+        if (ascii_lower(*a) != ascii_lower(*b)) return false;
+        a++;
+        b++;
+    }
+    return *a == '\0' && *b == '\0';
+}
+
+bool str_iprefix(const char* text, const char* prefix)
+{
+    if (text == NULL) text = "";
+    if (prefix == NULL) prefix = "";
+
+    while (*prefix != '\0')
+    {
+        if (ascii_lower(*text) != ascii_lower(*prefix)) return false;
+        text++;
+        prefix++;
+    }
+    return true;
+}
+

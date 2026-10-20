@@ -39,17 +39,6 @@ static char* skip_component(char* p)
     return p;
 }
 
-/**
- * @brief 前缀比较 (Windows 上路径不分大小写)
- * @param text 文本
- * @param prefix 前缀
- * @return 是否以该前缀开头
- */
-static bool prefix_eq(const char* text, const char* prefix)
-{
-    return _strnicmp(text, prefix, strlen(prefix)) == 0;
-}
-
 #endif // _WIN32
 
 /**
@@ -89,7 +78,7 @@ static bool make_dirs(const char* path)
         {
             p += 2;
             // \\?\UNC\服务器\共享名\... : UNC 那一段也不能单独建
-            if (prefix_eq(p, "UNC") && p[3] == SEP)
+            if (str_iprefix(p, "UNC") && p[3] == SEP)
             {
                 p = skip_component(skip_component(p + 4));
             }

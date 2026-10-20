@@ -64,19 +64,11 @@ static int web_server(void* arg)
  */
 static bool start_web_thread()
 {
-    web_thread = sim_thread_create(web_server, (void*)(intptr_t)-2);
-
-    uint8_t retry = 1;
-    while (web_thread == NULL)
+    web_thread = sim_thread_create_retry(web_server, (void*)(intptr_t)-2, 5);
+    if (web_thread == NULL)
     {
-        if (retry > 5)
-        {
-            LOG_FATAL("超过重试次数");
-            return false;
-        }
-        LOG_ERROR("Web 服务器线程创建失败, 重试中, 重试次数: %" PRIu8 ", 最多 5 次", retry);
-        web_thread = sim_thread_create(web_server, (void*)(intptr_t)-2);
-        retry++;
+        LOG_FATAL("Web 服务器线程创建失败");
+        return false;
     }
     return true;
 }

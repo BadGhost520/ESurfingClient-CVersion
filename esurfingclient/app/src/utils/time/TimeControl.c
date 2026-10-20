@@ -316,18 +316,11 @@ bool time_control_init(void)
         return true;
     }
 
-    uint8_t retry = 1;
-    g_time_control_thread = sim_thread_create(time_control_app, NULL);
-    while (g_time_control_thread == NULL)
+    g_time_control_thread = sim_thread_create_retry(time_control_app, NULL, 5);
+    if (g_time_control_thread == NULL)
     {
-        if (retry > 5)
-        {
-            LOG_FATAL("时间控制线程创建失败");
-            return false;
-        }
-        LOG_ERROR("时间控制线程创建失败, 重试中, 重试次数: %" PRIu8 ", 最多 5 次", retry);
-        g_time_control_thread = sim_thread_create(time_control_app, NULL);
-        retry++;
+        LOG_FATAL("时间控制线程创建失败");
+        return false;
     }
 
     return true;

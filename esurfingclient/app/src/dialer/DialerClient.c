@@ -554,18 +554,11 @@ void work()
             LOG_INFO("配置 %" PRIu8 " 当前不在允许时段，暂不启动认证线程", g_prog_status[i].login_cfg.idx);
             continue;
         }
-        g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-        uint8_t retry_ct = 1;
-        while (g_prog_status[i].thread == NULL)
+        g_prog_status[i].thread = sim_thread_create_retry(dialer_app, (void*)(intptr_t)i, 5);
+        if (g_prog_status[i].thread == NULL)
         {
-            if (retry_ct > 5)
-            {
-                LOG_FATAL("超过重试次数, 退出程序");
-                shut(1);
-            }
-            LOG_ERROR("认证线程 %" PRIu8 " 创建失败, 重试中, 重试次数: %" PRIu8 ", 最多 5 次", i, retry_ct);
-            g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-            retry_ct++;
+            LOG_FATAL("认证线程 %" PRIu8 " 创建失败, 退出程序", i);
+            shut(1);
         }
     }
 
@@ -668,18 +661,11 @@ void work()
                 }
 
                 LOG_INFO("由于线程守护已开启，将会重新启动认证线程 %" PRIu8, i);
-                g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-                uint8_t retry_ct = 1;
-                while (g_prog_status[i].thread == NULL)
+                g_prog_status[i].thread = sim_thread_create_retry(dialer_app, (void*)(intptr_t)i, 5);
+                if (g_prog_status[i].thread == NULL)
                 {
-                    if (retry_ct > 5)
-                    {
-                        LOG_FATAL("超过重试次数, 退出程序");
-                        shut(1);
-                    }
-                    LOG_ERROR("认证线程 %" PRIu8 " 创建失败, 重试中, 重试次数: %" PRIu8 ", 最多 5 次", i, retry_ct);
-                    g_prog_status[i].thread = sim_thread_create(dialer_app, (void*)(intptr_t)i);
-                    retry_ct++;
+                    LOG_FATAL("认证线程 %" PRIu8 " 创建失败, 退出程序", i);
+                    shut(1);
                 }
                 while (g_prog_status[i].runtime_status.is_running == false)
                 {

@@ -27,6 +27,16 @@ char* extract_url_param(const char* url, const char* search_str_start);
 const char* safe_str(const char* str);
 
 /**
+ * @brief 大小写不敏感地比较两个字符串是否相等 (NULL 视为空串)
+ */
+bool str_ieq(const char* a, const char* b);
+
+/**
+ * @brief 大小写不敏感地判断 text 是否以 prefix 开头
+ */
+bool str_iprefix(const char* text, const char* prefix);
+
+/**
  * @brief 字节转 base64
  * @param in 字节数据
  * @param len 字节长度

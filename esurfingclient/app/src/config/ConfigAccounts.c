@@ -5,6 +5,7 @@
 #include "ConfigInternal.h"
 
 #include "utils/log/Logger.h"
+#include "utils/text/TextUtils.h"
 
 #include "cJSON/cJSON.h"
 
@@ -54,15 +55,6 @@ const char* channel_name(const uint8_t chn)
     return found != NULL ? found->name : s_channels[2].name; // 默认 android
 }
 
-static bool channel_str_eq(const char* a, const char* b)
-{
-#ifdef _WIN32
-    return _stricmp(a, b) == 0;
-#else
-    return strcasecmp(a, b) == 0;
-#endif
-}
-
 uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
 {
     if (chn == NULL)
@@ -85,14 +77,14 @@ uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
         const char* value = chn->valuestring;
         for (size_t i = 0; i < CHANNEL_COUNT; i++)
         {
-            if (channel_str_eq(value, s_channels[i].name) || channel_str_eq(value, s_channels[i].alias))
+            if (str_ieq(value, s_channels[i].name) || str_ieq(value, s_channels[i].alias))
             {
                 return s_channels[i].chn;
             }
         }
         // 这几个别名不在表里 (历史叫法), 仍然认
-        if (channel_str_eq(value, "iphone")) return 4;
-        if (channel_str_eq(value, "mac") || channel_str_eq(value, "osx")) return 5;
+        if (str_ieq(value, "iphone")) return 4;
+        if (str_ieq(value, "mac") || str_ieq(value, "osx")) return 5;
     }
 
     LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 3 (Android)", cfg_no);
