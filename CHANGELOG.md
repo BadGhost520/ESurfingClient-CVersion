@@ -527,3 +527,41 @@
    - `get_adapters_stats()` 与它依赖的类型一起进 `#ifndef __OPENWRT__`: `NetAdapters.c` 的 Linux 分支条件改成 `defined(__linux__) && !defined(__OPENWRT__)`, 兜底桩也跟着包起来, `PlatformUtils.h` 里的 `ADAPTER_ID_LEN` / `adapter_stats_t` / 声明同样处理
 2. Linux **保持原样**: `get_adapters_stats()` 仍然走 sysfs 计数器 + `/proc/net/route`, 网页的实时网速卡片照旧可用 (实测 adapters=2)
 3. 验证: OpenWrt 构建零警告且链接列表里已无 `NetTraffic.c` / `HotspotControl.c` / `ChildRun.c`; Linux 构建 + 运行 `/api/traffic` 正常; Windows 最小发布包 7/7 回归
+
+### 2026.10.21 (全仓库代码整理)
+
+一、修掉三个真隐患
+1. 日志结构体尺寸不稳定: `Logger.h` 里 `#ifndef PATH_MAX` 的兜底会被 `<limits.h>` 抢先定义成 260 (Windows), 于是 `log_cfg_t` 在不同编译单元里尺寸不同。日志模块改用自己固定的 `LOG_PATH_MAX`, 兜底仍保留 (Config.c / LogoutState.c 还在借它拿 `PATH_MAX`, 删了会编译不过)
+2. `create_xml_payload()` 返回静态缓冲区: 单进程多账号时几个认证线程会同时调用并互相覆盖。改成每次 `malloc`, 四个调用点 (term / heartbeat / login / get_ticket) 在加密后释放
+3. `logFn()` 的越界写: 单行日志超过 512 字节时 `buffer[pos++]` 会写穿静态缓冲。补边界检查并截断
+
+二、合并重复 (20 余处)
+1. `curl_resp_free()`: 替掉 14 处 `free(resp.body_data)` 样板; 顺带修掉 `term()` 重试循环里上一次响应体没释放的泄漏
+2. `dialer_request_plain()` / `dialer_encrypt_payload()`: `term` / `heartbeat` / `login` / `get_ticket` 四份"构造 → 加密 → POST → 解密"骨架收敛成一处 (DialerTicket.c 199 → 168 行)
+3. `cfg_read_num` / `cfg_read_bool` / `cfg_read_str`: `load_cfg()` 里 6 段"取字段 → 判类型 → 用默认值"样板收敛 (Config.c 764 → 690 行)
+4. `app_bootstrap()`: `work` / `work_auth` / `work_web` / `work_supervisor` 四份角色入口统一; 顺带修掉监管进程自己手写横幅的细节漂移
+5. `fill_account()`: OpenWrt 与桌面两份账号解析循环共用 (只抽"填 + 校验", 槽位分配 / 标记值 / 失败策略仍各自保留)
+6. `sim_thread_create_retry()`: 4 处"线程创建失败重试 5 次"循环 (DialerClient ×2、TimeControl、WebServer)
+7. `reply_json()`: WebApiGet 里 4 处 JSON 回包样板, 并统一处理 `cJSON_Print` 失败
+8. `str_ieq()` / `str_iprefix()`: 4 份大小写不敏感比较 (`_stricmp` / `strcasecmp` / `_strnicmp` / 手写折叠循环) 收进 utils/text
+9. 信道映射表化: `ConfigAccounts.c` 用一张 `{序号, 名字, 别名, UA}` 表同时管"名字→序号"与"序号→UA", 并导出 `channel_name()`; `WebApiGet.c` 的 15 行 switch 变成 1 行
+10. `hotspot_base64()` 删除, 改用 text 模块已有的 `bytes2base64()`
+
+三、命名与 include 规范
+1. 函数声明/定义 `()` → `(void)`: 116 处 / 39 个文件
+2. 跨 TU 的 `s_*` 全局改成 `g_*`: 208 处 / 21 个文件。其中 supervisor 的信号标志命名为 `g_supervisor_stop` (不能叫 `g_stop_requested`, 那个已有同名全局)
+3. include 统一成"自家头 → 项目头 → 第三方 → 标准库": 7 个文件
+4. `LogLevel` → `log_level_t` (与 `log_cfg_t` / `bytes_t` 一致); `clean_CDATA()` → `clean_cdata()`
+
+四、注释瘦身 (留事实、删叙事)
+1. 压缩 9 个文件: `LogoutState.h` (24 → 5 行)、`Control.h`、`Logger.h` (四处)、`PlatformUtils.h`、`Watchdog.c`、`SupervisorChild.c`、`HotspotControl.c`、`DialerClient.c`
+2. 修正三处过时/错误描述: `NetTraffic.h` 的"Windows; 其它平台暂未实现"、`HotspotControl.h` 的 `adapter_id` 说明、`TextUtils.h` 里 `extract_between_tags` 从 `clean_CDATA` 复制错的文档
+
+五、评估后不改
+1. `CipherFactory.c: create_cipher_factory()` 的 80 个分支不做表化: 它们分布在 20 个工厂函数上, 每个分支的 key / iv 常量与参数个数都不同, 做表要为每个分支再写一个包装函数, 比 if 链更长。已在函数头写明原因, 免得以后重复分析
+
+六、验证
+1. 每一步都跑三平台构建 (Linux / OpenWrt / Windows), 无新增警告
+2. `TEMP/test-errorcode.c` 单测 23/23 (含 7 条响应头解析, 正好覆盖大小写不敏感比较的等价性)
+3. Windows 最小发布包回归 7/7
+4. 行为验证: 配置解析 4 种场景 + `--account 2` 选择、信道映射 12 种输入、5 个 JSON 接口、热点状态查询 (覆盖 `-EncodedCommand` 的 base64 链路)
