@@ -67,9 +67,9 @@ typedef struct
     uint64_t next_start_time;
 } child_t;
 
-extern child_t s_children[SUPERVISOR_MAX_CHILDREN];
-extern int s_child_count;
-extern stop_flag_t s_stop_requested;
+extern child_t g_children[SUPERVISOR_MAX_CHILDREN];
+extern int g_child_count;
+extern stop_flag_t g_supervisor_stop;
 
 const char* child_name(const child_t* child, char* buf, const size_t len);
 

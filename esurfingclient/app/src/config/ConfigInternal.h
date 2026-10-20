@@ -5,7 +5,7 @@
 
 #include <cJSON/cJSON.h>
 
-extern bool s_list_only;
+extern bool g_list_only;
 
 uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no);
 

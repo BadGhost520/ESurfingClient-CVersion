@@ -25,9 +25,9 @@
 #endif
 #endif
 
-char s_school_id[SCHOOL_ID_LENGTH] = {0};
-char s_domain[DOMAIN_LENGTH] = {0};
-char s_area[AREA_LENGTH] = {0};
+char g_school_id[SCHOOL_ID_LENGTH] = {0};
+char g_school_domain[DOMAIN_LENGTH] = {0};
+char g_area[AREA_LENGTH] = {0};
 
 static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
 {
@@ -161,9 +161,9 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
         }
     }
 
-    if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0 && !s_school_id[0])
+    if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0 && !g_school_id[0])
     {
-        if (s_school_id[0] == '\0')
+        if (g_school_id[0] == '\0')
         {
             LOG_VERBOSE("原始数据: %s", header);
 
@@ -178,16 +178,16 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
                 LOG_WARN("School Id 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, SCHOOL_ID_LENGTH);
             }
 
-            memcpy(s_school_id, value, copy_len);
-            s_school_id[copy_len] = '\0';
+            memcpy(g_school_id, value, copy_len);
+            g_school_id[copy_len] = '\0';
 
-            LOG_INFO("School Id: %s", s_school_id);
+            LOG_INFO("School Id: %s", g_school_id);
         }
     }
 
-    if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !s_domain[0])
+    if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !g_school_domain[0])
     {
-        if (s_domain[0] == '\0')
+        if (g_school_domain[0] == '\0')
         {
             LOG_VERBOSE("原始数据: %s", header);
 
@@ -202,16 +202,16 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
                 LOG_WARN("Domain 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, DOMAIN_LENGTH);
             }
 
-            memcpy(s_domain, value, copy_len);
-            s_domain[copy_len] = '\0';
+            memcpy(g_school_domain, value, copy_len);
+            g_school_domain[copy_len] = '\0';
 
-            LOG_INFO("Domain: %s", s_domain);
+            LOG_INFO("Domain: %s", g_school_domain);
         }
     }
 
-    if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !s_area[0])
+    if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !g_area[0])
     {
-        if (s_area[0] == '\0')
+        if (g_area[0] == '\0')
         {
             LOG_VERBOSE("原始数据: %s", header);
 
@@ -226,10 +226,10 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
                 LOG_WARN("Area 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, AREA_LENGTH);
             }
 
-            memcpy(s_area, value, copy_len);
-            s_area[copy_len] = '\0';
+            memcpy(g_area, value, copy_len);
+            g_area[copy_len] = '\0';
 
-            LOG_INFO("Area: %s", s_area);
+            LOG_INFO("Area: %s", g_area);
         }
     }
 
@@ -257,7 +257,7 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
                 location[copy_len] = '\0';
 
                 char resolved[LAST_LOCATION_LEN];
-                resolve_url(resolved, sizeof(resolved), s_request_url, location);
+                resolve_url(resolved, sizeof(resolved), g_request_url, location);
                 snprintf(g_prog_status[tl_thread_idx].last_location, LAST_LOCATION_LEN, "%s", resolved);
 
                 LOG_VERBOSE("现在的 last_location: %s (长度: %zu)",

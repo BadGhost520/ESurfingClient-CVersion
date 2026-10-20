@@ -9,39 +9,39 @@
 
 LogLevel get_logger_level(void)
 {
-    return s_logger_cfg.lv;
+    return g_logger_cfg.lv;
 }
 
 void set_logger_level(const LogLevel lv)
 {
-    if (s_logger_cfg.lv != lv)
+    if (g_logger_cfg.lv != lv)
     {
-        s_logger_cfg.lv = lv;
+        g_logger_cfg.lv = lv;
         LOG_INFO("设置日志等级为 [%s]", get_level_str(lv));
     }
 }
 
 bool init_logger(void)
 {
-    if (get_log_dir(s_logger_cfg.log_dir) == false)
+    if (get_log_dir(g_logger_cfg.log_dir) == false)
     {
         fprintf(stderr, "[ERROR] 无法准备日志目录\n");
         return false;
     }
-    const uint16_t len = snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s%c%s", safe_str(s_logger_cfg.log_dir), SEP, s_file_name);
-    if ((size_t)len >= sizeof(s_logger_cfg.log_file))
+    const uint16_t len = snprintf(g_logger_cfg.log_file, sizeof(g_logger_cfg.log_file), "%s%c%s", safe_str(g_logger_cfg.log_dir), SEP, g_log_file_name);
+    if ((size_t)len >= sizeof(g_logger_cfg.log_file))
     {
-        fprintf(stderr, "[ERROR] 日志文件路径太长 (最大 %zu)\n", sizeof(s_logger_cfg.log_file));
+        fprintf(stderr, "[ERROR] 日志文件路径太长 (最大 %zu)\n", sizeof(g_logger_cfg.log_file));
         return false;
     }
     if (open_log_file() == false)
     {
-        fprintf(stderr, "[ERROR] 无法打开日志文件 %s, 如果是 Linux 系统请使用 sudo 运行程序\n", s_logger_cfg.log_file);
+        fprintf(stderr, "[ERROR] 无法打开日志文件 %s, 如果是 Linux 系统请使用 sudo 运行程序\n", g_logger_cfg.log_file);
         return false;
     }
     LOG_DEBUG("日志系统初始化完成");
-    LOG_DEBUG("日志等级: %s", get_level_str(s_logger_cfg.lv));
-    s_logger_inited = true;
+    LOG_DEBUG("日志等级: %s", get_level_str(g_logger_cfg.lv));
+    g_logger_inited = true;
     return true;
 }
 
@@ -68,17 +68,17 @@ void clean_logger(void)
      */
     logger_lock();
 
-    if (!s_logger_cfg.file_handle)
+    if (!g_logger_cfg.file_handle)
     {
         logger_unlock();
         fprintf(stderr, "[ERROR] 日志系统未启动\n");
         return;
     }
-    fclose(s_logger_cfg.file_handle);
-    s_logger_cfg.file_handle = NULL;
+    fclose(g_logger_cfg.file_handle);
+    g_logger_cfg.file_handle = NULL;
 
     // 收尾之后句柄已经没了, 再 set_logger_dir 只该记下目录, 不该去搬文件
-    s_logger_inited = false;
+    g_logger_inited = false;
 
     if (need_rename == false)
     {
@@ -86,7 +86,7 @@ void clean_logger(void)
         return;
     }
 
-    if (strlen(s_logger_cfg.log_file) == 0)
+    if (strlen(g_logger_cfg.log_file) == 0)
     {
         logger_unlock();
         fprintf(stderr, "[ERROR] 日志路径为空\n");
@@ -95,18 +95,18 @@ void clean_logger(void)
     char cur_tm[32];
     get_fmt_time(cur_tm, FILE_FORMAT);
     char new_file_name[LOG_PATH_MAX];
-    snprintf(new_file_name, sizeof(new_file_name), "%s%c%s.log", safe_str(s_logger_cfg.log_dir), SEP, safe_str(cur_tm));
-    rename(s_logger_cfg.log_file, new_file_name);
+    snprintf(new_file_name, sizeof(new_file_name), "%s%c%s.log", safe_str(g_logger_cfg.log_dir), SEP, safe_str(cur_tm));
+    rename(g_logger_cfg.log_file, new_file_name);
 
     logger_unlock();
 }
 
 void set_logger_console(const bool enabled)
 {
-    s_console_enabled = enabled;
+    g_console_enabled = enabled;
 }
 
 void set_logger_query_mode(const bool enabled)
 {
-    s_query_mode = enabled;
+    g_query_mode = enabled;
 }

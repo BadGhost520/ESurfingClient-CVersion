@@ -19,7 +19,7 @@
 #define REQ_CONTENT_TYPE "Content-Type: application/x-www-form-urlencoded"
 #define REQ_ACCEPT "Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*"
 
-_Thread_local char s_request_url[LOCATION_LEN] = {0};
+_Thread_local char g_request_url[LOCATION_LEN] = {0};
 
 curl_resp_t post(const char* url, const char* data)
 {
@@ -49,9 +49,9 @@ curl_resp_t post(const char* url, const char* data)
     snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
     snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
     snprintf(a_id, MAX_LEN, "Algo-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.algo_id));
-    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", safe_str(s_school_id));
-    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", safe_str(s_domain));
-    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", safe_str(s_area));
+    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", safe_str(g_school_id));
+    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", safe_str(g_school_domain));
+    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", safe_str(g_area));
 
     LOG_VERBOSE("POST 添加头 %s", md5_hash_str);
     LOG_VERBOSE("POST 添加头 %s", REQ_CONTENT_TYPE);
@@ -182,7 +182,7 @@ curl_resp_t get(const char* url, const bool connect_only)
 
     if (tl_thread_idx > -1)
     {
-        snprintf(s_request_url, sizeof(s_request_url), "%s", safe_str(url));
+        snprintf(g_request_url, sizeof(g_request_url), "%s", safe_str(url));
         snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
         snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
 

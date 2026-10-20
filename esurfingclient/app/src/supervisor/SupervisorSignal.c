@@ -12,7 +12,7 @@
 static void supervisor_signal_handler(const int sig)
 {
     (void)sig;
-    s_stop_requested = 1;
+    g_supervisor_stop = 1;
 }
 
 #else
@@ -20,7 +20,7 @@ static void supervisor_signal_handler(const int sig)
 static BOOL WINAPI supervisor_console_handler(const DWORD ctrl_type)
 {
     (void)ctrl_type;
-    s_stop_requested = 1;
+    g_supervisor_stop = 1;
     return TRUE;
 }
 

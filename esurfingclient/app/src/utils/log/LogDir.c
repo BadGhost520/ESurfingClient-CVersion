@@ -29,9 +29,9 @@ const char* print_log_dir(void)
      * 日志目录由配置里的 log_dir 决定, 只有读完配置才知道到底在哪。
      * 配置有问题时按"列举账号"那套处理: 直接失败, 别挂住 —— 这个查询是给脚本调的
      */
-    s_list_only = true;
+    g_list_only = true;
     const bool loaded = load_cfg();
-    s_list_only = false;
+    g_list_only = false;
 
     if (loaded == false)
     {

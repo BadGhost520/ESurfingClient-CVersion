@@ -52,7 +52,7 @@ static void reply_json(struct mg_connection* c, cJSON* root)
  */
 bool query_is_authed(bool* out)
 {
-    if (s_local_state)
+    if (g_local_state)
     {
         if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
         *out = g_prog_status[0].runtime_status.is_authed;
@@ -166,7 +166,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         }
         else if (reachable == false)
         {
-            reason = s_local_state ? "no-account" : "not-running";
+            reason = g_local_state ? "no-account" : "not-running";
         }
 
         cJSON* auth = cJSON_CreateObject();

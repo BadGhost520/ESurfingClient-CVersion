@@ -7,7 +7,7 @@
 
 #include <mongoose/mongoose.h>
 
-extern bool s_local_state;
+extern bool g_local_state;
 
 #define LOG_NAME_LEN 256
 

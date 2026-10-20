@@ -23,7 +23,7 @@ static uint16_t s_server_port = CONTROL_DEFAULT_PORT;
 
 static sim_thread_t* s_server_thread = NULL;
 
-uint16_t s_client_port = CONTROL_DEFAULT_PORT;
+uint16_t g_client_port = CONTROL_DEFAULT_PORT;
 
 /* ------------------------------------------------------------------
  * 通用
@@ -379,5 +379,5 @@ void control_server_stop(void)
 
 void control_set_port(const uint16_t port)
 {
-    s_client_port = port;
+    g_client_port = port;
 }

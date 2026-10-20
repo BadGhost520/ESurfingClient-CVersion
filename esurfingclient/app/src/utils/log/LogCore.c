@@ -8,17 +8,17 @@
 #include <unistd.h>
 #endif
 
-const char s_file_name[] = "run.log";
+const char g_log_file_name[] = "run.log";
 
-char s_cfg_log_dir[LOG_PATH_MAX] = "";
+char g_cfg_log_dir[LOG_PATH_MAX] = "";
 
-bool s_logger_inited = false;
+bool g_logger_inited = false;
 
 #define LOG_LINE_MAX 2560
 
 _Static_assert(LOG_LINE_MAX <= 4096, "日志行过长, 无法保证多进程下的原子写入");
 
-log_cfg_t s_logger_cfg = {
+log_cfg_t g_logger_cfg = {
     .lv = LOG_LEVEL_INFO,
     .log_dir = "",
     .log_file = "",
@@ -30,9 +30,9 @@ log_cfg_t s_logger_cfg = {
     .lines_since_check = 0
 };
 
-bool s_console_enabled = true;
+bool g_console_enabled = true;
 
-bool s_query_mode = false;
+bool g_query_mode = false;
 
 const char* get_level_str(const LogLevel lv)
 {
@@ -87,7 +87,7 @@ void logger_unlock(void)
 
 static void write_2_console(const char* msg)
 {
-    if (s_console_enabled == false) return;
+    if (g_console_enabled == false) return;
 
     printf("%s", msg);
     fflush(stdout);
@@ -104,7 +104,7 @@ static void write_2_console(const char* msg)
  */
 static void write_2_file(const char* msg, const size_t len)
 {
-    if (!s_logger_cfg.file_handle || len == 0) return;
+    if (!g_logger_cfg.file_handle || len == 0) return;
 
     /**
      * 句柄用 FILE* 保存, 但这里绕过 stdio 缓冲直接写 fd:
@@ -112,9 +112,9 @@ static void write_2_file(const char* msg, const size_t len)
      * 因为从不通过这个 FILE* 做写入, 它的缓冲区始终为空, 混用是安全的
      */
 #ifdef _WIN32
-    const int fd = _fileno(s_logger_cfg.file_handle);
+    const int fd = _fileno(g_logger_cfg.file_handle);
 #else
-    const int fd = fileno(s_logger_cfg.file_handle);
+    const int fd = fileno(g_logger_cfg.file_handle);
 #endif
     if (fd < 0) return;
 
@@ -143,7 +143,7 @@ static void write_2_file(const char* msg, const size_t len)
  */
 void log_raw_line(const char* text)
 {
-    if (s_query_mode || !s_logger_cfg.file_handle) return;
+    if (g_query_mode || !g_logger_cfg.file_handle) return;
 
     char ts[32];
     char proc_str[64];
@@ -163,7 +163,7 @@ void log_raw_line(const char* text)
 
 void log_out(const LogLevel level, const char* file, const uint32_t line, const char* fmt, ...)
 {
-    if (level > s_logger_cfg.lv) return;
+    if (level > g_logger_cfg.lv) return;
     va_list local_args;
     char ts[32];
     char msg[2048];
@@ -191,12 +191,12 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
     const size_t final_size = ((size_t)final_len < sizeof(final_msg)) ? (size_t)final_len : sizeof(final_msg) - 1;
 
     /**
-     * 查询模式: 只写 stderr, 文件与 stdout 都不碰 (见 s_query_mode 的说明)
+     * 查询模式: 只写 stderr, 文件与 stdout 都不碰 (见 g_query_mode 的说明)
      *
      * 放在这里而不是函数开头: 上面那套等级过滤与格式化对两个去向是一样的,
      * 只有最后落在哪儿不同
      */
-    if (s_query_mode)
+    if (g_query_mode)
     {
         fputs(final_msg, stderr);
         return;
@@ -214,15 +214,15 @@ void log_out(const LogLevel level, const char* file, const uint32_t line, const 
      * 把正常的一行日志误报成"日志系统未打开"
      */
     logger_lock();
-    if (!s_logger_cfg.file_handle)
+    if (!g_logger_cfg.file_handle)
     {
         logger_unlock();
         fprintf(stderr, "[ERROR] 日志系统未打开, 无法输出日志\n");
         return;
     }
     write_2_file(final_msg, final_size);
-    s_logger_cfg.cur_lines++;
-    s_logger_cfg.lines_since_check++;
+    g_logger_cfg.cur_lines++;
+    g_logger_cfg.lines_since_check++;
     rotate();
     logger_unlock();
 }

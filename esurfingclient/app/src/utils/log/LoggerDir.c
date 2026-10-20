@@ -269,9 +269,9 @@ bool get_log_dir(char* out)
 {
     char base[LOG_PATH_MAX];
 
-    if (resolve_log_dir(s_cfg_log_dir, base) == false)
+    if (resolve_log_dir(g_cfg_log_dir, base) == false)
     {
-        fprintf(stderr, "[ERROR] 无法解析日志目录: %s\n", safe_str(s_cfg_log_dir));
+        fprintf(stderr, "[ERROR] 无法解析日志目录: %s\n", safe_str(g_cfg_log_dir));
         return false;
     }
 
@@ -301,7 +301,7 @@ bool set_logger_dir(const char* dir)
         return false;
     }
 
-    if (strcmp(dir, s_cfg_log_dir) == 0) return true;
+    if (strcmp(dir, g_cfg_log_dir) == 0) return true;
 
     /**
      * 配置里的 log_dir 是【基目录】, 日志放在它下面的 logs 里
@@ -325,7 +325,7 @@ bool set_logger_dir(const char* dir)
         LOG_WARN("log_dir (%s) 不可用, 使用默认日志目录 (%s)", safe_str(dir), DEFAULT_LOG_DIR);
         return false;
     }
-    const int len = snprintf(new_file, sizeof(new_file), "%s%c%s", new_dir, SEP, s_file_name);
+    const int len = snprintf(new_file, sizeof(new_file), "%s%c%s", new_dir, SEP, g_log_file_name);
     if (len <= 0 || (size_t)len >= sizeof(new_file))
     {
         LOG_WARN("日志文件路径太长 (最大 %zu), 使用默认日志目录 (%s)", sizeof(new_file) - 1, DEFAULT_LOG_DIR);
@@ -336,9 +336,9 @@ bool set_logger_dir(const char* dir)
      * 日志系统还没起来 (init_logger 之前调用): 记下目录就够了, init 的时候自然会用上。
      * 不特判的话这里会先把日志文件打开, init_logger 再打开一次 —— 白漏一个句柄
      */
-    if (s_logger_inited == false)
+    if (g_logger_inited == false)
     {
-        snprintf(s_cfg_log_dir, sizeof(s_cfg_log_dir), "%s", dir);
+        snprintf(g_cfg_log_dir, sizeof(g_cfg_log_dir), "%s", dir);
         return true;
     }
 
@@ -347,9 +347,9 @@ bool set_logger_dir(const char* dir)
      * 它的 logs 也正是当前在用的那个目录): 记下配置的原文就行, 不必把句柄
      * 关掉再打开一次 —— 那一下不但没必要, 换目录那一行日志也会跟着多出来
      */
-    if (strcmp(new_dir, s_logger_cfg.log_dir) == 0)
+    if (strcmp(new_dir, g_logger_cfg.log_dir) == 0)
     {
-        snprintf(s_cfg_log_dir, sizeof(s_cfg_log_dir), "%s", dir);
+        snprintf(g_cfg_log_dir, sizeof(g_cfg_log_dir), "%s", dir);
         return true;
     }
 
@@ -369,13 +369,13 @@ bool set_logger_dir(const char* dir)
 
     char old_dir[LOG_PATH_MAX];
     char old_file[LOG_PATH_MAX];
-    snprintf(old_dir, sizeof(old_dir), "%s", s_logger_cfg.log_dir);
-    snprintf(old_file, sizeof(old_file), "%s", s_logger_cfg.log_file);
+    snprintf(old_dir, sizeof(old_dir), "%s", g_logger_cfg.log_dir);
+    snprintf(old_file, sizeof(old_file), "%s", g_logger_cfg.log_file);
 
-    if (s_logger_cfg.file_handle != NULL)
+    if (g_logger_cfg.file_handle != NULL)
     {
-        fclose(s_logger_cfg.file_handle);
-        s_logger_cfg.file_handle = NULL;
+        fclose(g_logger_cfg.file_handle);
+        g_logger_cfg.file_handle = NULL;
     }
 
     /**
@@ -389,14 +389,14 @@ bool set_logger_dir(const char* dir)
      * 共写同一份 run.log, 覆盖就等于把别的进程的日志丢掉。
      * 搬不动也无所谓 (跨文件系统时 rename 会失败), 顶多启动那几行留在原地
      */
-    const bool old_file_exists = (strlen(s_logger_cfg.log_file) > 0) && path_exists(s_logger_cfg.log_file);
-    if (old_file_exists && path_exists(new_file) == false && strcmp(s_logger_cfg.log_file, new_file) != 0)
+    const bool old_file_exists = (strlen(g_logger_cfg.log_file) > 0) && path_exists(g_logger_cfg.log_file);
+    if (old_file_exists && path_exists(new_file) == false && strcmp(g_logger_cfg.log_file, new_file) != 0)
     {
-        rename(s_logger_cfg.log_file, new_file);
+        rename(g_logger_cfg.log_file, new_file);
     }
 
-    snprintf(s_logger_cfg.log_dir, sizeof(s_logger_cfg.log_dir), "%s", new_dir);
-    snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s", new_file);
+    snprintf(g_logger_cfg.log_dir, sizeof(g_logger_cfg.log_dir), "%s", new_dir);
+    snprintf(g_logger_cfg.log_file, sizeof(g_logger_cfg.log_file), "%s", new_file);
 
     if (open_log_file() == false)
     {
@@ -405,8 +405,8 @@ bool set_logger_dir(const char* dir)
          * 上面的 rename 可能已经把旧文件搬走了, 那样这里会新建一个同名文件,
          * 已经写下的内容仍在搬走的那份里, 不会丢
          */
-        snprintf(s_logger_cfg.log_dir, sizeof(s_logger_cfg.log_dir), "%s", old_dir);
-        snprintf(s_logger_cfg.log_file, sizeof(s_logger_cfg.log_file), "%s", old_file);
+        snprintf(g_logger_cfg.log_dir, sizeof(g_logger_cfg.log_dir), "%s", old_dir);
+        snprintf(g_logger_cfg.log_file, sizeof(g_logger_cfg.log_file), "%s", old_file);
         open_log_file();
 
         logger_unlock();
@@ -416,7 +416,7 @@ bool set_logger_dir(const char* dir)
 
     logger_unlock();
 
-    snprintf(s_cfg_log_dir, sizeof(s_cfg_log_dir), "%s", dir);
+    snprintf(g_cfg_log_dir, sizeof(g_cfg_log_dir), "%s", dir);
 
     LOG_INFO("日志目录已改为 %s", new_dir);
     return true;
@@ -424,11 +424,11 @@ bool set_logger_dir(const char* dir)
 
 const char* get_logger_dir(void)
 {
-    return safe_str(s_logger_cfg.log_dir);
+    return safe_str(g_logger_cfg.log_dir);
 }
 
 const char* get_logger_dir_cfg(void)
 {
     // 配置里没写时回默认值, 页面上的输入框才不会空着
-    return (s_cfg_log_dir[0] != '\0') ? s_cfg_log_dir : DEFAULT_LOG_DIR;
+    return (g_cfg_log_dir[0] != '\0') ? g_cfg_log_dir : DEFAULT_LOG_DIR;
 }

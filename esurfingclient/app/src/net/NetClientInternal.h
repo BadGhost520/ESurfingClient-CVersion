@@ -10,11 +10,11 @@
 #define AREA_LENGTH 8
 #define URL_LENGTH 64
 
-extern char s_school_id[SCHOOL_ID_LENGTH];
-extern char s_domain[DOMAIN_LENGTH];
-extern char s_area[AREA_LENGTH];
+extern char g_school_id[SCHOOL_ID_LENGTH];
+extern char g_school_domain[DOMAIN_LENGTH];
+extern char g_area[AREA_LENGTH];
 
-extern _Thread_local char s_request_url[LOCATION_LEN];
+extern _Thread_local char g_request_url[LOCATION_LEN];
 
 /* NetClientCurl.c */
 size_t header_cb(const void* contents, size_t size, size_t nmemb, void* userdata);

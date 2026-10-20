@@ -304,11 +304,11 @@ void child_schedule_restart(child_t* child, const int exit_code)
 
 child_t* child_find(const child_handle_t handle)
 {
-    for (int i = 0; i < s_child_count; i++)
+    for (int i = 0; i < g_child_count; i++)
     {
-        if (s_children[i].running && s_children[i].handle == handle)
+        if (g_children[i].running && g_children[i].handle == handle)
         {
-            return &s_children[i];
+            return &g_children[i];
         }
     }
     return NULL;

@@ -51,9 +51,9 @@ static void supervisor_reap(void)
 
 static void supervisor_reap(void)
 {
-    for (int i = 0; i < s_child_count; i++)
+    for (int i = 0; i < g_child_count; i++)
     {
-        child_t* child = &s_children[i];
+        child_t* child = &g_children[i];
         if (child->running == false) continue;
 
         DWORD code = 0;
@@ -94,9 +94,9 @@ static void supervisor_restart_due(void)
 {
     const uint64_t now = get_cur_tm_ms();
 
-    for (int i = 0; i < s_child_count; i++)
+    for (int i = 0; i < g_child_count; i++)
     {
-        child_t* child = &s_children[i];
+        child_t* child = &g_children[i];
         if (child->running) continue;
         if (now < child->next_start_time) continue;
         if (supervisor_child_ready(child, i) == false) continue;
@@ -141,11 +141,11 @@ static void supervisor_sync_cfg(void)
         LOG_INFO("配置已可用, 认证进程开始拉起");
 
         // 退避清零: 之前拉不起来是因为配置不可用, 不该按失败次数继续等下去
-        for (int i = 0; i < s_child_count; i++)
+        for (int i = 0; i < g_child_count; i++)
         {
-            if (s_children[i].kind != CHILD_AUTH) continue;
-            s_children[i].restarts = 0;
-            s_children[i].next_start_time = 0;
+            if (g_children[i].kind != CHILD_AUTH) continue;
+            g_children[i].restarts = 0;
+            g_children[i].next_start_time = 0;
         }
     }
     else
@@ -162,11 +162,11 @@ static void supervisor_shutdown(void)
     LOG_INFO("守护进程正在停止子进程");
 
     // 先停 Web: 不再接受新的控制请求, 它也没有需要收尾的会话
-    for (int i = 0; i < s_child_count; i++)
+    for (int i = 0; i < g_child_count; i++)
     {
-        if (s_children[i].kind == CHILD_WEB)
+        if (g_children[i].kind == CHILD_WEB)
         {
-            child_stop(&s_children[i], SUPERVISOR_STOP_WEB_MS);
+            child_stop(&g_children[i], SUPERVISOR_STOP_WEB_MS);
         }
     }
 
@@ -174,11 +174,11 @@ static void supervisor_shutdown(void)
      * 再停认证进程: 它们退出前会走一遍登出流程 (term() 是网络请求),
      * 因此给的等待时间要长一些, 不够再强杀
      */
-    for (int i = 0; i < s_child_count; i++)
+    for (int i = 0; i < g_child_count; i++)
     {
-        if (s_children[i].kind == CHILD_AUTH)
+        if (g_children[i].kind == CHILD_AUTH)
         {
-            child_stop(&s_children[i], SUPERVISOR_STOP_AUTH_MS);
+            child_stop(&g_children[i], SUPERVISOR_STOP_AUTH_MS);
         }
     }
 
@@ -198,7 +198,7 @@ static void supervisor_shutdown(void)
  */
 static bool supervisor_build_children(void)
 {
-    s_child_count = 0;
+    g_child_count = 0;
 
     /**
      * 一个账号都没有时也留一个认证进程的位置: 用户在网页上把账号填好之后
@@ -206,29 +206,29 @@ static bool supervisor_build_children(void)
      */
     const uint8_t auth_slots = (g_prog_cnt > 0) ? (uint8_t)g_prog_cnt : 1;
 
-    for (uint8_t i = 0; i < auth_slots && s_child_count < SUPERVISOR_MAX_CHILDREN; i++)
+    for (uint8_t i = 0; i < auth_slots && g_child_count < SUPERVISOR_MAX_CHILDREN; i++)
     {
-        child_t* child = &s_children[s_child_count];
+        child_t* child = &g_children[g_child_count];
         memset(child, 0, sizeof(*child));
         child->handle = CHILD_HANDLE_INVALID;
         child->kind = CHILD_AUTH;
         child->account = (i < g_prog_cnt) ? g_prog_status[i].login_cfg.idx : 0;
-        child->control_port = child_control_port(CHILD_AUTH, s_child_count);
-        s_child_count++;
+        child->control_port = child_control_port(CHILD_AUTH, g_child_count);
+        g_child_count++;
     }
 
-    if (s_child_count >= SUPERVISOR_MAX_CHILDREN)
+    if (g_child_count >= SUPERVISOR_MAX_CHILDREN)
     {
         LOG_WARN("账号数超过上限 (%d), 多余的账号不会启动", SUPERVISOR_MAX_CHILDREN - 1);
-        return s_child_count > 0;
+        return g_child_count > 0;
     }
 
-    child_t* web_child = &s_children[s_child_count];
+    child_t* web_child = &g_children[g_child_count];
     memset(web_child, 0, sizeof(*web_child));
     web_child->handle = CHILD_HANDLE_INVALID;
     web_child->kind = CHILD_WEB;
-    web_child->control_port = child_control_port(CHILD_WEB, s_child_count);
-    s_child_count++;
+    web_child->control_port = child_control_port(CHILD_WEB, g_child_count);
+    g_child_count++;
 
     return true;
 }
@@ -273,21 +273,21 @@ int work_supervisor(void)
     supervisor_install_signals();
 
     int started = 0;
-    for (int i = 0; i < s_child_count; i++)
+    for (int i = 0; i < g_child_count; i++)
     {
         // 配置不可用时只拉 Web 子进程, 认证子进程等配置可用了再补
-        if (supervisor_child_ready(&s_children[i], i) == false) continue;
+        if (supervisor_child_ready(&g_children[i], i) == false) continue;
 
         char name[32];
-        if (child_spawn(&s_children[i]))
+        if (child_spawn(&g_children[i]))
         {
-            LOG_INFO("已启动 %s, PID %lu", child_name(&s_children[i], name, sizeof(name)),
-                child_pid(&s_children[i]));
+            LOG_INFO("已启动 %s, PID %lu", child_name(&g_children[i], name, sizeof(name)),
+                child_pid(&g_children[i]));
             started++;
         }
         else
         {
-            LOG_ERROR("启动 %s 失败", child_name(&s_children[i], name, sizeof(name)));
+            LOG_ERROR("启动 %s 失败", child_name(&g_children[i], name, sizeof(name)));
         }
     }
 
@@ -310,12 +310,12 @@ int work_supervisor(void)
      * 主循环: 回收退出的子进程 -> 到点重新拉起 -> 看配置有没有变过 -> 睡一小会儿
      *
      * 两个退出条件:
-     * - s_stop_requested: 自己装的信号处理 (POSIX 的 SIGTERM 等)
+     * - g_supervisor_stop: 自己装的信号处理 (POSIX 的 SIGTERM 等)
      * - g_need_exit: 其它路径请求关闭 (Windows 服务收到 SCM 停止请求时走 shut())
      *
      * 睡眠用可打断版本, 这样收到信号能及时进入关闭流程
      */
-    while (s_stop_requested == 0 && g_need_exit == false)
+    while (g_supervisor_stop == 0 && g_need_exit == false)
     {
         supervisor_reap();
         supervisor_restart_due();

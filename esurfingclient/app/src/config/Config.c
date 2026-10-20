@@ -139,7 +139,7 @@ const char* get_config_file_path(void)
 
 #endif
 
-bool s_list_only = false;
+bool g_list_only = false;
 
 const char* get_config_path(void)
 {

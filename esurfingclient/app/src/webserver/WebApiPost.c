@@ -21,7 +21,7 @@
  */
 static bool request_restart_auth(void)
 {
-    if (s_local_state)
+    if (g_local_state)
     {
         if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
         g_prog_status[0].runtime_status.is_need_reauth = true;
@@ -37,7 +37,7 @@ static bool request_restart_auth(void)
  */
 static bool request_apply_config(void)
 {
-    if (s_local_state)
+    if (g_local_state)
     {
         if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
         g_cfg_loaded = false;

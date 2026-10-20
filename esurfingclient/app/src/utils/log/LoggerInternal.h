@@ -17,12 +17,12 @@
 #endif
 #endif
 
-extern const char s_file_name[];
-extern char s_cfg_log_dir[LOG_PATH_MAX];
-extern bool s_logger_inited;
-extern log_cfg_t s_logger_cfg;
-extern bool s_console_enabled;
-extern bool s_query_mode;
+extern const char g_log_file_name[];
+extern char g_cfg_log_dir[LOG_PATH_MAX];
+extern bool g_logger_inited;
+extern log_cfg_t g_logger_cfg;
+extern bool g_console_enabled;
+extern bool g_query_mode;
 
 /** @brief 日志等级名 (LogCore.c) */
 const char* get_level_str(LogLevel lv);

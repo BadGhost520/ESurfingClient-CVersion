@@ -127,9 +127,9 @@ int list_accounts(void)
      * 复用 load_cfg 的整套校验:
      * 列举出来的账号与真正会被加载的必须完全一致, 否则 init 脚本会起出跑不起来的实例
      */
-    s_list_only = true;
+    g_list_only = true;
     const bool loaded = load_cfg();
-    s_list_only = false;
+    g_list_only = false;
 
     if (loaded == false)
     {

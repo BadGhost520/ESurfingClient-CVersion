@@ -41,7 +41,7 @@ static bool ctl_client_request(const char* cmd, char* reply, const size_t reply_
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(s_client_port);
+    addr.sin_port = htons(g_client_port);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     /**

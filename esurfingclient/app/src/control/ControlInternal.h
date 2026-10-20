@@ -20,7 +20,7 @@ typedef int ctl_sock_t;
 #define ctl_close close
 #endif
 
-extern uint16_t s_client_port;
+extern uint16_t g_client_port;
 
 bool ctl_net_init(void);
 
