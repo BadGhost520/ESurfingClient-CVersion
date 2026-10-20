@@ -202,6 +202,6 @@ extern long g_conn_timeout;
 extern long g_op_timeout;
 
 /** @brief 刷新状态函数 */
-void refresh_states();
+void refresh_states(void);
 
 #endif

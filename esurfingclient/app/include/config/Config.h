@@ -28,7 +28,7 @@ bool save_cfg(const char* configs_str);
  * 只要 JSON 解析得动, 能读出来的值都会照常填进内存 (包括账号密码与 Web 服务端口),
  * 配置页读的就是这块内存 —— 不然用户一保存就把自己写过的东西覆盖成空的了
  */
-bool load_cfg();
+bool load_cfg(void);
 
 /**
  * @brief 读取配置文件的原文
@@ -37,7 +37,7 @@ bool load_cfg();
  * 网页直接展示文件里的内容 —— 内存里那份是空的或者旧的
  * @return 文件内容 (需要 free), 读不到或文件为空时返回 NULL
  */
-char* read_cfg_file();
+char* read_cfg_file(void);
 
 /**
  * @brief 取配置文件内容的指纹 (用于判断它有没有被改过)
@@ -46,7 +46,7 @@ char* read_cfg_file();
  * 看的是内容而不是修改时间, 见 Config.c 里的说明
  * @return 指纹值 (文件不存在或读不到时为 0)
  */
-uint64_t cfg_file_hash();
+uint64_t cfg_file_hash(void);
 
 /**
  * @brief 等配置文件变成可用 (每次最多等一个固定的间隔)
@@ -64,7 +64,7 @@ bool wait_cfg_usable(void);
  * 复用 load_cfg 的校验逻辑, 结果与真正会被加载的账号完全一致
  * @return 账号数量, -1 表示配置有问题
  */
-int list_accounts();
+int list_accounts(void);
 
 /**
  * @brief 获取配置文件路径

@@ -178,7 +178,7 @@ char* extract_between_tags(const char* text, const char* start_tag, const char* 
     return result;
 }
 
-char* clean_CDATA(const char* text)
+char* clean_cdata(const char* text)
 {
     return extract_between_tags(text, "<![CDATA[", "]]>");
 }

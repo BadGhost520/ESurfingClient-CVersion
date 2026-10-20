@@ -659,7 +659,7 @@ static cipher_interface_t* create_cipher_factory(const char* algo_id)
     return NULL;
 }
 
-void destroy_cipher_factory()
+void destroy_cipher_factory(void)
 {
     cipher_interface_t* cipher = g_prog_status[tl_thread_idx].auth_cfg.cipher;
     if (cipher == NULL)

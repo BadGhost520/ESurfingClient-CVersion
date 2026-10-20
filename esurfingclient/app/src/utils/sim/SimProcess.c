@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #endif
 
-void restart_process()
+void restart_process(void)
 {
     char exec_path[PATH_MAX];
     if (get_exec_path(exec_path) == false)

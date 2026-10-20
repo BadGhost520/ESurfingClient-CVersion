@@ -81,7 +81,7 @@ static FILE* open_log_handle(const char* path)
  * @brief 打开日志文件并记录它的身份
  * @return 是否打开成功
  */
-bool open_log_file()
+bool open_log_file(void)
 {
     s_logger_cfg.file_handle = open_log_handle(s_logger_cfg.log_file);
     if (s_logger_cfg.file_handle == NULL) return false;
@@ -101,7 +101,7 @@ bool open_log_file()
  * 这里比对自身句柄与路径当前的 inode, 不一致就说明自己已经写到了旧文件上
  * @return 是否重新打开了日志文件
  */
-static bool reopen_if_rotated()
+static bool reopen_if_rotated(void)
 {
     // 拿不到身份信息时无从比较, 退化为仅按自身行数计数
     if (!s_logger_cfg.file_handle || s_logger_cfg.file_ino == 0) return false;
@@ -131,7 +131,7 @@ static bool reopen_if_rotated()
  * 同时发起时只有一个进程的 rename 会成功, 其余进程拿到失败,
  * 把失败直接当作"已被其它进程轮转"处理即可, 因此不需要锁或额外的协调
  */
-void rotate()
+void rotate(void)
 {
     if (!s_logger_cfg.file_handle || strlen(s_logger_cfg.log_file) == 0) return;
 

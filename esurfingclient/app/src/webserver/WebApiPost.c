@@ -19,7 +19,7 @@
  * @brief 请求重新认证
  * @return 是否成功
  */
-static bool request_restart_auth()
+static bool request_restart_auth(void)
 {
     if (s_local_state)
     {
@@ -35,7 +35,7 @@ static bool request_restart_auth()
  * @brief 请求重新加载配置并重新认证
  * @return 是否成功
  */
-static bool request_apply_config()
+static bool request_apply_config(void)
 {
     if (s_local_state)
     {

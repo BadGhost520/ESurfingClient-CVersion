@@ -7,7 +7,7 @@
 
 #include "utils/time/TimeUtils.h"
 
-LogLevel get_logger_level()
+LogLevel get_logger_level(void)
 {
     return s_logger_cfg.lv;
 }
@@ -21,7 +21,7 @@ void set_logger_level(const LogLevel lv)
     }
 }
 
-bool init_logger()
+bool init_logger(void)
 {
     if (get_log_dir(s_logger_cfg.log_dir) == false)
     {
@@ -45,7 +45,7 @@ bool init_logger()
     return true;
 }
 
-void clean_logger()
+void clean_logger(void)
 {
     LOG_DEBUG("关闭日志系统");
 

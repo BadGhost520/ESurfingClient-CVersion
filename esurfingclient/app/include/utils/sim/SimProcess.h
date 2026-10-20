@@ -1,6 +1,6 @@
 #ifndef ESURFINGCLIENT_SIMPROCESS_H
 #define ESURFINGCLIENT_SIMPROCESS_H
 
-extern void restart_process();
+extern void restart_process(void);
 
 #endif

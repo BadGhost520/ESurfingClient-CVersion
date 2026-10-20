@@ -22,7 +22,7 @@ typedef int ctl_sock_t;
 
 extern uint16_t s_client_port;
 
-bool ctl_net_init();
+bool ctl_net_init(void);
 
 size_t ctl_read_line(const ctl_sock_t sock, char* buf, const size_t buf_len);
 

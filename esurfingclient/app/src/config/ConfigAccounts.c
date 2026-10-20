@@ -105,7 +105,7 @@ void apply_channel_ua(login_cfg_t* cfg, const uint8_t cfg_no)
     snprintf(cfg->user_agent, USER_AGENT_LEN, "%s", found->ua);
 }
 
-int list_accounts()
+int list_accounts(void)
 {
     /**
      * stdout 要留给账号列表, 日志一行都不落盘 (全部改写到 stderr).

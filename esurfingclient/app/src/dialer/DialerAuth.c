@@ -26,7 +26,7 @@
 #include "control/Control.h"
 #endif
 
-AuthStatus auth()
+AuthStatus auth(void)
 {
     LOG_DEBUG("auth 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRId8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
 
@@ -58,7 +58,7 @@ AuthStatus auth()
         return AUTH_FAILED;
     }
 
-    char* cleaned_auth_url = clean_CDATA(auth_url); // 提取 auth_url (纯 url, 用于登录函数)
+    char* cleaned_auth_url = clean_cdata(auth_url); // 提取 auth_url (纯 url, 用于登录函数)
     free(auth_url);
     if (cleaned_auth_url == NULL)
     {
@@ -77,7 +77,7 @@ AuthStatus auth()
         return AUTH_FAILED;
     }
 
-    char* cleaned_ticket_url = clean_CDATA(ticket_url); // 提取 ticket_url (纯 url, 用于获取 ticket)
+    char* cleaned_ticket_url = clean_cdata(ticket_url); // 提取 ticket_url (纯 url, 用于获取 ticket)
     free(ticket_url);
     if (cleaned_ticket_url == NULL)
     {
@@ -177,7 +177,7 @@ AuthStatus auth()
  * - 时间控制由认证线程自己在循环里校正, 不需要单独的定时线程
  * @return 进程退出码
  */
-int work_auth()
+int work_auth(void)
 {
     if (app_bootstrap() == false) return 1;
 

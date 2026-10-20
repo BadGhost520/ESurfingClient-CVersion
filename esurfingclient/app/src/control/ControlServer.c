@@ -30,7 +30,7 @@ uint16_t s_client_port = CONTROL_DEFAULT_PORT;
  * ------------------------------------------------------------------ */
 
 #ifdef _WIN32
-bool ctl_net_init()
+bool ctl_net_init(void)
 {
     /**
      * WSAStartup 是带引用计数的, 每调一次都要有对应的 WSACleanup。
@@ -47,7 +47,7 @@ bool ctl_net_init()
     return true;
 }
 #else
-bool ctl_net_init()
+bool ctl_net_init(void)
 {
     return true;
 }

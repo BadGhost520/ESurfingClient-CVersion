@@ -26,7 +26,7 @@ static BOOL WINAPI supervisor_console_handler(const DWORD ctrl_type)
 
 #endif
 
-void supervisor_install_signals()
+void supervisor_install_signals(void)
 {
 #ifndef _WIN32
     signal(SIGTERM, supervisor_signal_handler);

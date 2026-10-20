@@ -38,9 +38,9 @@ void get_proc_str(char* buf, size_t len);
 void get_thread_str(char* buf, size_t len);
 
 /** @brief 日志文件句柄的打开与轮转 (LogFile.c) */
-bool open_log_file();
+bool open_log_file(void);
 
-void rotate();
+void rotate(void);
 
 /** @brief 取实际使用的日志目录 (LoggerDir.c) */
 bool get_log_dir(char* out);

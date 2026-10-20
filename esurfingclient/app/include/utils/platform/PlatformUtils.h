@@ -75,7 +75,7 @@ uint8_t get_adapters_stats(adapter_stats_t* out, uint8_t max, char* default_id, 
  * @brief 打包适配器数据
  * @return JSON 文本
  */
-char* get_adapters_json();
+char* get_adapters_json(void);
 
 /**
  * @brief 获取程序运行目录

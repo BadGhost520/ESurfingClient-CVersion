@@ -14,14 +14,14 @@
 
 #include <string.h>
 
-static void clean_session()
+static void clean_session(void)
 {
     LOG_DEBUG("清除会话初始化状态");
     destroy_cipher_factory();
     g_prog_status[tl_thread_idx].runtime_status.is_initialized = 0;
 }
 
-bool init_session()
+bool init_session(void)
 {
     LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
 
@@ -71,7 +71,7 @@ bool init_session()
     return true;
 }
 
-void clean()
+void clean(void)
 {
     // 时间控制禁用状态是跨线程的“外部闸门”，线程退出清理时不能把它清掉，
     // 否则线程守护会立刻把刚下线的账号重新拉起来。
@@ -93,7 +93,7 @@ void clean()
     g_prog_status[tl_thread_idx].runtime_status.is_time_disabled = time_disabled; // 恢复时间控制禁用状态
 }
 
-void reset()
+void reset(void)
 {
     clean(); // 清理数据
     refresh_states(); // 重置指定数据
@@ -106,7 +106,7 @@ void reset()
  * 它们退出并不意味着本程序该退出。
  * Linux 上子进程登记了 PR_SET_PDEATHSIG, 内核会直接通知, 这里恒为 false
  */
-bool supervisor_gone()
+bool supervisor_gone(void)
 {
     if (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB) return false;
     return parent_process_alive() == false;

@@ -10,7 +10,7 @@
 
 #include <string.h>
 
-static void get_school_ip_symbol()
+static void get_school_ip_symbol(void)
 {
     if (g_school_network_symbol[0] != '\0')
     {
@@ -55,7 +55,7 @@ static void get_school_ip_symbol()
     free(school_ip);
 }
 
-bool get_last_location()
+bool get_last_location(void)
 {
     uint8_t retry = 1;
     bool quit = false;

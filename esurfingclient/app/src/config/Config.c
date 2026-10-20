@@ -162,7 +162,7 @@ static bool s_cfg_waiting = false;
  * 用户一保存就把自己写过的账号密码覆盖掉了
  * @return 文件内容 (需要 free), 读不到或文件为空时返回 NULL
  */
-char* read_cfg_file()
+char* read_cfg_file(void)
 {
     FILE* file = fopen(config_file, "rb");
     if (file == NULL) return NULL;
@@ -203,7 +203,7 @@ char* read_cfg_file()
  * 配置文件只有几百字节, 一秒读一次的开销可以忽略
  * @return 指纹值 (文件不存在或读不到时为 0)
  */
-uint64_t cfg_file_hash()
+uint64_t cfg_file_hash(void)
 {
     FILE* file = fopen(config_file, "rb");
     if (file == NULL) return 0;
@@ -314,7 +314,7 @@ static account_state_t fill_account(const cJSON* account, const uint8_t cfg_no, 
     return ACCOUNT_READY;
 }
 
-bool load_cfg()
+bool load_cfg(void)
 {
     g_cfg_loaded = false;
     /**

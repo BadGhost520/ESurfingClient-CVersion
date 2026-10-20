@@ -5,7 +5,7 @@
 
 #include <ctype.h>
 
-static void reset_host_name()
+static void reset_host_name(void)
 {
     auth_cfg_t* auth_cfg = &g_prog_status[tl_thread_idx].auth_cfg;
 
@@ -39,7 +39,7 @@ static void reset_host_name()
     snprintf(auth_cfg->ostag, OSTAG_LEN, "%s", safe_str(host_name));
 }
 
-static void reset_client_id()
+static void reset_client_id(void)
 {
     char client_id[40];
     unsigned char client_bytes[16];
@@ -60,7 +60,7 @@ static void reset_client_id()
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.client_id, CLIENT_ID_LEN, "%s", safe_str(client_id));
 }
 
-static void reset_mac_addr()
+static void reset_mac_addr(void)
 {
     char mac_addr[20];
     unsigned char mac_bytes[6];
@@ -74,7 +74,7 @@ static void reset_mac_addr()
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.mac_addr, MAC_ADDR_LEN, "%s", safe_str(mac_addr));
 }
 
-void refresh_states()
+void refresh_states(void)
 {
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.algo_id, ALGO_ID_LEN, "00000000-0000-0000-0000-000000000000"); // 初始化 algo_id
     reset_host_name(); // 重置 hostname

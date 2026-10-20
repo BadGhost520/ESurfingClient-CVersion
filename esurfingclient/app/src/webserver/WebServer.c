@@ -62,7 +62,7 @@ static int web_server(void* arg)
  * @brief 启动 Web 服务线程
  * @return 是否启动成功
  */
-static bool start_web_thread()
+static bool start_web_thread(void)
 {
     web_thread = sim_thread_create_retry(web_server, (void*)(intptr_t)-2, 5);
     if (web_thread == NULL)
@@ -73,13 +73,13 @@ static bool start_web_thread()
     return true;
 }
 
-bool start_web_server()
+bool start_web_server(void)
 {
     s_local_state = true;
     return start_web_thread();
 }
 
-bool start_web_server_remote()
+bool start_web_server_remote(void)
 {
     control_set_port(g_control_port);
     s_local_state = false;
@@ -89,7 +89,7 @@ bool start_web_server_remote()
     return start_web_thread();
 }
 
-void stop_web_server()
+void stop_web_server(void)
 {
     g_is_webserver_running = 0;
     int result_code = 0;

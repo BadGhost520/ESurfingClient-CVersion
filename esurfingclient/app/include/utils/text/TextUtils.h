@@ -109,6 +109,6 @@ char* extract_between_tags(const char* text, const char* start_tag, const char* 
  * @param text 需要清除的文本
  * @return 清除后的文本
  */
-char* clean_CDATA(const char* text);
+char* clean_cdata(const char* text);
 
 #endif

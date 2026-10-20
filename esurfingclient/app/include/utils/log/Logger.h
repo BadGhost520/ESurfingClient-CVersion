@@ -97,7 +97,7 @@ void log_raw_line(const char* text);
  * @brief 获取当前日志等级
  * @return 日志等级
  */
-LogLevel get_logger_level();
+LogLevel get_logger_level(void);
 
 /**
  * @brief 设置日志等级
@@ -125,12 +125,12 @@ bool set_logger_dir(const char* dir);
  * @brief 初始化日志系统
  * @return 初始化状态
  */
-bool init_logger();
+bool init_logger(void);
 
 /**
  * @brief 清理日志系统
  */
-void clean_logger();
+void clean_logger(void);
 
 /**
  * @brief 获取实际使用的日志目录 (未初始化时返回空字符串)
@@ -183,6 +183,6 @@ void set_logger_query_mode(bool enabled);
  * 配置有问题或日志系统起不来时返回 NULL, 调用方按自己的默认值兜底
  * @return 日志目录 (进程内静态缓冲, 不要 free), 失败返回 NULL
  */
-const char* print_log_dir();
+const char* print_log_dir(void);
 
 #endif

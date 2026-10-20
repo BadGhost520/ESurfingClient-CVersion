@@ -12,7 +12,7 @@
 
 #ifdef _WIN32
 
-bool get_service_mode();
+bool get_service_mode(void);
 
 void WINAPI ServiceMain(DWORD argc, LPTSTR *argv);
 
@@ -23,13 +23,13 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR *argv);
  * 需要管理员/root 权限
  * @return 0 成功，-1 失败
  */
-int service_install();
+int service_install(void);
 
 /**
  * 卸载系统服务
  * 需要管理员/root 权限
  * @return 0 成功，-1 失败
  */
-int service_uninstall();
+int service_uninstall(void);
 
 #endif

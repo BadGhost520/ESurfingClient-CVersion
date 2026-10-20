@@ -12,7 +12,7 @@
  * @brief 获取当前时间的毫秒时间戳 (墙钟, 会被 NTP / 改时钟影响, 只用于显示)
  * @return 64位时间戳
  */
-uint64_t get_cur_tm_ms();
+uint64_t get_cur_tm_ms(void);
 
 /**
  * @brief 获取单调递增的毫秒时间戳 (从系统启动算起, 不受改时钟影响)
@@ -22,7 +22,7 @@ uint64_t get_cur_tm_ms();
  * 拿墙钟做减法的超时判断会当场误判。
  * @return 毫秒时间戳, 失败时返回 0
  */
-uint64_t get_steady_tm_ms();
+uint64_t get_steady_tm_ms(void);
 
 /**
  * @brief 睡眠

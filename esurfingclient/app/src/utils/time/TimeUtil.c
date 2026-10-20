@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <time.h>
 
-uint64_t get_cur_tm_ms()
+uint64_t get_cur_tm_ms(void)
 {
 #ifdef _WIN32
     FILETIME ft;
@@ -29,7 +29,7 @@ uint64_t get_cur_tm_ms()
 #endif
 }
 
-uint64_t get_steady_tm_ms()
+uint64_t get_steady_tm_ms(void)
 {
 #ifdef _WIN32
     /**

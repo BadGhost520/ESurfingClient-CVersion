@@ -12,6 +12,6 @@ void shut(int8_t exit_code);
 /**
  * @brief 初始化关闭函数
  */
-void init_shutdown_hook();
+void init_shutdown_hook(void);
 
 #endif

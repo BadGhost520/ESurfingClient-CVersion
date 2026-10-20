@@ -26,7 +26,7 @@ static uint64_t s_cfg_check_time = 0;
 
 #ifndef _WIN32
 
-static void supervisor_reap()
+static void supervisor_reap(void)
 {
     int status = 0;
     pid_t pid;
@@ -49,7 +49,7 @@ static void supervisor_reap()
 
 #else
 
-static void supervisor_reap()
+static void supervisor_reap(void)
 {
     for (int i = 0; i < s_child_count; i++)
     {
@@ -90,7 +90,7 @@ static bool supervisor_child_ready(child_t* child, const int index)
     return child->account != 0;
 }
 
-static void supervisor_restart_due()
+static void supervisor_restart_due(void)
 {
     const uint64_t now = get_cur_tm_ms();
 
@@ -120,7 +120,7 @@ static void supervisor_restart_due()
  * 配置从不可用变回可用时要主动把认证子进程拉起来 —— 它们没有"待机"的形态,
  * 不可用期间压根没被拉起来过
  */
-static void supervisor_sync_cfg()
+static void supervisor_sync_cfg(void)
 {
     // 测间隔用单调钟: 墙钟被 NTP 校时跳一下, 这里就会白等 (或立刻重来)
     const uint64_t now = get_steady_tm_ms();
@@ -157,7 +157,7 @@ static void supervisor_sync_cfg()
 /**
  * @brief 有序关闭所有子进程
  */
-static void supervisor_shutdown()
+static void supervisor_shutdown(void)
 {
     LOG_INFO("守护进程正在停止子进程");
 
@@ -196,7 +196,7 @@ static void supervisor_shutdown()
  * 端口 + i), 而 Web 进程连的是第 0 个认证进程的端口 —— 顺序反了它就连不上认证进程了
  * @return 是否构建成功
  */
-static bool supervisor_build_children()
+static bool supervisor_build_children(void)
 {
     s_child_count = 0;
 
@@ -233,7 +233,7 @@ static bool supervisor_build_children()
     return true;
 }
 
-int work_supervisor()
+int work_supervisor(void)
 {
     if (app_bootstrap() == false) return 1;
 

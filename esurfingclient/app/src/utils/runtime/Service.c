@@ -19,7 +19,7 @@ extern jmp_buf g_exit_jmp;
 
 extern bool g_need_restart;
 
-extern void work();
+extern void work(void);
 
 #ifdef _WIN32
 
@@ -40,7 +40,7 @@ static void WINAPI ServiceCtrlHandler(DWORD CtrlCode)
     }
 }
 
-bool get_service_mode()
+bool get_service_mode(void)
 {
     return service_mode;
 }
@@ -86,7 +86,7 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR *argv)
     SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
 }
 
-int service_install()
+int service_install(void)
 {
     SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
     if (!hSCManager)
@@ -196,7 +196,7 @@ int service_install()
     return 0;
 }
 
-int service_uninstall()
+int service_uninstall(void)
 {
     SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
     if (!hSCManager)
@@ -248,7 +248,7 @@ static int GetExecutablePath(char *buf, size_t size)
     return -1;
 }
 
-int service_install()
+int service_install(void)
 {
     if (geteuid() != 0)
     {
@@ -329,7 +329,7 @@ int service_install()
     return 0;
 }
 
-int service_uninstall()
+int service_uninstall(void)
 {
     if (geteuid() != 0)
     {
@@ -386,7 +386,7 @@ static int GetExecutablePath(char *buf, size_t size)
     return -1;
 }
 
-int service_install()
+int service_install(void)
 {
     if (geteuid() != 0)
     {
@@ -462,7 +462,7 @@ int service_install()
     return 0;
 }
 
-int service_uninstall()
+int service_uninstall(void)
 {
     if (geteuid() != 0)
     {

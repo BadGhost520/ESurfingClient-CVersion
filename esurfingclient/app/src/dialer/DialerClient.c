@@ -18,7 +18,7 @@
 #include "utils/sim/SimThread.h"
 
 #ifdef _WIN32
-extern bool get_service_mode();
+extern bool get_service_mode(void);
 #else
 #include <stdlib.h>
 #endif
@@ -30,8 +30,8 @@ extern bool get_service_mode();
 
 #include "webserver/HotspotControl.h"
 
-extern bool start_web_server_remote();
-extern bool start_web_server();
+extern bool start_web_server_remote(void);
+extern bool start_web_server(void);
 #endif
 
 typedef enum
@@ -103,7 +103,7 @@ static bool wait_auth_retry(const uint64_t wait_minutes)
     }
 }
 
-static RunStatus run()
+static RunStatus run(void)
 {
     static uint8_t retry_timeout = 1;
     static uint8_t retry_auth = 1;
@@ -326,7 +326,7 @@ int dialer_app(void* arg)
 /**
  * @brief 打印程序信息
  */
-void print_banner()
+void print_banner(void)
 {
     LOG_INFO("-------------------------------------------------------------------");
     LOG_INFO(" - 程序版本: " PROGRAM_FULL_VERSION);
@@ -346,7 +346,7 @@ void print_banner()
  *
  * @return true 表示配置已经可用了, false 表示期间收到了退出请求
  */
-static bool wait_for_cfg()
+static bool wait_for_cfg(void)
 {
     LOG_WARN("配置暂不可用, 请在网页界面上改好后点「保存并应用」");
     LOG_INFO("配置文件路径: %s", get_config_path());
@@ -368,7 +368,7 @@ static bool wait_for_cfg()
  *
  * @return true 表示配置已经可用了, false 表示已经/正在退出, 调用方不必再往下走
  */
-static bool hold_for_cfg()
+static bool hold_for_cfg(void)
 {
 #ifdef __OPENWRT__
 
@@ -394,7 +394,7 @@ static bool hold_for_cfg()
  * - 不启动线程守护与时间控制线程
  * @return 进程退出码
  */
-static int work_web()
+static int work_web(void)
 {
     if (app_bootstrap() == false) return 1;
 
@@ -444,7 +444,7 @@ static int work_web()
 
 #endif
 
-void work()
+void work(void)
 {
     /**
      * 各角色走各自的流程

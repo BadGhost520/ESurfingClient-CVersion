@@ -6,7 +6,7 @@
 /**
  * @brief 工作函数
  */
-void work();
+void work(void);
 
 /**
  * @brief 各角色入口的公共起步动作

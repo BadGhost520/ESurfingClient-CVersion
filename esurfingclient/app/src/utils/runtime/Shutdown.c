@@ -8,14 +8,14 @@
 
 #ifdef _WIN32
 #include <windows.h>
-extern bool get_service_mode();
+extern bool get_service_mode(void);
 #else
 #include <stdlib.h>
 #endif
 
 #ifndef __OPENWRT__
-extern void restart_process();
-extern void stop_web_server();
+extern void restart_process(void);
+extern void stop_web_server(void);
 #include "control/Control.h"
 
 #ifndef __OPENWRT__
@@ -145,7 +145,7 @@ static void signal_handler(const int sig)
 
 #endif
 
-void init_shutdown_hook()
+void init_shutdown_hook(void)
 {
 #ifdef _WIN32
     if (SetConsoleCtrlHandler(console_handler, TRUE) == 0)

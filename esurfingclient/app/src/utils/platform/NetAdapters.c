@@ -40,7 +40,7 @@ typedef struct
 static adapter_t* s_adaptor = NULL;
 static uint8_t s_adaptor_count = 0;
 
-static void get_adapters()
+static void get_adapters(void)
 {
 #ifdef _WIN32
     PIP_ADAPTER_INFO p_adapter_info = NULL;
@@ -102,7 +102,7 @@ static void get_adapters()
 #endif
 }
 
-char* get_adapters_json()
+char* get_adapters_json(void)
 {
     get_adapters();
     cJSON* root = cJSON_CreateObject();

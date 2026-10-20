@@ -24,7 +24,7 @@ static bool s_print_log_dir = false;
 /**
  * @brief 显示帮助信息
  */
-static void PrintUsage()
+static void PrintUsage(void)
 {
     printf("使用格式: ESurfingClient [选项]\n");
     printf("  [nothing]            直接运行程序 (前台模式)\n");
@@ -114,7 +114,7 @@ static bool parse_port(const char* str, uint16_t* port)
  * @brief 校验角色与序号的组合是否合法
  * @return 0 合法, 其它值作为退出码返回
  */
-static int check_args()
+static int check_args(void)
 {
     /**
      * 列举账号与打印日志目录都是独立的查询动作, 由 init 脚本调用,
@@ -306,7 +306,7 @@ static int parse_args(const int argc, char* argv[])
  * 显式给的 --control-token 优先, 这里只在没给的时候兜底。
  * (Windows 上监管者仍然走命令行, 原因见 SupervisorChild.c 的 child_build_argv)
  */
-static void load_control_token_env()
+static void load_control_token_env(void)
 {
     if (g_control_token[0] != '\0') return;
 

@@ -30,44 +30,44 @@ typedef enum
  */
 
 /* DialerNet.c */
-bool term();
+bool term(void);
 
-bool heartbeat();
+bool heartbeat(void);
 
-bool login();
+bool login(void);
 
 /** 构造/加密 → POST → 解密 (心跳 / 登录 / 取 ticket 共用) */
 char* dialer_request_plain(XmlChoose kind, const char* url, const char* what);
 
-WaitResult wait_need_auth();
+WaitResult wait_need_auth(void);
 
-void logout_previous_session();
+void logout_previous_session(void);
 
 /* DialerTicket.c */
-bool get_ticket();
+bool get_ticket(void);
 
 bool load_cipher(const bytes_t zsm);
 
 /* DialerAuth.c */
-AuthStatus auth();
+AuthStatus auth(void);
 
-int work_auth();
+int work_auth(void);
 
 /* DialerLocation.c */
-bool get_last_location();
+bool get_last_location(void);
 
 /* DialerSession.c */
-bool init_session();
+bool init_session(void);
 
-void clean();
+void clean(void);
 
-void reset();
+void reset(void);
 
-bool supervisor_gone();
+bool supervisor_gone(void);
 
 /* DialerClient.c */
 int dialer_app(void* arg);
 
-void print_banner();
+void print_banner(void);
 
 #endif

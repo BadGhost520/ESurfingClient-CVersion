@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-const char* print_log_dir()
+const char* print_log_dir(void)
 {
     /**
      * stdout 要留给路径, 日志一行都不落盘 (全部改写到 stderr).

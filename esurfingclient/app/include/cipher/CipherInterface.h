@@ -111,7 +111,7 @@ extern cipher_interface_t* create_des_ecb_six_cipher(
 /**
  * @brief 销毁加解密工厂
  */
-void destroy_cipher_factory();
+void destroy_cipher_factory(void);
 
 /**
  * @brief 初始化加解密工厂

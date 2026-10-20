@@ -82,7 +82,7 @@ char* dialer_request_plain(const XmlChoose kind, const char* url, const char* wh
     return plain;
 }
 
-bool term()
+bool term(void)
 {
     char* encrypt = dialer_encrypt_payload(TERM);
     if (encrypt == NULL) return false;
@@ -115,7 +115,7 @@ bool term()
     return true;
 }
 
-bool heartbeat()
+bool heartbeat(void)
 {
     char* decrypted_data = dialer_request_plain(HEART_BEAT, g_prog_status[tl_thread_idx].auth_cfg.keep_url, "心跳");
     if (decrypted_data == NULL) return false;
@@ -143,7 +143,7 @@ bool heartbeat()
     return true;
 }
 
-bool login()
+bool login(void)
 {
     char* decrypted_data = dialer_request_plain(LOGIN, g_prog_status[tl_thread_idx].auth_cfg.auth_url, "登录");
     if (decrypted_data == NULL) return false;
@@ -156,7 +156,7 @@ bool login()
         return false;
     }
 
-    char* cleaned_keep_url = clean_CDATA(parsed_keep_url); // 获取 keep_url (纯 url, 用于心跳函数)
+    char* cleaned_keep_url = clean_cdata(parsed_keep_url); // 获取 keep_url (纯 url, 用于心跳函数)
     free(parsed_keep_url);
     if (cleaned_keep_url == NULL)
     {
@@ -176,7 +176,7 @@ bool login()
         return false;
     }
 
-    char* cleaned_term_url = clean_CDATA(parsed_term_url); // 获取 term_url (纯 url, 用于登出函数)
+    char* cleaned_term_url = clean_cdata(parsed_term_url); // 获取 term_url (纯 url, 用于登出函数)
     free(parsed_term_url);
     if (cleaned_term_url == NULL)
     {
@@ -217,7 +217,7 @@ bool login()
  * 已联网时按 10 秒一次轮询, 网络错误时按 1 秒一次重试, 最多 5 次
  * @return 等待结果
  */
-WaitResult wait_need_auth()
+WaitResult wait_need_auth(void)
 {
     uint8_t retry_network = 1;
 
@@ -293,7 +293,7 @@ WaitResult wait_need_auth()
  * 那就交给服务器超时把会话踢掉。无论成败都清掉存档, 否则每次启动都会白发一次
  * 注定失败的请求。
  */
-void logout_previous_session()
+void logout_previous_session(void)
 {
     if (logout_state_load(&g_prog_status[0]) == false) return;
 

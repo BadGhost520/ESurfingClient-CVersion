@@ -85,6 +85,6 @@ void child_stop(child_t* child, const uint32_t grace_ms);
 
 uint16_t child_control_port(const child_kind_t kind, const int index);
 
-void supervisor_install_signals();
+void supervisor_install_signals(void);
 
 #endif
