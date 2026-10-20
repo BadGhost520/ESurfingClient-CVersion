@@ -487,3 +487,17 @@
 2. 连带清理: 删 `scripts/package-windows-helper.sh`; `CMakeLists.txt` 去掉把工具目录复制到构建目录的 `CopyWNP` 目标 (否则 `cmake -E copy_directory` 会因目录不存在让构建失败); Windows 工作流去掉"复制可选工具"这一步, zip 列表也去掉 `tools/windows-network-panel/` (发布包现在只有 exe + 配置 + `portal/`); 根 `README.md` 去掉指向该目录的链接
 3. 客户端不依赖这些脚本: 实测用"只有 exe + ESurfingClient.json + portal/"的最小发布包运行 —— `/api/traffic` 正常 (2 块网卡)、`/api/hotspot/status` 正常 (`state=Off / capability=Enabled`)、首页可打开、退出码 0、无残留 PowerShell 进程, 7/7 断言通过
 4. Windows 与 Linux 构建均通过 (Linux 侧重新 configure, 已无 `CopyWNP`); 构建目录里遗留的 `windows-network-panel` 副本也一并清掉了
+
+### 2026.10.21 (Linux / OpenWrt 网速采样)
+1. `get_adapters_stats()` 补上 Linux 实现: 用 `getifaddrs()` 枚举带地址的网卡, 累计字节数读 `/sys/class/net/<网卡>/statistics/{rx,tx}_bytes` (64 位, OpenWrt 的 busybox/musl 上也有), `connected` 看 `operstate` (up 或 unknown —— 后者是 PPP/PPPoE 这类不报载波的接口), 默认出口读 `/proc/net/route` 取 metric 最小的 0.0.0.0/0 作为 `defaultId`; 回环口按 `/sys/class/net/<网卡>/type == 772` 排除 (名字不一定叫 lo)
+2. `NetTraffic.c` 的采样线程、锁、时钟、睡眠改成按平台分支 (Windows: `CRITICAL_SECTION` + `GetSystemTimeAsFileTime` + `Sleep`; POSIX: `pthread_mutex` + `clock_gettime` + `nanosleep`), 采样与 JSON 组装不再只编进 Windows —— Linux 与 OpenWrt 的网页也能看到网速卡片
+3. `HotspotControl.c` 从 `NOT __OPENWRT__` 的源清单挪到主清单: `net_traffic_json()` 现在跨平台引用 `hotspot_control_available()`, 不挪 OpenWrt 链接会缺符号 (该文件在非 Windows 上就是返回 false 的桩)
+4. 实测 (WSL Ubuntu, 与 OpenWrt 同一份代码路径): `/api/traffic` 返回 2 块网卡、`defaultId` 正确; 静默时 down/up 为 0, `ping -s 1400 -c 60` 期间采到 up ≈ 26.5 KB/s → 8.8 KB/s (与 60×1428 字节吻合); `/api/hotspot/status` 在 Linux 上照旧 501、`hotspotControls=false` (热点卡片不显示); 退出码 0, 日志有"网速采样已启动/已停止"
+5. 其它: `-D__OPENWRT__=1` 配置构建链接通过; Windows 构建与最小发布包实测 (7/7) 无回归; macOS 仍是桩 (sysctl 待做)
+
+### 2026.10.21 (Linux 热点控制)
+1. Linux 上的热点开关走 NetworkManager (`nmcli`): 状态用 `nmcli -t -f DEVICE,TYPE,STATE device` 里的 wifi 设备, 能力看 `WIFI-PROPERTIES.AP`; 开关用 `nmcli connection up|down ESurfingHotspot`, 首次开启用 `nmcli device wifi hotspot ifname <网卡> con-name ESurfingHotspot ssid ESurfingHotspot` (NetworkManager 自己配 NAT 与随机密码)
+2. `utils/runtime/ChildRun.c` 补上 POSIX 实现 (fork + execvp + 管道 + poll + 超时 SIGKILL), 与 Windows 共用同一套"跑一次子进程收输出"的接口
+3. `HotspotControl.c` 重构成"平台无关骨架 + 每个平台两个原语" (`hotspot_query_status` / `hotspot_do_action` / `hotspot_platform_available`); 内嵌 PowerShell 脚本挪到独立文件 `webserver/HotspotScript.inc`; 顺带修两处: 状态刷新改成 200ms 心跳 (首个请求后约半秒就有真实状态, 而不是等 5 秒整拍), 网卡名在接口层就校验 (含非法字符直接 400, 不再先回 202 再在后台失败)
+4. OpenWrt 走桩分支 (`__OPENWRT__` 下不探测 nmcli): 路由器上的热点另有配置入口, 页面不显示热点卡片 (`hotspotControls=false`)
+5. 实测 (WSL, 用假的 `nmcli` 覆盖"没有无线网卡"的环境): `/api/traffic` 的 `hotspotControls=true`; `/api/hotspot/status` 返回 `wlan0 / Off / Enabled / connected=true`; `POST start` → 202 → 状态变 `On` 并提示 "SSID: ESurfingHotspot, 密码在系统的网络设置里查看或修改"; `POST stop` → `Off`; 非法网卡名 `wlan0;id` → 400 且 nmcli 调用记录里没有它; Windows (7/7 回归)、Linux、OpenWrt 三套构建均通过

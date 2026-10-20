@@ -488,7 +488,19 @@ document.addEventListener('alpine:init', () => {
         async updateAuthStatus() {
             try {
                 const data = await api.authStatus();
-                if (data && data.reachable === false) {
+                // 查不到认证状态有好几种原因, 由后端给出 reason, 这里换成对应的说法,
+                // 不然"配置还没填"也会被显示成"认证进程未运行"
+                const reasonText = {
+                    config: '配置未就绪（请在设置里填好账号并启用，点“保存并应用”）',
+                    'no-account': '没有可用账号（请到设置里填写）',
+                    disabled: '程序已禁用（请到设置里启用）',
+                    'not-running': '认证进程未运行'
+                };
+                const reason = data && data.reason ? data.reason : '';
+                if (reason && reasonText[reason]) {
+                    this.authStatusOk = null;
+                    this.authStatusText = reasonText[reason];
+                } else if (data && data.reachable === false) {
                     // 拆分多进程后, 认证进程可能没在跑。
                     // 这时不是"未认证", 而是根本查不到, 要区分开免得误导
                     this.authStatusOk = null;

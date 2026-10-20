@@ -225,11 +225,167 @@ uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* defaul
     return count;
 }
 
+#elif defined(__linux__)
+
+/**
+ * @brief 从 sysfs 读一块网卡的累计收发字节数
+ *
+ * /sys/class/net/<网卡>/statistics 是内核给的 64 位计数器, OpenWrt (busybox/musl)
+ * 上也一定有, 不用起进程、不用解析 /proc/net/dev 的对齐
+ */
+static bool adapter_read_counters(const char* name, uint64_t* rx_bytes, uint64_t* tx_bytes)
+{
+    char path[PATH_MAX];
+    unsigned long long value;
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/rx_bytes", name);
+    FILE* file = fopen(path, "r");
+    if (file == NULL) return false;
+    const bool rx_ok = fscanf(file, "%llu", &value) == 1;
+    if (rx_ok) *rx_bytes = (uint64_t)value;
+    fclose(file);
+    if (rx_ok == false) return false;
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/statistics/tx_bytes", name);
+    file = fopen(path, "r");
+    if (file == NULL) return false;
+    const bool tx_ok = fscanf(file, "%llu", &value) == 1;
+    if (tx_ok) *tx_bytes = (uint64_t)value;
+    fclose(file);
+    return tx_ok;
+}
+
+/**
+ * @brief 是不是回环口 (按接口类型判断, 名字不一定叫 lo)
+ *
+ * /sys/class/net/<网卡>/type 是 ARPHRD_*: 772 是回环, 1 是以太网
+ */
+static bool adapter_is_loopback(const char* name)
+{
+    char path[PATH_MAX];
+    char type[16] = {0};
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/type", name);
+    FILE* file = fopen(path, "r");
+    if (file == NULL) return false;
+    const bool ok = fgets(type, sizeof(type), file) != NULL;
+    fclose(file);
+    if (ok == false) return false;
+    return strtoul(type, NULL, 10) == 772; // ARPHRD_LOOPBACK
+}
+
+/**
+ * @brief 网卡当前是否"通着"
+ *
+ * operstate 为 up 是正常情况; PPP/PPPoE 这类不报载波的接口显示 unknown,
+ * 但它们确实在传数据, 不能算未连接
+ */
+static bool adapter_is_up(const char* name)
+{
+    char path[PATH_MAX];
+    char state[16] = {0};
+
+    snprintf(path, sizeof(path), "/sys/class/net/%s/operstate", name);
+    FILE* file = fopen(path, "r");
+    if (file == NULL) return false;
+    const bool ok = fgets(state, sizeof(state), file) != NULL;
+    fclose(file);
+    if (ok == false) return false;
+    return strncmp(state, "up", 2) == 0 || strncmp(state, "unknown", 7) == 0;
+}
+
+/**
+ * @brief 找默认出口接口 (/proc/net/route 里目标与掩码都为 0 的那条, 取 metric 最小的)
+ *
+ * 路由表里目标是 0.0.0.0/0 的就是默认路由; 没有 (比如纯 IPv6 上联) 时留空,
+ * 网页会退化成选第一块网卡
+ */
+static void adapter_default_route(char* out, const size_t out_len)
+{
+    if (out == NULL || out_len == 0) return;
+    out[0] = '\0';
+
+    FILE* file = fopen("/proc/net/route", "r");
+    if (file == NULL) return;
+
+    char line[256];
+    if (fgets(line, sizeof(line), file) == NULL)
+    {
+        fclose(file);
+        return;
+    }
+
+    bool found = false;
+    unsigned long best_metric = 0;
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        char iface[64] = {0};
+        unsigned long dest = 0, gateway = 0, flags = 0, metric = 0, mask = 0;
+        // Iface Destination Gateway Flags RefCnt Use Metric Mask ...
+        if (sscanf(line, "%63s %lx %lx %lx %*u %*u %lu %lx", iface, &dest, &gateway, &flags, &metric, &mask) != 6)
+        {
+            continue;
+        }
+        if (dest != 0 || mask != 0) continue;
+        if (found == false || metric < best_metric)
+        {
+            snprintf(out, out_len, "%s", iface);
+            best_metric = metric;
+            found = true;
+        }
+    }
+    fclose(file);
+}
+
+uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* default_id, const size_t default_id_len)
+{
+    if (out == NULL || max == 0) return 0;
+    if (default_id != NULL && default_id_len > 0) adapter_default_route(default_id, default_id_len);
+
+    struct ifaddrs* list = NULL;
+    if (getifaddrs(&list) != 0) return 0;
+
+    uint8_t count = 0;
+    for (struct ifaddrs* ifa = list; ifa != NULL && count < max; ifa = ifa->ifa_next)
+    {
+        if (ifa->ifa_addr == NULL) continue;
+        if (ifa->ifa_addr->sa_family != AF_INET && ifa->ifa_addr->sa_family != AF_INET6) continue;
+        if (adapter_is_loopback(ifa->ifa_name)) continue;
+
+        // 同一块网卡会有 IPv4/IPv6 多条记录, 只取第一次见到的那条
+        bool seen = false;
+        for (uint8_t i = 0; i < count; i++)
+        {
+            if (strcmp(out[i].id, ifa->ifa_name) == 0)
+            {
+                seen = true;
+                break;
+            }
+        }
+        if (seen) continue;
+
+        uint64_t rx_bytes = 0, tx_bytes = 0;
+        if (adapter_read_counters(ifa->ifa_name, &rx_bytes, &tx_bytes) == false) continue;
+
+        adapter_stats_t* item = &out[count];
+        memset(item, 0, sizeof(*item));
+        snprintf(item->id, sizeof(item->id), "%s", ifa->ifa_name);
+        snprintf(item->name, sizeof(item->name), "%s", ifa->ifa_name);
+        item->connected = adapter_is_up(ifa->ifa_name);
+        item->rx_bytes = rx_bytes;
+        item->tx_bytes = tx_bytes;
+        count++;
+    }
+
+    freeifaddrs(list);
+    return count;
+}
+
 #else
 
 uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* default_id, const size_t default_id_len)
 {
-    // 其它平台待实现: Linux 读 /proc/net/dev, macOS 读 sysctl(NET_RT_IFLIST2)
+    // macOS 等平台待实现 (macOS 读 sysctl(NET_RT_IFLIST2))
     (void)out;
     (void)max;
     if (default_id != NULL && default_id_len > 0) default_id[0] = '\0';

@@ -1,186 +1,69 @@
 #include "webserver/HotspotControl.h"
 
-#include "utils/log/Logger.h"
-#include "utils/platform/PlatformUtils.h"
-
-#ifdef _WIN32
-
-#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <cJSON/cJSON.h>
-
+#include "utils/log/Logger.h"
+#include "utils/platform/PlatformUtils.h"
 #include "utils/runtime/ChildRun.h"
 #include "utils/sim/SimThread.h"
 
-/* >>> 内嵌脚本 开始 (改脚本请改这里的字面量, 每行末尾的 \n 不能省) */
-static const char HOTSPOT_SCRIPT[] =
-        "$ErrorActionPreference = 'Stop'\n"
-        "# 进度流在重定向时会以 CLIXML 写到 stderr, 会和 JSON 混在一起, 直接关掉\n"
-        "$ProgressPreference = 'SilentlyContinue'\n"
-        "\n"
-        "# 主程序会收走 stdout 解析 JSON, 所以这里只打印一行 JSON;\n"
-        "# 输出被重定向时统一 UTF-8, 否则中文到了日志/解析那里会变成问号\n"
-        "if ([Console]::IsOutputRedirected) { [Console]::OutputEncoding = [Text.Encoding]::UTF8 }\n"
-        "\n"
-        "function Send-Result($Data, [int]$Code = 0) {\n"
-        "    [Console]::Out.WriteLine(($Data | ConvertTo-Json -Depth 4 -Compress))\n"
-        "    [Console]::Out.Flush()\n"
-        "    if ($Code -ne 0) { exit $Code }\n"
-        "}\n"
-        "\n"
-        "function Fail([string]$Message) {\n"
-        "    Send-Result @{ ok = $false; message = $Message } 1\n"
-        "}\n"
-        "\n"
-        "# 一次执行: 列网卡与热点状态, 或者开关一次热点。常驻监听/令牌/来源校验都不需要的 ——\n"
-        "# 页面直接请求主程序自己的 /api/hotspot/*, 由主程序决定什么时候调用本脚本\n"
-        "try {\n"
-        "    if ($PSVersionTable.PSEdition -ne 'Desktop') { Fail '热点控制需要 Windows PowerShell 5.1。' }\n"
-        "    [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager, Windows.Networking.NetworkOperators, ContentType = WindowsRuntime] > $null\n"
-        "    [Windows.Networking.Connectivity.NetworkInformation, Windows.Networking.Connectivity, ContentType = WindowsRuntime] > $null\n"
-        "\n"
-        "    # 只有\"已连接且有连接配置\"的网卡才在系统热点设置的可选范围里\n"
-        "    $profiles = @{}\n"
-        "    foreach ($profile in [Windows.Networking.Connectivity.NetworkInformation]::GetConnectionProfiles()) {\n"
-        "        if ($profile.NetworkAdapter) { $profiles[$profile.NetworkAdapter.NetworkAdapterId.ToString()] = $profile }\n"
-        "    }\n"
-        "\n"
-        "    $rows = @()\n"
-        "    $managers = @{}\n"
-        "    foreach ($adapter in [Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces()) {\n"
-        "        $id = $adapter.Id.Trim('{}').ToLowerInvariant()\n"
-        "        if ($adapter.OperationalStatus -ne 'Up' -or -not $profiles.ContainsKey($id)) { continue }\n"
-        "        try {\n"
-        "            $profile = $profiles[$id]\n"
-        "            $manager = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager]::CreateFromConnectionProfile($profile)\n"
-        "            $capability = [string][Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager]::GetTetheringCapabilityFromConnectionProfile($profile)\n"
-        "            $managers[$id] = $manager\n"
-        "            $rows += [pscustomobject]@{\n"
-        "                id         = $id\n"
-        "                # 有些机器上连接名是空的 (例如只填了描述), 用描述兜底\n"
-        "                name       = $(if ($adapter.Name) { $adapter.Name } else { $adapter.Description })\n"
-        "                state      = [string]$manager.TetheringOperationalState\n"
-        "                capability = $capability\n"
-        "                connected  = $true\n"
-        "            }\n"
-        "        } catch { } # 单块网卡不支持热点不影响其它网卡\n"
-        "    }\n"
-        "\n"
-        "    if ($EfAction -eq 'state') {\n"
-        "        $internet = [Windows.Networking.Connectivity.NetworkInformation]::GetInternetConnectionProfile()\n"
-        "        $default = ''\n"
-        "        if ($internet -and $internet.NetworkAdapter) {\n"
-        "            $default = $internet.NetworkAdapter.NetworkAdapterId.ToString().Trim('{}').ToLowerInvariant()\n"
-        "        }\n"
-        "        $busy = @($rows | Where-Object { $_.state -eq 'InTransition' }).Count -gt 0\n"
-        "        $message = if ($rows.Count -eq 0) { '没有已连接的网卡，热点控制不可用。' }\n"
-        "                   elseif ($busy) { 'Windows 正在切换热点，请稍候。' }\n"
-        "                   else { '' }\n"
-        "        Send-Result @{ adapters = $rows; defaultId = $default; busy = $busy; message = $message }\n"
-        "        exit 0\n"
-        "    }\n"
-        "\n"
-        "    if (-not $EfAdapterId) { Fail '没有指定网卡。' }\n"
-        "    $target = $EfAdapterId.Trim('{}').ToLowerInvariant()\n"
-        "    if (-not $managers.ContainsKey($target)) { Fail '所选网卡当前不可用，请刷新页面后重试。' }\n"
-        "\n"
-        "    $manager = $managers[$target]\n"
-        "    $current = [string]$manager.TetheringOperationalState\n"
-        "    if ($current -eq 'InTransition') { Fail 'Windows 正在切换热点，请稍后再试。' }\n"
-        "\n"
-        "    if ($EfAction -eq 'start') {\n"
-        "        if ($current -eq 'On') { Send-Result @{ ok = $true; message = '热点已经是开启状态。'; state = $current }; exit 0 }\n"
-        "        $operation = $manager.StartTetheringAsync()\n"
-        "        $wanted = 'On'\n"
-        "    }\n"
-        "    else {\n"
-        "        if ($current -eq 'Off') { Send-Result @{ ok = $true; message = '热点已经是关闭状态。'; state = $current }; exit 0 }\n"
-        "        $operation = $manager.StopTetheringAsync()\n"
-        "        $wanted = 'Off'\n"
-        "    }\n"
-        "\n"
-        "    # 等状态真的变过来再回话 (Windows 切换热点常见几秒, 最多等 20 秒)\n"
-        "    $state = $current\n"
-        "    for ($i = 0; $i -lt 200; $i++) {\n"
-        "        Start-Sleep -Milliseconds 100\n"
-        "        $state = [string]$manager.TetheringOperationalState\n"
-        "        if ($state -eq $wanted) { break }\n"
-        "        if ($wanted -eq 'On' -and $state -eq 'Off' -and $i -gt 50) { break } # 明显起不来就早点收手\n"
-        "    }\n"
-        "    $null = $operation\n"
-        "\n"
-        "    if ($state -eq $wanted) {\n"
-        "        $message = if ($wanted -eq 'On') { '热点已开启，手机可以连接。' } else { '热点已关闭。' }\n"
-        "        Send-Result @{ ok = $true; message = $message; state = $state }\n"
-        "        exit 0\n"
-        "    }\n"
-        "    Fail ('热点没有切换成功（当前状态：' + $state + '），请打开 Windows 热点设置检查。')\n"
-        "}\n"
-        "catch {\n"
-        "    Fail ('热点操作失败：' + $_.Exception.GetBaseException().Message)\n"
-        "}\n"
-        "\n"
-    ;
-/* <<< 内嵌脚本 结束 */
+#include <cJSON/cJSON.h>
 
-/* 脚本已经内嵌在上面, 调用方式见 hotspot_run() */
-
-/** 内嵌脚本拼装后的上限 (脚本约 5KB, 留足余量) */
-#define HOTSPOT_SCRIPT_MAX 8192
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <time.h>
+#endif
 
 /** 状态查询最多等多久 */
 #define HOTSPOT_STATUS_TIMEOUT_MS 10000
-/** 开关动作最多等多久 (Windows 自己切换热点就可能要十几秒) */
+/** 开关动作最多等多久 (Windows 自己切换热点就可能要十几秒; nmcli 起 AP 也要几秒) */
 #define HOTSPOT_ACTION_TIMEOUT_MS 30000
 /** 后台多久刷新一次状态 */
 #define HOTSPOT_REFRESH_MS 5000
-/** 网页多久没来问过, 就不必再刷状态了 (没人看就不起 PowerShell) */
+/** 网页多久没来问过, 就不必再刷状态了 (没人看就不起子进程) */
 #define HOTSPOT_REQUEST_WINDOW_MS 20000
-/** 脚本输出最多收多少 */
+/** 脚本/命令输出最多收多少 */
 #define HOTSPOT_OUTPUT_MAX 8192
 
-static CRITICAL_SECTION s_run_lock;   // 串行化"跑一次 PowerShell"
-static CRITICAL_SECTION s_cache_lock; // 保护缓存与消息
-static bool s_locks_ready;
-static bool s_available_checked;
-static bool s_available;
-
-static char* s_status_cache;          // 脚本吐出来的状态 JSON
-static char s_last_message[512];      // 最近一次开关动作的结果说明
-static volatile bool s_busy;          // 正在切换
-static volatile bool s_refreshing;    // 后台刷新线程是否该继续
-static sim_thread_t* s_refresh_thread;
-static uint64_t s_last_request_ms;
+/* ------------------------------------------------------------------ 平台相关 */
 
 /**
- * @brief 简单的字符串拷贝 (项目里没引入 strdup, 各编译器的名字还不一样)
+ * @brief 这个平台能不能控制热点
  */
-static char* hotspot_strdup(const char* text)
-{
-    if (text == NULL) return NULL;
-    const size_t len = strlen(text) + 1;
-    char* copy = malloc(len);
-    if (copy != NULL) memcpy(copy, text, len);
-    return copy;
-}
+static bool hotspot_platform_available(void);
 
-static uint64_t hotspot_now_ms(void)
-{
-    FILETIME file_time;
-    GetSystemTimeAsFileTime(&file_time);
-    ULARGE_INTEGER value;
-    value.LowPart = file_time.dwLowDateTime;
-    value.HighPart = file_time.dwHighDateTime;
-    return (uint64_t)((value.QuadPart - 116444736000000000ULL) / 10000ULL);
-}
+/**
+ * @brief 查一次热点状态
+ * @return JSON 文本 (需要 free): {"adapters":[{"id","name","state","capability","connected"}],
+ *         "defaultId":"","message":""}; 失败返回 NULL
+ */
+static char* hotspot_query_status(void);
+
+/**
+ * @brief 执行一次开关
+ * @param action "start" / "stop"
+ * @param adapter_id 目标网卡
+ * @param message 返回给用户的结果说明 (需要 free)
+ * @return 是否成功
+ */
+static bool hotspot_do_action(const char* action, const char* adapter_id, char** message);
+
+#ifdef _WIN32
+
+/* ------------------------------------------------------------------ Windows */
+
+/** 内嵌脚本的调用方式: 变量前缀 + 脚本正文 -> UTF-16LE -> Base64 -> -EncodedCommand */
+#define HOTSPOT_SCRIPT_MAX 8192
+/** 1601-01-01 到 1970-01-01 的 100 纳秒数 (FILETIME 转 Unix 时间用) */
+#define HOTSPOT_EPOCH_DIFF 116444736000000000ULL
+
+#include "HotspotScript.inc"
 
 /**
  * @brief 把 UTF-8 文本转成 UTF-16LE (PowerShell 的 -EncodedCommand 只吃这个)
- * @param out 输出缓冲
- * @param out_len 缓冲字节数
  * @return 写入的字节数, 失败返回 0
  */
 static size_t hotspot_utf8_to_utf16le(const char* text, unsigned char* out, const size_t out_len)
@@ -195,7 +78,6 @@ static size_t hotspot_utf8_to_utf16le(const char* text, unsigned char* out, cons
 
 /**
  * @brief Base64 编码 (PowerShell -EncodedCommand 的格式)
- * @return 是否成功
  */
 static bool hotspot_base64(const unsigned char* data, const size_t data_len, char* out, const size_t out_len)
 {
@@ -228,10 +110,9 @@ static bool hotspot_powershell(char* out, const size_t out_len)
 }
 
 /**
- * @brief 跑一次 HotspotControl.ps1
- * @return 是否跑完并且拿到了 JSON
+ * @brief 跑一次内嵌脚本, 把它的 JSON 收回来
  */
-static bool hotspot_run(const char* action, const char* adapter_id, char* out, const size_t out_len, int* exit_code)
+static bool hotspot_run_script(const char* action, const char* adapter_id, char* out, const size_t out_len, int* exit_code)
 {
     char powershell[PATH_MAX];
     if (hotspot_powershell(powershell, sizeof(powershell)) == false)
@@ -240,11 +121,6 @@ static bool hotspot_run(const char* action, const char* adapter_id, char* out, c
         return false;
     }
 
-    /**
-     * 脚本已经嵌在程序里, 不再依赖发布包里的 .ps1:
-     * 动作与网卡 id 以变量形式放在脚本前面, 整段用 -EncodedCommand 交给 PowerShell
-     * (参数里只会出现 state/start/stop 与 GUID, 不会把用户输入拼进代码)
-     */
     char source[HOTSPOT_SCRIPT_MAX];
     const int used = snprintf(source, sizeof(source), "$EfAction = '%s'\n$EfAdapterId = '%s'\n%s",
                               action != NULL ? action : "state",
@@ -293,21 +169,447 @@ static bool hotspot_run(const char* action, const char* adapter_id, char* out, c
     return true;
 }
 
+static bool hotspot_platform_available(void)
+{
+    char powershell[PATH_MAX];
+    if (hotspot_powershell(powershell, sizeof(powershell)) == false)
+    {
+        LOG_DEBUG("找不到 powershell.exe, 热点控制不可用");
+        return false;
+    }
+    return true;
+}
+
+static char* hotspot_query_status(void)
+{
+    char output[HOTSPOT_OUTPUT_MAX];
+    if (hotspot_run_script("state", NULL, output, sizeof(output), NULL) == false) return NULL;
+    return strdup(output);
+}
+
+static bool hotspot_do_action(const char* action, const char* adapter_id, char** message)
+{
+    char output[HOTSPOT_OUTPUT_MAX];
+    int exit_code = -1;
+    if (hotspot_run_script(action, adapter_id, output, sizeof(output), &exit_code) == false)
+    {
+        *message = NULL;
+        return false;
+    }
+
+    cJSON* json = cJSON_Parse(output);
+    if (json == NULL) return false;
+
+    const cJSON* text = cJSON_GetObjectItem(json, "message");
+    if (cJSON_IsString(text) && text->valuestring != NULL) *message = strdup(text->valuestring);
+
+    const cJSON* ok = cJSON_GetObjectItem(json, "ok");
+    const bool success = cJSON_IsBool(ok) ? cJSON_IsTrue(ok) : (exit_code == 0);
+    cJSON_Delete(json);
+    return success;
+}
+
+#elif defined(__linux__) && !defined(__OPENWRT__)
+
+/* ------------------------------------------------------------------ Linux (NetworkManager) */
+
+/** 我们自己创建/使用的热点连接名 (SSID 同名) */
+#define HOTSPOT_CONNECTION "ESurfingHotspot"
+
+/**
+ * @brief 跑一次 nmcli
+ * @param args 参数 (不含 nmcli 本身)
+ * @return 是否跑完 (退出码在 exit_code)
+ */
+static bool hotspot_nmcli(const char* args, char* out, const size_t out_len, int* exit_code)
+{
+    const bool ok = child_run_capture("nmcli", args, out, out_len, HOTSPOT_STATUS_TIMEOUT_MS, exit_code, false);
+    if (ok == false) LOG_DEBUG("执行 nmcli 失败: %s", args);
+    return ok;
+}
+
+/**
+ * @brief 去掉输出末尾的换行
+ */
+static void hotspot_trim(char* text)
+{
+    size_t len = strlen(text);
+    while (len > 0 && (text[len - 1] == '\n' || text[len - 1] == '\r')) text[--len] = '\0';
+}
+
+/**
+ * @brief 网卡名只允许这些字符 (防止把别的东西拼进 nmcli 参数)
+ */
+static bool hotspot_valid_device(const char* name)
+{
+    if (name == NULL || name[0] == '\0' || strlen(name) > 32) return false;
+    for (const char* p = name; *p != '\0'; p++)
+    {
+        const bool ok = (*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') ||
+                        *p == '_' || *p == '-' || *p == '.' || *p == ':';
+        if (ok == false) return false;
+    }
+    return true;
+}
+
+/**
+ * @brief 热点能力: NetworkManager 的 WIFI-PROPERTIES.AP
+ */
+static bool hotspot_ap_capable(const char* device, bool* capable)
+{
+    char args[512];
+    char output[2048];
+    int exit_code = -1;
+
+    snprintf(args, sizeof(args), "-t -f WIFI-PROPERTIES.AP device show %s", device);
+    if (hotspot_nmcli(args, output, sizeof(output), &exit_code) == false || exit_code != 0) return false;
+
+    *capable = strstr(output, "WIFI-PROPERTIES.AP:yes") != NULL;
+    return true;
+}
+
+/**
+ * @brief 我们那条热点连接现在是不是在某块网卡上激活了
+ */
+static bool hotspot_profile_active(const char* device, bool* active)
+{
+    char output[4096];
+    int exit_code = -1;
+
+    *active = false;
+    if (hotspot_nmcli("-t -f NAME,DEVICE connection show --active", output, sizeof(output), &exit_code) == false || exit_code != 0)
+    {
+        return false;
+    }
+
+    const size_t name_len = strlen(HOTSPOT_CONNECTION);
+    const char* line = output;
+    while (*line != '\0')
+    {
+        // 形如 "ESurfingHotspot:wlan0"
+        if (strncmp(line, HOTSPOT_CONNECTION, name_len) == 0 && line[name_len] == ':')
+        {
+            const char* bound = line + name_len + 1;
+            const char* end = strchr(bound, '\n');
+            const size_t bound_len = end != NULL ? (size_t)(end - bound) : strlen(bound);
+            if (device == NULL || (strlen(device) == bound_len && strncmp(bound, device, bound_len) == 0))
+            {
+                *active = true;
+                return true;
+            }
+        }
+        line = strchr(line, '\n');
+        if (line == NULL) break;
+        line++;
+    }
+    return true;
+}
+
+static bool hotspot_profile_exists(void)
+{
+    char output[4096];
+    int exit_code = -1;
+    if (hotspot_nmcli("-t -f NAME connection show", output, sizeof(output), &exit_code) == false || exit_code != 0) return false;
+
+    const size_t name_len = strlen(HOTSPOT_CONNECTION);
+    const char* line = output;
+    while (*line != '\0')
+    {
+        if (strncmp(line, HOTSPOT_CONNECTION, name_len) == 0 && (line[name_len] == '\n' || line[name_len] == '\0')) return true;
+        line = strchr(line, '\n');
+        if (line == NULL) break;
+        line++;
+    }
+    return false;
+}
+
+static bool hotspot_platform_available(void)
+{
+    char output[512];
+    int exit_code = -1;
+    if (child_run_capture("nmcli", "--version", output, sizeof(output), 3000, &exit_code, true) == false || exit_code != 0)
+    {
+        LOG_DEBUG("没找到 nmcli (NetworkManager), 热点控制不可用");
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @brief 列出 wifi 网卡并给出状态 JSON
+ *
+ * nmcli -t 的输出用 ':' 分隔, 网卡名里不会出现冒号
+ */
+static char* hotspot_query_status(void)
+{
+    char devices[HOTSPOT_OUTPUT_MAX];
+    int exit_code = -1;
+    if (hotspot_nmcli("-t -f DEVICE,TYPE,STATE device", devices, sizeof(devices), &exit_code) == false || exit_code != 0)
+    {
+        return NULL;
+    }
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON* adapters = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "adapters", adapters);
+    cJSON_AddStringToObject(root, "defaultId", "");
+    cJSON_AddStringToObject(root, "message", "");
+
+    const char* line = devices;
+    while (line != NULL && *line != '\0')
+    {
+        char row[256];
+        const char* end = strchr(line, '\n');
+        const size_t len = end != NULL ? (size_t)(end - line) : strlen(line);
+        if (len >= sizeof(row)) { line = end != NULL ? end + 1 : NULL; continue; }
+        memcpy(row, line, len);
+        row[len] = '\0';
+        line = end != NULL ? end + 1 : NULL;
+
+        char* type = strchr(row, ':');
+        if (type == NULL) continue;
+        *type++ = '\0';
+        char* state = strchr(type, ':');
+        if (state == NULL) continue;
+        *state++ = '\0';
+        if (strcmp(type, "wifi") != 0) continue; // 只有无线网卡能开热点
+
+        bool capable = false;
+        hotspot_ap_capable(row, &capable);
+        bool active = false;
+        hotspot_profile_active(row, &active);
+
+        const bool transitioning = strstr(state, "activating") != NULL || strstr(state, "deactivating") != NULL;
+        const bool usable = strcmp(state, "unavailable") != 0 && strcmp(state, "unmanaged") != 0;
+
+        cJSON* item = cJSON_CreateObject();
+        cJSON_AddStringToObject(item, "id", row);
+        cJSON_AddStringToObject(item, "name", row);
+        cJSON_AddStringToObject(item, "state", active ? "On" : (transitioning ? "InTransition" : "Off"));
+        cJSON_AddStringToObject(item, "capability", capable ? "Enabled" : (usable ? "Disabled" : "Unknown"));
+        cJSON_AddBoolToObject(item, "connected", usable);
+        cJSON_AddItemToArray(adapters, item);
+    }
+
+    if (cJSON_GetArraySize(adapters) == 0)
+    {
+        cJSON_ReplaceItemInObject(root, "message", cJSON_CreateString("没有可用的无线网卡（需要支持 AP 模式的网卡与 NetworkManager）。"));
+    }
+    else
+    {
+        cJSON_ReplaceItemInObject(root, "message", cJSON_CreateString(""));
+    }
+
+    char* json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json;
+}
+
+static bool hotspot_do_action(const char* action, const char* adapter_id, char** message)
+{
+    *message = NULL;
+
+    if (hotspot_valid_device(adapter_id) == false)
+    {
+        *message = strdup("网卡名不合法。");
+        return false;
+    }
+
+    char args[1024];
+    char output[HOTSPOT_OUTPUT_MAX];
+    int exit_code = -1;
+
+    if (strcmp(action, "start") == 0)
+    {
+        if (hotspot_profile_exists())
+        {
+            snprintf(args, sizeof(args), "connection up %s", HOTSPOT_CONNECTION);
+        }
+        else
+        {
+            // 首次开启: 让 NetworkManager 建一条名为 ESurfingHotspot 的共享连接 (它会自己配 NAT 与随机密码)
+            snprintf(args, sizeof(args), "device wifi hotspot ifname %s con-name %s ssid %s",
+                     adapter_id, HOTSPOT_CONNECTION, HOTSPOT_CONNECTION);
+        }
+    }
+    else
+    {
+        snprintf(args, sizeof(args), "connection down %s", HOTSPOT_CONNECTION);
+    }
+
+    if (child_run_capture("nmcli", args, output, sizeof(output), HOTSPOT_ACTION_TIMEOUT_MS, &exit_code, true) == false)
+    {
+        *message = strdup("执行 nmcli 失败，请检查 NetworkManager 是否在运行。");
+        return false;
+    }
+
+    hotspot_trim(output);
+    if (exit_code != 0)
+    {
+        LOG_WARN("nmcli 执行失败 (退出码 %d): %s", exit_code, output);
+        *message = output[0] != '\0' ? strdup(output) : strdup("热点操作失败，请检查 NetworkManager 权限与网卡状态。");
+        return false;
+    }
+
+    if (strcmp(action, "start") == 0)
+    {
+        *message = strdup("热点已开启（SSID: ESurfingHotspot，密码在系统的网络设置里查看或修改）。");
+    }
+    else
+    {
+        *message = strdup("热点已关闭。");
+    }
+    return true;
+}
+
+#else
+
+/* ------------------------------------------------------------------ 其它平台 */
+
+static bool hotspot_platform_available(void)
+{
+    LOG_DEBUG("当前平台暂不支持热点控制");
+    return false;
+}
+
+static char* hotspot_query_status(void)
+{
+    return NULL;
+}
+
+static bool hotspot_do_action(const char* action, const char* adapter_id, char** message)
+{
+    (void)action;
+    (void)adapter_id;
+    if (message != NULL) *message = NULL;
+    return false;
+}
+
+#endif
+
+/* ------------------------------------------------------------------ 平台无关的骨架 */
+
+#ifdef _WIN32
+typedef CRITICAL_SECTION hotspot_lock_t;
+#else
+#include <pthread.h>
+typedef pthread_mutex_t hotspot_lock_t;
+#endif
+
+static hotspot_lock_t s_run_lock;   // 串行化"跑一次外部命令"
+static hotspot_lock_t s_cache_lock; // 保护缓存与消息
+static bool s_locks_ready;
+static bool s_available_checked;
+static bool s_available;
+
+static char* s_status_cache;        // 最近一次状态 JSON
+static char s_last_message[512];    // 最近一次开关动作的结果说明
+static volatile bool s_busy;        // 正在切换
+static volatile bool s_refreshing;  // 后台刷新线程是否该继续
+static sim_thread_t* s_refresh_thread;
+static uint64_t s_last_request_ms;
+static uint64_t s_last_query_ms;
+
+static void hotspot_lock_init(void)
+{
+#ifdef _WIN32
+    InitializeCriticalSection(&s_run_lock);
+    InitializeCriticalSection(&s_cache_lock);
+#else
+    pthread_mutex_init(&s_run_lock, NULL);
+    pthread_mutex_init(&s_cache_lock, NULL);
+#endif
+    s_locks_ready = true;
+}
+
+static void hotspot_run_lock(void)
+{
+#ifdef _WIN32
+    EnterCriticalSection(&s_run_lock);
+#else
+    pthread_mutex_lock(&s_run_lock);
+#endif
+}
+
+static void hotspot_run_unlock(void)
+{
+#ifdef _WIN32
+    LeaveCriticalSection(&s_run_lock);
+#else
+    pthread_mutex_unlock(&s_run_lock);
+#endif
+}
+
+static void hotspot_cache_lock(void)
+{
+#ifdef _WIN32
+    EnterCriticalSection(&s_cache_lock);
+#else
+    pthread_mutex_lock(&s_cache_lock);
+#endif
+}
+
+static void hotspot_cache_unlock(void)
+{
+#ifdef _WIN32
+    LeaveCriticalSection(&s_cache_lock);
+#else
+    pthread_mutex_unlock(&s_cache_lock);
+#endif
+}
+
+static uint64_t hotspot_now_ms(void)
+{
+#ifdef _WIN32
+    FILETIME file_time;
+    GetSystemTimeAsFileTime(&file_time);
+    ULARGE_INTEGER value;
+    value.LowPart = file_time.dwLowDateTime;
+    value.HighPart = file_time.dwHighDateTime;
+    return (uint64_t)((value.QuadPart - HOTSPOT_EPOCH_DIFF) / 10000ULL);
+#else
+    struct timespec now;
+    if (clock_gettime(CLOCK_REALTIME, &now) != 0) return 0;
+    return (uint64_t)now.tv_sec * 1000ULL + (uint64_t)now.tv_nsec / 1000000ULL;
+#endif
+}
+
+static void hotspot_sleep_ms(const int ms)
+{
+#ifdef _WIN32
+    Sleep((DWORD)ms);
+#else
+    struct timespec delay;
+    delay.tv_sec = ms / 1000;
+    delay.tv_nsec = (long)(ms % 1000) * 1000000L;
+    nanosleep(&delay, NULL);
+#endif
+}
+
+static char* hotspot_strdup(const char* text)
+{
+    if (text == NULL) return NULL;
+    const size_t len = strlen(text) + 1;
+    char* copy = malloc(len);
+    if (copy != NULL) memcpy(copy, text, len);
+    return copy;
+}
+
 /**
  * @brief 刷新一次状态缓存
  */
 static void hotspot_refresh_state(void)
 {
-    char output[HOTSPOT_OUTPUT_MAX];
-    EnterCriticalSection(&s_run_lock);
-    const bool ok = hotspot_run("state", NULL, output, sizeof(output), NULL);
-    LeaveCriticalSection(&s_run_lock);
-    if (ok == false) return;
+    s_last_query_ms = hotspot_now_ms();
+    hotspot_run_lock();
+    char* fresh = hotspot_query_status();
+    hotspot_run_unlock();
+    if (fresh == NULL) return;
 
-    EnterCriticalSection(&s_cache_lock);
+    hotspot_cache_lock();
     free(s_status_cache);
-    s_status_cache = hotspot_strdup(output);
-    LeaveCriticalSection(&s_cache_lock);
+    s_status_cache = fresh;
+    hotspot_cache_unlock();
 }
 
 typedef struct
@@ -317,45 +619,31 @@ typedef struct
 } hotspot_job_t;
 
 /**
- * @brief 开关工作线程: 跑一次 start/stop, 然后立刻刷新状态
+ * @brief 开关工作线程: 跑一次动作, 记下结果说明, 然后刷新状态
  */
 static int hotspot_worker(void* arg)
 {
     hotspot_job_t* job = arg;
-    char output[HOTSPOT_OUTPUT_MAX];
-    int exit_code = -1;
-    bool ok = false;
+    char* message = NULL;
+    bool ok;
 
-    EnterCriticalSection(&s_run_lock);
-    ok = hotspot_run(job->action, job->adapter_id, output, sizeof(output), &exit_code);
-    LeaveCriticalSection(&s_run_lock);
+    hotspot_run_lock();
+    ok = hotspot_do_action(job->action, job->adapter_id, &message);
+    hotspot_run_unlock();
 
-    EnterCriticalSection(&s_cache_lock);
+    hotspot_cache_lock();
     s_last_message[0] = '\0';
-    if (ok)
+    if (message != NULL && message[0] != '\0')
     {
-        cJSON* json = cJSON_Parse(output);
-        if (json != NULL)
-        {
-            const cJSON* message = cJSON_GetObjectItem(json, "message");
-            const cJSON* success = cJSON_GetObjectItem(json, "ok");
-            if (cJSON_IsString(message) && message->valuestring != NULL)
-            {
-                snprintf(s_last_message, sizeof(s_last_message), "%s", message->valuestring);
-            }
-            if (cJSON_IsBool(success) && cJSON_IsFalse(success))
-            {
-                ok = false;
-            }
-            cJSON_Delete(json);
-        }
+        snprintf(s_last_message, sizeof(s_last_message), "%s", message);
     }
-    if (ok == false && s_last_message[0] == '\0')
+    else if (ok == false)
     {
-        snprintf(s_last_message, sizeof(s_last_message), "热点操作未完成，请打开 Windows 热点设置检查。");
+        snprintf(s_last_message, sizeof(s_last_message), "热点操作未完成，请检查系统热点设置。");
     }
+    free(message);
     s_busy = false;
-    LeaveCriticalSection(&s_cache_lock);
+    hotspot_cache_unlock();
 
     hotspot_refresh_state();
     free(job);
@@ -363,20 +651,19 @@ static int hotspot_worker(void* arg)
 }
 
 /**
- * @brief 后台状态刷新线程: 只在网页最近来问过的时候才起 PowerShell
+ * @brief 后台状态刷新线程: 只在网页最近来问过的时候才跑外部命令
  */
 static int hotspot_refresh_thread(void* arg)
 {
     (void)arg;
     while (s_refreshing)
     {
-        for (int i = 0; i < HOTSPOT_REFRESH_MS / 200; i++)
-        {
-            if (s_refreshing == false) return 0;
-            Sleep(200);
-        }
+        hotspot_sleep_ms(200);
+        if (s_refreshing == false) return 0;
         if (s_busy) continue; // 正在切换, 状态由工作线程收尾时刷新
-        if (hotspot_now_ms() - s_last_request_ms > HOTSPOT_REQUEST_WINDOW_MS) continue;
+        const uint64_t now = hotspot_now_ms();
+        if (now - s_last_request_ms > HOTSPOT_REQUEST_WINDOW_MS) continue; // 没人看网页就不查
+        if (now - s_last_query_ms < HOTSPOT_REFRESH_MS) continue;          // 5 秒内不重复查
         hotspot_refresh_state();
     }
     return 0;
@@ -386,17 +673,8 @@ bool hotspot_control_available(void)
 {
     if (s_available_checked) return s_available;
     s_available_checked = true;
-    s_available = false;
-
-    // 脚本已经内嵌, 只要系统里有 Windows PowerShell 5.1 就能用
-    char powershell[PATH_MAX];
-    if (hotspot_powershell(powershell, sizeof(powershell)) == false)
-    {
-        LOG_DEBUG("找不到 powershell.exe, 热点控制不可用 (其它平台暂不支持)");
-        return false;
-    }
-    s_available = true;
-    return true;
+    s_available = hotspot_platform_available();
+    return s_available;
 }
 
 void hotspot_control_start(void)
@@ -404,12 +682,7 @@ void hotspot_control_start(void)
     if (s_refreshing) return;
     if (hotspot_control_available() == false) return;
 
-    if (s_locks_ready == false)
-    {
-        InitializeCriticalSection(&s_run_lock);
-        InitializeCriticalSection(&s_cache_lock);
-        s_locks_ready = true;
-    }
+    if (s_locks_ready == false) hotspot_lock_init();
     s_refreshing = true;
     s_refresh_thread = sim_thread_create(hotspot_refresh_thread, NULL);
     if (s_refresh_thread == NULL)
@@ -418,7 +691,7 @@ void hotspot_control_start(void)
         LOG_WARN("热点状态刷新线程创建失败");
         return;
     }
-    LOG_INFO("热点控制已就绪 (内嵌脚本, 按需调用 PowerShell)");
+    LOG_INFO("热点控制已就绪");
 }
 
 void hotspot_control_stop(void)
@@ -429,10 +702,10 @@ void hotspot_control_stop(void)
     sim_thread_join(s_refresh_thread, &code);
     s_refresh_thread = NULL;
 
-    EnterCriticalSection(&s_cache_lock);
+    hotspot_cache_lock();
     free(s_status_cache);
     s_status_cache = NULL;
-    LeaveCriticalSection(&s_cache_lock);
+    hotspot_cache_unlock();
 }
 
 char* hotspot_status_json(void)
@@ -444,10 +717,10 @@ char* hotspot_status_json(void)
     char* cached = NULL;
     char message[512];
     message[0] = '\0';
-    EnterCriticalSection(&s_cache_lock);
+    hotspot_cache_lock();
     if (s_status_cache != NULL) cached = hotspot_strdup(s_status_cache);
     if (s_last_message[0] != '\0') snprintf(message, sizeof(message), "%s", s_last_message);
-    LeaveCriticalSection(&s_cache_lock);
+    hotspot_cache_unlock();
 
     if (cached == NULL)
     {
@@ -455,21 +728,25 @@ char* hotspot_status_json(void)
         return hotspot_strdup(placeholder);
     }
 
-    // 在脚本给的状态上加两件事: 是否正在切换、最近一次动作的说明
+    // 在平台给的状态上加两件事: 是否正在切换、最近一次动作的说明
     cJSON* root = cJSON_Parse(cached);
     free(cached);
     if (root == NULL) return NULL;
+
+    // 平台自己给的状态说明 (例如"没有可用的无线网卡") 要留着, 只有动作结果优先于它
+    cJSON* platform_message = cJSON_DetachItemFromObject(root, "message");
+    const char* platform_text = (cJSON_IsString(platform_message) && platform_message->valuestring != NULL)
+                                    ? platform_message->valuestring
+                                    : "";
     cJSON_DeleteItemFromObject(root, "busy");
-    cJSON_DeleteItemFromObject(root, "message");
     cJSON_AddBoolToObject(root, "busy", s_busy);
-    if (message[0] != '\0')
-    {
-        cJSON_AddStringToObject(root, "message", message);
-    }
-    else
-    {
-        cJSON_AddStringToObject(root, "message", s_busy ? "正在切换热点，请稍候。" : "");
-    }
+
+    const char* final_message = "";
+    if (s_busy) final_message = "正在切换热点，请稍候。";
+    else if (message[0] != '\0') final_message = message;
+    else if (platform_text[0] != '\0') final_message = platform_text;
+    cJSON_AddStringToObject(root, "message", final_message);
+    cJSON_Delete(platform_message);
     char* json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return json;
@@ -481,17 +758,23 @@ int hotspot_request(const char* action, const char* adapter_id, char** out_json)
     if (hotspot_control_available() == false) return 501;
     if (action == NULL || (strcmp(action, "start") != 0 && strcmp(action, "stop") != 0)) return 400;
     if (adapter_id == NULL || adapter_id[0] == '\0') return 400;
+    // 网卡名会被拼进 nmcli 参数: 只允许字母数字与 _ - . :, 长度也限住
+    if (strlen(adapter_id) > 64 || strspn(adapter_id, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.:") != strlen(adapter_id))
+    {
+        LOG_WARN("热点请求的网卡名不合法, 已拒绝: %.64s", adapter_id);
+        return 400;
+    }
 
-    EnterCriticalSection(&s_cache_lock);
+    hotspot_cache_lock();
     if (s_busy)
     {
-        LeaveCriticalSection(&s_cache_lock);
-        *out_json = hotspot_strdup("{\"ok\":false,\"message\":\"Windows 正在切换热点，请稍候。\"}");
+        hotspot_cache_unlock();
+        *out_json = hotspot_strdup("{\"ok\":false,\"message\":\"正在切换热点，请稍候。\"}");
         return 409;
     }
     s_busy = true;
     s_last_message[0] = '\0';
-    LeaveCriticalSection(&s_cache_lock);
+    hotspot_cache_unlock();
 
     hotspot_job_t* job = calloc(1, sizeof(hotspot_job_t));
     if (job == NULL)
@@ -509,39 +792,9 @@ int hotspot_request(const char* action, const char* adapter_id, char** out_json)
         s_busy = false;
         return 500;
     }
-    sim_thread_detach(worker); // 跑完自己收尾, 关闭程序时不等它 (PowerShell 子进程会自己结束)
+    sim_thread_detach(worker); // 跑完自己收尾, 关闭程序时不等它
 
     LOG_INFO("收到热点%s请求 (网卡 %s), 已交给后台执行", strcmp(action, "start") == 0 ? "开启" : "关闭", adapter_id);
-    *out_json = hotspot_strdup("{\"ok\":true,\"message\":\"Windows 正在切换热点，请稍候。\"}");
+    *out_json = hotspot_strdup("{\"ok\":true,\"message\":\"正在切换热点，请稍候。\"}");
     return 202;
 }
-
-#else
-
-bool hotspot_control_available(void)
-{
-    return false;
-}
-
-void hotspot_control_start(void)
-{
-}
-
-void hotspot_control_stop(void)
-{
-}
-
-char* hotspot_status_json(void)
-{
-    return NULL;
-}
-
-int hotspot_request(const char* action, const char* adapter_id, char** out_json)
-{
-    (void)action;
-    (void)adapter_id;
-    if (out_json != NULL) *out_json = NULL;
-    return 501;
-}
-
-#endif

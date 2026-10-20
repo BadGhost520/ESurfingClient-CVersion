@@ -173,15 +173,190 @@ bool child_run_capture(const char* exe, const char* args, char* out, const size_
 
 #else
 
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+
+/** 参数个数上限 (nmcli 这类命令远用不到这么多) */
+#define CHILD_ARG_MAX 32
+/** 参数串缓冲 */
+#define CHILD_ARGS_MAX 4096
+/** 轮询间隔 */
+#define CHILD_POLL_MS 20
+
+static uint64_t child_now_ms(void)
+{
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
+    return (uint64_t)now.tv_sec * 1000ULL + (uint64_t)now.tv_nsec / 1000000ULL;
+}
+
+/**
+ * @brief 把 "a b \"c d\"" 拆成 argv
+ *
+ * 只支持空格/制表符分隔与单/双引号 (不做转义)。调用方传进来的参数要么是固定文本,
+ * 要么是校验过的网卡名, 不会出现需要转义的字符
+ */
+static int child_split_args(char* text, char* argv[], const int max)
+{
+    int count = 0;
+    char* p = text;
+    while (p != NULL && *p != '\0' && count < max - 1)
+    {
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == '\0') break;
+        char quote = '\0';
+        if (*p == '"' || *p == '\'') quote = *p++;
+        argv[count++] = p;
+        while (*p != '\0' && (quote != '\0' ? *p != quote : (*p != ' ' && *p != '\t'))) p++;
+        if (*p != '\0') *p++ = '\0';
+    }
+    argv[count] = NULL;
+    return count;
+}
+
+/**
+ * @brief 把管道里剩下的数据读干净
+ */
+static void child_drain(int fd, char* out, const size_t out_len, size_t* used)
+{
+    char chunk[256];
+    while (true)
+    {
+        struct pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        if (poll(&pfd, 1, 0) <= 0) return;
+        const ssize_t got = read(fd, chunk, sizeof(chunk));
+        if (got <= 0) return;
+        for (ssize_t i = 0; i < got && *used + 1 < out_len; i++)
+        {
+            out[(*used)++] = chunk[i];
+        }
+        out[*used] = '\0';
+        if (*used + 1 >= out_len) return;
+    }
+}
+
 bool child_run_capture(const char* exe, const char* args, char* out, const size_t out_len,
                        const int timeout_ms, int* exit_code, const bool merge_stderr)
 {
-    (void)exe;
-    (void)args;
-    (void)timeout_ms;
-    if (out != NULL && out_len > 0) out[0] = '\0';
+    if (exe == NULL || out == NULL || out_len == 0) return false;
+    out[0] = '\0';
     if (exit_code != NULL) *exit_code = -1;
-    return false;
+
+    char args_copy[CHILD_ARGS_MAX];
+    const int wrote = snprintf(args_copy, sizeof(args_copy), "%s", args != NULL ? args : "");
+    if (wrote < 0 || (size_t)wrote >= sizeof(args_copy))
+    {
+        LOG_WARN("子进程参数过长");
+        return false;
+    }
+
+    char* argv[CHILD_ARG_MAX];
+    argv[0] = (char*)exe;
+    child_split_args(args_copy, &argv[1], CHILD_ARG_MAX - 1);
+
+    int fds[2];
+    if (pipe(fds) != 0)
+    {
+        LOG_WARN("创建管道失败: %s", strerror(errno));
+        return false;
+    }
+
+    const pid_t pid = fork();
+    if (pid < 0)
+    {
+        LOG_WARN("fork 失败: %s", strerror(errno));
+        close(fds[0]);
+        close(fds[1]);
+        return false;
+    }
+    if (pid == 0)
+    {
+        // 子进程: stdout 进管道, stderr 看调用方要不要
+        dup2(fds[1], STDOUT_FILENO);
+        if (merge_stderr)
+        {
+            dup2(fds[1], STDERR_FILENO);
+        }
+        else
+        {
+            const int devnull = open("/dev/null", O_WRONLY);
+            if (devnull >= 0)
+            {
+                dup2(devnull, STDERR_FILENO);
+                close(devnull);
+            }
+        }
+        close(fds[0]);
+        close(fds[1]);
+        execvp(exe, argv);
+        _exit(127); // exec 失败
+    }
+
+    close(fds[1]);
+
+    size_t used = 0;
+    bool finished = false;
+    const uint64_t deadline = child_now_ms() + (uint64_t)(timeout_ms > 0 ? timeout_ms : 0);
+    while (true)
+    {
+        struct pollfd pfd;
+        pfd.fd = fds[0];
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        if (poll(&pfd, 1, CHILD_POLL_MS) > 0)
+        {
+            char chunk[256];
+            const ssize_t got = read(fds[0], chunk, sizeof(chunk));
+            if (got > 0)
+            {
+                for (ssize_t i = 0; i < got && used + 1 < out_len; i++)
+                {
+                    out[used++] = chunk[i];
+                }
+                out[used] = '\0';
+            }
+        }
+
+        int status = 0;
+        const pid_t done = waitpid(pid, &status, WNOHANG);
+        if (done == pid)
+        {
+            // 退出前写进管道的内容可能还没读完, 收个尾
+            child_drain(fds[0], out, out_len, &used);
+            finished = true;
+            if (WIFEXITED(status))
+            {
+                if (exit_code != NULL) *exit_code = WEXITSTATUS(status);
+            }
+            else if (WIFSIGNALED(status))
+            {
+                if (exit_code != NULL) *exit_code = 128 + WTERMSIG(status);
+            }
+            break;
+        }
+        if (child_now_ms() >= deadline)
+        {
+            LOG_WARN("子进程超时未退出 (超过 %d 毫秒), 强制结束", timeout_ms);
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+            break;
+        }
+    }
+
+    close(fds[0]);
+    out[used] = '\0';
+    return finished;
 }
 
 #endif

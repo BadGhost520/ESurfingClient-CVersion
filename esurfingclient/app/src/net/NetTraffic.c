@@ -1,28 +1,34 @@
 #include "net/NetTraffic.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "utils/log/Logger.h"
 #include "utils/platform/PlatformUtils.h"
+#include "utils/sim/SimThread.h"
 
 #include "webserver/HotspotControl.h"
 
-#ifdef _WIN32
-
-#include <windows.h>
-#include <stdio.h>
-#include <string.h>
-
 #include <cJSON/cJSON.h>
 
-#include "utils/sim/SimThread.h"
+#ifdef _WIN32
+#include <windows.h>
+/** 1601-01-01 到 1970-01-01 的 100 纳秒数 (FILETIME 转 Unix 时间用) */
+#define NET_TRAFFIC_EPOCH_DIFF 116444736000000000ULL
+typedef CRITICAL_SECTION traffic_lock_t;
+#else
+#include <pthread.h>
+#include <time.h>
+typedef pthread_mutex_t traffic_lock_t;
+#endif
 
-/** 最多同时跟踪多少块网卡 (家用/办公机器远到不了这个数) */
+/** 最多同时跟踪多少块网卡 (家用/办公/路由都远到不了这个数) */
 #define NET_TRAFFIC_MAX 32
 /** 采样间隔 */
 #define NET_TRAFFIC_INTERVAL_MS 1000
 /** 睡眠切片: 停下时要能在一秒内响应 */
 #define NET_TRAFFIC_SLICE_MS 100
-/** 1601-01-01 到 1970-01-01 的 100 纳秒数 (FILETIME 转 Unix 时间用) */
-#define NET_TRAFFIC_EPOCH_DIFF 116444736000000000ULL
 
 /** 上一帧的计数器, 用来做差 */
 typedef struct
@@ -43,7 +49,7 @@ typedef struct
     double up;
 } traffic_row_t;
 
-static CRITICAL_SECTION s_lock;
+static traffic_lock_t s_lock;
 static bool s_lock_ready;
 static volatile bool s_running;
 static sim_thread_t* s_thread;
@@ -58,18 +64,67 @@ static uint8_t s_prev_count;
 static uint64_t s_prev_at_ms;
 
 /**
+ * 平台相关的锁 / 时钟 / 睡眠收在这几个小函数里, 上面的采样逻辑就与平台无关
+ */
+static void traffic_lock_init(void)
+{
+#ifdef _WIN32
+    InitializeCriticalSection(&s_lock);
+#else
+    pthread_mutex_init(&s_lock, NULL);
+#endif
+    s_lock_ready = true;
+}
+
+static void traffic_lock(void)
+{
+#ifdef _WIN32
+    EnterCriticalSection(&s_lock);
+#else
+    pthread_mutex_lock(&s_lock);
+#endif
+}
+
+static void traffic_unlock(void)
+{
+#ifdef _WIN32
+    LeaveCriticalSection(&s_lock);
+#else
+    pthread_mutex_unlock(&s_lock);
+#endif
+}
+
+/**
  * @brief 当前时间 (Unix 毫秒)
  *
  * 网页用它判断数据新不新鲜, 必须是墙上时钟而不是开机以来的毫秒数
  */
 static uint64_t traffic_now_ms(void)
 {
+#ifdef _WIN32
     FILETIME file_time;
     GetSystemTimeAsFileTime(&file_time);
     ULARGE_INTEGER value;
     value.LowPart = file_time.dwLowDateTime;
     value.HighPart = file_time.dwHighDateTime;
     return (uint64_t)((value.QuadPart - NET_TRAFFIC_EPOCH_DIFF) / 10000ULL);
+#else
+    struct timespec now;
+    if (clock_gettime(CLOCK_REALTIME, &now) != 0) return 0;
+    return (uint64_t)now.tv_sec * 1000ULL + (uint64_t)now.tv_nsec / 1000000ULL;
+#endif
+}
+
+static void traffic_sleep_ms(const int ms)
+{
+#ifdef _WIN32
+    Sleep((DWORD)ms);
+#else
+    struct timespec delay;
+    delay.tv_sec = ms / 1000;
+    delay.tv_nsec = (long)(ms % 1000) * 1000000L;
+    nanosleep(&delay, NULL);
+#endif
 }
 
 /**
@@ -115,7 +170,7 @@ static void traffic_sample(void)
         }
     }
 
-    EnterCriticalSection(&s_lock);
+    traffic_lock();
     memcpy(s_rows, rows, sizeof(traffic_row_t) * count);
     s_row_count = count;
     snprintf(s_default_id, sizeof(s_default_id), "%s", default_id);
@@ -123,7 +178,7 @@ static void traffic_sample(void)
     memcpy(s_prev, prev, sizeof(traffic_prev_t) * count);
     s_prev_count = count;
     s_prev_at_ms = now;
-    LeaveCriticalSection(&s_lock);
+    traffic_unlock();
 }
 
 static int traffic_thread(void* arg)
@@ -135,7 +190,7 @@ static int traffic_thread(void* arg)
         for (int i = 0; i < NET_TRAFFIC_INTERVAL_MS / NET_TRAFFIC_SLICE_MS; i++)
         {
             if (s_running == false) return 0;
-            Sleep(NET_TRAFFIC_SLICE_MS);
+            traffic_sleep_ms(NET_TRAFFIC_SLICE_MS);
         }
     }
     return 0;
@@ -144,11 +199,7 @@ static int traffic_thread(void* arg)
 bool net_traffic_start(void)
 {
     if (s_thread != NULL) return true;
-    if (s_lock_ready == false)
-    {
-        InitializeCriticalSection(&s_lock);
-        s_lock_ready = true;
-    }
+    if (s_lock_ready == false) traffic_lock_init();
 
     traffic_sample(); // 先采一帧: 只建立基线, 还没有速率
     s_running = true;
@@ -180,7 +231,7 @@ char* net_traffic_json(void)
     cJSON* root = cJSON_CreateObject();
     if (root == NULL) return NULL;
 
-    EnterCriticalSection(&s_lock);
+    traffic_lock();
     cJSON_AddNumberToObject(root, "timestamp", (double)s_timestamp_ms);
     cJSON_AddStringToObject(root, "defaultId", s_default_id);
     cJSON* adapters = cJSON_CreateArray();
@@ -203,7 +254,7 @@ char* net_traffic_json(void)
         }
         cJSON_AddItemToArray(adapters, item);
     }
-    LeaveCriticalSection(&s_lock);
+    traffic_unlock();
 
     cJSON_AddItemToObject(root, "adapters", adapters);
     // 热点卡片是否显示, 由"这个平台能不能控制热点"决定 (目前只有 Windows 能)
@@ -213,23 +264,3 @@ char* net_traffic_json(void)
     cJSON_Delete(root);
     return json;
 }
-
-#else
-
-bool net_traffic_start(void)
-{
-    // 其它平台待实现: Linux 读 /proc/net/dev, macOS 读 sysctl(NET_RT_IFLIST2)
-    LOG_DEBUG("当前平台暂未实现内置网速采样");
-    return false;
-}
-
-void net_traffic_stop(void)
-{
-}
-
-char* net_traffic_json(void)
-{
-    return NULL;
-}
-
-#endif

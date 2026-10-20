@@ -124,10 +124,34 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         bool is_authed = false;
         const bool reachable = query_is_authed(&is_authed);
 
+        /**
+         * 查不到认证状态时, 说清楚是哪一种:
+         *   config      配置还没就绪 (程序停在"等配置", 还没开始认证)
+         *   no-account  配置读起来了, 但没有可用账号
+         *   disabled    程序被 enabled=false 关掉了
+         *   not-running 服务模式下连不上认证子进程
+         * 前端据此换个说法, 不要一律显示成"认证进程未运行"
+         */
+        const char* reason = "";
+        if (g_cfg_loaded == false)
+        {
+            // 配置还没读起来 (或读起来不可用): 程序停在"等配置", 认证根本没开始
+            reason = "config";
+        }
+        else if (g_prog_enabled == false)
+        {
+            reason = "disabled";
+        }
+        else if (reachable == false)
+        {
+            reason = s_local_state ? "no-account" : "not-running";
+        }
+
         cJSON* auth = cJSON_CreateObject();
         cJSON_AddBoolToObject(auth, "status", is_authed);
         // 认证进程不可达时额外标出来, 前端可据此提示 (不认这个字段的前端会忽略它)
         cJSON_AddBoolToObject(auth, "reachable", reachable);
+        cJSON_AddStringToObject(auth, "reason", reason);
         char* status_str = cJSON_Print(auth);
         mg_http_reply(c, 200, HEADER_JSON, "%s", status_str);
         free(status_str);

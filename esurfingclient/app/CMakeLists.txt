@@ -115,6 +115,7 @@ add_executable(ESurfingClient
         src/utils/text/BytesUtil.c
         src/utils/text/StrUtil.c
         src/utils/text/Xml.c
+        src/webserver/HotspotControl.c
         src/utils/time/TimeControl.c
         src/utils/time/TimeUtil.c
         src/Main.c
@@ -131,7 +132,6 @@ if (NOT __OPENWRT__)
             src/supervisor/SupervisorLoop.c
             src/utils/runtime/Service.c
             src/utils/sim/SimProcess.c
-            src/webserver/HotspotControl.c
             src/webserver/WebLogFiles.c
             src/webserver/WebApiPost.c
             src/webserver/WebApiGet.c
