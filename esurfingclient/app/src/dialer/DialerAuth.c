@@ -34,7 +34,7 @@ AuthStatus auth()
     const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
     const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
 
-    const curl_resp_t resp = get(g_prog_status[tl_thread_idx].last_location, false); // curl GET last_location 获取认证配置
+    curl_resp_t resp = get(g_prog_status[tl_thread_idx].last_location, false); // curl GET last_location 获取认证配置
     if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL) // 如果响应体没有内容 (非 200 响应码), 则返回
     {
         LOG_ERROR("响应体为空, 无法提取认证配置");
@@ -42,7 +42,7 @@ AuthStatus auth()
     }
 
     char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag); // 从响应体内容中提取指定内容
-    free(resp.body_data);
+    curl_resp_free(&resp);
     if (portal_config == NULL)
     {
         LOG_ERROR("提取门户配置失败");

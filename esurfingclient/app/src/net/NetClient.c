@@ -158,6 +158,15 @@ curl_resp_t post(const char* url, const char* data)
     return resp;
 }
 
+void curl_resp_free(curl_resp_t* resp)
+{
+    if (resp == NULL) return;
+
+    free(resp->body_data);
+    resp->body_data = NULL;
+    resp->body_size = 0;
+}
+
 curl_resp_t get(const char* url, const bool connect_only)
 {
     LOG_DEBUG("GET 地址: %s", url);

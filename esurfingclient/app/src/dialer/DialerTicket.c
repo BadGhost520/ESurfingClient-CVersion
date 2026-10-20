@@ -19,40 +19,8 @@ bool get_ticket()
 {
     LOG_DEBUG("get_ticket 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
 
-    char* xml = create_xml_payload(GET_TICKET); // 创建 get_ticket 用的 xml
-    if (xml == NULL)
-    {
-        LOG_ERROR("创建获取 Ticket XML 失败");
-        return false;
-    }
-
-    char* encrypt = session_encrypt(xml); // 加密 xml
-    free(xml);
-    if (encrypt == NULL)
-    {
-        LOG_ERROR("加密获取 Ticket XML 失败");
-        return false;
-    }
-    LOG_VERBOSE("发送加密获取 ticket 内容: %s", encrypt);
-
-    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, encrypt); // 向 ticket_url 发送加密内容
-    free(encrypt);
-    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
-    {
-        LOG_ERROR("获取 Ticket 响应失败");
-        error_code_record(&resp);
-        free(resp.body_data);
-        return false;
-    }
-    LOG_VERBOSE("获取 Ticket 响应内容: %s", resp.body_data);
-
-    char* decrypt = session_decrypt(resp.body_data); // 解密响应内容
-    free(resp.body_data);
-    if (decrypt == NULL)
-    {
-        LOG_ERROR("解密 Ticket 内容失败");
-        return false;
-    }
+    char* decrypt = dialer_request_plain(GET_TICKET, g_prog_status[tl_thread_idx].auth_cfg.ticket_url, "获取 Ticket");
+    if (decrypt == NULL) return false;
 
     char* parsed_ticket = xml_parser(decrypt, "ticket"); // 获取 ticket
     free(decrypt);

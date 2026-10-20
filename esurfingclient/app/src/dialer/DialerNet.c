@@ -18,23 +18,74 @@
 
 #include <stdio.h>
 
-bool term()
+/**
+ * @brief 构造一个报文并加密 (调用方负责 free)
+ * @param kind 报文类型
+ * @return 加密后的文本, 失败返回 NULL
+ */
+static char* dialer_encrypt_payload(const XmlChoose kind)
 {
-    char* xml = create_xml_payload(TERM); // 创建 term 配置 xml
+    char* xml = create_xml_payload(kind);
     if (xml == NULL)
     {
-        LOG_ERROR("登出 XML 创建失败");
-        return false;
+        LOG_ERROR("报文构造失败 (类型 %d)", (int)kind);
+        return NULL;
     }
 
-    char* encrypt = session_encrypt(xml); // 加密 xml
+    char* encrypt = session_encrypt(xml);
     free(xml);
     if (encrypt == NULL)
     {
-        LOG_ERROR("登出 XML 加密失败");
-        return false;
+        LOG_ERROR("报文加密失败 (类型 %d)", (int)kind);
+        return NULL;
     }
-    LOG_VERBOSE("发送加密登出内容: %s", encrypt);
+
+    LOG_VERBOSE("发送加密内容 (类型 %d): %s", (int)kind, encrypt);
+    return encrypt;
+}
+
+/**
+ * @brief 走一遍"构造报文 → 加密 → POST → 解密"
+ *
+ * 认证流程里心跳 / 登录 / 取 ticket 都是这五步, 只是地址和日志措辞不同;
+ * 响应失败时顺带把服务端的错误码记下来, 交给认证失败分类去决定怎么等
+ *
+ * @param kind 报文类型
+ * @param url 目标地址
+ * @param what 日志里的动作名 (如 "心跳")
+ * @return 解密后的明文 (调用方负责 free), 失败返回 NULL
+ */
+char* dialer_request_plain(const XmlChoose kind, const char* url, const char* what)
+{
+    char* encrypt = dialer_encrypt_payload(kind);
+    if (encrypt == NULL) return NULL;
+
+    curl_resp_t resp = post(url, encrypt);
+    free(encrypt);
+
+    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
+    {
+        LOG_ERROR("%s响应失败", safe_str(what));
+        error_code_record(&resp);
+        curl_resp_free(&resp);
+        return NULL;
+    }
+    LOG_VERBOSE("%s响应内容: %s", safe_str(what), resp.body_data);
+
+    char* plain = session_decrypt(resp.body_data);
+    curl_resp_free(&resp);
+    if (plain == NULL)
+    {
+        LOG_ERROR("%s响应解密失败", safe_str(what));
+        return NULL;
+    }
+    return plain;
+}
+
+bool term()
+{
+    char* encrypt = dialer_encrypt_payload(TERM);
+    if (encrypt == NULL) return false;
 
     curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据
     uint8_t retry = 1;
@@ -44,16 +95,17 @@ bool term()
         {
             LOG_FATAL("超过最多重试次数, 返回");
             free(encrypt);
-            if (resp.body_data) free(resp.body_data);
+            curl_resp_free(&resp);
             return false;
         }
         LOG_ERROR("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx, resp.status, retry);
         retry++;
         sleep_ms(1000, true);
+        curl_resp_free(&resp); // 丢掉上一次的响应体, 否则重试会把它漏掉
         resp = post(g_prog_status[tl_thread_idx].auth_cfg.term_url, encrypt); // 向 term_url 发送加密数据 (重试)
     }
     free(encrypt);
-    if (resp.body_data) free(resp.body_data);
+    curl_resp_free(&resp);
 
     g_prog_status[tl_thread_idx].auth_cfg.auth_time = 0;
     g_prog_status[tl_thread_idx].runtime_status.is_authed = false;
@@ -65,38 +117,8 @@ bool term()
 
 bool heartbeat()
 {
-    char* xml = create_xml_payload(HEART_BEAT); // 创建 heartbeat 配置 xml
-    if (xml == NULL)
-    {
-        LOG_ERROR("心跳 XML 创建失败");
-        return false;
-    }
-
-    char* encrypt = session_encrypt(xml); // 加密 xml
-    free(xml);
-    if (encrypt == NULL)
-    {
-        LOG_ERROR("加密心跳 XML 失败");
-        return false;
-    }
-    LOG_VERBOSE("发送加密心跳内容: %s", encrypt);
-
-    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.keep_url, encrypt); // 向 keep_url 发送加密数据
-    free(encrypt);
-    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
-    {
-        LOG_ERROR("心跳响应失败");
-        free(resp.body_data);
-        return false;
-    }
-
-    char* decrypted_data = session_decrypt(resp.body_data); // 解密响应内容
-    free(resp.body_data);
-    if (decrypted_data == NULL)
-    {
-        LOG_ERROR("解密心跳内容失败");
-        return false;
-    }
+    char* decrypted_data = dialer_request_plain(HEART_BEAT, g_prog_status[tl_thread_idx].auth_cfg.keep_url, "心跳");
+    if (decrypted_data == NULL) return false;
     LOG_VERBOSE("心跳响应内容: %s", decrypted_data);
 
     char* parsed_interval = xml_parser(decrypted_data, "interval"); // 获取心跳内容 (下一次重试时间)
@@ -123,40 +145,8 @@ bool heartbeat()
 
 bool login()
 {
-    char* xml = create_xml_payload(LOGIN); // 创建 login 配置 xml
-    if (xml == NULL)
-    {
-        LOG_ERROR("登录 XML 创建失败");
-        return false;
-    }
-
-    char* encrypt = session_encrypt(xml); // 加密 xml
-    free(xml);
-    if (encrypt == NULL)
-    {
-        LOG_ERROR("加密登录 XML 失败");
-        return false;
-    }
-    LOG_VERBOSE("发送加密登录内容: %s", encrypt);
-
-    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.auth_url, encrypt); // 向 auth_url 发送加密数据
-    free(encrypt);
-    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
-    {
-        LOG_ERROR("登录响应失败");
-        error_code_record(&resp); // 服务端把失败原因放在响应头的 Error-Code / Sub-Error 里
-        free(resp.body_data);
-        return false;
-    }
-    LOG_VERBOSE("登录响应内容: %s", resp.body_data);
-
-    char* decrypted_data = session_decrypt(resp.body_data); // 解密响应内容
-    free(resp.body_data);
-    if (decrypted_data == NULL)
-    {
-        LOG_ERROR("解密登录响应内容失败");
-        return false;
-    }
+    char* decrypted_data = dialer_request_plain(LOGIN, g_prog_status[tl_thread_idx].auth_cfg.auth_url, "登录");
+    if (decrypted_data == NULL) return false;
 
     char* parsed_keep_url = xml_parser(decrypted_data, "keep-url"); // 获取 keep_url (包含 CDATA 等字符串)
     if (parsed_keep_url == NULL)

@@ -36,6 +36,9 @@ bool heartbeat();
 
 bool login();
 
+/** 构造/加密 → POST → 解密 (心跳 / 登录 / 取 ticket 共用) */
+char* dialer_request_plain(XmlChoose kind, const char* url, const char* what);
+
 WaitResult wait_need_auth();
 
 void logout_previous_session();

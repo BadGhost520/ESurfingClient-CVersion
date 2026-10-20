@@ -99,18 +99,14 @@ bool get_last_location()
     {
         if (resp.body_data)
         {
-            free(resp.body_data);
-            resp.body_data = NULL;
-            resp.body_size = 0;
+            curl_resp_free(&resp);
         }
         resp = get(g_prog_status[tl_thread_idx].last_location, false);
     }
 
     if (resp.body_data)
     {
-        free(resp.body_data);
-        resp.body_data = NULL;
-        resp.body_size = 0;
+        curl_resp_free(&resp);
     }
 
     if (resp.http_code != HTTP_OK)

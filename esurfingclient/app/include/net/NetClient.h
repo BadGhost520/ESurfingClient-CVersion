@@ -21,6 +21,15 @@ curl_resp_t post(const char* url, const char* data);
 curl_resp_t get(const char* url, bool connect_only);
 
 /**
+ * @brief 释放一次响应里的响应体, 并把指针置空
+ *
+ * 用完一次响应就调一次: 直接 free(body_data) 忘了置空的话, 同一个 resp
+ * 被复用时会重复释放
+ * @param resp 响应 (可为 NULL)
+ */
+void curl_resp_free(curl_resp_t* resp);
+
+/**
  * @brief 检测网络状态
  * @return 网络状态
  */

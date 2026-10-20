@@ -36,12 +36,12 @@ bool init_session()
         ticket_body = "";
         LOG_INFO("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
     }
-    const curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
+    curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
     if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL) // 响应错误或无响应数据, 则返回 false
     {
         LOG_ERROR("初始化会话失败");
         error_code_record(&resp);
-        free(resp.body_data);
+        curl_resp_free(&resp);
         return false;
     }
     LOG_DEBUG("会话响应长度: %zu", resp.body_size);
@@ -61,13 +61,13 @@ bool init_session()
         {
             LOG_DEBUG("初始化会话失败");
             g_prog_status[tl_thread_idx].runtime_status.is_initialized = 0;
-            free(resp.body_data);
+            curl_resp_free(&resp);
             return false;
         }
     }
     LOG_DEBUG("初始化会话成功");
     g_prog_status[tl_thread_idx].runtime_status.is_initialized = 1;
-    free(resp.body_data);
+    curl_resp_free(&resp);
     return true;
 }
 
