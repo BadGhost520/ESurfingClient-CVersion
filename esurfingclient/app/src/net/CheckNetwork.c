@@ -2,8 +2,8 @@
 
 #include "utils/log/Logger.h"
 
-#define GENERATE_URL "http://connect.rom.miui.com/generate_204"
-#define GENERATE_BAK_URL "http://connectivitycheck.platform.hicloud.com/generate_204"
+#define GENERATE_URL "http://connectivitycheck.platform.hicloud.com/generate_204"
+#define GENERATE_BAK_URL "http://connect.rom.miui.com/generate_204"
 #define AUTH_URL "http://14.146.227.141:7001"
 #define AUTH_BAK_URL "http://121.8.177.212:7001"
 
@@ -13,7 +13,7 @@ network_status_t check_network_status(const bool connect_only)
     connection_status_t conn_status = 0;
 
     /*
-     * MIUI generate_204 URL
+     * HUAWEI generate_204 URL
      * 204 正常联网
      * 302 需要认证
      * 其他则是非正常状态
@@ -27,7 +27,7 @@ network_status_t check_network_status(const bool connect_only)
     {
         /*
          * generate 服务器错误时备用方案
-         * HUAWEI generate_204 URL
+         * MIUI generate_204 URL
          * 检测状态同上
          */
 
