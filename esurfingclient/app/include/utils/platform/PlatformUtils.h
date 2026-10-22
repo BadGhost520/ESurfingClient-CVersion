@@ -92,6 +92,23 @@ bool get_exec_dir(char* dir_array);
  */
 bool get_exec_path(char* path_array);
 
+#ifdef _WIN32
+
+/**
+ * @brief 把 argv 拼成 Windows 命令行: "exe" arg1 arg2 ...
+ *
+ * CreateProcess 要一整条命令行字符串, 而可执行文件路径可能含空格, 所以第一项必须加引号。
+ * 从 argv[1] 开始拼 (argv[0] 用 exec_path 代替, 免得 argv[0] 是相对路径)。
+ * @param exec_path 可执行文件绝对路径
+ * @param argv 参数数组 (NULL 结尾, argv[0] 会被跳过)
+ * @param out 输出缓冲
+ * @param len 缓冲长度
+ * @return 是否拼成功 (超长返回 false)
+ */
+bool build_windows_cmdline(const char* exec_path, char* const argv[], char* out, size_t len);
+
+#endif
+
 /**
  * @brief 记下启动时的父进程号
  *

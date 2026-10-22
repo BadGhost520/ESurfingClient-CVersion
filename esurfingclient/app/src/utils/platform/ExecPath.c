@@ -9,6 +9,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+
+bool build_windows_cmdline(const char* exec_path, char* const argv[], char* out, const size_t len)
+{
+    if (exec_path == NULL || out == NULL || len == 0) return false;
+
+    int used = snprintf(out, len, "\"%s\"", exec_path);
+    if (used <= 0 || (size_t)used >= len) return false;
+
+    for (int i = 1; argv != NULL && argv[i] != NULL; i++)
+    {
+        const int written = snprintf(out + used, len - (size_t)used, " %s", argv[i]);
+        if (written <= 0 || (size_t)written >= len - (size_t)used) return false;
+        used += written;
+    }
+
+    return true;
+}
+
+#endif
+
 bool get_exec_path(char* path_array)
 {
     if (path_array == NULL) return false;

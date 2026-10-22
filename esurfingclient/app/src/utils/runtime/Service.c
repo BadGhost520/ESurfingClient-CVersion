@@ -3,6 +3,7 @@
 #include "utils/runtime/Shutdown.h"
 #include "utils/runtime/Service.h"
 #include "utils/log/Logger.h"
+#include "utils/platform/PlatformUtils.h"
 
 #ifdef _WIN32
 #include <setjmp.h>
@@ -95,8 +96,8 @@ int service_install(void)
         return -1;
     }
 
-    char szPath[MAX_PATH];
-    if (GetModuleFileName(NULL, szPath, MAX_PATH) == 0)
+    char szPath[PATH_MAX];
+    if (get_exec_path(szPath) == false)
     {
         fprintf(stderr, "[ERROR] 无法获取程序路径\n");
         CloseServiceHandle(hSCManager);
@@ -237,17 +238,6 @@ int service_uninstall(void)
 
 #define SERVICE_NAME "esurfingclient"
 
-static int GetExecutablePath(char *buf, size_t size)
-{
-    ssize_t len = readlink("/proc/self/exe", buf, size - 1);
-    if (len != -1)
-    {
-        buf[len] = '\0';
-        return 0;
-    }
-    return -1;
-}
-
 int service_install(void)
 {
     if (geteuid() != 0)
@@ -256,8 +246,8 @@ int service_install(void)
         return -1;
     }
 
-    char execPath[512];
-    if (GetExecutablePath(execPath, sizeof(execPath)) != 0)
+    char execPath[PATH_MAX];
+    if (get_exec_path(execPath) == false)
     {
         fprintf(stderr, "[ERROR] 无法获取可执行文件路径\n");
         return -1;
@@ -376,16 +366,6 @@ int service_uninstall(void)
 
 #define SERVICE_NAME "com.esurfingclient.auth"
 
-static int GetExecutablePath(char *buf, size_t size)
-{
-    uint32_t bufsize = (uint32_t)size;
-    if (_NSGetExecutablePath(buf, &bufsize) == 0)
-    {
-        return 0;
-    }
-    return -1;
-}
-
 int service_install(void)
 {
     if (geteuid() != 0)
@@ -394,8 +374,8 @@ int service_install(void)
         return -1;
     }
 
-    char execPath[512];
-    if (GetExecutablePath(execPath, sizeof(execPath)) != 0)
+    char execPath[PATH_MAX];
+    if (get_exec_path(execPath) == false)
     {
         fprintf(stderr, "[ERROR] 无法获取可执行文件路径\n");
         return -1;

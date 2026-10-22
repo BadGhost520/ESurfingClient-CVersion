@@ -27,13 +27,12 @@ void restart_process(void)
     /**
      * 必须把原始参数一起带上:
      * 丢掉参数会让重启后的进程退化成另一个角色 (比如 --role auth 变成单进程模式)
-     * 路径可能含空格, 所以要加引号
      */
     char cmdline[PATH_MAX + 256];
-    int used = snprintf(cmdline, sizeof(cmdline), "\"%s\"", exec_path);
-    for (int i = 1; i < g_main_argc && used > 0 && (size_t)used < sizeof(cmdline); i++)
+    if (build_windows_cmdline(exec_path, g_main_argv, cmdline, sizeof(cmdline)) == false)
     {
-        used += snprintf(cmdline + used, sizeof(cmdline) - (size_t)used, " %s", g_main_argv[i]);
+        fprintf(stderr, "[ERROR] 重启命令行过长, 重启失败\n");
+        exit(1);
     }
 
     STARTUPINFO si = {0};

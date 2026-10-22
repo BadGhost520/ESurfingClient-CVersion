@@ -673,3 +673,19 @@
 3. 运行中的 `/api/getConfigs` 字段与页面字段表完全一致
 3. 页面与资源: `index.html`、四个 js、`/api/status/auth`、`/api/status/sys`、`/api/traffic`、`/api/getConfigs` 全部 200
 4. Windows 构建通过, `portal/` 同步到构建目录; footer 的品牌图标按用户要求保持内嵌 SVG 不动
+
+### 2026.10.22 (C 侧去重: 命令行拼装与取自身路径)
+
+一、命令拼装
+1. `SimProcess.c: restart_process()` 与 `SupervisorChild.c: child_spawn()` 各写了一遍"把 argv 拼成 Windows 命令行 (`"exe" a b c`)"的循环, 现在抽到 `utils/platform/ExecPath.c: build_windows_cmdline(exec_path, argv, out, len)` (声明在 `PlatformUtils.h` 的 `#ifdef _WIN32` 里)
+2. 顺带补上超长检查: 原来"缓冲区写不下"时只是静默截断, 现在返回 false, 两个调用方分别打日志/返回失败
+3. `ChildRun.c` 的宽字符命令行 (`wchar_t` + `-EncodedCommand`) 保持独立, 它与上面两处的类型和用途都不同
+
+二、取自身路径
+1. `Service.c` 原来为三个平台各写了一个 `static GetExecutablePath()` (Windows 用 `GetModuleFileName`、Linux 读 `/proc/self/exe`、macOS 用 `_NSGetExecutablePath`), 与 `utils/platform/ExecPath.c: get_exec_path()` 完全重复
+2. 三处实现全删, 统一调用 `get_exec_path()`; 服务安装/卸载分支的缓冲改成 `PATH_MAX` (Service.c 490 → 478 行)
+
+三、验证 (Windows 实测)
+1. 单进程重启 (`restart_process` 走新的拼装函数): PID 7388 → 新进程, 端口 9999 重新监听, 参数完整保留
+2. 监管者拉起子进程 (`child_spawn`): auth / web 两个子进程命令行都完整 (`--role auth --account 1 --control-port 8890 --control-token <32 位>`), 网页发 apply 后认证子进程换新 PID、Web 子进程不变
+3. 三平台构建通过; Windows 最小发布包回归 7/7

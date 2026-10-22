@@ -207,12 +207,12 @@ bool child_spawn(child_t* child)
     char* argv[12];
     child_build_argv(child, exec_path, account_arg, control_arg, argv);
 
-    // Windows 需要一整条命令行字符串, 可执行文件路径可能含空格, 必须加引号
+    // Windows 需要一整条命令行字符串
     char cmdline[PATH_MAX + 64];
-    int used = snprintf(cmdline, sizeof(cmdline), "\"%s\"", exec_path);
-    for (int i = 1; argv[i] != NULL && used > 0 && (size_t)used < sizeof(cmdline); i++)
+    if (build_windows_cmdline(exec_path, argv, cmdline, sizeof(cmdline)) == false)
     {
-        used += snprintf(cmdline + used, sizeof(cmdline) - (size_t)used, " %s", argv[i]);
+        LOG_ERROR("命令行过长, 无法拉起子进程");
+        return false;
     }
 
     STARTUPINFOA si;
