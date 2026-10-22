@@ -1,10 +1,4 @@
-function trafficRateText(value) {
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '—';
-    if (value >= 1048576) return (value / 1048576).toFixed(2) + ' MiB/s';
-    if (value >= 1024) return (value / 1024).toFixed(2) + ' KiB/s';
-    return Math.round(value) + ' B/s';
-}
-
+/** 采样是否新鲜 (后端每秒一帧) */
 function trafficIsFresh(data, now = Date.now()) {
     return Number.isFinite(data.timestamp) && now >= data.timestamp - 2000 && now - data.timestamp < 6000;
 }
@@ -16,12 +10,9 @@ document.addEventListener('alpine:init', () => {
         adapters: [], selectedId: '', fresh: false, timestamp: 0, experimental: false,
         message: '正在读取网速…', timer: null, request: null, disposed: false, lastProbe: 0,
         init() {
-            try { this.selectedId = localStorage.getItem('esurfing-traffic-adapter') || ''; } catch (_) {}
+            this.selectedId = storage.get('esurfing-traffic-adapter');
             this.refresh();
-            this.timer = setInterval(() => {
-                if (document.hidden || Alpine.store('main').activePanel !== 'dashboard') return;
-                this.refresh();
-            }, 1000);
+            this.timer = startPolling(() => this.refresh(), 1000, 'dashboard');
         },
         destroy() {
             this.disposed = true;
@@ -29,11 +20,13 @@ document.addEventListener('alpine:init', () => {
             if (this.request) this.request.abort();
         },
         selectAdapter() {
-            try { localStorage.setItem('esurfing-traffic-adapter', this.selectedId); } catch (_) {}
+            storage.set('esurfing-traffic-adapter', this.selectedId);
         },
         get adapter() { return this.adapters.find(item => item.id === this.selectedId); },
-        get downloadText() { return trafficRateText(this.fresh && this.adapter?.connected !== false ? this.adapter?.down : null); },
-        get uploadText() { return trafficRateText(this.fresh && this.adapter?.connected !== false ? this.adapter?.up : null); },
+        get downloadText() { return formatBytes(this.live?.(this.adapter?.down), true); },
+        get uploadText() { return formatBytes(this.live?.(this.adapter?.up), true); },
+        /** 只有采样新鲜且网卡已连接时才显示速度 */
+        live(value) { return this.fresh && this.adapter?.connected !== false ? value : null; },
         async refresh() {
             if (this.request || this.disposed) return;
             if (!Alpine.store('networkTools').enabled && Date.now() - this.lastProbe < 5000) return;
@@ -43,12 +36,10 @@ document.addEventListener('alpine:init', () => {
                 Alpine.store('networkTools').timestamp = 0;
             }
             this.request = new AbortController();
-            const timeout = setTimeout(() => this.request?.abort(), 4000);
             try {
-                const response = await fetch('/api/traffic', { cache: 'no-store', signal: this.request.signal });
-                if (!response.ok) throw new Error('网速采集不可用（当前平台暂不支持或程序未运行）。');
-                const data = await response.json();
+                const { ok, data } = await httpJson('/api/traffic', { timeout: 4000, signal: this.request.signal });
                 if (this.disposed) return;
+                if (!ok) throw new Error('网速采集不可用（当前平台暂不支持或程序未运行）。');
                 if (!Array.isArray(data.adapters)) throw new Error('网速数据格式无效。');
                 Alpine.store('networkTools').enabled = true;
                 Alpine.store('networkTools').hotspotControls = data.hotspotControls === true;
@@ -67,9 +58,8 @@ document.addEventListener('alpine:init', () => {
             } catch (error) {
                 this.fresh = false;
                 Alpine.store('networkTools').timestamp = 0;
-                this.message = error.name === 'AbortError' ? '读取超时，正在重试…' : error.message;
+                this.message = error.status === 0 ? '读取超时，正在重试…' : error.message;
             } finally {
-                clearTimeout(timeout);
                 this.request = null;
             }
         }

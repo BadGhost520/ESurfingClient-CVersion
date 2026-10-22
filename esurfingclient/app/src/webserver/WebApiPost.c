@@ -11,7 +11,10 @@
 #include <mongoose/mongoose.h>
 
 /**
- * @brief 请求重新认证
+ * @brief 重新认证 (与"应用配置"一致: 都是重启)
+ *
+ * 单进程模式下重启自己; 多进程模式下让认证进程退出、由监管者重新拉起。
+ * 进程内热重载已经去掉, 重新认证不再走 is_need_reauth 那条老路。
  * @return 是否成功
  */
 static bool request_restart_auth(void)
@@ -19,7 +22,10 @@ static bool request_restart_auth(void)
     if (g_local_state)
     {
         if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-        g_prog_status[0].runtime_status.is_need_reauth = true;
+
+        // 先置标志让 HTTP 回包发出去, 主循环下一拍就会走重启流程 (shut → restart_process)
+        g_need_restart = true;
+        g_stop_requested = 1;
         return true;
     }
 
@@ -27,7 +33,10 @@ static bool request_restart_auth(void)
 }
 
 /**
- * @brief 请求重新加载配置并重新认证
+ * @brief 应用新配置
+ *
+ * 不再做进程内的热重载: 单进程模式下直接重启自己 (新配置在启动时读取),
+ * 多进程模式下让认证进程退出、由监管者用新配置重新拉起。
  * @return 是否成功
  */
 static bool request_apply_config(void)
@@ -35,8 +44,10 @@ static bool request_apply_config(void)
     if (g_local_state)
     {
         if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-        g_cfg_loaded = false;
-        g_prog_status[0].runtime_status.is_need_reauth = true;
+
+        // 先置标志让 HTTP 回包发出去, 主循环下一拍就会走重启流程 (shut → restart_process)
+        g_need_restart = true;
+        g_stop_requested = 1;
         return true;
     }
 
@@ -180,15 +191,14 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
             bool is_authed = false;
             const bool reachable = query_is_authed(&is_authed);
 
+            /**
+             * 不再要求"正在认证": 重新认证已经改成重启, 任何时候都可以做,
+             * 正在等网络 / 正在退避时反而是最需要重启的时候
+             */
             if (reachable == false)
             {
                 LOG_WARN("收到 Web 重新认证请求, 但认证进程不可达");
                 mg_http_reply(c, 503, "", "");
-            }
-            else if (is_authed == false)
-            {
-                LOG_WARN("收到 Web 重新认证请求, 但没有线程在认证, 拒绝操作");
-                mg_http_reply(c, 403, "", "");
             }
             else if (request_restart_auth() == false)
             {
@@ -197,7 +207,7 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
             }
             else
             {
-                LOG_INFO("收到 Web 重新认证请求, 认证线程将重新进行认证");
+                LOG_INFO("收到 Web 重新认证请求, 程序将重启");
                 mg_http_reply(c, 204, "", "");
             }
         }

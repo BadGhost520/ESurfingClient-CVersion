@@ -2,6 +2,10 @@
 
 #include "core/States.h"
 
+#include "utils/text/TextUtils.h"
+
+#include <stdio.h>
+
 #ifdef _WIN32
 jmp_buf g_exit_jmp;
 #else
@@ -27,6 +31,23 @@ int g_main_argc = 0;
 char** g_main_argv = NULL;
 
 volatile sig_atomic_t g_stop_requested = 0;
+
+volatile sig_atomic_t g_shutdown_done = 0;
+
+static char s_boot_id[BOOT_ID_LEN] = "";
+
+const char* boot_id_get(void)
+{
+    if (s_boot_id[0] != '\0') return s_boot_id;
+
+    uint8_t bytes[8];
+    get_rand_bytes(bytes, sizeof(bytes));
+    for (size_t i = 0; i < sizeof(bytes); i++)
+    {
+        snprintf(s_boot_id + i * 2, 3, "%02x", bytes[i]);
+    }
+    return s_boot_id;
+}
 
 int8_t g_prog_cnt = 0;
 

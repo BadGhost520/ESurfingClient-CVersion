@@ -171,6 +171,21 @@ extern char** g_main_argv;
 
 extern volatile sig_atomic_t g_stop_requested;
 
+/** 收尾是否已经跑完 (关控制台窗口时处理线程靠它决定要不要再等) */
+extern volatile sig_atomic_t g_shutdown_done;
+
+/** 启动标识长度: 8 字节随机数的十六进制 + 结尾 NUL */
+#define BOOT_ID_LEN 17
+
+/**
+ * @brief 取本次进程启动的唯一标识 (第一次调用时随机生成)
+ *
+ * 网页靠它判断"重启完了没有": 重启前记下旧值, 变了就说明新进程已经起来了。
+ * 仅用于展示与判定, 不参与安全校验。
+ * @return 16 个十六进制字符 (进程内静态, 不要 free)
+ */
+const char* boot_id_get(void);
+
 extern int8_t g_prog_cnt;
 
 extern _Thread_local int8_t tl_thread_idx;

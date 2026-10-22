@@ -96,6 +96,7 @@ void shut(const int8_t exit_code)
 
     LOG_INFO("退出程序, 退出码: %" PRIu8, exit_code);
     clean_logger();
+    g_shutdown_done = 1; // 通知控制台处理线程: 收尾已经做完了
 
 #ifdef _WIN32
     if (get_service_mode())
@@ -124,8 +125,29 @@ void shut(const int8_t exit_code)
  */
 static BOOL WINAPI console_handler(const DWORD ctrlType)
 {
-    (void)ctrlType;
     g_stop_requested = 1;
+
+    /**
+     * 关窗口 / 注销 / 关机: 系统只给几秒, 而且处理函数一返回进程就会被结束。
+     *
+     * 这里先等主线程把收尾跑完 (登出、停线程、日志归档), 最多约 4.5 秒;
+     * 然后必须 return FALSE 交回默认处理 —— 返回 TRUE 等于告诉系统"我自己处理了",
+     * 系统就不结束进程, 进程会带着"没有控制台"的状态留在后台 (关终端关不掉就是这个原因)
+     */
+    if (ctrlType == CTRL_CLOSE_EVENT || ctrlType == CTRL_LOGOFF_EVENT || ctrlType == CTRL_SHUTDOWN_EVENT)
+    {
+        for (int i = 0; i < 450 && g_shutdown_done == 0; i++)
+        {
+            Sleep(10);
+        }
+
+        // 收尾跑完之后主线程还要 exit(): 再让出几百毫秒, 别抢在它前面被系统杀掉
+        if (g_shutdown_done != 0) Sleep(300);
+
+        return FALSE;
+    }
+
+    // Ctrl+C / Ctrl+Break: 只置标志, 由主循环走优雅关闭
     return TRUE;
 }
 

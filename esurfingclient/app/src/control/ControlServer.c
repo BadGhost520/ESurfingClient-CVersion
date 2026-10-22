@@ -137,6 +137,7 @@ static void ctl_reply_status(char* reply, const size_t reply_len)
     cJSON_AddBoolToObject(data, "is_authed", is_authed);
     cJSON_AddBoolToObject(data, "is_running", is_running);
     cJSON_AddBoolToObject(data, "is_time_disabled", is_time_disabled);
+    cJSON_AddStringToObject(data, "bootId", boot_id_get());
 
     cJSON_AddBoolToObject(root, "ok", true);
     cJSON_AddItemToObject(root, "data", data);
@@ -214,32 +215,22 @@ static void ctl_dispatch(const char* request, char* reply, const size_t reply_le
     {
         ctl_reply_status(reply, reply_len);
     }
-    else if (strcmp(cmd, "restart_auth") == 0)
+    else if (strcmp(cmd, "restart_auth") == 0 || strcmp(cmd, "apply_config") == 0)
     {
-        if (g_prog_status == NULL || g_prog_cnt <= 0)
-        {
-            ctl_reply_result(reply, reply_len, false, "config not loaded");
-        }
-        else
-        {
-            LOG_INFO("控制通道收到重新认证请求");
-            g_prog_status[0].runtime_status.is_need_reauth = true;
-            ctl_reply_result(reply, reply_len, true, NULL);
-        }
-    }
-    else if (strcmp(cmd, "apply_config") == 0)
-    {
-        if (g_prog_status == NULL || g_prog_cnt <= 0)
-        {
-            ctl_reply_result(reply, reply_len, false, "config not loaded");
-        }
-        else
-        {
-            LOG_INFO("控制通道收到应用新配置请求");
-            g_cfg_loaded = false;
-            g_prog_status[0].runtime_status.is_need_reauth = true;
-            ctl_reply_result(reply, reply_len, true, NULL);
-        }
+        /**
+         * "重新认证"与"应用新配置"走同一条路: 都不再做进程内热重载, 本进程 (认证)
+         * 直接退出, 由监管者用当前配置重新拉起 —— 能收到这条命令就说明有监管者在
+         * (Web 子进程只由它启动)。
+         *
+         * 只置标志不在这里调 shut(): 本函数跑在控制服务线程上, 而 shut() 会去
+         * join 这条线程, 自己等自己。主循环看到标志后退出, 由 dialer_app 跑完
+         * clean() (含登出) 再结束进程。
+         */
+        const bool applying = (strcmp(cmd, "apply_config") == 0);
+        LOG_INFO("控制通道收到%s请求, 本进程将退出并由监管者重新拉起",
+                 applying ? "应用新配置" : "重新认证");
+        g_stop_requested = 1;
+        ctl_reply_result(reply, reply_len, true, NULL);
     }
     else if (strcmp(cmd, "shutdown") == 0)
     {

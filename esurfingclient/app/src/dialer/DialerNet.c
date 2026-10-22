@@ -229,9 +229,8 @@ WaitResult wait_need_auth(void)
         watchdog_pet_network();
 
         /**
-         * 配置被改过 (网页上的"保存并应用"会把 g_cfg_loaded 置为 false):
-         * 交回主循环重新加载, 不能拿着旧配置继续等网络 ——
-         * 用户在网页上把程序关掉之后, 这里要能停下来
+         * 兜底: 配置未加载完成时交回主循环 ("保存并应用"已改为重启,
+         * 正常不会在这里把 g_cfg_loaded 置假)
          */
         if (g_cfg_loaded == false) return WAIT_CFG_CHANGED;
 

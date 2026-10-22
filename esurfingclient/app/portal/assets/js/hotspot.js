@@ -1,15 +1,12 @@
-// 热点控制由本程序自己提供 (/api/hotspot/*, 同源请求):
-// 不再需要回环桥接进程, 也就不需要令牌与来源校验
+// 热点控制接口 (/api/hotspot/*, 同源请求)
 document.addEventListener('alpine:init', () => {
     Alpine.data('hotspotPanel', () => ({
         adapters: [], selectedId: '', online: false, busy: false, experimental: false,
         sending: false, polling: false, message: '', error: '', timer: null, disposed: false,
         init() {
             this.refresh();
-            // 每次刷新都要让主程序跑一次 PowerShell 拿状态, 没必要太勤
-            this.timer = setInterval(() => {
-                if (!document.hidden && Alpine.store('main').activePanel === 'dashboard') this.refresh();
-            }, 5000);
+            // 每次刷新都会主程序跑一次 PowerShell 取状态, 间隔放 5 秒
+            this.timer = startPolling(() => this.refresh(), 5000, 'dashboard');
         },
         destroy() { this.disposed = true; clearInterval(this.timer); },
         get adapter() { return this.adapters.find(row => row.id === this.selectedId); },
@@ -23,17 +20,10 @@ document.addEventListener('alpine:init', () => {
             return ({ On: '已开启', Off: '已关闭', InTransition: '正在切换', Unknown: '未知' })[this.adapter?.state] || '不可用';
         },
         async call(path, method = 'GET') {
-            const controller = new AbortController();
             // 开关要等 Windows 真的切完, 与后端的动作超时留一样的余量
-            const timeout = setTimeout(() => controller.abort(), method === 'POST' ? 25000 : 5000);
-            try {
-                const response = await fetch('/api/hotspot' + path, { method, cache: 'no-store', signal: controller.signal });
-                const text = await response.text();
-                let data = {};
-                try { data = text ? JSON.parse(text) : {}; } catch (_) { data = {}; }
-                if (!response.ok) throw new Error(data.message || '热点请求失败');
-                return data;
-            } finally { clearTimeout(timeout); }
+            const { ok, data } = await httpJson('/api/hotspot' + path, { method, timeout: method === 'POST' ? 25000 : 5000 });
+            if (!ok) throw new Error(data.message || '热点请求失败');
+            return data;
         },
         async refresh() {
             if (this.polling || this.disposed) return;

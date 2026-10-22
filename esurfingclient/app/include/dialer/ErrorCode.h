@@ -18,7 +18,7 @@ typedef enum
     AUTH_ERROR_NONE = 0,      // 没有拿到错误码 (或码不认识)
     AUTH_ERROR_TRANSIENT = 1, // 网络/服务端临时故障: 1/3/5/10/20/30 分钟退避, 无限重试
     AUTH_ERROR_SLOW = 2,      // 能自愈但要等: 欠费/余额/体验到期/频繁登录/别处登录/被踢, 每 30 分钟重试
-    AUTH_ERROR_FATAL = 3      // 必须人工改配置: 密码错/账号不存在/版本停用/共享限制, 停到热重载或退出
+    AUTH_ERROR_FATAL = 3      // 必须人工改配置: 密码错/账号不存在/版本停用/共享限制, 停到重启或退出
 } auth_error_kind_t;
 
 /**

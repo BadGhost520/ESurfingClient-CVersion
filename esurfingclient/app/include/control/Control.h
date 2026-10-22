@@ -14,6 +14,7 @@ typedef struct
     bool is_authed;
     bool is_running;
     bool is_time_disabled;
+    char boot_id[16 + 1];  // 认证进程的启动标识, 网页靠它判断重启是否完成
 } control_status_t;
 
 /* -------------------- 认证进程侧 -------------------- */

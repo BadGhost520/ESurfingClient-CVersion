@@ -45,7 +45,7 @@ typedef enum
  * 认证失败后的退避间隔 (分钟)
  *
  * 网络/服务端临时故障按这张表走, 用完之后固定用最后一档 (30 分钟), 一直重试;
- * 需要人工处理的错误不走这张表, 直接等到热重载或退出
+ * 需要人工处理的错误不走这张表, 直接等到重启或退出
  */
 static const uint64_t table[] = {1, 3, 5, 10, 20, 30};
 
@@ -75,8 +75,8 @@ bool app_bootstrap(void)
 }
 
 /**
- * @brief 认证失败后等待, 期间可被热重载 / 退出 / 停止打断
- * @param wait_minutes 等多少分钟; 0 表示一直等到热重载或退出
+ * @brief 认证失败后等待, 期间可被重启 / 退出 / 停止打断
+ * @param wait_minutes 等多少分钟; 0 表示一直等到重启或退出
  * @return true 正常等完 (可继续重试), false 被打断
  */
 static bool wait_auth_retry(const uint64_t wait_minutes)
@@ -203,9 +203,9 @@ static RunStatus run(void)
                 /**
                  * 密码错 / 账号不存在 / 版本被停用 / 被限制共享 这类错误, 重试多少次都是同一个结果,
                  * 反而会因为反复失败触发服务端的登录频率限制, 所以停下来等用户处理:
-                 * 网页上"保存并应用"(热重载)或退出程序都会把这里的等待打断
+                 * 网页上"保存并应用"(重启)或退出程序都会把这里的等待打断
                  */
-                LOG_WARN("这类错误需要人工处理, 已暂停自动重试; 改好配置并保存(热重载)或退出程序后才会继续");
+                LOG_WARN("这类错误需要人工处理, 已暂停自动重试; 改好配置并保存(会重启)或退出程序后才会继续");
             }
             else
             {
@@ -214,14 +214,14 @@ static RunStatus run(void)
                                         ? table_len
                                         : (retry_auth <= table_len ? retry_auth : table_len);
                 wait_minutes = table[step - 1];
-                LOG_WARN("配置 %" PRIu8 " 将在 %" PRIu64 " 分钟后重试 (第 %" PRIu8 " 次失败, 不设上限, 热重载或退出可立即打断)",
+                LOG_WARN("配置 %" PRIu8 " 将在 %" PRIu64 " 分钟后重试 (第 %" PRIu8 " 次失败, 不设上限, 重启或退出可立即打断)",
                     g_prog_status[tl_thread_idx].login_cfg.idx, wait_minutes, retry_auth);
                 if (retry_auth < UINT8_MAX) retry_auth++;
             }
 
             if (wait_auth_retry(wait_minutes) == false)
             {
-                LOG_INFO("等待被热重载/退出请求打断, 本轮认证结束");
+                LOG_INFO("等待被重启/退出请求打断, 本轮认证结束");
             }
             return RUN_SUCCESS;
         }
@@ -612,11 +612,8 @@ void work(void)
                 }
 
                 /**
-                 * 先处理"配置变了" (网页上的"保存并应用"会把 g_cfg_loaded 置为
-                 * false), 再判要不要拉起线程。
-                 *
-                 * 顺序很重要: "不在允许时段"那条分支是 continue, 排在前面的话
-                 * 重新加载会被整个跳过去, 程序就一直拿着旧配置跑
+                 * 先处理"配置未加载完成"的兜底, 再判要不要拉起线程.
+                 * ("保存并应用"现在走重启, 正常不会把 g_cfg_loaded 置假)
                  */
                 if (g_cfg_loaded == false)
                 {

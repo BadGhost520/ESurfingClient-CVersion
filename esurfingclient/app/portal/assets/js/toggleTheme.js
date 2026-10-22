@@ -1,3 +1,13 @@
+/** 本地存储读写 (隐私模式下静默失败), 后续脚本共用 */
+const storage = {
+    get(key, fallback = '') {
+        try { return localStorage.getItem(key) ?? fallback; } catch (_) { return fallback; }
+    },
+    set(key, value) {
+        try { localStorage.setItem(key, value); } catch (_) { /* 忽略 */ }
+    }
+};
+
 (function () {
   "use strict";
 
@@ -15,27 +25,8 @@
     htmlElement.setAttribute("data-theme", theme === CHECKED_THEME ? CHECKED_THEME : DEFAULT_THEME);
   }
 
-  /** 读取本地保存的主题 */
-  function readSavedTheme() {
-    try {
-      return localStorage.getItem(STORAGE_KEY);
-    } catch (error) {
-      // 隐私模式 / 禁用存储时忽略
-      return null;
-    }
-  }
-
-  /** 保存主题 */
-  function saveTheme(theme) {
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch (error) {
-      // 忽略保存失败
-    }
-  }
-
   function loadTheme() {
-    const saved = readSavedTheme();
+    const saved = storage.get(STORAGE_KEY, null);
     const theme = saved === CHECKED_THEME ? CHECKED_THEME : DEFAULT_THEME;
     themeToggle.checked = theme === CHECKED_THEME;
     applyTheme(theme);
@@ -44,7 +35,7 @@
   themeToggle.addEventListener("change", (event) => {
     const theme = event.target.checked ? CHECKED_THEME : DEFAULT_THEME;
     applyTheme(theme);
-    saveTheme(theme);
+    storage.set(STORAGE_KEY, theme);
   });
 
   loadTheme();

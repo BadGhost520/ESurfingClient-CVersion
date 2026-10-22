@@ -103,11 +103,14 @@ bool control_query_status(control_status_t* out)
         const cJSON* is_authed = cJSON_GetObjectItem(data, "is_authed");
         const cJSON* is_running = cJSON_GetObjectItem(data, "is_running");
         const cJSON* is_time_disabled = cJSON_GetObjectItem(data, "is_time_disabled");
+        const cJSON* boot_id = cJSON_GetObjectItem(data, "bootId");
 
         out->account = (account != NULL && cJSON_IsNumber(account)) ? (uint8_t)account->valueint : 0;
         out->is_authed = (is_authed != NULL && cJSON_IsTrue(is_authed));
         out->is_running = (is_running != NULL && cJSON_IsTrue(is_running));
         out->is_time_disabled = (is_time_disabled != NULL && cJSON_IsTrue(is_time_disabled));
+        snprintf(out->boot_id, sizeof(out->boot_id), "%s",
+                 (boot_id != NULL && cJSON_IsString(boot_id)) ? boot_id->valuestring : "");
         parsed = true;
     }
 

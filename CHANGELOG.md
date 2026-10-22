@@ -565,3 +565,111 @@
 2. `TEMP/test-errorcode.c` 单测 23/23 (含 7 条响应头解析, 正好覆盖大小写不敏感比较的等价性)
 3. Windows 最小发布包回归 7/7
 4. 行为验证: 配置解析 4 种场景 + `--account 2` 选择、信道映射 12 种输入、5 个 JSON 接口、热点状态查询 (覆盖 `-EncodedCommand` 的 base64 链路)
+
+### 2026.10.21 (修复: 关闭控制台窗口后进程不退出)
+
+1. 现象: Windows 上直接关掉终端 / 点控制台窗口的 X 之后, 客户端仍在后台运行 (网页端口还能访问), 看起来"没被识别成关闭"
+2. 原因: `Shutdown.c` 的控制台处理函数对**所有**事件都返回 `TRUE`。对 `CTRL_C_EVENT` / `CTRL_BREAK_EVENT` 这是对的 (表示"我的主循环会优雅退出"), 但 `CTRL_CLOSE_EVENT` / `CTRL_LOGOFF_EVENT` / `CTRL_SHUTDOWN_EVENT` 返回 `TRUE` 等于告诉系统"我自己处理完了", 系统于是**不再结束进程** —— 控制台已经销毁, 进程就变成没有控制台的后台孤儿
+3. 修法 (`src/utils/runtime/Shutdown.c`):
+   - 新增 `g_shutdown_done` 标志 (`core/States.h` 声明、`core/States.c` 定义), `shut()` 在 `clean_logger()` 之后、`exit()` 之前置位
+   - 关窗口 / 注销 / 关机三类事件: 先置 `g_stop_requested` 让主循环走优雅关闭 (登出、停线程、日志归档), 处理线程最多等约 4.5 秒 (`g_shutdown_done` 置位即提前返回), 收尾完成后再让出 300 ms 给 `exit()`, 最后 **`return FALSE` 交回默认处理**, 由系统结束进程 —— 不会再留后台孤儿
+   - `CTRL_C_EVENT` / `CTRL_BREAK_EVENT` 保持原样 (`return TRUE`, 由主循环 graceful 退出)
+4. 说明: 窗口关闭时系统只给约 5 秒, 若登出请求 (`term()`) 在这段时间内发不完, 进程会由系统结束; 下次启动会靠会话存档 (`LogoutState`) 补做登出, 不会留下服务端在线会话
+5. 验证: 三平台构建通过; CTRL+BREAK 优雅退出回归 7/7 通过 (窗口关闭事件在当前无头环境里无法投递, 需在真机双击 exe 后点 X 确认)
+
+### 2026.10.21 (应用配置改为重启, 去掉认证热重载)
+
+1. 原来"保存并应用"是进程内热重载: 置 `g_cfg_loaded = false` → 认证线程重新 `load_cfg()` → 拿着新配置继续跑同一个进程。配置里的端口、UA、标记值等要重新初始化的东西容易处于半旧半新的状态, 而且这条链路要维护"配置变了"的多个分支
+2. 现在改为: **应用配置 = 重启**
+   - 单进程模式 (`g_local_state`): `WebApiPost.request_apply_config()` 置 `g_need_restart` + `g_stop_requested`, 主循环走 `shut()`, `restart_process()` 重新拉起自己 (原参数不变), 新配置在启动时读取
+   - 多进程模式: Web 子进程通过控制通道下发 `apply_config`, 认证进程收到后**直接退出** (`g_stop_requested = 1`, 主循环退出 → `clean()` 登出 → 进程结束), 监管者 `supervisor_reap()` 发现子进程退出后用新配置重新拉起 —— Web 子进程与网页不受影响
+   - 配置不可用 (正停在"等配置") 时仍走原来的"重新加载"分支: 此时没有认证进程可重启
+3. 页面文案: 应用成功的提示改为"配置已提交, 程序正在重启…"; 底部使用提示说明"保存并应用会重启程序 (多进程模式下只重启认证进程)"
+4. `g_cfg_loaded == false` 的三处检查保留为兜底 (配置只在启动时读取, 正常不再被置假), 相关注释已同步改成兜底说明
+5. 验证 (Windows 实测):
+   - 单进程: apply 前 PID 30676 → 之后 12428, 旧日志归档为 `20261021-192343.log`, 新进程按新配置把日志等级从 INFO(4) 提到 DEBUG(5), 端口 9999 重新监听
+   - 多进程: apply 前 auth=14036 / web=13632 → 之后 auth=**30920**(已重启) / web=**13632**(不变), 监管进程存活, 网页端口照常
+   - 三平台构建通过
+
+### 2026.10.21 (重新认证统一改为重启)
+
+1. "重新认证"原本走进程内热重载 (`is_need_reauth` → 认证线程重跑 auth, 进程不变), 与刚改过的"应用配置"语义不一致。现在两者统一:
+   - 单进程模式: `WebApiPost.request_restart_auth()` 与 `request_apply_config()` 一样, 置 `g_need_restart` + `g_stop_requested`, 由 `shut()` → `restart_process()` 重启自己
+   - 多进程模式: `ControlServer` 把控制命令 `restart_auth` 与 `apply_config` 合并到同一分支 —— 认证进程收到后直接退出, 由监管者重新拉起; 日志里会区分是"重新认证"还是"应用新配置"
+2. `/api/restartAuth` 去掉"必须有线程正在认证"的限制 (403): 重新认证已经是重启, 正在等网络 / 退避中反而更需要重启
+3. 页面: 按钮与弹窗文案改为"重启认证", 弹窗说明改为"将重启程序 (多进程模式下只重启认证进程), 然后重新登录"; 请求成功后复用 `waitForRestart()` 等程序恢复
+4. 注释同步: `DialerClient` 与 `ErrorCode.h` 里"热重载"的说法统一改成"重启" (`is_need_reauth` 现在只由内部流程使用: 时间窗下线、线程守护)
+5. 验证 (Windows 实测):
+   - 单进程: `/api/restartAuth` → 204, PID 13212 → 11752, 端口 9999 重新监听
+   - 多进程: auth 31600 → 30176 (已重启), web 14600 不变, 监管进程存活, 端口照常
+   - 三平台构建通过; Windows 最小发布包回归 7/7
+
+### 2026.10.22 (修复: 点"重启认证"报 Cannot read properties of undefined)
+
+1. 现象: 页面弹出"已请求重启, 正在等待程序恢复…"后紧接着报 `重新认证失败: Cannot read properties of undefined (reading 'waitForRestart')`
+2. 原因: `restartAuthRequest()` 里把 store 名字写错了 —— `applyConfigs` / `waitForRestart` 定义在 `Alpine.store('settings')` 里, 却写成了 `Alpine.store('config')`, 取到 undefined 后调用其方法就抛 TypeError (后端其实已经收到请求并开始重启, 报错纯粹是前端取错对象)
+3. 修法 (`portal/assets/js/main.js`):
+   - `Alpine.store('config')` → `Alpine.store('settings')`
+   - 顺带去掉已不存在的 403 分支 ("没有正在认证的线程"), 503 文案改成"程序未加载完成或认证进程不可达", 其余提示改成"重启认证失败"
+   - `waitForRestart()` 增加多进程模式的提前返回: 只重启认证进程时 Web 一直在线, 6 秒还连着就直接刷新认证状态, 不再干等 30 秒超时
+4. 验证: `node --check` 语法通过; Windows 构建后 `portal/assets/js/main.js` 已同步到构建目录
+
+### 2026.10.22 (重启后网页自动刷新)
+
+1. 需求: 点"重启认证"/"保存并应用"之后, 页面要自己刷新, 最好是"等程序真的重启完成"再刷, 而不是拍一个固定时间
+2. 做法: 给每个进程实例一个启动标识 `bootId` (8 字节随机数的十六进制, 启动后第一次用到时生成, `core/States.c: boot_id_get()`)
+   - `GET /api/status/sys` 与 `GET /api/status/auth` 都返回 `bootId`
+   - 认证进程的 `bootId` 经控制通道 `status` 回复带出来 (`control_status_t.boot_id`), 所以 Web 进程能报告"认证进程这一次启动"的标识
+3. 页面 (`portal/assets/js/main.js`):
+   - 状态轮询时记下 `authBootId`
+   - `waitForRestart()`: 重启前记下旧值, 之后每秒轮询 `/api/status/auth`, **一旦 `bootId` 变了就 `location.reload()`** (通常 1~3 秒); 40 秒还没等到则兜底刷新一次
+   - 另外在 `updateAuthStatus()` 里也加了一条被动刷新: 只要发现 `bootId` 变了 (监管者重启认证进程、别的页面点了重启、崩溃后自动重拉), 也直接刷新页面
+4. 验证 (Windows 实测):
+   - 单进程: 重启前 `authBoot=3def21370cbd4af6` → 1 秒后变成 `95d69883f93eff2b`(与 sys 相同, 同一个进程)
+   - 多进程: `authBoot=f5916cb65471c41e` 与 `sysBoot=c95a5394e5ba5d44` 不同(两个进程); 重启认证后 `authBoot` 变为 `a9630c9eae5df365`, 而 `sysBoot` 保持不变 —— 页面只会在认证进程真的换掉时刷新
+   - `node --check` 语法通过; 三平台构建 + Windows 最小发布包回归 7/7
+
+### 2026.10.22 (页面图标改用 assets/svg 外部资源)
+
+1. 把 `index.html` 里能对上资源的内嵌 SVG 换成 `assets/svg/` 下的文件, 共 10 处:
+   - 卡片: 连接状态 → `connection_status.svg`, 实时网速 → `network_status.svg`, 热点功能 → `hotspot.svg`, 常规(设置页) → `settings.svg`, 日志查看 → `logs.svg`
+   - 侧栏: 仪表板 → `dashboard.svg`, 设置 → `settings.svg`, 日志 → `logs.svg`, 关于 → `about.svg`
+   - 页脚简介 → `about.svg`
+2. 用 **CSS mask** 而不是 `<img>`: 资源本身 `fill` 是写死的深色 (`#444444` / `#231815` / `#000000`), 直接当图片放在深色主题下几乎看不见。新增 `.icon` 工具类 (`index.html` 的 `<style>`):
+   ```css
+   .icon { display:inline-block; background-color: currentColor;
+           -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+           -webkit-mask-position:center; mask-position:center;
+           -webkit-mask-size:contain; mask-size:contain; }
+   ```
+   用法 `<span class="icon h-6 w-6" style="--icon: url(...); -webkit-mask-image: url(...); mask-image: url(...)"></span>`, 颜色跟随当前文字色, 与原来的 `fill-current` 效果一致, 深浅主题都正常
+3. 页脚品牌图标也已换成外部资源 (7 处): 两个 GitHub 用 `github.svg`, 三个网盘链接按约定的 `qq.svg`(O0lmI0UG) 与 `wechat.svg`(g4f7HScs / q07J0fLX), 另有 `bilibili.svg` 与 `afdian.svg`
+4. 移动端菜单按钮用 `menu.svg`, 卡片"当前账号"与设置页"账号"共用 `account.svg`, 卡片"程序信息"用 `program.svg` —— 至此页面内 21 处图标全部来自 `assets/svg/`
+5. **保留** DaisyUI 内置的主题切换图标 (`swap-off` / `swap-on` 的太阳月亮): 那是组件自带的样式与切换动画, 不属于可替换的业务图标
+6. 验证: 站点启动后 `curl /assets/svg/*.svg` 全部 200 (含新增的 menu / account / program / github / qq / wechat / bilibili / afdian), `index.html` 200
+
+### 2026.10.22 (portal 前端整理: 去重与瘦身)
+
+一、消除重复
+1. 图标标记: 21 处 `<span class="icon">` 原来 inline 写 `--icon` + `-webkit-mask-image` + `mask-image` 三份同等信息 (两行), 改为只写 `--icon`, CSS 里 `-webkit-mask: var(--icon) center / contain no-repeat`, 每个图标压成一行 (index.html 777 → 748 行)
+2. 请求层: `traffic.js` 与 `hotspot.js` 各自实现 `fetch + AbortController + 超时 + JSON 容错解析`; `main.js` 里 `request()` 又一套。现在统一为 `httpJson(url, {method, json, timeout, signal})`, `request()` 只在其上做 `allow` 状态码判断; 三处 `api.*` 相应简化为一行
+3. 轮询: 状态(5s) / 日志(5s) / 网速(1s) / 热点(5s) 四处 `setInterval + document.hidden + activePanel` 判断 → `startPolling(fn, ms, panel)`
+4. 本地存储: `toggleTheme.js` 两个 try/catch 包装 + `traffic.js` 两处 inline try/catch → 统一 `storage.get/set` (定义在最先加载的 toggleTheme.js, 其余脚本共享)
+5. 字节格式化: `trafficRateText()` (traffic.js) 与 `formatBytes()` (main.js) 合并为 `formatBytes(value, perSecond)`
+6. 错误提示: `restartAuthRequest` 与 `applyConfigs` 两处 if-else 状态码映射 → `describeError(error, messages)`
+
+2. 配置字段: `defaultConfigs()` / `normalizeConfigs()` / `buildPayload()` 原本各写一遍同样的 7 个字段 (默认值 / 读取归一化 / 保存转换), 现在合并成一张 `CONFIG_FIELDS` 表 (每项含 `def` / `norm` / `out`), 三个函数都从表生成; `normalizeAccount(source, forSave)` 收敛账号对象的读取与写回两处 (main.js 1150 → 1076 行)
+3. 配置校验: `validate()` 里针对 `web_port` / `log_dir` 的判断搬进字段表的 `check` 回调 (校验规则与字段同处), `validate()` 只剩"时间窗能解析" + 遍历字段表; 顺带删掉一条永远返回 `null` 的死分支
+4. `saveConfigs()` 的错误提示改用 `describeError()`, 去掉重复的 if-else
+5. 配置相关的小函数补齐注释并归位: `clampLogLevel()` (0~6 兜底)、`normalizeAccount()` 提到格式化函数区
+
+二、注释
+1. `main.js` 的多行 `/** ... */` 压成单行功能标注 (1101 → 1090 行); 其它三个 js 本来已简洁
+2. `index.html` 里 `.icon` 的五行说明压成一行
+
+三、验证
+1. `node --check` 四个 js 全部通过; 另用 `vm` 沙箱跑了配置三函数的用例: 默认键与后端一致、`log_lv: '9'`→6、`conn_timeout: 'abc'`→7、`web_port: '70000'`→8888、空时间段被过滤、`channel: 1`→`windows`、保存 payload 里 `mark` 与数字类型正确
+2. 另用沙箱捕获真实的 `settings` store 验证: `validate()` 合法配置返回 null、非法时间窗/端口 70000/超长 log_dir 各自给出对应提示; `buildPayload()` 的键与后端一致且 `log_lv: '6'`→`6`、`web_port: '9999'`→`9999` 均为数字
+3. 运行中的 `/api/getConfigs` 字段与页面字段表完全一致
+3. 页面与资源: `index.html`、四个 js、`/api/status/auth`、`/api/status/sys`、`/api/traffic`、`/api/getConfigs` 全部 200
+4. Windows 构建通过, `portal/` 同步到构建目录; footer 的品牌图标按用户要求保持内嵌 SVG 不动

@@ -175,6 +175,20 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddBoolToObject(auth, "reachable", reachable);
         cJSON_AddStringToObject(auth, "reason", reason);
 
+        // 认证进程的启动标识: 重启后它会变, 网页据此判断"重启完成"
+        char boot_id[16 + 1] = "";
+        if (g_local_state)
+        {
+            snprintf(boot_id, sizeof(boot_id), "%s", boot_id_get());
+        }
+        else
+        {
+            control_status_t remote;
+            memset(&remote, 0, sizeof(remote));
+            if (control_query_status(&remote)) snprintf(boot_id, sizeof(boot_id), "%s", remote.boot_id);
+        }
+        cJSON_AddStringToObject(auth, "bootId", boot_id);
+
         // 上一次认证失败的服务端错误码与翻译, 让网页能直接显示"为什么失败"
         const char* error_code = "";
         const char* sub_error = "";
@@ -265,6 +279,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddBoolToObject(info, "restart_pending", g_need_restart);
         cJSON_AddNumberToObject(info, "account_count", g_prog_cnt);
         cJSON_AddNumberToObject(info, "thread_count", g_prog_cnt);
+        cJSON_AddStringToObject(info, "bootId", boot_id_get());
         reply_json(c, info);
         return true;
     }
