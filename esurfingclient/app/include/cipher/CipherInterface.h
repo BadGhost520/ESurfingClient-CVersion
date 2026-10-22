@@ -121,6 +121,13 @@ void destroy_cipher_factory(void);
 bool init_cipher(const char* algo_id);
 
 /**
+ * @brief 判断 Algo-ID 是否有硬编码实现
+ * @param algo_id 算法 ID
+ * @return 是否存在
+ */
+bool cipher_supported(const char* algo_id);
+
+/**
  * @brief 加密函数
  * @param text 需要加密的文本
  * @return 加密后文本

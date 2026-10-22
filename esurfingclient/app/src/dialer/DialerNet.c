@@ -17,6 +17,7 @@
 #include "utils/log/Logger.h"
 
 #include <stdio.h>
+#include <string.h>
 
 /**
  * @brief 构造一个报文并加密 (调用方负责 free)
@@ -80,6 +81,99 @@ char* dialer_request_plain(const XmlChoose kind, const char* url, const char* wh
         return NULL;
     }
     return plain;
+}
+
+/**
+ * @brief 响应体是否是动态 ZSM
+ *
+ * Windows/iOS/macOS 的 ZSM 以 "001" 开头，后面紧跟二进制长度字节；
+ * 不能按 "001." / "001@" 文本判断。
+ */
+static bool is_zsm_response(const curl_resp_t* resp)
+{
+    return resp != NULL && resp->body_data != NULL && resp->body_size >= 4
+        && memcmp(resp->body_data, "001", 3) == 0;
+}
+
+/**
+ * @brief 获取 Ticket，按官方流程处理 Error-Code=200 的 algoid 更新
+ *
+ * 官方客户端收到 Error-Code=200 + ZSM 时，不会把它当失败：
+ * 解析 ZSM 里的 Algo-ID、更新 cipher，然后用同一个 client-id 在同一服务器重试。
+ *
+ * @param kind 报文类型 (GET_TICKET)
+ * @param url 目标地址
+ * @param what 日志动作名
+ * @return 解密后的 ticket 响应明文, 失败返回 NULL
+ */
+char* dialer_request_ticket(const XmlChoose kind, const char* url, const char* what)
+{
+    unsigned updates = 0;
+
+    for (;;)
+    {
+        if (g_stop_requested != 0 || g_need_exit)
+        {
+            LOG_DEBUG("%s: 收到退出请求, 停止重试", safe_str(what));
+            return NULL;
+        }
+
+        char* encrypt = dialer_encrypt_payload(kind);
+        if (encrypt == NULL) return NULL;
+
+        curl_resp_t resp = post(url, encrypt);
+        free(encrypt);
+
+        if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
+        {
+            LOG_ERROR("%s响应失败", safe_str(what));
+            error_code_record(&resp);
+            curl_resp_free(&resp);
+            return NULL;
+        }
+
+        if (strcmp(resp.error_code, "200") == 0 && is_zsm_response(&resp))
+        {
+            bytes_t zsm = {
+                .data = (uint8_t*)resp.body_data,
+                .len = resp.body_size
+            };
+
+            /* 不在硬编码表中不算失败: 丢弃这次 ZSM, 继续取下一个 */
+            if (load_cipher(zsm) == false)
+            {
+                LOG_DEBUG("%s: ZSM 中的 Algo-ID 不可用, 重置 POST 数据后重新获取", safe_str(what));
+                curl_resp_free(&resp);
+                /* 全部身份字段重置, 再走一次 init_session, 避免服务端复用同一个 ZSM */
+                refresh_states();
+                destroy_cipher_factory();
+                if (init_session() == false) return NULL;
+                continue;
+            }
+
+            if (++updates > 2)
+            {
+                LOG_ERROR("%s算法更新超过 2 次, 停止重试", safe_str(what));
+                curl_resp_free(&resp);
+                return NULL;
+            }
+
+            LOG_INFO("%s: Error-Code=200, 已更新 Algo-ID (%s), 重新获取",
+                safe_str(what), g_prog_status[tl_thread_idx].auth_cfg.algo_id);
+            curl_resp_free(&resp);
+            continue;
+        }
+
+        LOG_VERBOSE("%s响应内容: %s", safe_str(what), resp.body_data);
+        char* plain = session_decrypt(resp.body_data);
+        curl_resp_free(&resp);
+        if (plain == NULL)
+        {
+            LOG_ERROR("%s响应解密失败", safe_str(what));
+            return NULL;
+        }
+        return plain;
+    }
 }
 
 bool term(void)

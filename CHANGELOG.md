@@ -567,3 +567,6 @@
 1. `build_windows_cmdline()` 抽到 `ExecPath.c`, `SimProcess` 与 `SupervisorChild` 共用, 并补上超长时返回 false (原来静默截断丢参数)
 2. `Service.c` 三个平台各自的 `GetExecutablePath()` 删除, 统一调用 `get_exec_path()` (490→478 行)
 3. 实测: 单进程重启换 PID; 监管者拉起的 auth / web 子进程参数完整, apply 后只换认证进程
+
+### 2026.10.23 (v2.1.13-r1)
+1. 缝缝补补, 让 windows 通道认证得以正常

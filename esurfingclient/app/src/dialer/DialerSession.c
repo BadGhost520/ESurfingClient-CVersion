@@ -36,39 +36,45 @@ bool init_session(void)
         ticket_body = "";
         LOG_INFO("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
     }
-    curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
-    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL) // 响应错误或无响应数据, 则返回 false
+
+    for (;;)
     {
-        LOG_ERROR("初始化会话失败");
-        error_code_record(&resp);
-        curl_resp_free(&resp);
-        return false;
-    }
-    LOG_DEBUG("会话响应长度: %zu", resp.body_size);
-    {
+        if (g_stop_requested != 0 || g_need_exit)
+        {
+            LOG_DEBUG("初始化会话收到退出请求, 停止重取");
+            return false;
+        }
+
+        curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
+        if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
+        {
+            LOG_ERROR("初始化会话失败");
+            error_code_record(&resp);
+            curl_resp_free(&resp);
+            return false;
+        }
+        LOG_DEBUG("会话响应长度: %zu", resp.body_size);
+
         const bytes_t zsm = {
             .data = (uint8_t*)resp.body_data,
             .len = resp.body_size
         };
 
         LOG_DEBUG("开始初始化会话");
-
-        /**
-         * 加载加解密工厂
-         * 如果失败, 返回 false
-         */
         if (load_cipher(zsm) == false)
         {
-            LOG_DEBUG("初始化会话失败");
-            g_prog_status[tl_thread_idx].runtime_status.is_initialized = 0;
+            /* 黑名单/未知 Algo-ID: 重置全部 POST 身份字段后立即重取 */
+            refresh_states();
+            LOG_DEBUG("ZSM 中的 Algo-ID 不可用, 已重置 POST 数据, 立即重新获取");
             curl_resp_free(&resp);
-            return false;
+            continue;
         }
+
+        curl_resp_free(&resp);
+        LOG_DEBUG("初始化会话成功");
+        g_prog_status[tl_thread_idx].runtime_status.is_initialized = 1;
+        return true;
     }
-    LOG_DEBUG("初始化会话成功");
-    g_prog_status[tl_thread_idx].runtime_status.is_initialized = 1;
-    curl_resp_free(&resp);
-    return true;
 }
 
 void clean(void)

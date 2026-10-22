@@ -39,6 +39,9 @@ bool login(void);
 /** 构造/加密 → POST → 解密 (心跳 / 登录 / 取 ticket 共用) */
 char* dialer_request_plain(XmlChoose kind, const char* url, const char* what);
 
+/** 获取 Ticket，处理 Error-Code=200 + ZSM 的官方 algoid 更新流程 */
+char* dialer_request_ticket(XmlChoose kind, const char* url, const char* what);
+
 WaitResult wait_need_auth(void);
 
 void logout_previous_session(void);
@@ -46,7 +49,7 @@ void logout_previous_session(void);
 /* DialerTicket.c */
 bool get_ticket(void);
 
-bool load_cipher(const bytes_t zsm);
+bool load_cipher(bytes_t zsm);
 
 /* DialerAuth.c */
 AuthStatus auth(void);

@@ -679,6 +679,19 @@ void destroy_cipher_factory(void)
     LOG_DEBUG("销毁完成");
 }
 
+bool cipher_supported(const char* algo_id)
+{
+    cipher_interface_t* cipher;
+
+    if (algo_id == NULL) return false;
+
+    cipher = create_cipher_factory(algo_id);
+    if (cipher == NULL) return false;
+
+    if (cipher->destroy != NULL) cipher->destroy(cipher);
+    return true;
+}
+
 bool init_cipher(const char* algo_id)
 {
     LOG_DEBUG("开始初始化加解密工厂");
