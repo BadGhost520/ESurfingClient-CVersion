@@ -510,182 +510,60 @@
 5. 回归: Windows (最小发布包 7/7)、Linux、OpenWrt 构建均通过; 页面 JS 语法检查通过
 
 ### 2026.10.21 (认证失败按服务端错误码分类处理)
-1. 新增 `dialer/ErrorCode.c` + `include/dialer/ErrorCode.h`: 把故障指引里**服务端可能返回**的 48 个码 (Sub-Error 的 130xxxxx/1101xxxx、portal 的 14xxxx、网络类 1xx/3xx、账号类 4xx/2001xxxx/-600) 做成一张表, 每个码带"分类 + 中文提示语"; `error_code_lookup()` 两个码同时出现时**以 Sub-Error 为准** (比如截图里的 102 + 13012000, 真正原因是密码错)
-2. 抓码: `NetClientCurl.c` 的 `header_cb` 大小写不敏感地解析 `Error-Code` / `Sub-Error` 到 `curl_resp_t` (并裁掉首尾空白, 否则码表精确匹配会落空); 顺带补上 `post()` 之前**没有**注册 `CURLOPT_HEADERFUNCTION` 的问题 —— 错误码恰好就在 `/auth.cgi` 的 POST 响应头上
-3. 分类与等待策略 (`DialerClient.c`): 退避表改成 1/3/5/10/20/30 分钟并**取消"重试 5 次就退出"**; 三类错误分别处理:
-   - 临时错误 (网络/服务端忙) → 按表退避, 30 分钟后固定每 30 分钟重试, 无限重试
-   - 可自愈错误 (欠费/余额/体验到期/频繁登录/别处登录/被踢) → 固定 30 分钟慢重试
-   - 需人工处理 (密码错/账号不存在/版本停用/被限制共享) → **不重试**, 停在可中断等待里, 热重载或退出即恢复
-   等待用 `sleep_ms(..., true)` 分段 5 秒实现, 网页"保存并应用"/退出都会把等待打断
-4. 界面: `/api/status/auth` 新增 `errorCode` / `subError` / `errorMessage` / `errorKind` / `errorAt`, 网页"连接状态"卡片多一行"失败原因" (带 Error-Code 与 Sub-Error 原文)
-5. 验证: 新增 `TEMP/test-errorcode.c` 单元测试 (23/23 通过, 覆盖大小写/多余空格/超长截断/负数码/码表分类/Sub-Error 优先/记录与清空); Windows 最小发布包 7/7 回归; Linux / OpenWrt / Windows 三平台编译通过
+1. 码表 `dialer/ErrorCode.c` (48 条, 两个码同时出现以 Sub-Error 为准) 分三类: 临时故障按 `{1,3,5,10,20,30}` 分钟退避, 可自愈错误 30 分钟慢重试, 需人工处理的停到重启或退出
+2. `NetClientCurl.c` 的 `header_cb` 抓 `Error-Code` / `Sub-Error` (`post()` 补上 `CURLOPT_HEADERFUNCTION`, 值裁掉首尾空白); `error_code_record()` 写进 `runtime_status.last_error_*`
+3. 界面: `/api/status/auth` 新增 `errorCode` / `subError` / `errorMessage` / `errorKind` / `errorAt`, 网页"连接状态"加一行"失败原因"
+4. 验证: `TEMP/test-errorcode.c` 23/23; 三平台构建 + Windows 回归 7/7
 
 ### 2026.10.21 (OpenWrt 去掉网速采样与热点管理)
-1. OpenWrt 上这两块本来就没用: LuCI 自带流量/网速页面, 热点也在路由器那边配. 现在把它们从 OpenWrt 构建里彻底摘掉:
-   - `src/net/NetTraffic.c`、`src/webserver/HotspotControl.c`、`src/utils/runtime/ChildRun.c` 从公共源清单挪进 `NOT __OPENWRT__` 清单 (ChildRun 只被热点模块用到)
-   - `Shutdown.c` 的 `hotspot_control_stop()` / `net_traffic_stop()` 及其 include 加 `#ifndef __OPENWRT__` (调用点原本就在 `#ifndef __OPENWRT__` 的 `work()` / `work_web()` 里)
-   - `get_adapters_stats()` 与它依赖的类型一起进 `#ifndef __OPENWRT__`: `NetAdapters.c` 的 Linux 分支条件改成 `defined(__linux__) && !defined(__OPENWRT__)`, 兜底桩也跟着包起来, `PlatformUtils.h` 里的 `ADAPTER_ID_LEN` / `adapter_stats_t` / 声明同样处理
-2. Linux **保持原样**: `get_adapters_stats()` 仍然走 sysfs 计数器 + `/proc/net/route`, 网页的实时网速卡片照旧可用 (实测 adapters=2)
-3. 验证: OpenWrt 构建零警告且链接列表里已无 `NetTraffic.c` / `HotspotControl.c` / `ChildRun.c`; Linux 构建 + 运行 `/api/traffic` 正常; Windows 最小发布包 7/7 回归
+1. `NetTraffic.c` / `HotspotControl.c` / `ChildRun.c` 挪进 `NOT __OPENWRT__` 清单, `Shutdown.c` 的调用与 include、`get_adapters_stats()` 及其类型一并加 `#ifndef __OPENWRT__`
+2. Linux **保持原样** (sysfs 计数器 + `/proc/net/route`), 网页网速卡片照旧可用
+3. 验证: OpenWrt 链接列表已无这三个文件; Linux 运行 `/api/traffic` 正常; Windows 回归 7/7
 
 ### 2026.10.21 (全仓库代码整理)
-
-一、修掉三个真隐患
-1. 日志结构体尺寸不稳定: `Logger.h` 里 `#ifndef PATH_MAX` 的兜底会被 `<limits.h>` 抢先定义成 260 (Windows), 于是 `log_cfg_t` 在不同编译单元里尺寸不同。日志模块改用自己固定的 `LOG_PATH_MAX`, 兜底仍保留 (Config.c / LogoutState.c 还在借它拿 `PATH_MAX`, 删了会编译不过)
-2. `create_xml_payload()` 返回静态缓冲区: 单进程多账号时几个认证线程会同时调用并互相覆盖。改成每次 `malloc`, 四个调用点 (term / heartbeat / login / get_ticket) 在加密后释放
-3. `logFn()` 的越界写: 单行日志超过 512 字节时 `buffer[pos++]` 会写穿静态缓冲。补边界检查并截断
-
-二、合并重复 (20 余处)
-1. `curl_resp_free()`: 替掉 14 处 `free(resp.body_data)` 样板; 顺带修掉 `term()` 重试循环里上一次响应体没释放的泄漏
-2. `dialer_request_plain()` / `dialer_encrypt_payload()`: `term` / `heartbeat` / `login` / `get_ticket` 四份"构造 → 加密 → POST → 解密"骨架收敛成一处 (DialerTicket.c 199 → 168 行)
-3. `cfg_read_num` / `cfg_read_bool` / `cfg_read_str`: `load_cfg()` 里 6 段"取字段 → 判类型 → 用默认值"样板收敛 (Config.c 764 → 690 行)
-4. `app_bootstrap()`: `work` / `work_auth` / `work_web` / `work_supervisor` 四份角色入口统一; 顺带修掉监管进程自己手写横幅的细节漂移
-5. `fill_account()`: OpenWrt 与桌面两份账号解析循环共用 (只抽"填 + 校验", 槽位分配 / 标记值 / 失败策略仍各自保留)
-6. `sim_thread_create_retry()`: 4 处"线程创建失败重试 5 次"循环 (DialerClient ×2、TimeControl、WebServer)
-7. `reply_json()`: WebApiGet 里 4 处 JSON 回包样板, 并统一处理 `cJSON_Print` 失败
-8. `str_ieq()` / `str_iprefix()`: 4 份大小写不敏感比较 (`_stricmp` / `strcasecmp` / `_strnicmp` / 手写折叠循环) 收进 utils/text
-9. 信道映射表化: `ConfigAccounts.c` 用一张 `{序号, 名字, 别名, UA}` 表同时管"名字→序号"与"序号→UA", 并导出 `channel_name()`; `WebApiGet.c` 的 15 行 switch 变成 1 行
-10. `hotspot_base64()` 删除, 改用 text 模块已有的 `bytes2base64()`
-
-三、命名与 include 规范
-1. 函数声明/定义 `()` → `(void)`: 116 处 / 39 个文件
-2. 跨 TU 的 `s_*` 全局改成 `g_*`: 208 处 / 21 个文件。其中 supervisor 的信号标志命名为 `g_supervisor_stop` (不能叫 `g_stop_requested`, 那个已有同名全局)
-3. include 统一成"自家头 → 项目头 → 第三方 → 标准库": 7 个文件
-4. `LogLevel` → `log_level_t` (与 `log_cfg_t` / `bytes_t` 一致); `clean_CDATA()` → `clean_cdata()`
-
-四、注释瘦身 (留事实、删叙事)
-1. 压缩 9 个文件: `LogoutState.h` (24 → 5 行)、`Control.h`、`Logger.h` (四处)、`PlatformUtils.h`、`Watchdog.c`、`SupervisorChild.c`、`HotspotControl.c`、`DialerClient.c`
-2. 修正三处过时/错误描述: `NetTraffic.h` 的"Windows; 其它平台暂未实现"、`HotspotControl.h` 的 `adapter_id` 说明、`TextUtils.h` 里 `extract_between_tags` 从 `clean_CDATA` 复制错的文档
-
-五、评估后不改
-1. `CipherFactory.c: create_cipher_factory()` 的 80 个分支不做表化: 它们分布在 20 个工厂函数上, 每个分支的 key / iv 常量与参数个数都不同, 做表要为每个分支再写一个包装函数, 比 if 链更长。已在函数头写明原因, 免得以后重复分析
-
-六、验证
-1. 每一步都跑三平台构建 (Linux / OpenWrt / Windows), 无新增警告
-2. `TEMP/test-errorcode.c` 单测 23/23 (含 7 条响应头解析, 正好覆盖大小写不敏感比较的等价性)
-3. Windows 最小发布包回归 7/7
-4. 行为验证: 配置解析 4 种场景 + `--account 2` 选择、信道映射 12 种输入、5 个 JSON 接口、热点状态查询 (覆盖 `-EncodedCommand` 的 base64 链路)
+1. 修三个隐患: 日志结构体依赖 `PATH_MAX` 导致跨编译单元尺寸不同 (改用自有 `LOG_PATH_MAX`)、`create_xml_payload()` 返回静态缓冲 (改 malloc, 四个调用点释放)、`logFn()` 越界写 (补边界检查)
+2. 合并重复: `curl_resp_free` (14 处)、`dialer_request_plain` (四份五步骨架)、`cfg_read_*` (6 段字段样板)、`app_bootstrap` (4 个角色入口)、`fill_account` (两份账号循环)、`sim_thread_create_retry` (4 处)、`reply_json` (4 处)、`str_ieq`/`str_iprefix`、信道映射表化、`hotspot_base64` 合一
+3. 命名: `()`→`(void)` 116 处、跨 TU `s_*`→`g_*` 208 处、include 分组 7 个文件、`LogLevel`→`log_level_t`、`clean_CDATA`→`clean_cdata`; 注释按"留事实、删叙事"压 9 个文件
+4. 验证: 三平台构建 + 单测 23/23 + Windows 最小发布包回归 7/7
 
 ### 2026.10.21 (修复: 关闭控制台窗口后进程不退出)
-
-1. 现象: Windows 上直接关掉终端 / 点控制台窗口的 X 之后, 客户端仍在后台运行 (网页端口还能访问), 看起来"没被识别成关闭"
-2. 原因: `Shutdown.c` 的控制台处理函数对**所有**事件都返回 `TRUE`。对 `CTRL_C_EVENT` / `CTRL_BREAK_EVENT` 这是对的 (表示"我的主循环会优雅退出"), 但 `CTRL_CLOSE_EVENT` / `CTRL_LOGOFF_EVENT` / `CTRL_SHUTDOWN_EVENT` 返回 `TRUE` 等于告诉系统"我自己处理完了", 系统于是**不再结束进程** —— 控制台已经销毁, 进程就变成没有控制台的后台孤儿
-3. 修法 (`src/utils/runtime/Shutdown.c`):
-   - 新增 `g_shutdown_done` 标志 (`core/States.h` 声明、`core/States.c` 定义), `shut()` 在 `clean_logger()` 之后、`exit()` 之前置位
-   - 关窗口 / 注销 / 关机三类事件: 先置 `g_stop_requested` 让主循环走优雅关闭 (登出、停线程、日志归档), 处理线程最多等约 4.5 秒 (`g_shutdown_done` 置位即提前返回), 收尾完成后再让出 300 ms 给 `exit()`, 最后 **`return FALSE` 交回默认处理**, 由系统结束进程 —— 不会再留后台孤儿
-   - `CTRL_C_EVENT` / `CTRL_BREAK_EVENT` 保持原样 (`return TRUE`, 由主循环 graceful 退出)
-4. 说明: 窗口关闭时系统只给约 5 秒, 若登出请求 (`term()`) 在这段时间内发不完, 进程会由系统结束; 下次启动会靠会话存档 (`LogoutState`) 补做登出, 不会留下服务端在线会话
-5. 验证: 三平台构建通过; CTRL+BREAK 优雅退出回归 7/7 通过 (窗口关闭事件在当前无头环境里无法投递, 需在真机双击 exe 后点 X 确认)
+1. 现象: 关终端后程序仍在后台跑。原因: `console_handler` 对所有事件都 `return TRUE`, 对 `CTRL_CLOSE` 等于告诉系统"我自己处理了", 系统就不再结束进程
+2. 修法: 关窗口/注销/关机先置 `g_stop_requested` 让主循环收尾, 等 `g_shutdown_done` 最多 4.5 秒后 `return FALSE` 交回默认处理; `CTRL_C` / `CTRL_BREAK` 仍返回 TRUE
+3. 验证: 三平台构建 + CTRL+BREAK 回归 7/7 (真实关窗口还需真机点一次 X 确认)
 
 ### 2026.10.21 (应用配置改为重启, 去掉认证热重载)
-
-1. 原来"保存并应用"是进程内热重载: 置 `g_cfg_loaded = false` → 认证线程重新 `load_cfg()` → 拿着新配置继续跑同一个进程。配置里的端口、UA、标记值等要重新初始化的东西容易处于半旧半新的状态, 而且这条链路要维护"配置变了"的多个分支
-2. 现在改为: **应用配置 = 重启**
-   - 单进程模式 (`g_local_state`): `WebApiPost.request_apply_config()` 置 `g_need_restart` + `g_stop_requested`, 主循环走 `shut()`, `restart_process()` 重新拉起自己 (原参数不变), 新配置在启动时读取
-   - 多进程模式: Web 子进程通过控制通道下发 `apply_config`, 认证进程收到后**直接退出** (`g_stop_requested = 1`, 主循环退出 → `clean()` 登出 → 进程结束), 监管者 `supervisor_reap()` 发现子进程退出后用新配置重新拉起 —— Web 子进程与网页不受影响
-   - 配置不可用 (正停在"等配置") 时仍走原来的"重新加载"分支: 此时没有认证进程可重启
-3. 页面文案: 应用成功的提示改为"配置已提交, 程序正在重启…"; 底部使用提示说明"保存并应用会重启程序 (多进程模式下只重启认证进程)"
-4. `g_cfg_loaded == false` 的三处检查保留为兜底 (配置只在启动时读取, 正常不再被置假), 相关注释已同步改成兜底说明
-5. 验证 (Windows 实测):
-   - 单进程: apply 前 PID 30676 → 之后 12428, 旧日志归档为 `20261021-192343.log`, 新进程按新配置把日志等级从 INFO(4) 提到 DEBUG(5), 端口 9999 重新监听
-   - 多进程: apply 前 auth=14036 / web=13632 → 之后 auth=**30920**(已重启) / web=**13632**(不变), 监管进程存活, 网页端口照常
-   - 三平台构建通过
+1. 单进程: 置 `g_need_restart` + `g_stop_requested` → `shut()` → `restart_process()` 重启自己, 新配置在启动时读取
+2. 多进程: 控制命令 `apply_config` 让认证进程退出, 监管者用新配置重拉 (Web 与网页不受影响); 配置不可用的"等配置"状态仍走 `g_need_reload`
+3. `g_cfg_loaded == false` 的三处检查降为兜底; 页面提示改为"正在重启"
+4. 实测: 单进程 PID 30676→12428 (新 log_lv 生效); 多进程 auth 14036→30920、web 13632 不变
 
 ### 2026.10.21 (重新认证统一改为重启)
-
-1. "重新认证"原本走进程内热重载 (`is_need_reauth` → 认证线程重跑 auth, 进程不变), 与刚改过的"应用配置"语义不一致。现在两者统一:
-   - 单进程模式: `WebApiPost.request_restart_auth()` 与 `request_apply_config()` 一样, 置 `g_need_restart` + `g_stop_requested`, 由 `shut()` → `restart_process()` 重启自己
-   - 多进程模式: `ControlServer` 把控制命令 `restart_auth` 与 `apply_config` 合并到同一分支 —— 认证进程收到后直接退出, 由监管者重新拉起; 日志里会区分是"重新认证"还是"应用新配置"
-2. `/api/restartAuth` 去掉"必须有线程正在认证"的限制 (403): 重新认证已经是重启, 正在等网络 / 退避中反而更需要重启
-3. 页面: 按钮与弹窗文案改为"重启认证", 弹窗说明改为"将重启程序 (多进程模式下只重启认证进程), 然后重新登录"; 请求成功后复用 `waitForRestart()` 等程序恢复
-4. 注释同步: `DialerClient` 与 `ErrorCode.h` 里"热重载"的说法统一改成"重启" (`is_need_reauth` 现在只由内部流程使用: 时间窗下线、线程守护)
-5. 验证 (Windows 实测):
-   - 单进程: `/api/restartAuth` → 204, PID 13212 → 11752, 端口 9999 重新监听
-   - 多进程: auth 31600 → 30176 (已重启), web 14600 不变, 监管进程存活, 端口照常
-   - 三平台构建通过; Windows 最小发布包回归 7/7
+1. `request_restart_auth()` 与 `request_apply_config()` 同构; 控制命令 `restart_auth` 与 `apply_config` 合并到同一分支 (认证进程退出等监管者重拉)
+2. `/api/restartAuth` 去掉"必须有线程正在认证"的 403; 页面按钮与弹窗文案改为"重启认证"
+3. 实测: 单进程 13212→11752; 多进程 auth 31600→30176、web 14600 不变
 
 ### 2026.10.22 (修复: 点"重启认证"报 Cannot read properties of undefined)
-
-1. 现象: 页面弹出"已请求重启, 正在等待程序恢复…"后紧接着报 `重新认证失败: Cannot read properties of undefined (reading 'waitForRestart')`
-2. 原因: `restartAuthRequest()` 里把 store 名字写错了 —— `applyConfigs` / `waitForRestart` 定义在 `Alpine.store('settings')` 里, 却写成了 `Alpine.store('config')`, 取到 undefined 后调用其方法就抛 TypeError (后端其实已经收到请求并开始重启, 报错纯粹是前端取错对象)
-3. 修法 (`portal/assets/js/main.js`):
-   - `Alpine.store('config')` → `Alpine.store('settings')`
-   - 顺带去掉已不存在的 403 分支 ("没有正在认证的线程"), 503 文案改成"程序未加载完成或认证进程不可达", 其余提示改成"重启认证失败"
-   - `waitForRestart()` 增加多进程模式的提前返回: 只重启认证进程时 Web 一直在线, 6 秒还连着就直接刷新认证状态, 不再干等 30 秒超时
-4. 验证: `node --check` 语法通过; Windows 构建后 `portal/assets/js/main.js` 已同步到构建目录
+1. 原因: `waitForRestart()` 属于 `Alpine.store('settings')`, 却被写成了 `store('config')`
+2. 顺带去掉已失效的 403 分支, 并让 `waitForRestart()` 在多进程模式下 6 秒即刷新 (原来干等 30 秒)
 
 ### 2026.10.22 (重启后网页自动刷新)
+1. 每个进程实例一个 `bootId` (`States.c: boot_id_get()`), `/api/status/sys` 与 `/api/status/auth` 都返回; 认证进程的值经控制通道 `status` 回复带出
+2. 页面轮询到 `bootId` 变化即 `location.reload()` (通常 1~3 秒), 40 秒兜底刷新; 被动路径 (别处重启、崩溃后重拉) 也会刷新
+3. 实测: 单进程 3def2137→95d69883; 多进程 authBoot 变而 sysBoot 不变
 
-1. 需求: 点"重启认证"/"保存并应用"之后, 页面要自己刷新, 最好是"等程序真的重启完成"再刷, 而不是拍一个固定时间
-2. 做法: 给每个进程实例一个启动标识 `bootId` (8 字节随机数的十六进制, 启动后第一次用到时生成, `core/States.c: boot_id_get()`)
-   - `GET /api/status/sys` 与 `GET /api/status/auth` 都返回 `bootId`
-   - 认证进程的 `bootId` 经控制通道 `status` 回复带出来 (`control_status_t.boot_id`), 所以 Web 进程能报告"认证进程这一次启动"的标识
-3. 页面 (`portal/assets/js/main.js`):
-   - 状态轮询时记下 `authBootId`
-   - `waitForRestart()`: 重启前记下旧值, 之后每秒轮询 `/api/status/auth`, **一旦 `bootId` 变了就 `location.reload()`** (通常 1~3 秒); 40 秒还没等到则兜底刷新一次
-   - 另外在 `updateAuthStatus()` 里也加了一条被动刷新: 只要发现 `bootId` 变了 (监管者重启认证进程、别的页面点了重启、崩溃后自动重拉), 也直接刷新页面
-4. 验证 (Windows 实测):
-   - 单进程: 重启前 `authBoot=3def21370cbd4af6` → 1 秒后变成 `95d69883f93eff2b`(与 sys 相同, 同一个进程)
-   - 多进程: `authBoot=f5916cb65471c41e` 与 `sysBoot=c95a5394e5ba5d44` 不同(两个进程); 重启认证后 `authBoot` 变为 `a9630c9eae5df365`, 而 `sysBoot` 保持不变 —— 页面只会在认证进程真的换掉时刷新
-   - `node --check` 语法通过; 三平台构建 + Windows 最小发布包回归 7/7
+### 2026.10.22 (页面图标改用 assets/svg)
+1. 21 处业务图标改为 `assets/svg/` 下的外部资源 (卡片、侧栏、页脚品牌), 标记只写 `--icon`, 由 CSS `.icon` 的 `mask: var(--icon)` 上色 —— 资源 fill 是固定深色, 直接 `<img>` 在深色主题下看不见
+2. 保留 DaisyUI 主题切换的两个内嵌 svg, 以及按需求保持内嵌的页脚图标
+3. 验证: 站点启动后 `/assets/svg/*.svg` 全部 200
 
-### 2026.10.22 (页面图标改用 assets/svg 外部资源)
-
-1. 把 `index.html` 里能对上资源的内嵌 SVG 换成 `assets/svg/` 下的文件, 共 10 处:
-   - 卡片: 连接状态 → `connection_status.svg`, 实时网速 → `network_status.svg`, 热点功能 → `hotspot.svg`, 常规(设置页) → `settings.svg`, 日志查看 → `logs.svg`
-   - 侧栏: 仪表板 → `dashboard.svg`, 设置 → `settings.svg`, 日志 → `logs.svg`, 关于 → `about.svg`
-   - 页脚简介 → `about.svg`
-2. 用 **CSS mask** 而不是 `<img>`: 资源本身 `fill` 是写死的深色 (`#444444` / `#231815` / `#000000`), 直接当图片放在深色主题下几乎看不见。新增 `.icon` 工具类 (`index.html` 的 `<style>`):
-   ```css
-   .icon { display:inline-block; background-color: currentColor;
-           -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
-           -webkit-mask-position:center; mask-position:center;
-           -webkit-mask-size:contain; mask-size:contain; }
-   ```
-   用法 `<span class="icon h-6 w-6" style="--icon: url(...); -webkit-mask-image: url(...); mask-image: url(...)"></span>`, 颜色跟随当前文字色, 与原来的 `fill-current` 效果一致, 深浅主题都正常
-3. 页脚品牌图标也已换成外部资源 (7 处): 两个 GitHub 用 `github.svg`, 三个网盘链接按约定的 `qq.svg`(O0lmI0UG) 与 `wechat.svg`(g4f7HScs / q07J0fLX), 另有 `bilibili.svg` 与 `afdian.svg`
-4. 移动端菜单按钮用 `menu.svg`, 卡片"当前账号"与设置页"账号"共用 `account.svg`, 卡片"程序信息"用 `program.svg` —— 至此页面内 21 处图标全部来自 `assets/svg/`
-5. **保留** DaisyUI 内置的主题切换图标 (`swap-off` / `swap-on` 的太阳月亮): 那是组件自带的样式与切换动画, 不属于可替换的业务图标
-6. 验证: 站点启动后 `curl /assets/svg/*.svg` 全部 200 (含新增的 menu / account / program / github / qq / wechat / bilibili / afdian), `index.html` 200
-
-### 2026.10.22 (portal 前端整理: 去重与瘦身)
-
-一、消除重复
-1. 图标标记: 21 处 `<span class="icon">` 原来 inline 写 `--icon` + `-webkit-mask-image` + `mask-image` 三份同等信息 (两行), 改为只写 `--icon`, CSS 里 `-webkit-mask: var(--icon) center / contain no-repeat`, 每个图标压成一行 (index.html 777 → 748 行)
-2. 请求层: `traffic.js` 与 `hotspot.js` 各自实现 `fetch + AbortController + 超时 + JSON 容错解析`; `main.js` 里 `request()` 又一套。现在统一为 `httpJson(url, {method, json, timeout, signal})`, `request()` 只在其上做 `allow` 状态码判断; 三处 `api.*` 相应简化为一行
-3. 轮询: 状态(5s) / 日志(5s) / 网速(1s) / 热点(5s) 四处 `setInterval + document.hidden + activePanel` 判断 → `startPolling(fn, ms, panel)`
-4. 本地存储: `toggleTheme.js` 两个 try/catch 包装 + `traffic.js` 两处 inline try/catch → 统一 `storage.get/set` (定义在最先加载的 toggleTheme.js, 其余脚本共享)
-5. 字节格式化: `trafficRateText()` (traffic.js) 与 `formatBytes()` (main.js) 合并为 `formatBytes(value, perSecond)`
-6. 错误提示: `restartAuthRequest` 与 `applyConfigs` 两处 if-else 状态码映射 → `describeError(error, messages)`
-
-2. 配置字段: `defaultConfigs()` / `normalizeConfigs()` / `buildPayload()` 原本各写一遍同样的 7 个字段 (默认值 / 读取归一化 / 保存转换), 现在合并成一张 `CONFIG_FIELDS` 表 (每项含 `def` / `norm` / `out`), 三个函数都从表生成; `normalizeAccount(source, forSave)` 收敛账号对象的读取与写回两处 (main.js 1150 → 1076 行)
-3. 配置校验: `validate()` 里针对 `web_port` / `log_dir` 的判断搬进字段表的 `check` 回调 (校验规则与字段同处), `validate()` 只剩"时间窗能解析" + 遍历字段表; 顺带删掉一条永远返回 `null` 的死分支
-4. `saveConfigs()` 的错误提示改用 `describeError()`, 去掉重复的 if-else
-5. 配置相关的小函数补齐注释并归位: `clampLogLevel()` (0~6 兜底)、`normalizeAccount()` 提到格式化函数区
-
-二、注释
-1. `main.js` 的多行 `/** ... */` 压成单行功能标注 (1101 → 1090 行); 其它三个 js 本来已简洁
-2. `index.html` 里 `.icon` 的五行说明压成一行
-
-三、验证
-1. `node --check` 四个 js 全部通过; 另用 `vm` 沙箱跑了配置三函数的用例: 默认键与后端一致、`log_lv: '9'`→6、`conn_timeout: 'abc'`→7、`web_port: '70000'`→8888、空时间段被过滤、`channel: 1`→`windows`、保存 payload 里 `mark` 与数字类型正确
-2. 另用沙箱捕获真实的 `settings` store 验证: `validate()` 合法配置返回 null、非法时间窗/端口 70000/超长 log_dir 各自给出对应提示; `buildPayload()` 的键与后端一致且 `log_lv: '6'`→`6`、`web_port: '9999'`→`9999` 均为数字
-3. 运行中的 `/api/getConfigs` 字段与页面字段表完全一致
-3. 页面与资源: `index.html`、四个 js、`/api/status/auth`、`/api/status/sys`、`/api/traffic`、`/api/getConfigs` 全部 200
-4. Windows 构建通过, `portal/` 同步到构建目录; footer 的品牌图标按用户要求保持内嵌 SVG 不动
+### 2026.10.22 (portal 前端整理)
+1. 请求层统一为 `httpJson(url, {method, json, timeout, signal})`, `request()` 只负责 `allow` 状态码; traffic / hotspot 不再各写一套 fetch + abort + 容错解析
+2. 轮询统一 `startPolling(fn, ms, panel)`; 本地存储统一 `storage.get/set`
+3. 配置字段表 `CONFIG_FIELDS {def, norm, out, check}` 驱动 `defaultConfigs` / `normalizeConfigs` / `buildPayload` / `validate`, 账号对象走 `normalizeAccount`
+4. `formatBytes(value, perSecond)` 合并速率格式化, 错误提示统一 `describeError`, 多行 JSDoc 压成单行标注
+5. 行数: main.js 1150→1070, index.html 777→748; `node --check` 通过, 页面与接口 200
 
 ### 2026.10.22 (C 侧去重: 命令行拼装与取自身路径)
-
-一、命令拼装
-1. `SimProcess.c: restart_process()` 与 `SupervisorChild.c: child_spawn()` 各写了一遍"把 argv 拼成 Windows 命令行 (`"exe" a b c`)"的循环, 现在抽到 `utils/platform/ExecPath.c: build_windows_cmdline(exec_path, argv, out, len)` (声明在 `PlatformUtils.h` 的 `#ifdef _WIN32` 里)
-2. 顺带补上超长检查: 原来"缓冲区写不下"时只是静默截断, 现在返回 false, 两个调用方分别打日志/返回失败
-3. `ChildRun.c` 的宽字符命令行 (`wchar_t` + `-EncodedCommand`) 保持独立, 它与上面两处的类型和用途都不同
-
-二、取自身路径
-1. `Service.c` 原来为三个平台各写了一个 `static GetExecutablePath()` (Windows 用 `GetModuleFileName`、Linux 读 `/proc/self/exe`、macOS 用 `_NSGetExecutablePath`), 与 `utils/platform/ExecPath.c: get_exec_path()` 完全重复
-2. 三处实现全删, 统一调用 `get_exec_path()`; 服务安装/卸载分支的缓冲改成 `PATH_MAX` (Service.c 490 → 478 行)
-
-三、验证 (Windows 实测)
-1. 单进程重启 (`restart_process` 走新的拼装函数): PID 7388 → 新进程, 端口 9999 重新监听, 参数完整保留
-2. 监管者拉起子进程 (`child_spawn`): auth / web 两个子进程命令行都完整 (`--role auth --account 1 --control-port 8890 --control-token <32 位>`), 网页发 apply 后认证子进程换新 PID、Web 子进程不变
-3. 三平台构建通过; Windows 最小发布包回归 7/7
+1. `build_windows_cmdline()` 抽到 `ExecPath.c`, `SimProcess` 与 `SupervisorChild` 共用, 并补上超长时返回 false (原来静默截断丢参数)
+2. `Service.c` 三个平台各自的 `GetExecutablePath()` 删除, 统一调用 `get_exec_path()` (490→478 行)
+3. 实测: 单进程重启换 PID; 监管者拉起的 auth / web 子进程参数完整, apply 后只换认证进程
