@@ -570,3 +570,9 @@
 
 ### 2026.10.23 (v2.1.13-r1)
 1. 缝缝补补, 让 windows 通道认证得以正常
+### 2026.10.23 (xtea 公共头整理)
+1. `algo/xtea_common.h` 一直在用 (被 `mod_xtea.c` / `mod_xtea_iv.c` 以同目录裸包含引入, 与 `aes_common.h` / `sm4_common.h` 一致), 按全路径搜索会落空
+2. 字节序工具下沉到 `CipherUtils`: 新增 `uint32_bswap()`, BE 读写改用已有的 `bytes_2_uint32_be()` / `uint32_2_bytes_be()` (原来头里的 `xtea_get_be32` / `xtea_set_be32` / `xtea_bswap32` 是重复实现)
+3. 轮函数从"头文件里的 `static inline`"改成"`.h` 声明 + 新增 `algo/xtea_common.c` 实现", 与 `aes_common` / `sm4_common` 的结构一致; 这样头文件里没有函数体, IDE 开着头文件时不会再报 Unused function (原来还会因为 `mod_xtea_cbc_triple.c` 只用到其中一个函数而报其余几个)
+4. `mod_xtea_cbc_triple.c` 不再包含该头 (它只需要 `uint32_bswap`); 它的轮函数**保持原样**: 实测换成标准 32 轮写法后密文变化而回环仍自洽, 说明是"sum 递减 + 预取密钥字"的变体, 已在函数头写明原因
+5. 验证: `TEMP/test-xtea.c` 对三个 xtea 算法做密文基线与回环, 改造前后密文逐字节一致; 三平台构建 + Windows 回归 7/7; `algo/` 20 个工厂函数全部有引用、`src/` 下 81 个 .c 全部在 CMakeLists 中

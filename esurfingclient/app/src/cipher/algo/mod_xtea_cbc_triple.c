@@ -11,14 +11,6 @@ typedef struct {
     uint32_t iv[2];
 } ab6c8_linux_ctx_t;
 
-static uint32_t bswap32(const uint32_t x)
-{
-    return (x & 0x000000FFU) << 24 |
-           (x & 0x0000FF00U) << 8  |
-           (x & 0x00FF0000U) >> 8  |
-           (x & 0xFF000000U) >> 24;
-}
-
 static uint32_t get_uint32_le(const uint8_t* data, const size_t offset)
 {
     return (uint32_t)data[offset] |
@@ -35,15 +27,20 @@ static void set_uint32_le(uint8_t* data, const size_t offset, const uint32_t v)
     data[offset + 3] = (uint8_t)(v >> 24 & 0xFF);
 }
 
+/**
+ * 这一对轮函数不能换成 xtea_common.h 里的 xtea_encrypt_block / xtea_decrypt_block:
+ * 本文件用的是"sum 递减 + 预取两个密钥字"的变体, 与标准 32 轮写法算出的密文不同
+ * (改过一次, 密文变化而回环仍自洽, 属于最难发现的那种错)。
+ */
 static void ab6c8_block_decrypt(uint32_t* v0_le, uint32_t* v1_le, const uint32_t* k_le)
 {
     uint32_t v17[4];
-    v17[0] = bswap32(k_le[0]);
-    v17[1] = bswap32(k_le[1]);
-    v17[2] = bswap32(k_le[2]);
-    v17[3] = bswap32(k_le[3]);
-    uint32_t v9  = bswap32(*v0_le);
-    uint32_t v10 = bswap32(*v1_le);
+    v17[0] = uint32_bswap(k_le[0]);
+    v17[1] = uint32_bswap(k_le[1]);
+    v17[2] = uint32_bswap(k_le[2]);
+    v17[3] = uint32_bswap(k_le[3]);
+    uint32_t v9  = uint32_bswap(*v0_le);
+    uint32_t v10 = uint32_bswap(*v1_le);
     const uint32_t delta = 1640531527U;
     uint32_t i = delta * (uint32_t)-32;
     while (i)
@@ -54,19 +51,19 @@ static void ab6c8_block_decrypt(uint32_t* v0_le, uint32_t* v1_le, const uint32_t
         v10 = v14 - v17[v15 >> 11 & 3U];
         v9 -= (16U * v10 ^ v10 >> 5) + (i ^ v10) + v17[i & 3U];
     }
-    *v0_le = bswap32(v9);
-    *v1_le = bswap32(v10);
+    *v0_le = uint32_bswap(v9);
+    *v1_le = uint32_bswap(v10);
 }
 
 static void ab6c8_block_encrypt(uint32_t* v0_le, uint32_t* v1_le, const uint32_t* k_le)
 {
     uint32_t v17[4];
-    v17[0] = bswap32(k_le[0]);
-    v17[1] = bswap32(k_le[1]);
-    v17[2] = bswap32(k_le[2]);
-    v17[3] = bswap32(k_le[3]);
-    uint32_t v9  = bswap32(*v0_le);
-    uint32_t v10 = bswap32(*v1_le);
+    v17[0] = uint32_bswap(k_le[0]);
+    v17[1] = uint32_bswap(k_le[1]);
+    v17[2] = uint32_bswap(k_le[2]);
+    v17[3] = uint32_bswap(k_le[3]);
+    uint32_t v9  = uint32_bswap(*v0_le);
+    uint32_t v10 = uint32_bswap(*v1_le);
     const uint32_t delta = 1640531527U;
     uint32_t j = 0;
     uint32_t v6 = v17[0];
@@ -81,8 +78,8 @@ static void ab6c8_block_encrypt(uint32_t* v0_le, uint32_t* v1_le, const uint32_t
         v8 = v17[(j + 1013904242U) >> 11 & 3U];
         j  -= delta;
     }
-    *v0_le = bswap32(v9);
-    *v1_le = bswap32(v10);
+    *v0_le = uint32_bswap(v9);
+    *v1_le = uint32_bswap(v10);
 }
 
 static char* ab6c8_encrypt(cipher_interface_t* self, const char* text)

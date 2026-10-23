@@ -73,6 +73,7 @@ add_executable(ESurfingClient
         src/cipher/algo/mod_xtea.c
         src/cipher/algo/mod_xtea_cbc_triple.c
         src/cipher/algo/mod_xtea_iv.c
+        src/cipher/algo/xtea_common.c
         src/cipher/algo/sm4_cbc.c
         src/cipher/algo/sm4_common.c
         src/cipher/algo/sm4_ecb.c

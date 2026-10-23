@@ -32,14 +32,14 @@ static char* mod_xtea_iv_encrypt(cipher_interface_t* self, const char* text)
     previous[1] = data->iv[1];
     for (size_t i = 0; i < padded_len; i += 8)
     {
-        uint32_t v0 = xtea_get_be32(output, i);
-        uint32_t v1 = xtea_get_be32(output, i + 4);
+        uint32_t v0 = bytes_2_uint32_be(output + i);
+        uint32_t v1 = bytes_2_uint32_be(output + i + 4);
         xor_block(&v0, &v1, previous);
         xtea_encrypt_block(&v0, &v1, data->key3, false);
         xtea_encrypt_block(&v0, &v1, data->key2, false);
         xtea_encrypt_block(&v0, &v1, data->key1, false);
-        xtea_set_be32(output, i, v0);
-        xtea_set_be32(output, i + 4, v1);
+        uint32_2_bytes_be(v0, output + i);
+        uint32_2_bytes_be(v1, output + i + 4);
         previous[0] = v0;
         previous[1] = v1;
     }
@@ -63,15 +63,15 @@ static char* mod_xtea_iv_decrypt(cipher_interface_t* self, const char* hex)
     previous[1] = data->iv[1];
     for (size_t i = 0; i < bytes_len; i += 8)
     {
-        uint32_t v0 = xtea_get_be32(output, i);
-        uint32_t v1 = xtea_get_be32(output, i + 4);
+        uint32_t v0 = bytes_2_uint32_be(output + i);
+        uint32_t v1 = bytes_2_uint32_be(output + i + 4);
         const uint32_t cipher_block[2] = {v0, v1};
         xtea_decrypt_block(&v0, &v1, data->key1, false);
         xtea_decrypt_block(&v0, &v1, data->key2, false);
         xtea_decrypt_block(&v0, &v1, data->key3, false);
         xor_block(&v0, &v1, previous);
-        xtea_set_be32(output, i, v0);
-        xtea_set_be32(output, i + 4, v1);
+        uint32_2_bytes_be(v0, output + i);
+        uint32_2_bytes_be(v1, output + i + 4);
         previous[0] = cipher_block[0];
         previous[1] = cipher_block[1];
     }

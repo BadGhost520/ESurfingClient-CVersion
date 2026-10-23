@@ -26,13 +26,13 @@ static char* mod_xtea_encrypt(cipher_interface_t* self, const char* text)
     s_free(padded);
     for (size_t i = 0; i < padded_len; i += 8)
     {
-        uint32_t v0 = xtea_get_be32(output, i);
-        uint32_t v1 = xtea_get_be32(output, i + 4);
+        uint32_t v0 = bytes_2_uint32_be(output + i);
+        uint32_t v1 = bytes_2_uint32_be(output + i + 4);
         xtea_encrypt_block(&v0, &v1, data->key1, data->swap_key_endian);
         xtea_encrypt_block(&v0, &v1, data->key2, data->swap_key_endian);
         xtea_encrypt_block(&v0, &v1, data->key3, data->swap_key_endian);
-        xtea_set_be32(output, i, v0);
-        xtea_set_be32(output, i + 4, v1);
+        uint32_2_bytes_be(v0, output + i);
+        uint32_2_bytes_be(v1, output + i + 4);
     }
     char* hex = bytes_2_hex(output, padded_len);
     s_free(output);
@@ -52,13 +52,13 @@ static char* mod_xtea_decrypt(cipher_interface_t* self, const char* hex)
     s_free(bytes);
     for (size_t i = 0; i < bytes_len; i += 8)
     {
-        uint32_t v0 = xtea_get_be32(output, i);
-        uint32_t v1 = xtea_get_be32(output, i + 4);
+        uint32_t v0 = bytes_2_uint32_be(output + i);
+        uint32_t v1 = bytes_2_uint32_be(output + i + 4);
         xtea_decrypt_block(&v0, &v1, data->key3, data->swap_key_endian);
         xtea_decrypt_block(&v0, &v1, data->key2, data->swap_key_endian);
         xtea_decrypt_block(&v0, &v1, data->key1, data->swap_key_endian);
-        xtea_set_be32(output, i, v0);
-        xtea_set_be32(output, i + 4, v1);
+        uint32_2_bytes_be(v0, output + i);
+        uint32_2_bytes_be(v1, output + i + 4);
     }
     while (bytes_len > 0 && output[bytes_len - 1] == 0) bytes_len--;
     char* result = s_malloc(bytes_len + 1);

@@ -28,6 +28,9 @@ uint8_t* rm_pkcs7_padding(const uint8_t* data, size_t data_len, size_t* out_len)
 
 uint8_t* pad_2_multiple(const uint8_t* data, size_t data_len, size_t multiple, size_t* out_len);
 
+/** 32 位字节序翻转 */
+uint32_t uint32_bswap(uint32_t value);
+
 uint32_t bytes_2_uint32_be(const uint8_t* bytes);
 
 uint32_t bytes_2_uint32_le(const uint8_t* bytes);

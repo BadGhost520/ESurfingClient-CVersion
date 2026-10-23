@@ -115,7 +115,7 @@ static cipher_interface_t* create_cipher_factory(const char* algo_id)
             key2_4BA5496A_2123_46A7_85F2_35956EA7BE39
         );
     }
-    // AES-CBC (zero IV)
+    // AES-CBC (Linux)
     if (strcmp(algo_id, "45433DCF-9ECA-4BE5-83F2-F92BA0B4F291") == 0)
     {
         return create_aes_cbc_cipher(
@@ -124,7 +124,7 @@ static cipher_interface_t* create_cipher_factory(const char* algo_id)
             NULL
         );
     }
-    // XTEA (Linux, key endian swap)
+    // XTEA (Linux)
     if (strcmp(algo_id, "60639D8B-272E-4A4D-976E-AA270987A169") == 0)
     {
         return create_mod_xtea_cipher(
@@ -653,6 +653,120 @@ static cipher_interface_t* create_cipher_factory(const char* algo_id)
         return create_tea_triple_cbc_cipher(
             key_FEE5E4DA_50A0_4ECD_8392_92E09CB1B775,
             iv_FEE5E4DA_50A0_4ECD_8392_92E09CB1B775
+        );
+    }
+
+    /* 121.8.177.212 second-server dynamic modules */
+    // Android, cdy 13 (121.8.177.212)
+    if (strcmp(algo_id, "D522E657-2CC3-46BE-BBE9-9CF1DF896C41") == 0)
+    {
+        return create_sm4_variant_ecb_cipher(
+            key_D522E657_2CC3_46BE_BBE9_9CF1DF896C41
+        );
+    }
+    // Android, cdy 8 (121.8.177.212)
+    if (strcmp(algo_id, "3084D519-54D7-4434-9564-26A8615BCEF2") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_3084D519_54D7_4434_9564_26A8615BCEF2
+        );
+    }
+    // Android, cdy 2 (121.8.177.212)
+    if (strcmp(algo_id, "3D74E736-AB35-47CD-B934-77EBEF2B42D3") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_3D74E736_AB35_47CD_B934_77EBEF2B42D3,
+            iv_3D74E736_AB35_47CD_B934_77EBEF2B42D3
+        );
+    }
+    // Android, cdy 5 (121.8.177.212)
+    if (strcmp(algo_id, "64BD1BB8-49F4-448F-9D63-C4E96FC068CC") == 0)
+    {
+        return create_desede_double_cbc_cipher(
+            key_64BD1BB8_49F4_448F_9D63_C4E96FC068CC,
+            iv_64BD1BB8_49F4_448F_9D63_C4E96FC068CC
+        );
+    }
+    // Android, cdy 6 (121.8.177.212)
+    if (strcmp(algo_id, "252F0396-5254-4A42-9390-FA2EF1EB8D6E") == 0)
+    {
+        return create_des_ecb_six_cipher(
+            key_252F0396_5254_4A42_9390_FA2EF1EB8D6E
+        );
+    }
+    // Android, cdy 12 (121.8.177.212)
+    if (strcmp(algo_id, "73B3F4AE-643F-471F-B08C-A5893D7B3601") == 0)
+    {
+        return create_sm4_variant_cbc_cipher(
+            key_73B3F4AE_643F_471F_B08C_A5893D7B3601,
+            iv_73B3F4AE_643F_471F_B08C_A5893D7B3601
+        );
+    }
+    // Android, cdy 3 (121.8.177.212)
+    if (strcmp(algo_id, "7E6A7DE0-4C56-47E6-A25A-1B4DCD33B950") == 0)
+    {
+        return create_aes_double_ecb_cipher(
+            key_7E6A7DE0_4C56_47E6_A25A_1B4DCD33B950
+        );
+    }
+    // Android, cdy 14 (121.8.177.212)
+    if (strcmp(algo_id, "5038A11D-75EA-4F75-AF8D-2DAD8E0E6A19") == 0)
+    {
+        return create_snow3g_variant_cipher(
+            key_5038A11D_75EA_4F75_AF8D_2DAD8E0E6A19,
+            iv_5038A11D_75EA_4F75_AF8D_2DAD8E0E6A19
+        );
+    }
+    // Android, cdy 9 (121.8.177.212)
+    if (strcmp(algo_id, "406BD7C5-C48A-4F48-B072-82D5948B537B") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_406BD7C5_C48A_4F48_B072_82D5948B537B,
+            iv_406BD7C5_C48A_4F48_B072_82D5948B537B
+        );
+    }
+    // iOS, cdy 5 (121.8.177.212)
+    if (strcmp(algo_id, "928CE71E-6D12-4887-ABB8-500CDD18FBF2") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_928CE71E_6D12_4887_ABB8_500CDD18FBF2
+        );
+    }
+    // iOS, cdy 1 (121.8.177.212)
+    if (strcmp(algo_id, "674E4CDD-5556-441B-AAAD-A69FB14F49BC") == 0)
+    {
+        return create_aes_double_ecb_cipher(
+            key_674E4CDD_5556_441B_AAAD_A69FB14F49BC
+        );
+    }
+    // iOS, cdy 2 (121.8.177.212)
+    if (strcmp(algo_id, "89E57D42-9B77-4CBB-B08A-D9CD602E4A67") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_89E57D42_9B77_4CBB_B08A_D9CD602E4A67,
+            iv_89E57D42_9B77_4CBB_B08A_D9CD602E4A67
+        );
+    }
+    // macOS, cdy 5 (121.8.177.212)
+    if (strcmp(algo_id, "E7BE4937-4069-4096-9437-B2B9C1AE9021") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_E7BE4937_4069_4096_9437_B2B9C1AE9021
+        );
+    }
+    // macOS, cdy 1 (121.8.177.212)
+    if (strcmp(algo_id, "064C7B38-20B9-4CE4-9760-66822A3BF0E7") == 0)
+    {
+        return create_aes_double_ecb_cipher(
+            key_064C7B38_20B9_4CE4_9760_66822A3BF0E7
+        );
+    }
+    // macOS, cdy 2 (121.8.177.212)
+    if (strcmp(algo_id, "AED79B90-C27B-4D4F-8E53-C522FA955CFE") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_AED79B90_C27B_4D4F_8E53_C522FA955CFE,
+            iv_AED79B90_C27B_4D4F_8E53_C522FA955CFE
         );
     }
 
