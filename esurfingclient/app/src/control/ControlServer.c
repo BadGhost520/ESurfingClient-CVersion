@@ -13,7 +13,7 @@
 
 #define TL_IDX_CONTROL (-3)
 
-#define CTL_TIMEOUT_MS 3000
+#define CTL_TIMEOUT_MS 1000
 
 static volatile bool s_server_running = false;
 
@@ -75,6 +75,46 @@ static int ctl_wait_readable(const ctl_sock_t sock, const long timeout_ms)
     return FD_ISSET(sock, &read_set) ? 1 : 0;
 }
 
+int ctl_wait_writable(const ctl_sock_t sock, const long timeout_ms)
+{
+    fd_set write_set;
+    FD_ZERO(&write_set);
+    FD_SET(sock, &write_set);
+
+    struct timeval tv;
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+    const int ready = select((int)sock + 1, NULL, &write_set, NULL, &tv);
+    if (ready <= 0) return ready;
+
+    return FD_ISSET(sock, &write_set) ? 1 : 0;
+}
+
+bool ctl_port_available(const uint16_t port)
+{
+    if (ctl_net_init() == false) return false;
+
+    const ctl_sock_t sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == CTL_INVALID_SOCK) return false;
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    const bool available = bind(sock, (struct sockaddr*)&addr, sizeof(addr)) == 0;
+
+    ctl_close(sock);
+    return available;
+}
+
+bool control_port_available(const uint16_t port)
+{
+    return ctl_port_available(port);
+}
+
 /**
  * @brief 读取一行报文
  * @param sock 套接字
@@ -99,6 +139,32 @@ size_t ctl_read_line(const ctl_sock_t sock, char* buf, const size_t buf_len)
 
     buf[used] = '\0';
     return used;
+}
+
+/**
+ * @brief 等对端把连接关掉 (最多 timeout_ms)
+ *
+ * 读到的数据直接丢弃: 客户端发完一行请求就不会再发东西, 这里能读到的只可能是
+ * 对端关闭 (FIN), 或者干脆读到错误 (RST)。
+ */
+void ctl_wait_close(const ctl_sock_t sock, const long timeout_ms)
+{
+    char sink[64];
+    long waited = 0;
+
+    while (waited < timeout_ms)
+    {
+        const int ready = ctl_wait_readable(sock, 100);
+        if (ready < 0) return;
+        if (ready == 0)
+        {
+            waited += 100;
+            continue;
+        }
+
+        const int n = recv(sock, sink, (int)sizeof(sink), 0);
+        if (n <= 0) return; // 0 = FIN, -1 = RST / 错误
+    }
 }
 
 /* ------------------------------------------------------------------
@@ -267,7 +333,21 @@ static void ctl_handle_client(const ctl_sock_t client)
     if (send(client, reply, (int)strlen(reply), 0) <= 0)
     {
         LOG_DEBUG("控制通道应答发送失败");
+        return;
     }
+
+    /**
+     * 让客户端先关, 本端再关。
+     *
+     * 谁先 close 谁留 TIME_WAIT, 而这个端点是控制端口: 落在服务端的话, 认证进程
+     * 重启后重新 bind 会被上一个实例留下的 TIME_WAIT 挡住 (Windows 默认约 2 分钟,
+     * SO_REUSEADDR 对"被接受连接留下的 TIME_WAIT"并不总能绕开), 表现就是网页
+     * 显示"认证进程不可达"、监管者也请求不到优雅退出。
+     *
+     * 做法: 先关自己的写方向 (客户端随即读到 EOF 并 close), 再等它的 FIN。
+     */
+    ctl_shutdown_write(client);
+    ctl_wait_close(client, 500);
 }
 
 /**
@@ -309,6 +389,20 @@ bool control_server_start(const uint16_t port)
     {
         LOG_ERROR("创建控制通道套接字失败");
         return false;
+    }
+
+    /**
+     * 允许立即重新绑定同一个端口
+     *
+     * 认证进程每次重启 (网页上的"重新认证"/"应用新配置"、崩溃后被监管者重拉)
+     * 都要重新 bind; 上一个实例退出时, Web 进程刚连过的那些连接会在本端口上
+     * 留下 TIME_WAIT (约 60 秒)。不设这个选项就会连续几十秒绑不上 —— 表现是
+     * 网页显示"认证进程不可达", 之后监管者也只能强杀它 (跑不到登出)。
+     */
+    int reuse = 1;
+    if (setsockopt(s_listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) != 0)
+    {
+        LOG_WARN("控制通道设置 SO_REUSEADDR 失败 (重启后可能短暂无法绑定端口)");
     }
 
     // 只监听回环: 控制通道不对外开放

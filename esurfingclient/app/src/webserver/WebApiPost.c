@@ -13,44 +13,24 @@
 /**
  * @brief 重新认证 (与"应用配置"一致: 都是重启)
  *
- * 单进程模式下重启自己; 多进程模式下让认证进程退出、由监管者重新拉起。
+ * Web 进程不碰认证状态: 一律通过控制通道让认证进程退出, 再由监管者重新拉起。
  * 进程内热重载已经去掉, 重新认证不再走 is_need_reauth 那条老路。
  * @return 是否成功
  */
 static bool request_restart_auth(void)
 {
-    if (g_local_state)
-    {
-        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-
-        // 先置标志让 HTTP 回包发出去, 主循环下一拍就会走重启流程 (shut → restart_process)
-        g_need_restart = true;
-        g_stop_requested = 1;
-        return true;
-    }
-
     return control_restart_auth();
 }
 
 /**
  * @brief 应用新配置
  *
- * 不再做进程内的热重载: 单进程模式下直接重启自己 (新配置在启动时读取),
- * 多进程模式下让认证进程退出、由监管者用新配置重新拉起。
+ * 不再做进程内的热重载: 认证进程退出, 由监管者用新配置重新拉起它
+ * (新配置在它启动时读取), Web 进程与网页不受影响。
  * @return 是否成功
  */
 static bool request_apply_config(void)
 {
-    if (g_local_state)
-    {
-        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-
-        // 先置标志让 HTTP 回包发出去, 主循环下一拍就会走重启流程 (shut → restart_process)
-        g_need_restart = true;
-        g_stop_requested = 1;
-        return true;
-    }
-
     return control_apply_config();
 }
 

@@ -52,12 +52,7 @@ static void reply_json(struct mg_connection* c, cJSON* root)
  */
 bool query_is_authed(bool* out)
 {
-    if (g_local_state)
-    {
-        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-        *out = g_prog_status[0].runtime_status.is_authed;
-        return true;
-    }
+    if (out == NULL) return false;
 
     control_status_t status;
     if (control_query_status(&status) == false) return false;
@@ -143,8 +138,17 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
     // 获取认证状态
     if (mg_match(hm->uri, mg_str("/api/status/auth"), NULL))
     {
-        bool is_authed = false;
-        const bool reachable = query_is_authed(&is_authed);
+        /**
+         * 只查一次控制通道
+         *
+         * 每次查询都是一次回环 TCP 往返, 而 Web 线程是单线程的 —— 查两次会把耗时
+         * 翻倍 (认证进程不在时尤其明显, 见 ControlClient.c 里非阻塞 connect 的说明),
+         * 顺带会把同时轮询的 /api/traffic 拖到前端超时。
+         */
+        control_status_t remote;
+        memset(&remote, 0, sizeof(remote));
+        const bool reachable = control_query_status(&remote);
+        const bool is_authed = reachable && remote.is_authed;
 
         /**
          * 查不到认证状态时, 说清楚是哪一种:
@@ -166,7 +170,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         }
         else if (reachable == false)
         {
-            reason = g_local_state ? "no-account" : "not-running";
+            reason = "not-running";
         }
 
         cJSON* auth = cJSON_CreateObject();
@@ -177,16 +181,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
 
         // 认证进程的启动标识: 重启后它会变, 网页据此判断"重启完成"
         char boot_id[16 + 1] = "";
-        if (g_local_state)
-        {
-            snprintf(boot_id, sizeof(boot_id), "%s", boot_id_get());
-        }
-        else
-        {
-            control_status_t remote;
-            memset(&remote, 0, sizeof(remote));
-            if (control_query_status(&remote)) snprintf(boot_id, sizeof(boot_id), "%s", remote.boot_id);
-        }
+        if (reachable) snprintf(boot_id, sizeof(boot_id), "%s", remote.boot_id);
         cJSON_AddStringToObject(auth, "bootId", boot_id);
 
         // 上一次认证失败的服务端错误码与翻译, 让网页能直接显示"为什么失败"

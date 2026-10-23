@@ -119,9 +119,13 @@ void record_parent_pid(void);
 /**
  * @brief 父进程是否还在 (供被监管的子进程自查, 防止监管者被强杀后留下孤儿)
  *
- * 判据是"父进程号是否还是启动时那个", 不能只看是不是变成 1 —— 用 setsid 主动
- * 脱离终端的进程本来就可能以 1 为父。Linux 另有 PR_SET_PDEATHSIG 兜底;
- * Windows 没有等价机制, 恒返回 true。
+ * POSIX 的判据是"父进程号是否还是启动时那个", 不能只看是不是变成 1 —— 用 setsid
+ * 主动脱离终端的进程本来就可能以 1 为父。Linux 另有 PR_SET_PDEATHSIG 兜底。
+ *
+ * Windows 没有父进程死亡信号, 这里用"记下的父进程号 + OpenProcess(SYNCHRONIZE)
+ * 等 0 秒"来判断: 打不开句柄视为已退出, WAIT_TIMEOUT 视为还活着。
+ * 这是"双击运行 → 任务管理器结束守护进程"时子进程能自行退出的唯一依据
+ * (否则认证/Web 子进程会一直挂在后台, 还占着控制端口)。
  * @return 父进程是否还在
  */
 bool parent_process_alive(void);

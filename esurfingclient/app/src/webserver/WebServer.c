@@ -14,8 +14,6 @@
 
 static sim_thread_t* web_thread;
 
-bool g_local_state = true;
-
 #define WEB_LISTEN_LEN 64
 
 static int web_server(void* arg)
@@ -73,16 +71,9 @@ static bool start_web_thread(void)
     return true;
 }
 
-bool start_web_server(void)
-{
-    g_local_state = true;
-    return start_web_thread();
-}
-
 bool start_web_server_remote(void)
 {
     control_set_port(g_control_port);
-    g_local_state = false;
 
     LOG_INFO("Web 进程模式: 认证状态通过控制通道 127.0.0.1:%" PRIu16 " 获取", g_control_port);
 

@@ -27,13 +27,18 @@ static bool s_print_log_dir = false;
 static void PrintUsage(void)
 {
     printf("使用格式: ESurfingClient [选项]\n");
-    printf("  [nothing]            直接运行程序 (前台模式)\n");
+#ifdef __OPENWRT__
+    printf("  [nothing]            直接运行程序 (单实例: 一个进程带所有账号的认证线程)\n");
+    printf("  -r, --role <角色>     程序角色: auth (认证; 由 init 脚本按账号各起一个)\n");
+#else
+    printf("  [nothing]            直接运行程序 (等同于 --role supervisor: 认证与 Web 各起独立进程)\n");
     printf("  -r, --role <角色>     程序角色: supervisor (守护) / auth (认证) / web (网页)\n");
+#endif
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
     printf("  --print-log-dir      打印实际使用的日志目录后退出 (日志目录由配置里的 log_dir 决定)\n");
 #ifndef __OPENWRT__
-    printf("  --control-port <端口> 控制通道端口 (默认 %d; 认证进程监听, Web 进程连接)\n", CONTROL_DEFAULT_PORT);
+    printf("  --control-port <端口> 控制通道端口 (默认 %d; 被占用时自动往后顺延)\n", CONTROL_DEFAULT_PORT);
     printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 守护进程会自动生成并下发)\n");
     printf("  (Web 服务端口与是否允许外部访问在配置文件的 web_port / web_external_acc 里改)\n");
 #endif

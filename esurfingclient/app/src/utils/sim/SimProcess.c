@@ -26,7 +26,7 @@ void restart_process(void)
 
     /**
      * 必须把原始参数一起带上:
-     * 丢掉参数会让重启后的进程退化成另一个角色 (比如 --role auth 变成单进程模式)
+     * 丢掉参数会让重启后的进程退化成另一个角色 (比如 --role auth 变成守护进程)
      */
     char cmdline[PATH_MAX + 256];
     if (build_windows_cmdline(exec_path, g_main_argv, cmdline, sizeof(cmdline)) == false)

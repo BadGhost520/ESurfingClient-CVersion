@@ -2,6 +2,8 @@
 
 #include "config/Config.h"
 
+#include "control/Control.h"
+
 #include "core/States.h"
 
 #include "dialer/DialerClient.h"
@@ -13,6 +15,9 @@
 #include "SupervisorInternal.h"
 
 #define SUPERVISOR_CFG_CHECK_MS 1000
+
+/** 找控制通道端口时最多往后看多少个 (正常情况下第一个就可用) */
+#define SUPERVISOR_PORT_SCAN 64
 
 static bool s_cfg_usable = false;
 
@@ -190,6 +195,51 @@ static void supervisor_shutdown(void)
  * ------------------------------------------------------------------ */
 
 /**
+ * @brief 把任意端口号折回 1..65535
+ *
+ * 0 在 bind 里的意思是"让内核随便挑一个", 传 0 出去监管者自己却仍按 0 去连,
+ * 必然连不上, 所以不能出现在端口号里。
+ */
+static uint16_t port_wrap(const uint32_t port)
+{
+    return (uint16_t)(((port - 1u) % 65535u) + 1u);
+}
+
+/**
+ * @brief 挑一个可用的控制通道起始端口
+ *
+ * 需要 base 到 base + count - 1 全部可绑定: 每个认证子进程占一个端口
+ * (见 child_control_port), Web 子进程连 base。
+ *
+ * @param base 默认起始端口
+ * @param count 认证子进程数 (配置不可用时传 <= 0, 按 1 个算)
+ * @return 可用的起始端口; 全都被占时返回 base, 让子进程按原来的降级逻辑处理
+ */
+static uint16_t supervisor_pick_control_port(const uint16_t base, const int8_t count)
+{
+    const uint8_t need = (count > 0) ? (uint8_t)count : 1;
+
+    for (uint16_t offset = 0; offset < SUPERVISOR_PORT_SCAN; offset++)
+    {
+        const uint16_t candidate = port_wrap((uint32_t)base + offset);
+        bool usable = true;
+
+        for (uint8_t i = 0; i < need; i++)
+        {
+            if (control_port_available(port_wrap((uint32_t)candidate + i)) == false)
+            {
+                usable = false;
+                break;
+            }
+        }
+
+        if (usable) return candidate;
+    }
+
+    return base;
+}
+
+/**
  * @brief 按配置里的可用账号构建子进程表
  *
  * 认证子进程要排在 Web 子进程前面: 控制端口是按表里的顺序分配的 (第 i 个认证进程用
@@ -266,6 +316,22 @@ int work_supervisor(void)
     for (size_t i = 0; i < sizeof(token_bytes); i++)
     {
         snprintf(g_control_token + i * 2, 3, "%02x", token_bytes[i]);
+    }
+
+    /**
+     * 控制通道端口: 默认端口被别的程序占着时自动往后顺延
+     *
+     * 每个认证子进程占一个端口 (base + 下标), Web 子进程连 base。默认的 8890
+     * 在本机就遇到过被系统进程 (dllhost) 监听, 结果认证进程绑不上、远程控制整体
+     * 降级 —— 网页显示"认证进程不可达", 重启只能强杀。所以这里先探一遍再下发。
+     *
+     * Web 服务端口 (配置里的 web_port) 不在此列: 那是用户明确指定的, 冲突就报错。
+     */
+    const uint16_t picked_port = supervisor_pick_control_port(g_control_port, g_prog_cnt);
+    if (picked_port != g_control_port)
+    {
+        LOG_WARN("控制通道端口 %" PRIu16 " 已被占用, 改用 %" PRIu16, g_control_port, picked_port);
+        g_control_port = picked_port;
     }
 
     if (supervisor_build_children() == false) return 1;

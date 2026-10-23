@@ -11,7 +11,9 @@
  * Two AES-128-CBC layers (32-byte key = two 16-byte layers), custom
  * key expansion (transposed key + 10 rounds of S-box/Rcon mixing ->
  * 176-byte schedule), standard AES round structure, row-major state,
- * IV-prefix mode with PKCS7 padding.
+ * IV-prefix mode with zero padding (no PKCS7: plaintext is zero-filled to
+ * a 16-byte multiple, an empty input becomes one full block, and decryption
+ * strips the trailing 0x00 bytes).
  * Translated from IDA pseudocode (sub_1FA0 keysched / sub_27F0 block /
  * sub_3444 double-layer enc / sub_2ED8 layer dec / sub_34D8 double dec).
  * Verified against the real .so via the unicorn emulator.

@@ -124,7 +124,7 @@ on:
         description: '主要更新内容 (多行请用 \n 分隔, 例如: 1. xxx\n2. yyy)'
         type: string
         required: false
-        default: '1. 新增了更多架构支持\n2. 优化合并了工作流'
+        default: ''
 
 jobs:
   get-version:

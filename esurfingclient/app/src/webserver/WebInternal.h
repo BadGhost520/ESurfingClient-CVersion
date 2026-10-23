@@ -7,8 +7,6 @@
 
 #include <mongoose/mongoose.h>
 
-extern bool g_local_state;
-
 #define LOG_NAME_LEN 256
 
 #define HEADER_JSON "Content-Type: application/json\r\nCache-Control: no-store\r\n"

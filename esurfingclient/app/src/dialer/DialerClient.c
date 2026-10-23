@@ -31,7 +31,6 @@ extern bool get_service_mode(void);
 #include "webserver/HotspotControl.h"
 
 extern bool start_web_server_remote(void);
-extern bool start_web_server(void);
 #endif
 
 typedef enum
@@ -52,8 +51,12 @@ static const uint64_t table[] = {1, 3, 5, 10, 20, 30};
 /**
  * @brief 各角色入口的公共起步动作
  *
- * 取全局状态、装关闭钩子、起日志、打横幅。单进程 / 认证进程 / Web 进程 / 监管进程
- * 四处原本各抄一份, 已经出现过细节漂移 (监管进程自己手写了横幅)。
+ * 取全局状态、装关闭钩子、起日志、打横幅。认证进程 / Web 进程 / 监管进程
+ * 三处原本各抄一份, 已经出现过细节漂移 (监管进程自己手写了横幅)。
+ *
+ * 横幅只由入口角色打: 监管进程 (桌面) 或单实例模式 (OpenWrt)。认证 / Web 子进程
+ * 不打 —— 它们是程序的一部分, 每次被重新拉起都打一遍的话, 同一份 run.log 里会
+ * 堆出好几份一模一样的版本信息, 控制台上也会刷三遍。
  * @return 日志系统是否初始化成功
  */
 bool app_bootstrap(void)
@@ -70,7 +73,11 @@ bool app_bootstrap(void)
 
     if (init_logger() == false) return false;
 
-    print_banner();
+    if (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB)
+    {
+        print_banner();
+    }
+
     return true;
 }
 
@@ -286,8 +293,9 @@ int dialer_app(void* arg)
             break;
         }
         /**
-         * 认证进程里没有独立的时间控制线程, 由本线程自己校正时间窗口
-         * 单进程模式下由时间控制线程统一校正, 这里不重复做
+         * 时间控制: 定时线程负责到点触发 (见 work_auth 里的 time_control_init),
+         * 这里每轮再补一次 —— sync 是幂等的, 只是让刚好走到这里的那一拍
+         * 也用上最新状态
          */
         if (g_prog_role == ROLE_AUTH)
         {
@@ -389,7 +397,7 @@ static int work_web(void)
     if (app_bootstrap() == false) return 1;
 
     /**
-     * 与单进程模式同一套顺序: 先加载配置 (即使不可用, Web 服务的端口也已经就位),
+     * 顺序与认证进程一致: 先加载配置 (即使不可用, Web 服务的端口也已经就位),
      * 再把网页起起来, 配置不可用时就停在这里等用户改。
      *
      * 不能一见配置不可用就退出: 监管者只会按退避策略反复拉起, 而用户需要的
@@ -413,7 +421,11 @@ static int work_web(void)
     // Web 服务在独立线程里跑, 主线程只等退出
     while (g_need_exit == false && g_stop_requested == 0)
     {
-        if (supervisor_gone()) break;
+        if (supervisor_gone())
+        {
+            LOG_WARN("守护进程已退出, 本进程一并退出");
+            break;
+        }
 
         /**
          * 跟着配置文件走: 用户在网页上保存过配置之后, 本进程展示的值也要跟上
@@ -446,6 +458,20 @@ void work(void)
 
 #ifndef __OPENWRT__
 
+    /**
+     * 桌面端只有"多进程"这一种形态: 不带参数直接运行, 与 `--role supervisor`
+     * 走的是同一条路 —— 由监管进程拉起 N 个认证子进程和一个 Web 子进程。
+     *
+     * 原来的"单进程多线程"路径已经删除: 同一个流程写两遍, 时间控制、配置变更、
+     * 退出收尾迟早会各偏一套。角色在这里归一化, 而不是在解析参数时改 ——
+     * --list-accounts / --print-log-dir 正是靠"没有显式指定角色"判断能用,
+     * 那两个查询在 main() 里就已经返回了。
+     */
+    if (g_prog_role == ROLE_STANDALONE)
+    {
+        g_prog_role = ROLE_SUPERVISOR;
+    }
+
     if (g_prog_role == ROLE_SUPERVISOR)
     {
         exit(work_supervisor());
@@ -456,32 +482,24 @@ void work(void)
         exit(work_web());
     }
 
-#endif
+#else
 
+    /**
+     * OpenWrt 上没有监管进程 (procd 按账号各起一个 `--role auth` 实例),
+     * 不带参数手工运行时仍是"单实例多线程": 一个进程带所有账号的认证线程。
+     * 这段逻辑只编进 OpenWrt 构建, 桌面端走不到。
+     */
     if (app_bootstrap() == false) return;
 
     /**
-     * 先加载配置, 再起 Web 服务
+     * 先加载配置
      *
-     * 顺序不能反: 监听端口与是否允许外部访问 (配置里的 web_port / web_external_acc)
-     * 要在绑端口之前就位, 反过来就只能按默认端口开出去了 —— load_cfg 把这两个
-     * 参数的解析排在所有"配置不可用"的判断之前, 配置有问题时照样能拿到它们。
-     *
-     * 但 Web 服务也不能等配置加载成功才起: 网页正是用户改配置的入口 (程序被
-     * enabled 关掉 / 账号没填 / JSON 写坏时更是唯一的入口), 排在后面的话这些
-     * 情况连网页都打不开, 只剩手改 JSON 一条路
+     * 配置不可用时不在这里退出: 由下面的 hold_for_cfg() 决定 —— OpenWrt 上没有
+     * 网页可以等, 它会直接退出, 交给 procd 按 respawn 策略重新拉起
      */
     const bool cfg_ok = load_cfg(); // 加载配置文件
 
-#ifndef __OPENWRT__
-    if (start_web_server() == false) shut(1); // 启动 Web 服务器线程
-
-    // 网页上的两张卡片: 实时网速由本进程的采样线程提供, 热点开关按需调用
-    net_traffic_start();
-    hotspot_control_start();
-#endif
-
-    // 配置不可用: 桌面端带着网页停下来等用户改, OpenWrt 上退出交给 procd
+    // 配置不可用: OpenWrt 上没有网页可以等, 退出交给 procd 按 respawn 策略处理
     if (cfg_ok == false)
     {
         if (hold_for_cfg() == false) shut(0);
@@ -490,7 +508,7 @@ void work(void)
     time_control_sync(); // 冷启动时先按当前时间同步各账号的时间控制状态
     if (time_control_init() == false) shut(1); // 启动时间控制定时线程
 
-    logout_previous_session(); // 前台模式的强杀登出流程
+    logout_previous_session(); // 上一次被强杀时留下的会话, 先补做登出
 
     /**
      * 预认证阶段: 等网络进入"需要认证"的状态
@@ -676,4 +694,6 @@ void work(void)
     {
         sleep_ms(10000, false);
     }
+
+#endif /* __OPENWRT__ */
 }
