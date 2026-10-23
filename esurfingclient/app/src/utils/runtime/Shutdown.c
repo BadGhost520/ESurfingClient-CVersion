@@ -19,6 +19,7 @@ extern void stop_web_server(void);
 #include "control/Control.h"
 
 #ifndef __OPENWRT__
+#include "net/NetClient.h"
 #include "net/NetTraffic.h"
 #include "webserver/HotspotControl.h"
 #endif
@@ -63,6 +64,7 @@ void shut(const int8_t exit_code)
 #ifndef __OPENWRT__
     hotspot_control_stop();
     net_traffic_stop();
+    net_probe_stop();
 #endif
 
     control_server_stop(); // 先停止接受控制请求

@@ -407,8 +407,9 @@ static int work_web(void)
 
     if (start_web_server_remote() == false) shut(1);
 
-    // 网页上的两张卡片: 实时网速由本进程的采样线程提供, 热点开关按需调用
+    // 网页上的卡片: 实时网速与联网状态由本进程的采样/探测线程提供, 热点开关按需调用
     net_traffic_start();
+    net_probe_start();
     hotspot_control_start();
 
     if (cfg_ok == false)

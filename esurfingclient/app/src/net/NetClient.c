@@ -167,7 +167,7 @@ void curl_resp_free(curl_resp_t* resp)
     resp->body_size = 0;
 }
 
-curl_resp_t get(const char* url, const bool connect_only)
+curl_resp_t get(const char* url)
 {
     LOG_DEBUG("GET 地址: %s", url);
 
@@ -178,7 +178,6 @@ curl_resp_t get(const char* url, const bool connect_only)
     char c_id[MAX_LEN] = {0};
 
     struct curl_slist* headers = NULL;
-    struct curl_slist *resolve = NULL;
 
     if (tl_thread_idx > -1)
     {
@@ -217,15 +216,7 @@ curl_resp_t get(const char* url, const bool connect_only)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
 
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
-    if (connect_only == true) // 判断是否为仅连接模式 (检测网络状态用)
-    {
-        resolve = curl_slist_append(resolve, "connect.rom.miui.com:80:220.181.104.183");
-        resolve = curl_slist_append(resolve, "connectivitycheck.platform.hicloud.com:80:183.61.185.93");
 
-        curl_easy_setopt(curl, CURLOPT_RESOLVE, resolve); // 自定义解析地址
-
-        curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L); // 仅连接
-    }
     if (tl_thread_idx > -1)
     {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -249,7 +240,6 @@ curl_resp_t get(const char* url, const bool connect_only)
         // 再清理资源
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
-        curl_slist_free_all(resolve);
         resp.status = curl_err_msg_out(curl_code);
         resp.curl_code = curl_code;
         return resp;
@@ -261,7 +251,6 @@ curl_resp_t get(const char* url, const bool connect_only)
 
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
-    curl_slist_free_all(resolve);
 
     if (resp_code == 200)
     {

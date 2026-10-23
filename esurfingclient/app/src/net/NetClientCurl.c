@@ -395,22 +395,41 @@ void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, const c
         LOG_INFO("[%s] 连接超时时长: %ld 秒", func_name, g_conn_timeout);
         LOG_INFO("[%s] 总超时时长:   %ld 秒", func_name, g_op_timeout);
 
-        // 特别针对超时错误进行原因分析
+        /**
+         * 超时原因分析
+         *
+         * 注意 CURLINFO_CONNECT_TIME 的语义: 只有 TCP 连接**建立成功**才有值。
+         * 连接阶段就超时时它是 0.000, 而 TOTAL_TIME 会等于 CONNECTTIMEOUT ——
+         * 这就是"连接耗时 0.000 秒 / 总耗时 7.001 秒"看起来自相矛盾的原因,
+         * 不能只用 connect_time 去和阈值比较, 否则这种情况会落进"原因不明确"。
+         */
         if (code == CURLE_OPERATION_TIMEDOUT)
         {
-            // 判断实际连接耗时是否已接近或超过设置的连接超时
-            if (g_conn_timeout > 0 && connect_time >= (double)g_conn_timeout * 0.9)
+            double name_time = 0.0;
+            curl_easy_getinfo(curl, CURLINFO_NAMELOOKUP_TIME, &name_time);
+            LOG_INFO("[%s] DNS 解析耗时: %.3f 秒", func_name, name_time);
+
+            if (connect_time <= 0.0)
             {
-                LOG_INFO("[%s] 结论: 连接时间超时 (CURLOPT_CONNECTTIMEOUT = %ld 秒)", func_name, g_conn_timeout);
+                LOG_WARN("[%s] 结论: 连接阶段超时 —— TCP 三次握手没有完成 (所以连接耗时是 0.000), "
+                         "对端的 SYN 没有回应: 目标不可达, 或被网关/防火墙静默丢弃。"
+                         "这与服务器响应快慢无关, 调大超时只会等更久, 应换一个可达地址",
+                         func_name);
             }
-            // 否则, 判断总耗时是否已接近或超过设置的总超时
             else if (g_op_timeout > 0 && total_time >= (double)g_op_timeout * 0.9)
             {
-                LOG_INFO("[%s] 结论: 总操作时间超时 (CURLOPT_TIMEOUT = %ld 秒)", func_name, g_op_timeout);
+                LOG_WARN("[%s] 结论: 总操作时间超时 (CURLOPT_TIMEOUT = %ld 秒): 连接已建立 (%.3f 秒), "
+                         "但服务器迟迟没有返回完整响应", func_name, g_op_timeout, connect_time);
+            }
+            else if (g_conn_timeout > 0 && connect_time >= (double)g_conn_timeout * 0.9)
+            {
+                LOG_WARN("[%s] 结论: 连接耗时接近连接超时 (%.3f 秒), 链路质量差或对端握手很慢",
+                         func_name, connect_time);
             }
             else
             {
-                LOG_INFO("[%s] 结论: 超时原因不明确, 实际耗时未明显逼近设定阈值, 请检查网络稳定性或服务器响应", func_name);
+                LOG_WARN("[%s] 结论: 超时原因不明确 (连接 %.3f 秒 / 总计 %.3f 秒), 请检查网络稳定性",
+                         func_name, connect_time, total_time);
             }
         }
     }

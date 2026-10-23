@@ -590,25 +590,30 @@
 3. 说明: 9 条旧算法原来的"已弃用"标记在统一格式时去掉了, 需要的话可以加回 (例如写成 `(AES/CBC/NoPadding, 已弃用)`)
 4. 验证: 三平台构建通过; 50 个 windows 算法回环测试 50/50; Windows 回归 7/7
 
-### 2026.10.23 (桌面端统一为多进程运行)
+### 2026.10.23 (桌面端统一为多进程)
 
-1. 不带参数直接运行现在等价于 `--role supervisor`: 桌面端只剩"多进程"一种形态, 由监管进程拉起 N 个认证子进程与一个 Web 子进程。原来的"单进程多线程"路径删除; **OpenWrt 不受影响** —— 那边不编译监管进程, 不带参数运行仍是单实例多线程 (由 procd 按账号起 `--role auth` 实例)
-2. 角色归一化放在 `work()` 里而不是解析参数时: `--list-accounts` / `--print-log-dir` 正是靠"没有显式指定角色"判断自己能不能用, 而它们在 `main()` 里就返回了。桌面的单进程主体整段用 `#ifdef __OPENWRT__` 包住, 只编进 OpenWrt 构建
-3. Web 层去掉"同进程直读认证状态"这条分支 (`start_web_server()` / `g_local_state` 及其分支): Web 进程一律通过控制通道查询状态、下发"重新认证 / 应用新配置"
-4. `work_auth()` 补 `time_control_init()` (**仅桌面端**; OpenWrt 的 auth 实例保持原样): 多进程后认证进程就是原来那个主流程, 时段到点必须立刻下线, 不能等认证循环下一拍 (心跳与失败退避期间那一等可能是几十秒)
-5. 控制通道的重启健壮性: 认证进程每次重启, 上一个实例的已建立连接会在控制端口留下 TIME_WAIT (Linux 60 秒 / Windows 120 秒), 重新 bind 会失败 —— 表现是网页显示"认证进程不可达", 之后监管者也只能强杀它 (跑不到登出)。改了两处:
-   - `control_server_start()` 加 `SO_REUSEADDR`;
-   - 服务端应答完不再"发完就 close", 而是先 `shutdown(SHUT_WR)`、等客户端 close、自己最后 close (`ctl_wait_close`)。谁先 close 谁留 TIME_WAIT, 这样 TIME_WAIT 落在 Web 进程的临时端口上, 控制端口本身保持干净 (部分系统上仅靠 SO_REUSEADDR 绕不开被接受连接留下的 TIME_WAIT)
-6. Windows 的 `parent_process_alive()` 补实现 (原来恒 `true`): `CreateToolhelp32Snapshot` 取父进程号, 再用 `OpenProcess(SYNCHRONIZE)` + `WaitForSingleObject(0)` 判断是否还活着。这样"双击运行后从任务管理器结束监管进程"时, 认证/Web 子进程会自行退出, 不再留孤儿进程占着控制端口
-7. 注释与文档同步: `aes_double_cbc.c` 头部写的是 PKCS7、实现是零填充 (`:315` 本来就是剥零), 改成实际行为; `docs/Desktop.md` 的"前台运行"改成"直接运行"并说明三进程构成与关闭方式
-8. 验证: Linux / OpenWrt / Windows 三套构建通过; Linux 上无参数启动得到 supervisor + `--role auth --account 1` + `--role web` 三个进程, `/api/status/sys` 与 `/api/status/auth` 的 bootId 不同 (确为多进程), SIGTERM 后三个进程有序退出、退出码 0、run.log 归档; 配置不可用时只起 supervisor + web (`reason=config`、`/api/getConfigs` 返回文件原文、首页 200); 网页保存配置后监管者自动补起认证进程; `restartAuth` / `applyConfigs` 各只换认证进程 (web pid 不变、bootId 变化、reachable=true); 带 `time_windows` 时认证进程内能起 `[time]` 线程并按时段下线; Windows 上无参数启动同样是三进程, `/api/status/sys`、`/api/status/auth`、`/api/traffic`、`index.html` 正常, 强杀监管进程后两个子进程在数秒内自行退出 (无孤儿)
-9. 横幅只由"入口角色"打印 (监管进程 / OpenWrt 单实例), 认证与 Web 子进程不再打: 原来三个进程各打一份, 同一份 run.log 里就是三份一模一样的版本信息 (控制台也刷三遍), 认证子进程每次被重新拉起还会再打一份。实测: 启动后日志里"程序版本"只有 1 行 (supervisor), `restartAuth` 让认证进程重起之后仍然是 1 行
+1. 不带参数运行等同 `--role supervisor`
+2. 删除桌面单进程路径, 仅 OpenWrt 保留
+3. Web 层只走控制通道
+4. 认证进程补时间控制线程
+5. 控制通道加 `SO_REUSEADDR`, 客户端先关
+6. Windows 补父进程死亡检测
+7. 横幅只由入口角色打印
 
-### 2026.10.24 (控制端口自动顺延 / 网页接口不再互相拖慢)
+### 2026.10.24 (控制端口与网页接口)
 
-1. 控制通道端口自动顺延: 默认端口被别的程序占用时, 监管者在拉起子进程之前先探测, 从默认端口往后找可用的 (最多看 64 个), 日志打出"控制通道端口 8890 已被占用, 改用 8891"。Web 服务端口 (配置里的 `web_port`) 不在此列 —— 用户指定的端口冲突时仍然直接报错
-2. 修复网页轮询互相拖慢: `/api/status/auth` 原来要**查两次**控制通道, 而 Web 线程 (mongoose) 是单线程的; 本机实测"连未被监听的本地端口要 2 秒才回 ECONNREFUSED", 于是这个接口固定耗时 4 秒, 期间 `/api/traffic`、`/api/hotspot/status` 全部排队 → 前端 4 秒超时 → 网速卡片显示"读取超时，正在重试…"、热点卡片显示"采集数据已过期，热点控制已暂停"(热点卡片的可用性还依赖网速采样是否新鲜)
-   - 控制通道客户端改成**非阻塞 connect + 300ms 上限** (`ctl_client_connect` / `ctl_wait_writable`), 读超时 3000ms → 1000ms;
-   - `/api/status/auth` 合并成一次查询 (`control_query_status` 一次同时拿到状态与 bootId)
-3. 说明: 构建目录里的 `portal/` 是**源版** (引用 jsDelivr CDN, 实测 daisyui 样式表 1.7 秒), 首次打开网页慢与此有关; 发布包用的是 `scripts/build-portal.sh` 生成的本地化资源, 不受影响
-4. 验证: 三套构建通过; Windows 上人为占住 8890 → supervisor 改用 8891、auth 监听 8891、Web 连 8891、`/api/status/auth` 12ms、`/api/traffic` 0.5~1ms; 认证进程不可达时 `/api/status/auth` 0.30s (原 4.0s)、同期的 `/api/traffic` 0.6ms; Linux 上同样 (8890→8891、status/auth 3ms、traffic 1ms)
+1. 控制端口被占时自动顺延
+2. 控制通道连接改非阻塞, 300ms 上限
+3. `/api/status/auth` 合并成一次查询
+4. 网速 / 热点接口不再被拖慢
+
+### 2026.10.24 (联网检测)
+
+1. 改为并发探测, 连接 3 秒 / 总 4 秒
+2. DNS 与固定 IP 两路并行, 谁先通用谁
+3. 一个域名可配多个固定 IP, 各占一路
+4. 探测强制 IPv4, 避免 IPv6 白等
+5. 全失败时按 30 秒限流打印结果码
+6. `/api/status/online` 改读后台缓存
+7. 修正"连接阶段超时"的判定
+8. 补 `curl_global_init()`

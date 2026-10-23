@@ -93,7 +93,7 @@ bool get_last_location(void)
 
     curl_resp_t resp = {0};
 
-    resp = get(g_prog_status[tl_thread_idx].last_location, false);
+    resp = get(g_prog_status[tl_thread_idx].last_location);
 
     while (resp.http_code == HTTP_FOUND)
     {
@@ -101,7 +101,7 @@ bool get_last_location(void)
         {
             curl_resp_free(&resp);
         }
-        resp = get(g_prog_status[tl_thread_idx].last_location, false);
+        resp = get(g_prog_status[tl_thread_idx].last_location);
     }
 
     if (resp.body_data)

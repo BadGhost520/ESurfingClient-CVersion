@@ -244,10 +244,10 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         return true;
     }
 
-    // 获取联网状态
+    // 获取联网状态: 读后台探测线程的缓存, 不在 Web 线程里现做 (会拖住其它接口)
     if (mg_match(hm->uri, mg_str("/api/status/online"), NULL))
     {
-        switch (check_network_status(true))
+        switch (net_probe_status())
         {
         case STATUS_OK:
             mg_http_reply(c, 204, "", "");

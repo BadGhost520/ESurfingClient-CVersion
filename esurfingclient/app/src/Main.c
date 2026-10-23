@@ -6,6 +6,8 @@
 #include "utils/time/TimeUtils.h"
 #include "utils/runtime/Service.h"
 
+#include <curl/curl.h>
+
 #include <stdio.h>
 
 #ifndef _WIN32
@@ -330,6 +332,17 @@ static void load_control_token_env(void)
 int main(const int argc, char *argv[])
 {
     g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间
+
+    /**
+     * libcurl 的硬性要求: 多线程程序里全局初始化必须在创建任何线程之前做一次。
+     * 否则每个线程第一次 curl_easy_init 各自触发的隐式初始化存在竞态
+     * (可能拿到还没初始化完的解析器/SSL 状态)。本程序会起认证/Web/网速等多个线程。
+     */
+    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK)
+    {
+        fprintf(stderr, "[ERROR] libcurl 全局初始化失败\n");
+        return 1;
+    }
 
     // 记下来: 重启进程时要原样带上这些参数, 否则重启后会变成另一个角色
     g_main_argc = argc;
