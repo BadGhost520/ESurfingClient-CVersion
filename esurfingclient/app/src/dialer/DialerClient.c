@@ -73,7 +73,22 @@ bool app_bootstrap(void)
 
     if (init_logger() == false) return false;
 
-    if (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB)
+    /**
+     * 横幅只由"入口"打
+     *
+     * - 桌面上入口是监管进程: auth / web 子进程不打, 否则同一份 run.log 里
+     *   会有三份一样的版本信息 (而且它们会反复重启, 越堆越多)
+     * - OpenWrt 上没有监管进程, 是 init 脚本直接拉起 auth 实例 —— 所以那边由
+     *   auth 进程打; 多账号时只让 --account 1 打, 免得一个账号一份
+     * - 手动不带参数运行 (standalone) 也是入口, 照打
+     */
+#ifdef __OPENWRT__
+    const bool need_banner = (g_prog_role != ROLE_WEB) && (g_prog_account <= 1);
+#else
+    const bool need_banner = (g_prog_role != ROLE_AUTH && g_prog_role != ROLE_WEB);
+#endif
+
+    if (need_banner)
     {
         print_banner();
     }

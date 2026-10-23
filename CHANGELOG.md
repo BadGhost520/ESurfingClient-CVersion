@@ -648,3 +648,8 @@
 4. gwip 改用默认网关地址
 5. ostag 按通道硬编码
 6. 学校信息头兼容带空格写法
+
+### 2026.10.24 (banner 打印)
+
+1. OpenWrt 的 auth 进程打 banner
+2. 多账号时只由 account 1 打
