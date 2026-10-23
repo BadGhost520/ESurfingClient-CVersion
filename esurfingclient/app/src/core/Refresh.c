@@ -1,5 +1,7 @@
 #include "core/States.h"
 
+#include "config/Config.h"
+
 #include "utils/text/TextUtils.h"
 #include "utils/log/Logger.h"
 
@@ -8,23 +10,6 @@
 static void reset_host_name(void)
 {
     auth_cfg_t* auth_cfg = &g_prog_status[tl_thread_idx].auth_cfg;
-
-    if (g_prog_status[tl_thread_idx].login_cfg.chn == 4)
-    {
-        snprintf(auth_cfg->host_name, HOST_NAME_LEN, "iPhone 14");
-        snprintf(auth_cfg->ostag, OSTAG_LEN, "iPhone iOS 17.0");
-        LOG_DEBUG("iOS 主机名: %s", auth_cfg->host_name);
-        LOG_DEBUG("iOS ostag: %s", auth_cfg->ostag);
-        return;
-    }
-    if (g_prog_status[tl_thread_idx].login_cfg.chn == 5)
-    {
-        snprintf(auth_cfg->host_name, HOST_NAME_LEN, "MacBookPro");
-        snprintf(auth_cfg->ostag, OSTAG_LEN, "macOS,14.4");
-        LOG_DEBUG("macOS 主机名: %s", auth_cfg->host_name);
-        LOG_DEBUG("macOS ostag: %s", auth_cfg->ostag);
-        return;
-    }
 
     char host_name[16];
     unsigned char host_bytes[10];
@@ -36,7 +21,6 @@ static void reset_host_name(void)
     host_bytes[4]);
     LOG_DEBUG("新的主机名: %s", host_name);
     snprintf(auth_cfg->host_name, HOST_NAME_LEN, "%s", safe_str(host_name));
-    snprintf(auth_cfg->ostag, OSTAG_LEN, "%s", safe_str(host_name));
 }
 
 static void reset_client_id(void)
@@ -80,4 +64,12 @@ void refresh_states(void)
     reset_host_name(); // 重置 hostname
     reset_client_id(); // 重置 client_id
     reset_mac_addr(); // 重置 mac_address
+
+    /**
+     * ostag 按通道取固定值 (Windows 11 / Linux / Android 14 / iOS 17.0 / macOS 14.4),
+     * 不再跟随主机名随机生成
+     */
+    snprintf(g_prog_status[tl_thread_idx].auth_cfg.ostag, OSTAG_LEN, "%s",
+             channel_ostag(g_prog_status[tl_thread_idx].login_cfg.chn));
+    LOG_DEBUG("ostag: %s", g_prog_status[tl_thread_idx].auth_cfg.ostag);
 }

@@ -5,8 +5,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(PROGRAM_VERSION_MAJOR 2)
-set(PROGRAM_VERSION_MINOR 1)
-set(PROGRAM_VERSION_PATCH 14)
+set(PROGRAM_VERSION_MINOR 2)
+set(PROGRAM_VERSION_PATCH 0)
 set(PROGRAM_VERSION_RELEASE 1)
 
 set(PROGRAM_VERSION "${PROGRAM_VERSION_MAJOR}.${PROGRAM_VERSION_MINOR}.${PROGRAM_VERSION_PATCH}")
@@ -97,6 +97,7 @@ add_executable(ESurfingClient
         src/dialer/LogoutState.c
         src/dialer/DialerAuth.c
         src/dialer/DialerNet.c
+        src/dialer/DialerServer.c
         src/net/NetClientCurl.c
         src/net/CheckNetwork.c
         src/net/NetClient.c

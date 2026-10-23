@@ -23,6 +23,9 @@
 
 #ifdef _WIN32
 #include <netioapi.h>
+#include <ws2tcpip.h> // inet_ntop
+#else
+#include <arpa/inet.h> // inet_ntop
 #endif
 
 #include "cJSON/cJSON.h"
@@ -512,4 +515,121 @@ uint8_t get_adapters_stats(adapter_stats_t* out, const uint8_t max, char* defaul
 #endif
 
 #endif
+
+/**
+ * @brief 取默认网关的 IPv4 地址
+ *
+ * 认证报文里的 <gwip> 要填网关, 不是 AC 的地址。
+ * 拿不到时返回 false, 调用方自行决定兜底。
+ */
+bool get_default_gateway_ip(char* out, const size_t out_len)
+{
+    if (out == NULL || out_len == 0) return false;
+    out[0] = '\0';
+
+#ifdef _WIN32
+
+    ULONG size = 16 * 1024;
+    PIP_ADAPTER_ADDRESSES addrs = malloc(size);
+    if (addrs == NULL) return false;
+
+    const ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER |
+                        GAA_FLAG_INCLUDE_GATEWAYS;
+    ULONG rc = GetAdaptersAddresses(AF_INET, flags, NULL, addrs, &size);
+    if (rc == ERROR_BUFFER_OVERFLOW)
+    {
+        free(addrs);
+        addrs = malloc(size);
+        if (addrs == NULL) return false;
+        rc = GetAdaptersAddresses(AF_INET, flags, NULL, addrs, &size);
+    }
+    if (rc != NO_ERROR)
+    {
+        free(addrs);
+        return false;
+    }
+
+    // 先认"默认出口"那块网卡; 认不出来就退回第一个可用网关
+    DWORD best_index = 0;
+    if (GetBestInterface(htonl(0x08080808), &best_index) != NO_ERROR) best_index = 0;
+
+    bool found = false;
+    char fallback[64] = "";
+
+    for (PIP_ADAPTER_ADDRESSES addr = addrs; addr != NULL && found == false; addr = addr->Next)
+    {
+        if (addr->OperStatus != IfOperStatusUp) continue;
+
+        for (PIP_ADAPTER_GATEWAY_ADDRESS_LH gw = addr->FirstGatewayAddress; gw != NULL; gw = gw->Next)
+        {
+            if (gw->Address.lpSockaddr == NULL || gw->Address.lpSockaddr->sa_family != AF_INET) continue;
+
+            const struct sockaddr_in* sin = (const struct sockaddr_in*)gw->Address.lpSockaddr;
+            char buf[64];
+            if (inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf)) == NULL) continue;
+
+            if (fallback[0] == '\0') snprintf(fallback, sizeof(fallback), "%s", buf);
+
+            if (best_index != 0 && addr->IfIndex == best_index)
+            {
+                snprintf(out, out_len, "%s", buf);
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if (found == false && fallback[0] != '\0') snprintf(out, out_len, "%s", fallback);
+
+    free(addrs);
+    return out[0] != '\0';
+
+#elif defined(__linux__)
+
+    FILE* file = fopen("/proc/net/route", "r");
+    if (file == NULL) return false;
+
+    char line[256];
+    if (fgets(line, sizeof(line), file) == NULL) // 先吃掉表头
+    {
+        fclose(file);
+        return false;
+    }
+
+    bool found = false;
+    unsigned long best_metric = 0;
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        char iface[64] = {0};
+        unsigned long dest = 0, gateway = 0, flags = 0, metric = 0, mask = 0;
+        if (sscanf(line, "%63s %lx %lx %lx %*u %*u %lu %lx", iface, &dest, &gateway, &flags, &metric, &mask) != 6)
+        {
+            continue;
+        }
+
+        // 默认路由: 目标 0.0.0.0/0 且带网关标志 (RTF_GATEWAY = 0x0002)
+        if (dest != 0 || mask != 0 || gateway == 0 || (flags & 0x0002UL) == 0) continue;
+
+        if (found == false || metric < best_metric)
+        {
+            struct in_addr addr;
+            addr.s_addr = (uint32_t)gateway; // /proc/net/route 里已经是网络字节序
+            if (inet_ntop(AF_INET, &addr, out, out_len) != NULL)
+            {
+                best_metric = metric;
+                found = true;
+            }
+        }
+    }
+
+    fclose(file);
+    return found;
+
+#else
+
+    return false;
+
+#endif
+}
 

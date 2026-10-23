@@ -91,6 +91,8 @@ typedef struct
     char ticket[TICKET_LEN];
     char client_ip[IP_LEN];
     char ac_ip[IP_LEN];
+    /** 默认网关 IP: 认证报文的 <gwip> 用它 (不是 AC 地址) */
+    char gwip[IP_LEN];
     cipher_interface_t* cipher;
     uint64_t keep_retry;
     uint64_t auth_time;

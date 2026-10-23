@@ -76,7 +76,7 @@ char* create_xml_payload(const XmlChoose choose)
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_ip),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.mac_addr),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.ostag),
-            safe_str(g_prog_status[tl_thread_idx].auth_cfg.ac_ip)
+            safe_str(g_prog_status[tl_thread_idx].auth_cfg.gwip)
         );
         break;
     case LOGIN:

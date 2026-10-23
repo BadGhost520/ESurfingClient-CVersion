@@ -130,4 +130,14 @@ void record_parent_pid(void);
  */
 bool parent_process_alive(void);
 
+/**
+ * @brief 取本机默认网关的 IPv4 地址
+ *
+ * 认证报文的 <gwip> 要填网关, 不是 AC 地址。
+ * @param out 输出缓冲
+ * @param out_len 缓冲长度
+ * @return 是否取到 (取不到时 out 为空串)
+ */
+bool get_default_gateway_ip(char* out, size_t out_len);
+
 #endif

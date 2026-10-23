@@ -7,9 +7,12 @@
 #include "utils/log/Logger.h"
 #include "utils/text/TextUtils.h"
 
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+
 #ifdef _WIN32
 #else
-#include <string.h>
 #include <stdlib.h>
 #endif
 
@@ -137,6 +140,26 @@ static void header_copy_value(const char* header, const size_t name_len, char* o
     out[copy_len] = '\0';
 }
 
+/**
+ * @brief 把响应头名规范成"小写 + 去空格", 用于宽松匹配
+ *
+ * 例: "School Id" / "schoolid" / "SCHOOLID" 都规范成 "schoolid"
+ */
+static void header_name_normalize(const char* header, char* out, const size_t out_len)
+{
+    if (out == NULL || out_len == 0) return;
+    out[0] = '\0';
+    if (header == NULL) return;
+
+    size_t n = 0;
+    for (size_t i = 0; header[i] != '\0' && header[i] != ':' && n + 1 < out_len; i++)
+    {
+        if (header[i] == ' ' || header[i] == '\t') continue;
+        out[n++] = (char)tolower((unsigned char)header[i]);
+    }
+    out[n] = '\0';
+}
+
 size_t header_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
     const size_t real_size = size * nmemb;
@@ -161,74 +184,33 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
         }
     }
 
-    if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0 && !g_school_id[0])
+    /**
+     * 学校信息头 (School Id / Domain / Area)
+     *
+     * 头名写成 "School Id: 221" 还是 "schoolid: 221" 各家 AC 不一样, 所以比较时
+     * 统一去掉空格、转小写; 值仍然交给 header_copy_value 去空格后抄进定长缓冲。
+     */
+    char header_name[32];
+    header_name_normalize(header, header_name, sizeof(header_name));
+
+    const char* header_colon = strchr(header, ':');
+    if (header_colon != NULL)
     {
-        if (g_school_id[0] == '\0')
+        const size_t name_len = (size_t)(header_colon - header);
+
+        if (strcmp(header_name, "schoolid") == 0 && g_school_id[0] == '\0')
         {
-            LOG_VERBOSE("原始数据: %s", header);
-
-            const char* value = header + 9;
-            while (*value == ' ') value++;
-            const size_t valid_len = strcspn(value, "\r\n");
-
-            size_t copy_len = valid_len;
-            if (copy_len >= SCHOOL_ID_LENGTH)
-            {
-                copy_len = SCHOOL_ID_LENGTH - 1;
-                LOG_WARN("School Id 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, SCHOOL_ID_LENGTH);
-            }
-
-            memcpy(g_school_id, value, copy_len);
-            g_school_id[copy_len] = '\0';
-
+            header_copy_value(header, name_len, g_school_id, SCHOOL_ID_LENGTH);
             LOG_DEBUG("School Id: %s", g_school_id);
         }
-    }
-
-    if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !g_school_domain[0])
-    {
-        if (g_school_domain[0] == '\0')
+        else if (strcmp(header_name, "domain") == 0 && g_school_domain[0] == '\0')
         {
-            LOG_VERBOSE("原始数据: %s", header);
-
-            const char* value = header + 7;
-            while (*value == ' ') value++;
-            const size_t valid_len = strcspn(value, "\r\n");
-
-            size_t copy_len = valid_len;
-            if (copy_len >= DOMAIN_LENGTH)
-            {
-                copy_len = DOMAIN_LENGTH - 1;
-                LOG_WARN("Domain 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, DOMAIN_LENGTH);
-            }
-
-            memcpy(g_school_domain, value, copy_len);
-            g_school_domain[copy_len] = '\0';
-
+            header_copy_value(header, name_len, g_school_domain, DOMAIN_LENGTH);
             LOG_DEBUG("Domain: %s", g_school_domain);
         }
-    }
-
-    if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !g_area[0])
-    {
-        if (g_area[0] == '\0')
+        else if (strcmp(header_name, "area") == 0 && g_area[0] == '\0')
         {
-            LOG_VERBOSE("原始数据: %s", header);
-
-            const char* value = header + 5;
-            while (*value == ' ') value++;
-            const size_t valid_len = strcspn(value, "\r\n");
-
-            size_t copy_len = valid_len;
-            if (copy_len >= AREA_LENGTH)
-            {
-                copy_len = AREA_LENGTH - 1;
-                LOG_WARN("Area 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, AREA_LENGTH);
-            }
-
-            memcpy(g_area, value, copy_len);
-            g_area[copy_len] = '\0';
-
+            header_copy_value(header, name_len, g_area, AREA_LENGTH);
             LOG_DEBUG("Area: %s", g_area);
         }
     }

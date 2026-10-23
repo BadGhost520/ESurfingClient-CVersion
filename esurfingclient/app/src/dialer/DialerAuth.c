@@ -15,12 +15,14 @@
 #include "utils/time/TimeUtils.h"
 #include "utils/time/TimeControl.h"
 #include "dialer/LogoutState.h"
+#include "utils/platform/PlatformUtils.h"
 #include "utils/runtime/Shutdown.h"
 #include "utils/runtime/Watchdog.h"
 #include "utils/log/Logger.h"
 #include "utils/sim/SimThread.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #ifndef __OPENWRT__
 #include "control/Control.h"
@@ -33,80 +35,116 @@ AuthStatus auth(void)
     // 新一轮尝试: 先把上一次留下的失败原因清掉, 免得没出新码时界面还挂着旧原因
     error_code_record(NULL);
 
-    const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
-    const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
+    auth_cfg_t* cfg = &g_prog_status[tl_thread_idx].auth_cfg;
 
-    curl_resp_t resp = get(g_prog_status[tl_thread_idx].last_location); // curl GET last_location 获取认证配置
-    if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL) // 如果响应体没有内容 (非 200 响应码), 则返回
+    /**
+     * 1. 选认证服务器
+     *
+     * 认证服务器只有两台 (14.146.227.141 / 121.8.177.212, 端口 7001), 由程序并发
+     * 测 TCP 连接延迟后选快的那台。门户页面里的 auth-url / ticket-url 不再使用 ——
+     * 那两个地址只是 302 那一跳顺带带出来的, 不保证最快, 也不保证一直可用。
+     */
+    char server[64] = "";
+    if (select_auth_server(server, sizeof(server)) == false)
     {
-        LOG_ERROR("响应体为空, 无法提取认证配置");
-        return AUTH_FAILED;
+        LOG_WARN("两台认证服务器都测不通, 继续按默认那台试");
     }
 
-    char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag); // 从响应体内容中提取指定内容
+    snprintf(cfg->auth_url, AUTH_URL_LEN, "%s/auth.cgi", server);
+    snprintf(cfg->keep_url, KEEP_URL_LEN, "%s/keep.cgi", server);
+    snprintf(cfg->term_url, TERM_URL_LEN, "%s/term.cgi", server);
+    LOG_DEBUG("Auth URL: %s", cfg->auth_url);
+    LOG_DEBUG("Keep-Url: %s", cfg->keep_url);
+    LOG_DEBUG("Term-Url: %s", cfg->term_url);
+
+    /**
+     * 2. 请求门户页面
+     *
+     * 两个作用: 拿响应头里的 School Id / Domain / Area; 以及从配置块的 ticket-url
+     * 里取 wlanuserip / wlanacip (last_location 里没有这两个参数时的兜底)。
+     */
+    curl_resp_t resp = get(g_prog_status[tl_thread_idx].last_location);
+    char* portal_ticket_url = NULL;
+
+    if (resp.http_code == HTTP_OK && resp.body_size > 0 && resp.body_data != NULL)
+    {
+        const char portal_start_tag[] = "<!--//config.campus.js.chinatelecom.com";
+        const char portal_end_tag[] = "//config.campus.js.chinatelecom.com-->";
+
+        char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag);
+        if (portal_config != NULL)
+        {
+            char* raw_ticket_url = xml_parser(portal_config, "ticket-url");
+            if (raw_ticket_url != NULL)
+            {
+                portal_ticket_url = clean_cdata(raw_ticket_url);
+                free(raw_ticket_url);
+            }
+            free(portal_config);
+        }
+    }
+    else
+    {
+        LOG_WARN("门户页面没拿到 (状态码 %d), 只用 last_location 里的参数", resp.http_code);
+    }
     curl_resp_free(&resp);
-    if (portal_config == NULL)
-    {
-        LOG_ERROR("提取门户配置失败");
-        return AUTH_FAILED;
-    }
 
-    char* auth_url = xml_parser(portal_config, "auth-url"); // 提取 auth_url (包含 CDATA 等字符)
-    if (auth_url == NULL)
+    /**
+     * 3. client_ip / ac_ip: ticket 请求必需
+     *
+     * last_location 的查询串优先 (302 那一跳通常就带着), 取不到再从门户给的
+     * ticket-url 里取。
+     */
+    char* client_ip = extract_url_param(g_prog_status[tl_thread_idx].last_location, "wlanuserip");
+    if (client_ip == NULL && portal_ticket_url != NULL)
     {
-        LOG_ERROR("提取 Auth URL 失败");
-        return AUTH_FAILED;
+        client_ip = extract_url_param(portal_ticket_url, "wlanuserip");
     }
-
-    char* cleaned_auth_url = clean_cdata(auth_url); // 提取 auth_url (纯 url, 用于登录函数)
-    free(auth_url);
-    if (cleaned_auth_url == NULL)
-    {
-        LOG_ERROR("清除 Auth URL 失败");
-        return AUTH_FAILED;
-    }
-    snprintf(g_prog_status[tl_thread_idx].auth_cfg.auth_url, AUTH_URL_LEN, "%s", safe_str(cleaned_auth_url)); // 将 auth_url 填入认证配置变量中
-    LOG_DEBUG("Auth URL: %s", g_prog_status[tl_thread_idx].auth_cfg.auth_url);
-    free(cleaned_auth_url);
-
-    char* ticket_url = xml_parser(portal_config, "ticket-url"); // 提取 ticket_url (包含 CDATA 等字符)
-    free(portal_config);
-    if (ticket_url == NULL)
-    {
-        LOG_ERROR("提取 Ticket URL 失败");
-        return AUTH_FAILED;
-    }
-
-    char* cleaned_ticket_url = clean_cdata(ticket_url); // 提取 ticket_url (纯 url, 用于获取 ticket)
-    free(ticket_url);
-    if (cleaned_ticket_url == NULL)
-    {
-        LOG_ERROR("清除 Ticket URL CDATA 失败");
-        return AUTH_FAILED;
-    }
-    snprintf(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, TICKET_URL_LEN, "%s", safe_str(cleaned_ticket_url)); // 将 ticket_url 填入认证配置变量中
-    LOG_DEBUG("Ticket URL: %s", g_prog_status[tl_thread_idx].auth_cfg.ticket_url);
-
-    char* client_ip = extract_url_param(cleaned_ticket_url, "wlanuserip"); // 提取 client_ip
     if (client_ip == NULL)
     {
         LOG_ERROR("提取 Client IP 失败");
+        free(portal_ticket_url);
         return AUTH_FAILED;
     }
-    snprintf(g_prog_status[tl_thread_idx].auth_cfg.client_ip, IP_LEN, "%s", safe_str(client_ip)); // 将 client_ip 填入认证配置变量中
-    LOG_DEBUG("Client IP: %s", g_prog_status[tl_thread_idx].auth_cfg.client_ip);
+    snprintf(cfg->client_ip, IP_LEN, "%s", safe_str(client_ip));
     free(client_ip);
+    LOG_DEBUG("Client IP: %s", cfg->client_ip);
 
-    char* ac_ip = extract_url_param(cleaned_ticket_url, "wlanacip"); // 提取 ac_ip
-    free(cleaned_ticket_url);
+    char* ac_ip = extract_url_param(g_prog_status[tl_thread_idx].last_location, "wlanacip");
+    if (ac_ip == NULL && portal_ticket_url != NULL)
+    {
+        ac_ip = extract_url_param(portal_ticket_url, "wlanacip");
+    }
     if (ac_ip == NULL)
     {
         LOG_ERROR("提取 AC IP 失败");
+        free(portal_ticket_url);
         return AUTH_FAILED;
     }
-    snprintf(g_prog_status[tl_thread_idx].auth_cfg.ac_ip, IP_LEN, "%s", safe_str(ac_ip)); // 将 ac_ip 填入认证配置变量中
-    LOG_DEBUG("AC IP: %s", g_prog_status[tl_thread_idx].auth_cfg.ac_ip);
+    snprintf(cfg->ac_ip, IP_LEN, "%s", safe_str(ac_ip));
     free(ac_ip);
+    LOG_DEBUG("AC IP: %s", cfg->ac_ip);
+
+    free(portal_ticket_url);
+
+    /**
+     * 4. ticket_url: 带 wlanuserip / wlanacip, 不带 portal_node
+     */
+    snprintf(cfg->ticket_url, TICKET_URL_LEN, "%s/ticket.cgi?wlanuserip=%s&wlanacip=%s",
+             server, cfg->client_ip, cfg->ac_ip);
+    LOG_DEBUG("Ticket URL: %s", cfg->ticket_url);
+
+    /**
+     * 5. gwip: 报文里要填默认网关地址 (不是 AC 地址), 取不到就留空
+     */
+    if (get_default_gateway_ip(cfg->gwip, sizeof(cfg->gwip)) == false)
+    {
+        LOG_DEBUG("取不到默认网关地址, gwip 留空");
+    }
+    else
+    {
+        LOG_DEBUG("网关地址: %s", cfg->gwip);
+    }
 
     /**
      * 初始化会话

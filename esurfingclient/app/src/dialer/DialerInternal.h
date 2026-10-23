@@ -59,6 +59,16 @@ int work_auth(void);
 /* DialerLocation.c */
 bool get_last_location(void);
 
+/* DialerServer.c */
+
+/**
+ * @brief 测两台认证服务器的连接延迟, 选快的那台
+ * @param out 输出 "http://ip:7001"
+ * @param out_len 缓冲长度
+ * @return 是否至少测通一台
+ */
+bool select_auth_server(char* out, size_t out_len);
+
 /* DialerSession.c */
 bool init_session(void);
 

@@ -75,4 +75,12 @@ const char* get_config_file_path(void);
 /** 通道序号 → 名字 (1 windows / 2 linux / 3 android / 4 ios / 5 macos) */
 const char* channel_name(uint8_t chn);
 
+/**
+ * @brief 通道序号 → 认证报文里的操作系统标识
+ *
+ * 每个通道用当前最主流的系统版本, 硬编码在通道表里 (Windows 11 / Linux /
+ * Android 14 / iOS 17.0 / macOS 14.4), 不再随机生成。
+ */
+const char* channel_ostag(uint8_t chn);
+
 #endif

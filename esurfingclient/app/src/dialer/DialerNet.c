@@ -242,45 +242,11 @@ bool login(void)
     char* decrypted_data = dialer_request_plain(LOGIN, g_prog_status[tl_thread_idx].auth_cfg.auth_url, "登录");
     if (decrypted_data == NULL) return false;
 
-    char* parsed_keep_url = xml_parser(decrypted_data, "keep-url"); // 获取 keep_url (包含 CDATA 等字符串)
-    if (parsed_keep_url == NULL)
-    {
-        LOG_ERROR("解析 KeepURL 失败");
-        free(decrypted_data);
-        return false;
-    }
-
-    char* cleaned_keep_url = clean_cdata(parsed_keep_url); // 获取 keep_url (纯 url, 用于心跳函数)
-    free(parsed_keep_url);
-    if (cleaned_keep_url == NULL)
-    {
-        LOG_ERROR("清除 KeepURL CDATA 失败");
-        free(decrypted_data);
-        return false;
-    }
-    snprintf(g_prog_status[tl_thread_idx].auth_cfg.keep_url, KEEP_URL_LEN, "%s", safe_str(cleaned_keep_url)); // 将 keep_url 填入认证配置中
-    LOG_DEBUG("Keep-Url: %s", g_prog_status[tl_thread_idx].auth_cfg.keep_url);
-    free(cleaned_keep_url);
-
-    char* parsed_term_url = xml_parser(decrypted_data, "term-url"); // 获取 term_url (包含 CDATA 等字符串)
-    if (parsed_term_url == NULL)
-    {
-        LOG_ERROR("解析 TermURL 失败");
-        free(decrypted_data);
-        return false;
-    }
-
-    char* cleaned_term_url = clean_cdata(parsed_term_url); // 获取 term_url (纯 url, 用于登出函数)
-    free(parsed_term_url);
-    if (cleaned_term_url == NULL)
-    {
-        LOG_ERROR("清除 TermURL CDATA 失败");
-        free(decrypted_data);
-        return false;
-    }
-    snprintf(g_prog_status[tl_thread_idx].auth_cfg.term_url, TERM_URL_LEN, "%s", safe_str(cleaned_term_url)); // 将 term_url 填入认证配置中
-    LOG_DEBUG("Term-Url: %s", g_prog_status[tl_thread_idx].auth_cfg.term_url);
-    free(cleaned_term_url);
+    /**
+     * keep-url / term-url 不再从登录响应里取: 认证服务器是程序自己选的那台,
+     * 这两个地址在 auth() 里已经按同一台服务器拼好了 (keep.cgi / term.cgi)。
+     * 登录响应这里只需要 keep-retry (心跳间隔)。
+     */
 
     char* parsed_keep_retry = xml_parser(decrypted_data, "keep-retry"); // 获取重试时间长度
     free(decrypted_data);

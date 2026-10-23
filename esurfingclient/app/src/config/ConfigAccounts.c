@@ -21,21 +21,22 @@
 #define IOS_UA "CCTP/iOSdy/4023"
 #define MACOS_UA "CCTP/macdy/5019"
 
-/** 通道表: 名字 / 别名 / UA 三者集中一处, 免得"名字→序号"和"序号→UA"两张表各写一遍 */
+/** 通道表: 名字 / 别名 / UA / ostag 集中一处, 免得"名字→序号"和"序号→UA"两张表各写一遍 */
 typedef struct
 {
     uint8_t chn;
     const char* name;
     const char* alias;
     const char* ua;
+    const char* ostag;
 } channel_t;
 
 static const channel_t s_channels[] = {
-    {1, "windows", "1", WINDOWS_UA},
-    {2, "linux", "2", LINUX_UA},
-    {3, "android", "3", ANDROID_UA},
-    {4, "ios", "4", IOS_UA},
-    {5, "macos", "5", MACOS_UA},
+    {1, "windows", "1", WINDOWS_UA, "Windows 11"},
+    {2, "linux", "2", LINUX_UA, "Linux"},
+    {3, "android", "3", ANDROID_UA, "Android 14"},
+    {4, "ios", "4", IOS_UA, "iOS 17.0"},
+    {5, "macos", "5", MACOS_UA, "macOS,14.4"},
 };
 
 #define CHANNEL_COUNT (sizeof(s_channels) / sizeof(s_channels[0]))
@@ -53,6 +54,12 @@ const char* channel_name(const uint8_t chn)
 {
     const channel_t* found = channel_find(chn);
     return found != NULL ? found->name : s_channels[2].name; // 默认 android
+}
+
+const char* channel_ostag(const uint8_t chn)
+{
+    const channel_t* found = channel_find(chn);
+    return found != NULL ? found->ostag : s_channels[2].ostag;
 }
 
 uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
