@@ -34,7 +34,7 @@ bool init_session(void)
     if (g_prog_status[tl_thread_idx].login_cfg.chn == 4 || g_prog_status[tl_thread_idx].login_cfg.chn == 5)
     {
         ticket_body = "";
-        LOG_INFO("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
+        LOG_DEBUG("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
     }
 
     for (;;)

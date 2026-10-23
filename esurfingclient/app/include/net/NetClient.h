@@ -37,6 +37,14 @@ void curl_resp_free(curl_resp_t* resp);
 network_status_t check_network_status(bool connect_only);
 
 /**
+ * @brief 网络状态变化时提示一次 (相同状态不重复打印)
+ *
+ * 检测是每秒一次的, 直接打 INFO 会刷屏; 状态没变就什么都不打。
+ * @param status 本次检测到的网络状态
+ */
+void log_network_state_change(network_status_t status);
+
+/**
  * @brief 启动后台联网探测线程 (仅 Web 进程用)
  *
  * Web 线程是单线程事件循环, 现做一次探测会把同时轮询的接口一起拖超时,

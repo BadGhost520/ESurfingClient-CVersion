@@ -66,7 +66,7 @@ AuthStatus auth(void)
         return AUTH_FAILED;
     }
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.auth_url, AUTH_URL_LEN, "%s", safe_str(cleaned_auth_url)); // 将 auth_url 填入认证配置变量中
-    LOG_INFO("Auth URL: %s", g_prog_status[tl_thread_idx].auth_cfg.auth_url);
+    LOG_DEBUG("Auth URL: %s", g_prog_status[tl_thread_idx].auth_cfg.auth_url);
     free(cleaned_auth_url);
 
     char* ticket_url = xml_parser(portal_config, "ticket-url"); // 提取 ticket_url (包含 CDATA 等字符)
@@ -85,7 +85,7 @@ AuthStatus auth(void)
         return AUTH_FAILED;
     }
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, TICKET_URL_LEN, "%s", safe_str(cleaned_ticket_url)); // 将 ticket_url 填入认证配置变量中
-    LOG_INFO("Ticket URL: %s", g_prog_status[tl_thread_idx].auth_cfg.ticket_url);
+    LOG_DEBUG("Ticket URL: %s", g_prog_status[tl_thread_idx].auth_cfg.ticket_url);
 
     char* client_ip = extract_url_param(cleaned_ticket_url, "wlanuserip"); // 提取 client_ip
     if (client_ip == NULL)
@@ -94,7 +94,7 @@ AuthStatus auth(void)
         return AUTH_FAILED;
     }
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.client_ip, IP_LEN, "%s", safe_str(client_ip)); // 将 client_ip 填入认证配置变量中
-    LOG_INFO("Client IP: %s", g_prog_status[tl_thread_idx].auth_cfg.client_ip);
+    LOG_DEBUG("Client IP: %s", g_prog_status[tl_thread_idx].auth_cfg.client_ip);
     free(client_ip);
 
     char* ac_ip = extract_url_param(cleaned_ticket_url, "wlanacip"); // 提取 ac_ip
@@ -105,7 +105,7 @@ AuthStatus auth(void)
         return AUTH_FAILED;
     }
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.ac_ip, IP_LEN, "%s", safe_str(ac_ip)); // 将 ac_ip 填入认证配置变量中
-    LOG_INFO("AC IP: %s", g_prog_status[tl_thread_idx].auth_cfg.ac_ip);
+    LOG_DEBUG("AC IP: %s", g_prog_status[tl_thread_idx].auth_cfg.ac_ip);
     free(ac_ip);
 
     /**
@@ -114,7 +114,7 @@ AuthStatus auth(void)
      */
     if (init_session() == false)
     {
-        LOG_FATAL("初始化会话失败");
+        LOG_ERROR("初始化会话失败");
         return INIT_SESSION_FAILED;
     }
     LOG_DEBUG("初始化会话完成");
@@ -125,7 +125,7 @@ AuthStatus auth(void)
      */
     if (get_ticket() == false)
     {
-        LOG_FATAL("获取 Ticket 失败");
+        LOG_ERROR("获取 Ticket 失败");
         return GET_TICKET_FAILED;
     }
     LOG_DEBUG("完成获取 Ticket");

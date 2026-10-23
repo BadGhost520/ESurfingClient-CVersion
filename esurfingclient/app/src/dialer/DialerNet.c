@@ -187,12 +187,12 @@ bool term(void)
     {
         if (retry > 5)
         {
-            LOG_FATAL("超过最多重试次数, 返回");
+            LOG_ERROR("超过最多重试次数, 返回");
             free(encrypt);
             curl_resp_free(&resp);
             return false;
         }
-        LOG_ERROR("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx, resp.status, retry);
+        LOG_WARN("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx, resp.status, retry);
         retry++;
         sleep_ms(1000, true);
         curl_resp_free(&resp); // 丢掉上一次的响应体, 否则重试会把它漏掉
@@ -259,7 +259,7 @@ bool login(void)
         return false;
     }
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.keep_url, KEEP_URL_LEN, "%s", safe_str(cleaned_keep_url)); // 将 keep_url 填入认证配置中
-    LOG_INFO("Keep-Url: %s", g_prog_status[tl_thread_idx].auth_cfg.keep_url);
+    LOG_DEBUG("Keep-Url: %s", g_prog_status[tl_thread_idx].auth_cfg.keep_url);
     free(cleaned_keep_url);
 
     char* parsed_term_url = xml_parser(decrypted_data, "term-url"); // 获取 term_url (包含 CDATA 等字符串)
@@ -279,7 +279,7 @@ bool login(void)
         return false;
     }
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.term_url, TERM_URL_LEN, "%s", safe_str(cleaned_term_url)); // 将 term_url 填入认证配置中
-    LOG_INFO("Term-Url: %s", g_prog_status[tl_thread_idx].auth_cfg.term_url);
+    LOG_DEBUG("Term-Url: %s", g_prog_status[tl_thread_idx].auth_cfg.term_url);
     free(cleaned_term_url);
 
     char* parsed_keep_retry = xml_parser(decrypted_data, "keep-retry"); // 获取重试时间长度
@@ -301,7 +301,7 @@ bool login(void)
     }
 
     free(parsed_keep_retry);
-    LOG_INFO("下一次重试: %" PRIu64 " 秒后", g_prog_status[tl_thread_idx].auth_cfg.keep_retry);
+    LOG_DEBUG("下一次重试: %" PRIu64 " 秒后", g_prog_status[tl_thread_idx].auth_cfg.keep_retry);
     return true;
 }
 
@@ -348,12 +348,16 @@ WaitResult wait_need_auth(void)
             }
         }
 
-        switch (check_network_status(true)) // 检查网络状态
+        const network_status_t net_state = check_network_status(true); // 检查网络状态
+
+        // 状态真的变了才提示 (已联网 / 需要认证), 免得每 3 秒刷一条
+        log_network_state_change(net_state);
+
+        switch (net_state)
         {
         case STATUS_OK:
             // 正常连接到互联网
             retry_network = 1;
-            LOG_INFO("已连接至互联网");
             sleep_ms(3000, false);
             break;
         case STATUS_NEED_AUTH:

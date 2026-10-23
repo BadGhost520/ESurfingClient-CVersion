@@ -107,7 +107,7 @@ static uint8_t complete_cfg_obj(cJSON* obj, const cfg_def_t* defs, const size_t 
 
         char value[TIME_WINDOW_STR_LEN];
         cfg_def_value_str(def, value, sizeof(value));
-        LOG_INFO("%s缺少 %s 参数, 已按默认值 %s 补上", who, def->name, value);
+        LOG_DEBUG("%s缺少 %s 参数, 已按默认值 %s 补上", who, def->name, value);
         added++;
     }
 

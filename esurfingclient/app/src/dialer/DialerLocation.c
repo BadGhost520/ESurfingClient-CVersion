@@ -51,7 +51,7 @@ static void get_school_ip_symbol(void)
 
     memcpy(g_school_network_symbol, school_ip, len);
     g_school_network_symbol[len] = '\0';
-    LOG_INFO("获取到校园网标志: %s", g_school_network_symbol);
+    LOG_DEBUG("获取到校园网标志: %s", g_school_network_symbol);
     free(school_ip);
 }
 
@@ -66,12 +66,16 @@ bool get_last_location(void)
         {
             return false;
         }
-        switch (check_network_status(false)) // 检查网络状态
+        const network_status_t net_state = check_network_status(false); // 检查网络状态
+
+        // 状态真的变了才提示 (已联网 / 需要认证), 免得每 10 秒刷一条
+        log_network_state_change(net_state);
+
+        switch (net_state)
         {
         case STATUS_OK:
             // 正常连接到互联网
             retry = 1;
-            LOG_INFO("已连接至互联网");
             sleep_ms(10000, true);
             break;
         case STATUS_NEED_AUTH:
@@ -82,7 +86,7 @@ bool get_last_location(void)
             // 网络错误
             if (retry > 5)
             {
-                LOG_FATAL("超过最多重试次数");
+                LOG_ERROR("超过最多重试次数");
                 return false;
             }
             LOG_WARN("网络错误, 重试: 第 %" PRIu8 " 次, 最多 5 次", retry);

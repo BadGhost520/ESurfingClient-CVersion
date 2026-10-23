@@ -181,7 +181,7 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
             memcpy(g_school_id, value, copy_len);
             g_school_id[copy_len] = '\0';
 
-            LOG_INFO("School Id: %s", g_school_id);
+            LOG_DEBUG("School Id: %s", g_school_id);
         }
     }
 
@@ -205,7 +205,7 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
             memcpy(g_school_domain, value, copy_len);
             g_school_domain[copy_len] = '\0';
 
-            LOG_INFO("Domain: %s", g_school_domain);
+            LOG_DEBUG("Domain: %s", g_school_domain);
         }
     }
 
@@ -229,7 +229,7 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
             memcpy(g_area, value, copy_len);
             g_area[copy_len] = '\0';
 
-            LOG_INFO("Area: %s", g_area);
+            LOG_DEBUG("Area: %s", g_area);
         }
     }
 
@@ -373,12 +373,12 @@ network_status_t curl_err_msg_out(const CURLcode curl_code)
 void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, const char *url, const char *func_name)
 {
     LOG_ERROR("[%s] curl 请求失败: %s", func_name, curl_easy_strerror(code));
-    LOG_INFO("[%s] URL: %s", func_name, url ? url : "(null)");
-    LOG_INFO("[%s] CURLcode: %d", func_name, code);
+    LOG_DEBUG("[%s] URL: %s", func_name, url ? url : "(null)");
+    LOG_DEBUG("[%s] CURLcode: %d", func_name, code);
 
     if (errbuf && errbuf[0] != '\0')
     {
-        LOG_INFO("[%s] 错误详情: %s", func_name, errbuf);
+        LOG_DEBUG("[%s] 错误详情: %s", func_name, errbuf);
     }
 
     if (curl)
@@ -390,10 +390,10 @@ void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, const c
         // 获取整个请求实际总耗时 (秒, double 类型)
         curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total_time);
 
-        LOG_INFO("[%s] 实际连接耗时: %.3f 秒", func_name, connect_time);
-        LOG_INFO("[%s] 实际总耗时:   %.3f 秒", func_name, total_time);
-        LOG_INFO("[%s] 连接超时时长: %ld 秒", func_name, g_conn_timeout);
-        LOG_INFO("[%s] 总超时时长:   %ld 秒", func_name, g_op_timeout);
+        LOG_DEBUG("[%s] 实际连接耗时: %.3f 秒", func_name, connect_time);
+        LOG_DEBUG("[%s] 实际总耗时:   %.3f 秒", func_name, total_time);
+        LOG_DEBUG("[%s] 连接超时时长: %ld 秒", func_name, g_conn_timeout);
+        LOG_DEBUG("[%s] 总超时时长:   %ld 秒", func_name, g_op_timeout);
 
         /**
          * 超时原因分析
@@ -407,7 +407,7 @@ void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, const c
         {
             double name_time = 0.0;
             curl_easy_getinfo(curl, CURLINFO_NAMELOOKUP_TIME, &name_time);
-            LOG_INFO("[%s] DNS 解析耗时: %.3f 秒", func_name, name_time);
+            LOG_DEBUG("[%s] DNS 解析耗时: %.3f 秒", func_name, name_time);
 
             if (connect_time <= 0.0)
             {

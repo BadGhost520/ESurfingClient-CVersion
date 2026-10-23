@@ -95,7 +95,7 @@ bool get_ticket(void)
         return false;
     }
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.ticket, TICKET_LEN, "%s", safe_str(parsed_ticket)); // 将 ticket 填入认证配置中
-    LOG_INFO("Ticket: %s", g_prog_status[tl_thread_idx].auth_cfg.ticket);
+    LOG_DEBUG("Ticket: %s", g_prog_status[tl_thread_idx].auth_cfg.ticket);
     free(parsed_ticket);
     return true;
 }

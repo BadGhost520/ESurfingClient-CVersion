@@ -339,9 +339,41 @@ network_status_t check_network_status(const bool connect_only)
     return probe_group(auth_targets, sizeof(auth_targets) / sizeof(auth_targets[0]));
 }
 
+/**
+ * @brief 网络状态变化时提示一次
+ *
+ * 这些状态是每秒/每几秒轮询一次的, 每次都打 INFO 会把日志刷满 —— 但完全不提示
+ * 又不行: 用户至少要知道"现在已联网, 不需要认证"。所以只在状态真的变了时提示
+ * 一次, 相同的状态重复检测到就什么都不打。
+ *
+ * 状态按线程记录: 认证进程里每个账号一个线程, 别让它们互相覆盖。
+ *
+ * @param status 本次检测到的网络状态
+ */
+void log_network_state_change(const network_status_t status)
+{
+    static _Thread_local network_status_t s_last_state = (network_status_t)-1;
+
+    if (status == s_last_state) return;
+
+    s_last_state = status;
+
+    switch (status)
+    {
+    case STATUS_OK:
+        LOG_INFO("已连接至互联网");
+        break;
+    case STATUS_NEED_AUTH:
+        LOG_INFO("需要认证");
+        break;
+    default:
+        // 网络异常的具体原因由调用点的 WARN/ERROR 覆盖, 这里不重复
+        break;
+    }
+}
+
 /* ------------------------------------------------------------------
  * 后台联网探测 (仅 Web 进程用)
- *
  * Web 线程是单线程的事件循环, 在这里现做一次探测 (最坏十几秒) 会把
  * /api/traffic、/api/hotspot/status 一起拖到前端超时, 所以改成后台线程定时探、
  * 接口只读缓存。

@@ -165,21 +165,21 @@ void logFn(const char ch, void *param)
             const char* web_log_level = strchr(buffer, ' ');
             if (!web_log_level)
             {
-                LOG_WARN("未知的 Web 日志: %s", buffer);
+                LOG_DEBUG("未知的 Web 日志: %s", buffer);
                 return;
             }
             const char* file_start = web_log_level + 3;
             const char* file_end = strchr(file_start, ':');
             if (!file_end)
             {
-                LOG_WARN("未知的 Web 日志: %s", buffer);
+                LOG_DEBUG("未知的 Web 日志: %s", buffer);
                 return;
             }
             const size_t file_length = file_end - file_start;
             char* file = malloc(file_length + 1);
             if (!file)
             {
-                LOG_WARN("分配内存失败");
+                LOG_ERROR("分配内存失败");
                 return;
             }
             memcpy(file, file_start, file_length);
@@ -188,14 +188,14 @@ void logFn(const char ch, void *param)
             const char* file_line_end = strchr(file_line_start, ':');
             if (!file_line_end)
             {
-                LOG_WARN("未知的 Web 日志: %s", buffer);
+                LOG_DEBUG("未知的 Web 日志: %s", buffer);
                 return;
             }
             const size_t file_line_length = file_line_end - file_line_start;
             char* file_line_str = malloc(file_line_length + 1);
             if (!file_line_str)
             {
-                LOG_WARN("分配内存失败");
+                LOG_ERROR("分配内存失败");
                 return;
             }
             memcpy(file_line_str, file_line_start, file_line_length);

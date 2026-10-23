@@ -332,7 +332,7 @@ static void ctl_handle_client(const ctl_sock_t client)
 
     if (send(client, reply, (int)strlen(reply), 0) <= 0)
     {
-        LOG_DEBUG("控制通道应答发送失败");
+        LOG_WARN("控制通道应答发送失败");
         return;
     }
 

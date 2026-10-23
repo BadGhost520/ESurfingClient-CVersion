@@ -286,7 +286,7 @@ void child_schedule_restart(child_t* child, const int exit_code)
     if (delay > SUPERVISOR_BACKOFF_MAX_MS) delay = SUPERVISOR_BACKOFF_MAX_MS;
 
     child->next_start_time = now + delay;
-    LOG_INFO("%s 将在 %" PRIu64 " 毫秒后重新拉起", name, delay);
+    LOG_DEBUG("%s 将在 %" PRIu64 " 毫秒后重新拉起", name, delay);
 }
 
 /* ------------------------------------------------------------------

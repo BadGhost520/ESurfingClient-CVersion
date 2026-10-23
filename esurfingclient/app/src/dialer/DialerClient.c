@@ -122,7 +122,12 @@ static RunStatus run(void)
         return RUN_SUCCESS;
     }
 
-    switch (check_network_status(true)) // 检测网络状态
+    const network_status_t net_state = check_network_status(true); // 检测网络状态
+
+    // 状态真的变了才提示 (已联网 / 需要认证), 免得每秒刷一条
+    log_network_state_change(net_state);
+
+    switch (net_state)
     {
     case STATUS_OK: // 正常联网
         retry_timeout = 1;
@@ -150,31 +155,27 @@ static RunStatus run(void)
                     {
                         if (retry_heartbeat > 5)
                         {
-                            LOG_FATAL("超过最多重试次数");
+                            LOG_ERROR("超过最多重试次数");
                             return RUN_FAILED;
                         }
-                        LOG_ERROR("配置 %" PRIu8 " 心跳包发送失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次",
+                        LOG_WARN("配置 %" PRIu8 " 心跳包发送失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次",
                             g_prog_status[tl_thread_idx].login_cfg.idx,
                             tl_thread_idx,
                             retry_heartbeat);
                         retry_heartbeat++;
                         sleep_ms(1000, true);
                     }
-                    LOG_INFO("下一次重试: %" PRIu64 " 秒后",
+                    LOG_DEBUG("下一次重试: %" PRIu64 " 秒后",
                         g_prog_status[tl_thread_idx].auth_cfg.keep_retry);
                     g_prog_status[tl_thread_idx].auth_cfg.tick = get_steady_tm_ms(); // 重新给 tick 赋值 (与上面同源, 都用单调钟)
                 }
             }
         }
-        else
-        {
-            LOG_INFO("已连接至互联网");
-        }
+        // 未认证时不再重复打日志: log_network_state_change 已在状态变化时提示过一次
         sleep_ms(1000, false);
         return RUN_SUCCESS;
     case STATUS_NEED_AUTH: // 需要认证
         retry_timeout = 1;
-        LOG_INFO("需要认证");
         if (g_prog_status[tl_thread_idx].runtime_status.is_initialized) // 进入认证流程的时候如果会话已经初始化, 重置认证配置参数
         {
             reset();
@@ -249,7 +250,7 @@ static RunStatus run(void)
     default:
         retry_timeout = 1;
         retry_auth = 1;
-        LOG_ERROR("网络错误");
+        LOG_WARN("网络错误");
         sleep_ms(5000, true);
         return RUN_FAILED;
     }
@@ -583,7 +584,7 @@ void work(void)
         if (check_time > 299999)
         {
             check_time = 0;
-            LOG_INFO("线程守护持续运行中");
+            LOG_DEBUG("线程守护持续运行中");
         }
         for (uint8_t i = 0; i < g_prog_cnt; i++)
         {
@@ -607,7 +608,7 @@ void work(void)
                     {
                         if (retry_wte > 5)
                         {
-                            LOG_FATAL("超过重试次数, 强制退出线程");
+                            LOG_ERROR("超过重试次数, 强制退出线程");
                             sim_thread_destroy(g_prog_status[j].thread);
                         }
                         LOG_DEBUG("等待配置 %" PRIu8 " 登出, 下标 %" PRIu8 ", 等待次数: %" PRIu8 ", 最多 5 次", g_prog_status[j].login_cfg.idx, j, retry_wte);

@@ -111,7 +111,7 @@ static void supervisor_restart_due(void)
 
         if (child_spawn(child))
         {
-            LOG_INFO("%s 已重新拉起", name);
+            LOG_DEBUG("%s 已重新拉起", name);
         }
     }
 }

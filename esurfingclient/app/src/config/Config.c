@@ -117,7 +117,7 @@ static bool write_cfg_json(const cJSON* cfg_json)
 bool save_cfg(const char* configs_str)
 {
     LOG_INFO("保存配置中");
-    LOG_INFO("仅会保存第一个可用配置");
+    LOG_DEBUG("仅会保存第一个可用配置");
 
     cJSON* configs = cJSON_Parse(configs_str);
     if (!configs)
@@ -254,7 +254,7 @@ bool wait_cfg_usable(void)
         return true;
     }
 
-    LOG_WARN("配置仍不可用, 请在网页界面上改好后再点「保存并应用」");
+    LOG_DEBUG("配置仍不可用, 请在网页界面上改好后再点「保存并应用」");
     return false;
 }
 
