@@ -583,3 +583,9 @@
 2. 新增 `KeyData.h` / `KeyData.c` 条目 25 组 (Type 2: 32B key + 16B iv; Type 5: 48B key; Type 6: 48B key + 8B iv), 对应算法 `create_aes_double_cbc_cipher` / `create_tea_triple_ecb_cipher` / `create_tea_triple_cbc_cipher`
 3. 注释沿用上一轮格式: `// [算法] (Windows, [服务器 IP])`
 4. 验证: `TEMP/test-win-algos.c` 对 50 个 windows 算法逐个做加解密回环, 50/50 通过; 分支总数 95 且无重复; 三平台构建 + Windows 回归 7/7
+
+### 2026.10.23 (KeyData 注释格式与顺序整理)
+1. `KeyData.c` / `KeyData.h` 的算法注释统一成 `// Algo Id: <ID> (<算法>) (<通道>)`, 通道取 Linux / Windows / Android / iOS / macOS (原来混着 "Android old)(已弃用)"、"Windows, cdy N"、以及 `// =====` 分组标题)
+2. 条目顺序改成与 `create_cipher_factory()` 完全一致 (95 条), 两个文件顺序相同; 定义里混用的 `uint8_t` / `uint32_t` 类型保持原样
+3. 说明: 9 条旧算法原来的"已弃用"标记在统一格式时去掉了, 需要的话可以加回 (例如写成 `(AES/CBC/NoPadding, 已弃用)`)
+4. 验证: 三平台构建通过; 50 个 windows 算法回环测试 50/50; Windows 回归 7/7
