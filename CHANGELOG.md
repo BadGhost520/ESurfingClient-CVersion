@@ -570,9 +570,16 @@
 
 ### 2026.10.23 (v2.1.13-r1)
 1. 缝缝补补, 让 windows 通道认证得以正常
+
 ### 2026.10.23 (xtea 公共头整理)
 1. `algo/xtea_common.h` 一直在用 (被 `mod_xtea.c` / `mod_xtea_iv.c` 以同目录裸包含引入, 与 `aes_common.h` / `sm4_common.h` 一致), 按全路径搜索会落空
 2. 字节序工具下沉到 `CipherUtils`: 新增 `uint32_bswap()`, BE 读写改用已有的 `bytes_2_uint32_be()` / `uint32_2_bytes_be()` (原来头里的 `xtea_get_be32` / `xtea_set_be32` / `xtea_bswap32` 是重复实现)
 3. 轮函数从"头文件里的 `static inline`"改成"`.h` 声明 + 新增 `algo/xtea_common.c` 实现", 与 `aes_common` / `sm4_common` 的结构一致; 这样头文件里没有函数体, IDE 开着头文件时不会再报 Unused function (原来还会因为 `mod_xtea_cbc_triple.c` 只用到其中一个函数而报其余几个)
 4. `mod_xtea_cbc_triple.c` 不再包含该头 (它只需要 `uint32_bswap`); 它的轮函数**保持原样**: 实测换成标准 32 轮写法后密文变化而回环仍自洽, 说明是"sum 递减 + 预取密钥字"的变体, 已在函数头写明原因
 5. 验证: `TEMP/test-xtea.c` 对三个 xtea 算法做密文基线与回环, 改造前后密文逐字节一致; 三平台构建 + Windows 回归 7/7; `algo/` 20 个工厂函数全部有引用、`src/` 下 81 个 .c 全部在 CMakeLists 中
+
+### 2026.10.23 (Windows 算法表按非 fail 条目导入)
+1. 按 `ticket_check_windows_*.tsv` 的探测结果, 只保留两台服务器上 **非 fail** 的条目: `121.8.177.212` 的 25 条新增 (key/iv 取自 `windows_key_iv.txt`), `14.146.227.141` 原有的 50 条里删掉 25 条被服务端拒绝的, 最终 windows 为 25 + 25 = 50 条
+2. 新增 `KeyData.h` / `KeyData.c` 条目 25 组 (Type 2: 32B key + 16B iv; Type 5: 48B key; Type 6: 48B key + 8B iv), 对应算法 `create_aes_double_cbc_cipher` / `create_tea_triple_ecb_cipher` / `create_tea_triple_cbc_cipher`
+3. 注释沿用上一轮格式: `// [算法] (Windows, [服务器 IP])`
+4. 验证: `TEMP/test-win-algos.c` 对 50 个 windows 算法逐个做加解密回环, 50/50 通过; 分支总数 95 且无重复; 三平台构建 + Windows 回归 7/7
