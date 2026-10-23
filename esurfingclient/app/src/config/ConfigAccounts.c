@@ -101,7 +101,7 @@ void apply_channel_ua(login_cfg_t* cfg, const uint8_t cfg_no)
         found = channel_find(3);
     }
 
-    LOG_INFO("使用通道 %" PRIu8 ": %s", found->chn, found->name);
+    LOG_DEBUG("使用通道 %" PRIu8 ": %s", found->chn, found->name);
     snprintf(cfg->user_agent, USER_AGENT_LEN, "%s", found->ua);
 }
 

@@ -116,7 +116,7 @@ static bool write_cfg_json(const cJSON* cfg_json)
 
 bool save_cfg(const char* configs_str)
 {
-    LOG_INFO("保存配置中");
+    LOG_DEBUG("保存配置中");
     LOG_DEBUG("仅会保存第一个可用配置");
 
     cJSON* configs = cJSON_Parse(configs_str);
@@ -250,7 +250,7 @@ bool wait_cfg_usable(void)
     if (load_cfg() == true)
     {
         s_cfg_waiting = false;
-        LOG_INFO("配置已可用, 继续往下走");
+        LOG_DEBUG("配置已可用, 继续往下走");
         return true;
     }
 
@@ -344,7 +344,7 @@ bool load_cfg(void)
     if (!cfg_file || fgetc(cfg_file) == EOF)
     {
         LOG_ERROR("无法打开配置文件或配置文件为空: %s", config_file);
-        LOG_INFO("创建新的默认配置文件");
+        LOG_DEBUG("创建新的默认配置文件");
         FILE* new_cfg = fopen(config_file, "w");
         if (!new_cfg)
         {
@@ -399,7 +399,7 @@ bool load_cfg(void)
         LOG_INFO("配置文件缺少参数, 已按默认值补全 %" PRIu8 " 个", completed);
         if (write_cfg_json(cfg_json))
         {
-            LOG_INFO("补全后的配置已写回 %s", config_file);
+            LOG_DEBUG("补全后的配置已写回 %s", config_file);
         }
         else
         {
@@ -496,11 +496,11 @@ bool load_cfg(void)
 #ifdef __OPENWRT__
     if (g_prog_account != 0)
     {
-        LOG_INFO("OpenWRT 环境, 本次仅使用配置 %" PRIu8, g_prog_account);
+        LOG_DEBUG("OpenWRT 环境, 本次仅使用配置 %" PRIu8, g_prog_account);
     }
     else
     {
-        LOG_INFO("OpenWRT 环境, 会尝试加载所有有效配置");
+        LOG_DEBUG("OpenWRT 环境, 会尝试加载所有有效配置");
     }
 
     prog_status_t* new_prog_status = realloc(g_prog_status, sizeof(prog_status_t) * cnt);
@@ -569,7 +569,7 @@ bool load_cfg(void)
         // login->auto_start = auto_start->valueint;
 
         login->idx = i + 1;
-        LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
+        LOG_DEBUG("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
         valid_cnt++;
         valid_i++;
     }
@@ -578,11 +578,11 @@ bool load_cfg(void)
 
     if (g_prog_account != 0)
     {
-        LOG_INFO("非 OpenWRT 环境, 将尝试加载配置 %" PRIu8, g_prog_account);
+        LOG_DEBUG("非 OpenWRT 环境, 将尝试加载配置 %" PRIu8, g_prog_account);
     }
     else
     {
-        LOG_INFO("非 OpenWRT 环境, 仅会尝试加载第一个有效配置");
+        LOG_DEBUG("非 OpenWRT 环境, 仅会尝试加载第一个有效配置");
     }
 
     for (uint8_t i = 0; i < cnt; i++)
@@ -618,7 +618,7 @@ bool load_cfg(void)
             continue;
         }
 
-        LOG_INFO("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
+        LOG_DEBUG("配置 %" PRIu8 " 可用, 将会尝试使用", i + 1);
         valid_cnt++;
         break;
     }
@@ -666,7 +666,7 @@ bool load_cfg(void)
             g_prog_status = shrunk;
         }
 
-        LOG_INFO("仅加载配置 %" PRIu8 ", 标记值: 0x%x", g_prog_account, g_prog_status[0].login_cfg.mark);
+        LOG_DEBUG("仅加载配置 %" PRIu8 ", 标记值: 0x%x", g_prog_account, g_prog_status[0].login_cfg.mark);
     }
 
     if (valid_cnt == 0)

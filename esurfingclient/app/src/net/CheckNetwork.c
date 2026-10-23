@@ -426,7 +426,7 @@ void net_probe_start(void)
         return;
     }
 
-    LOG_INFO("联网状态探测已启动 (后台, %d 毫秒一轮)", PROBE_INTERVAL_MS);
+    LOG_DEBUG("联网状态探测已启动 (后台, %d 毫秒一轮)", PROBE_INTERVAL_MS);
 }
 
 void net_probe_stop(void)
@@ -438,7 +438,7 @@ void net_probe_stop(void)
     sim_thread_join(s_probe_thread, &result_code);
     s_probe_thread = NULL;
 
-    LOG_INFO("联网状态探测已停止");
+    LOG_DEBUG("联网状态探测已停止");
 }
 
 network_status_t net_probe_status(void)

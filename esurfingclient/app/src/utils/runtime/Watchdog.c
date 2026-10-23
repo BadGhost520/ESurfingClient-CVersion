@@ -206,7 +206,7 @@ bool watchdog_start(void)
         return false;
     }
 
-    LOG_INFO("看门狗已启动 (检查间隔 %d 毫秒, 宽限 %d 毫秒)", WATCHDOG_TICK_MS, WATCHDOG_MARGIN_MS);
+    LOG_DEBUG("看门狗已启动 (检查间隔 %d 毫秒, 宽限 %d 毫秒)", WATCHDOG_TICK_MS, WATCHDOG_MARGIN_MS);
     return true;
 }
 

@@ -293,7 +293,7 @@ static void ctl_dispatch(const char* request, char* reply, const size_t reply_le
          * clean() (含登出) 再结束进程。
          */
         const bool applying = (strcmp(cmd, "apply_config") == 0);
-        LOG_INFO("控制通道收到%s请求, 本进程将退出并由监管者重新拉起",
+        LOG_DEBUG("控制通道收到%s请求, 本进程将退出并由监管者重新拉起",
                  applying ? "应用新配置" : "重新认证");
         g_stop_requested = 1;
         ctl_reply_result(reply, reply_len, true, NULL);
@@ -305,7 +305,7 @@ static void ctl_dispatch(const char* request, char* reply, const size_t reply_le
          * 而 shut() 会 control_server_stop() 去 join 这条线程 —— 自己等自己。
          * 主循环看到 g_stop_requested 后退出, 由 dialer_app 跑完 clean() (含登出)
          */
-        LOG_INFO("控制通道收到退出请求, 本进程将正常关闭");
+        LOG_DEBUG("控制通道收到退出请求, 本进程将正常关闭");
         g_stop_requested = 1;
         ctl_reply_result(reply, reply_len, true, NULL);
     }
@@ -359,7 +359,7 @@ static int ctl_server_app(void* arg)
     tl_thread_idx = TL_IDX_CONTROL;
     tl_thread_name = "control"; // 日志里标成本线程, 不要把标签交给魔术数字去猜
 
-    LOG_INFO("控制通道服务线程已启动");
+    LOG_DEBUG("控制通道服务线程已启动");
 
     while (s_server_running)
     {
@@ -372,7 +372,7 @@ static int ctl_server_app(void* arg)
         ctl_close(client);
     }
 
-    LOG_INFO("控制通道已停止");
+    LOG_DEBUG("控制通道已停止");
     return 0;
 }
 
@@ -440,7 +440,7 @@ bool control_server_start(const uint16_t port)
         return false;
     }
 
-    LOG_INFO("控制通道已启动, 监听 127.0.0.1:%" PRIu16 "%s", s_server_port,
+    LOG_DEBUG("控制通道已启动, 监听 127.0.0.1:%" PRIu16 "%s", s_server_port,
         g_control_token[0] != '\0' ? " (需要令牌)" : " (未设令牌, 本机任意进程都可下发动作)");
     return true;
 }

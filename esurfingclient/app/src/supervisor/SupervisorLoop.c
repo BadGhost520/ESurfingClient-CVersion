@@ -143,7 +143,7 @@ static void supervisor_sync_cfg(void)
 
     if (usable)
     {
-        LOG_INFO("配置已可用, 认证进程开始拉起");
+        LOG_DEBUG("配置已可用, 认证进程开始拉起");
 
         // 退避清零: 之前拉不起来是因为配置不可用, 不该按失败次数继续等下去
         for (int i = 0; i < g_child_count; i++)
@@ -164,14 +164,22 @@ static void supervisor_sync_cfg(void)
  */
 static void supervisor_shutdown(void)
 {
-    LOG_INFO("守护进程正在停止子进程");
+    LOG_DEBUG("守护进程正在停止子进程");
+
+    /**
+     * 关窗口/注销/关机时系统只给几秒, 而认证进程退出前还要发一次登出请求
+     * (网络请求)。这里不能像平常那样等 15 秒 —— 等太久监管进程会先被系统杀掉,
+     * run.log 就来不及改名归档。登出没做完由会话存档在下次启动时补上。
+     */
+    const uint32_t web_ms = (g_console_closed != 0) ? SUPERVISOR_STOP_CONSOLE_MS : SUPERVISOR_STOP_WEB_MS;
+    const uint32_t auth_ms = (g_console_closed != 0) ? SUPERVISOR_STOP_CONSOLE_MS : SUPERVISOR_STOP_AUTH_MS;
 
     // 先停 Web: 不再接受新的控制请求, 它也没有需要收尾的会话
     for (int i = 0; i < g_child_count; i++)
     {
         if (g_children[i].kind == CHILD_WEB)
         {
-            child_stop(&g_children[i], SUPERVISOR_STOP_WEB_MS);
+            child_stop(&g_children[i], web_ms);
         }
     }
 
@@ -183,11 +191,11 @@ static void supervisor_shutdown(void)
     {
         if (g_children[i].kind == CHILD_AUTH)
         {
-            child_stop(&g_children[i], SUPERVISOR_STOP_AUTH_MS);
+            child_stop(&g_children[i], auth_ms);
         }
     }
 
-    LOG_INFO("守护进程已停止全部子进程");
+    LOG_DEBUG("守护进程已停止全部子进程");
 }
 
 /* ------------------------------------------------------------------
@@ -287,7 +295,7 @@ int work_supervisor(void)
 {
     if (app_bootstrap() == false) return 1;
 
-    LOG_INFO(" - 以守护进程运行: 认证与 Web 各起独立进程");
+    LOG_DEBUG(" - 以守护进程运行: 认证与 Web 各起独立进程");
 
     /**
      * 配置不可用时仍然要起来 (启动 Web 子进程), 所以这里不返回失败:
@@ -347,7 +355,7 @@ int work_supervisor(void)
         char name[32];
         if (child_spawn(&g_children[i]))
         {
-            LOG_INFO("已启动 %s, PID %lu", child_name(&g_children[i], name, sizeof(name)),
+            LOG_DEBUG("已启动 %s, PID %lu", child_name(&g_children[i], name, sizeof(name)),
                 child_pid(&g_children[i]));
             started++;
         }
@@ -365,11 +373,11 @@ int work_supervisor(void)
 
     if (s_cfg_usable)
     {
-        LOG_INFO("守护进程已就绪, 共 %d 个子进程 (认证 %" PRId8 " 个 + Web 1 个)", started, g_prog_cnt);
+        LOG_DEBUG("守护进程已就绪, 共 %d 个子进程 (认证 %" PRId8 " 个 + Web 1 个)", started, g_prog_cnt);
     }
     else
     {
-        LOG_INFO("守护进程已就绪, 当前只有 Web 进程; 配置可用后会自动补上认证进程");
+        LOG_DEBUG("守护进程已就绪, 当前只有 Web 进程; 配置可用后会自动补上认证进程");
     }
 
     /**
@@ -389,10 +397,11 @@ int work_supervisor(void)
         sleep_ms(SUPERVISOR_TICK_MS, true);
     }
 
-    LOG_INFO("守护进程收到退出请求");
+    LOG_DEBUG("守护进程收到退出请求");
     supervisor_shutdown();
 
     // 监管者是 run.log 收尾改名的那一方 (认证/Web 子进程都会跳过改名)
     clean_logger();
+    g_shutdown_done = 1; // 让控制台处理线程尽快返回, 别让窗口卡着不走
     return 0;
 }

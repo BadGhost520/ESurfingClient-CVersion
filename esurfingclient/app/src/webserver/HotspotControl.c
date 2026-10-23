@@ -799,7 +799,7 @@ void hotspot_control_start(void)
         LOG_WARN("热点状态刷新线程创建失败");
         return;
     }
-    LOG_INFO("热点控制已就绪");
+    LOG_DEBUG("热点控制已就绪");
 }
 
 void hotspot_control_stop(void)

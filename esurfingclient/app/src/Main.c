@@ -10,7 +10,9 @@
 
 #include <stdio.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <string.h>
 #include <stdlib.h>
 #endif
@@ -22,6 +24,41 @@ extern void work(void);
 static bool s_list_accounts = false;
 
 static bool s_print_log_dir = false;
+
+#ifdef _WIN32
+static UINT s_console_output_cp = 0;
+static UINT s_console_input_cp = 0;
+
+/**
+ * @brief 退出时把控制台代码页切回原来的值
+ *
+ * 切了不恢复的话, 用户之后在同一个窗口里跑别的程序 (期待 GBK) 反而会乱码。
+ */
+static void console_utf8_restore(void)
+{
+    if (s_console_output_cp != 0) SetConsoleOutputCP(s_console_output_cp);
+    if (s_console_input_cp != 0) SetConsoleCP(s_console_input_cp);
+}
+
+/**
+ * @brief 把控制台切到 UTF-8
+ *
+ * 程序里的中文是 UTF-8 编码的字节, 而 Windows 控制台默认按 GBK(936) 解释 ——
+ * 不切代码页的话, 终端里所有中文都是乱码。服务模式没有控制台,
+ * SetConsoleOutputCP 会失败, 此时不注册恢复函数即可。
+ */
+static void console_utf8_init(void)
+{
+    s_console_output_cp = GetConsoleOutputCP();
+    s_console_input_cp = GetConsoleCP();
+
+    if (SetConsoleOutputCP(CP_UTF8) != 0)
+    {
+        atexit(console_utf8_restore);
+    }
+    SetConsoleCP(CP_UTF8);
+}
+#endif
 
 /**
  * @brief 显示帮助信息
@@ -331,6 +368,10 @@ static void load_control_token_env(void)
 
 int main(const int argc, char *argv[])
 {
+#ifdef _WIN32
+    console_utf8_init(); // 让控制台按 UTF-8 显示中文 (退出时会切回原代码页)
+#endif
+
     g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间
 
     /**
@@ -350,12 +391,6 @@ int main(const int argc, char *argv[])
 
     // 记下启动时的父进程号: 被监管的子进程靠它判断监管者是否还活着
     record_parent_pid();
-
-#ifdef _WIN32
-
-    system("chcp 65001 >nul");
-
-#endif
 
     const int arg_result = parse_args(argc, argv);
     if (arg_result != ARG_CONTINUE)

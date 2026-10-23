@@ -43,7 +43,7 @@ void shut(const int8_t exit_code)
      */
     watchdog_stop();
 
-    LOG_INFO("主程序正在关闭");
+    LOG_DEBUG("主程序正在关闭");
     g_need_exit = true;
 
     /**
@@ -71,19 +71,19 @@ void shut(const int8_t exit_code)
 
     if (g_is_webserver_running)
     {
-        LOG_INFO("关闭 Web 服务器");
+        LOG_DEBUG("关闭 Web 服务器");
         stop_web_server();
     }
 #endif
 
     if (g_thread_keep_alive)
     {
-        LOG_INFO("关闭线程守护");
+        LOG_DEBUG("关闭线程守护");
         g_thread_keep_alive = false;
     }
     time_control_stop(); // 等待时间控制定时线程退出
 
-    LOG_INFO("清理资源中");
+    LOG_DEBUG("清理资源中");
     LOG_DEBUG("关闭线程");
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {

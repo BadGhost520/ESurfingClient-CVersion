@@ -270,11 +270,11 @@ static int time_control_app(void* arg)
     tl_thread_idx = -1;
     tl_thread_name = "time"; // 这是个独立线程, 不能因为 tl_thread_idx 是 -1 就叫它 Main
 
-    LOG_INFO("时间控制线程已启动");
+    LOG_DEBUG("时间控制线程已启动");
 
     if (g_prog_cnt <= 0)
     {
-        LOG_INFO("没有可用账号，时间控制线程退出");
+        LOG_DEBUG("没有可用账号，时间控制线程退出");
         return 0;
     }
 
@@ -284,7 +284,7 @@ static int time_control_app(void* arg)
         sleep_ms(time_control_wait_ms(), true);
     }
 
-    LOG_INFO("时间控制线程已退出");
+    LOG_DEBUG("时间控制线程已退出");
     return 0;
 }
 

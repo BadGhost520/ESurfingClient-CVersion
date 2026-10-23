@@ -210,7 +210,7 @@ bool net_traffic_start(void)
         LOG_WARN("网速采样线程创建失败");
         return false;
     }
-    LOG_INFO("网速采样已启动 (每秒一帧)");
+    LOG_DEBUG("网速采样已启动 (每秒一帧)");
     return true;
 }
 
@@ -221,7 +221,7 @@ void net_traffic_stop(void)
     int code = 0;
     sim_thread_join(s_thread, &code);
     s_thread = NULL;
-    LOG_INFO("网速采样已停止");
+    LOG_DEBUG("网速采样已停止");
 }
 
 char* net_traffic_json(void)

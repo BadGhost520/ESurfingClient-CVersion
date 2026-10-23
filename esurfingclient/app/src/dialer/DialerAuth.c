@@ -189,7 +189,7 @@ int work_auth(void)
         shut(1);
     }
 
-    LOG_INFO("以认证进程运行, 负责配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
+    LOG_DEBUG("以认证进程运行, 负责配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
 
     /**
      * 记下本进程的线程 ID, 让日志能标出这是哪个账号的进程
@@ -284,7 +284,7 @@ int work_auth(void)
             network_ready = false; // 换到下一个允许时段后重新做一次网络检测
 
             const uint64_t wait_ms = time_control_wait_ms();
-            LOG_INFO("配置 %" PRIu8 " 不在允许时段, 等待 %" PRIu64 " 毫秒后重新检查",
+            LOG_DEBUG("配置 %" PRIu8 " 不在允许时段, 等待 %" PRIu64 " 毫秒后重新检查",
                 g_prog_status[0].login_cfg.idx, wait_ms);
 
             // 这是全流程里最长的合法静默 (可能几小时), sleep_ms 会按这个时长打卡
@@ -347,10 +347,21 @@ int work_auth(void)
             continue;
         }
 
-        LOG_INFO("配置 %" PRIu8 " 需要重新认证, 重新开始认证流程", g_prog_status[0].login_cfg.idx);
+        LOG_DEBUG("配置 %" PRIu8 " 需要重新认证, 重新开始认证流程", g_prog_status[0].login_cfg.idx);
+
+        /**
+         * dialer_app 可能因为"还没拿到认证页面地址"之类的原因立刻返回
+         * (is_running 被置假)。不复位标志、不退避的话, 这里会变成每秒好几轮的
+         * 空转 —— 实测 8 秒能写出 500 多行日志。这里复位并隔 5 秒再试。
+         */
+        if (g_prog_status[0].runtime_status.is_running == false)
+        {
+            g_prog_status[0].runtime_status.is_running = true;
+            sleep_ms(5000, true);
+        }
     }
 
-    LOG_INFO("认证进程退出");
+    LOG_DEBUG("认证进程退出");
     shut(0); // 停控制通道、收尾日志, 不会返回
     return 0;
 }

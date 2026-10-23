@@ -57,6 +57,35 @@ static void get_school_ip_symbol(void)
 
 bool get_last_location(void)
 {
+    /**
+     * last_location 为空: 先主动"踢"一次网关
+     *
+     * 未认证时访问任意 http 外网地址, 网关会回 302, Location 里就是认证页面地址
+     * (curl 的响应头回调会把它绝对化后存进 last_location)。
+     *
+     * 注意这一步不能省: 联网检测用的是 curl_multi 探测, 只取状态码、不收响应头,
+     * 所以 last_location 只能在这里学到。已经联网时这里拿到的是 204,
+     * last_location 仍为空 —— 那就等下一轮 (此时也确实不需要认证)。
+     */
+    if (g_prog_status[tl_thread_idx].last_location[0] == '\0')
+    {
+        curl_resp_t probe = get("http://connect.rom.miui.com/generate_204");
+        curl_resp_free(&probe);
+
+        if (g_prog_status[tl_thread_idx].last_location[0] == '\0')
+        {
+            static _Thread_local uint64_t s_last_warn_ms = 0;
+
+            const uint64_t now = get_steady_tm_ms();
+            if (now - s_last_warn_ms >= 60000)
+            {
+                s_last_warn_ms = now;
+                LOG_WARN("还没拿到认证页面地址 (last_location 为空): 请先用浏览器打开任意 http 网站触发跳转");
+            }
+            return false;
+        }
+    }
+
     uint8_t retry = 1;
     bool quit = false;
 
@@ -115,7 +144,7 @@ bool get_last_location(void)
 
     if (resp.http_code != HTTP_OK)
     {
-        LOG_ERROR("跟随重定向后未获得认证页面, 状态码: %d", resp.http_code);
+        LOG_WARN("跟随重定向后未获得认证页面, 状态码: %d", resp.http_code);
         return false;
     }
 

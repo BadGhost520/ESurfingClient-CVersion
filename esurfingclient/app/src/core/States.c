@@ -34,6 +34,8 @@ volatile sig_atomic_t g_stop_requested = 0;
 
 volatile sig_atomic_t g_shutdown_done = 0;
 
+volatile sig_atomic_t g_console_closed = 0;
+
 static char s_boot_id[BOOT_ID_LEN] = "";
 
 const char* boot_id_get(void)

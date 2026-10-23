@@ -49,10 +49,14 @@ static int web_server(void* arg)
     }
 
     g_is_webserver_running = 1;
-    LOG_INFO("Web 服务器已启动, 访问地址: %s", listen_addr);
+    LOG_DEBUG("Web 服务器已启动: %s", listen_addr);
+
+    // 这条是给用户看的: 告诉他去哪打开后台 (带上 http:// 方便直接复制)
+    LOG_INFO("在浏览器输入 %s 以访问后台管理页面", listen_addr);
+
     while (g_is_webserver_running) mg_mgr_poll(&mgr, 1000);
     mg_mgr_free(&mgr);
-    LOG_INFO("Web 服务器已停止");
+    LOG_DEBUG("Web 服务器已停止");
     return 0;
 }
 
@@ -75,7 +79,7 @@ bool start_web_server_remote(void)
 {
     control_set_port(g_control_port);
 
-    LOG_INFO("Web 进程模式: 认证状态通过控制通道 127.0.0.1:%" PRIu16 " 获取", g_control_port);
+    LOG_DEBUG("Web 进程模式: 认证状态通过控制通道 127.0.0.1:%" PRIu16 " 获取", g_control_port);
 
     return start_web_thread();
 }

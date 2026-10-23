@@ -174,6 +174,14 @@ extern volatile sig_atomic_t g_stop_requested;
 /** 收尾是否已经跑完 (关控制台窗口时处理线程靠它决定要不要再等) */
 extern volatile sig_atomic_t g_shutdown_done;
 
+/**
+ * 是不是"关窗口/注销/关机"这类系统只给几秒的事件
+ *
+ * 与 Ctrl+C 不同: 这类事件处理完就得马上走, 否则进程会被系统强杀 ——
+ * 监管进程据此把等待子进程的时间压短, 保证还来得及归档日志。
+ */
+extern volatile sig_atomic_t g_console_closed;
+
 /** 启动标识长度: 8 字节随机数的十六进制 + 结尾 NUL */
 #define BOOT_ID_LEN 17
 

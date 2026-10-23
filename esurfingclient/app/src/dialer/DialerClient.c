@@ -229,7 +229,7 @@ static RunStatus run(void)
 
             if (wait_auth_retry(wait_minutes) == false)
             {
-                LOG_INFO("等待被重启/退出请求打断, 本轮认证结束");
+                LOG_DEBUG("等待被重启/退出请求打断, 本轮认证结束");
             }
             return RUN_SUCCESS;
         }
@@ -418,7 +418,7 @@ static int work_web(void)
         if (hold_for_cfg() == false) shut(0);
     }
 
-    LOG_INFO("以 Web 进程运行, 展示配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
+    LOG_DEBUG("以 Web 进程运行, 展示配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
 
     // Web 服务在独立线程里跑, 主线程只等退出
     while (g_need_exit == false && g_stop_requested == 0)
@@ -441,7 +441,7 @@ static int work_web(void)
         }
     }
 
-    LOG_INFO("Web 进程退出");
+    LOG_DEBUG("Web 进程退出");
     shut(0); // 停 Web 服务线程、收尾日志, 不会返回
     return 0;
 }
@@ -577,7 +577,7 @@ void work(void)
      * 登录时间检测
      */
     sleep_ms(5000, false);
-    LOG_INFO("线程守护开启");
+    LOG_DEBUG("线程守护开启");
     uint64_t check_time = 0;
     while (g_thread_keep_alive && g_stop_requested == 0)
     {
@@ -628,7 +628,7 @@ void work(void)
                     int result_code = 0;
                     sim_thread_join(g_prog_status[i].thread, &result_code);
                     g_prog_status[i].thread = NULL;
-                    LOG_INFO("认证线程 %" PRIu8 " 已结束", i);
+                    LOG_DEBUG("认证线程 %" PRIu8 " 已结束", i);
                 }
 
                 /**
@@ -667,7 +667,7 @@ void work(void)
                     continue;
                 }
 
-                LOG_INFO("由于线程守护已开启，将会重新启动认证线程 %" PRIu8, i);
+                LOG_DEBUG("由于线程守护已开启，将会重新启动认证线程 %" PRIu8, i);
                 g_prog_status[i].thread = sim_thread_create_retry(dialer_app, (void*)(intptr_t)i, 5);
                 if (g_prog_status[i].thread == NULL)
                 {
@@ -683,7 +683,7 @@ void work(void)
         sleep_ms(10, false);
         check_time += 10;
     }
-    LOG_INFO("线程守护已关闭");
+    LOG_DEBUG("线程守护已关闭");
 
     // 收到退出请求: 走正常的关闭流程 (停子线程与 Web 服务、收尾日志、退出)
     if (g_stop_requested) shut(0);

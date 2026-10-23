@@ -338,7 +338,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     char name[32];
     child_name(child, name, sizeof(name));
 
-    LOG_INFO("正在停止 %s ...", name);
+    LOG_DEBUG("正在停止 %s ...", name);
 
     if (kill(child->handle, SIGTERM) != 0)
     {
@@ -357,7 +357,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     child->running = false;
     child->handle = CHILD_HANDLE_INVALID;
 
-    LOG_INFO("%s 已停止", name);
+    LOG_DEBUG("%s 已停止", name);
 }
 
 #else
@@ -405,7 +405,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     char name[32];
     child_name(child, name, sizeof(name));
 
-    LOG_INFO("正在停止 %s ...", name);
+    LOG_DEBUG("正在停止 %s ...", name);
 
     const bool asked = child_ask_stop(child, name);
     if (asked == false)
@@ -421,7 +421,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
         CloseHandle(child->handle);
         child->handle = CHILD_HANDLE_INVALID;
         child->running = false;
-        LOG_INFO("%s 已停止", name);
+        LOG_DEBUG("%s 已停止", name);
         return;
     }
 
@@ -432,7 +432,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     child->handle = CHILD_HANDLE_INVALID;
     child->running = false;
 
-    LOG_INFO("%s 已停止", name);
+    LOG_DEBUG("%s 已停止", name);
 }
 
 #endif

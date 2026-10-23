@@ -45,6 +45,15 @@ typedef volatile sig_atomic_t stop_flag_t;
 
 #define SUPERVISOR_STOP_NO_GRACE_MS 1000
 
+/**
+ * 关窗口/注销/关机时等待子进程的上限
+ *
+ * 这类事件系统只给几秒, 而认证进程退出前还要发一次登出请求 (网络请求)。
+ * 不能像平常那样等 15 秒 —— 等太久监管进程会先被系统杀掉, 日志就来不及归档
+ * (run.log 不会被改名)。登出没做完不要紧, 下次启动会靠会话存档补上。
+ */
+#define SUPERVISOR_STOP_CONSOLE_MS 1200
+
 #define SUPERVISOR_TICK_MS 200
 
 #define SUPERVISOR_WAIT_SLICE_MS 100
