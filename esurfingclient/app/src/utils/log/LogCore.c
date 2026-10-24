@@ -87,10 +87,49 @@ void logger_unlock(void)
 
 static void write_2_console(const char* msg)
 {
-    if (g_console_enabled == false) return;
+    if (g_console_enabled == false || msg == NULL) return;
 
-    printf("%s", msg);
-    fflush(stdout);
+    const size_t len = strlen(msg);
+    if (len == 0) return;
+
+#ifdef _WIN32
+    /**
+     * 跨进程互斥 + 整行一次写出
+     *
+     * 桌面模式有三个进程 (supervisor / auth / web) 往同一个控制台写。Windows 控制台
+     * 不保证跨进程写入的原子性: 两行会互相穿插, UTF-8 多字节还会被撕成两半, 终端里
+     * 就是一堆乱码 (用户报过)。
+     *
+     * 用命名互斥把"整行一次 WriteFile"保护起来; 进程退出时系统会自动释放它,
+     * 所以某进程被强杀也不会把控制台卡死 (1 秒超时再兜一层)。
+     */
+    static HANDLE s_console_mutex = NULL;
+    static bool s_console_mutex_tried = false;
+
+    if (s_console_mutex_tried == false)
+    {
+        s_console_mutex_tried = true;
+        s_console_mutex = CreateMutexW(NULL, FALSE, L"Local\\ESurfingClientConsoleLog");
+    }
+
+    if (s_console_mutex != NULL) WaitForSingleObject(s_console_mutex, 1000);
+
+    const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (out != NULL && out != INVALID_HANDLE_VALUE)
+    {
+        DWORD written = 0;
+        WriteFile(out, msg, (DWORD)len, &written, NULL);
+    }
+
+    if (s_console_mutex != NULL) ReleaseMutex(s_console_mutex);
+#else
+    /**
+     * 单次 write 到 tty 是原子的 (内核串行化), 不需要额外加锁;
+     * 直接写 fd 而不是 printf, 免得 stdio 缓冲把一行拆成多次系统调用
+     */
+    const ssize_t n = write(STDOUT_FILENO, msg, len);
+    (void)n;
+#endif
 }
 
 /**

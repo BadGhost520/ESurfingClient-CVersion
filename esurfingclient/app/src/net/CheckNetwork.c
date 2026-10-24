@@ -54,17 +54,16 @@ typedef struct
 } probe_target_t;
 
 /**
- * 域名的兜底解析表
+ * 域名的固定解析表
  *
  * 校园网里 DNS 经常根本不可用 (未认证时被拦, curl 报 CURLcode 6 解析超时),
- * 所以探测时除了走 DNS, 再并上一路用固定 IP 的请求 —— 谁先出结果就用谁:
- * - DNS 能解析: 用 DNS 拿到的最新 IP (不会因为固定 IP 过期而误判)
- * - DNS 解析不了: 固定 IP 顶上 (这是原来唯一的做法)
+ * 甚至被劫持到错误地址。这些目标地址本来就是固定的, 所以探测只发固定 IP 的
+ * 请求, 完全不查系统 DNS。
  */
 typedef struct
 {
     const char* host;
-    /** 兜底 IP, 按顺序; 每个 IP 会各开一路并发探测, 空位填 NULL */
+    /** 固定 IP, 按顺序; 每个 IP 会各开一路并发探测, 空位填 NULL */
     const char* ips[KNOWN_IP_MAX];
 } known_host_t;
 
@@ -122,7 +121,7 @@ static const known_host_t* known_host_for(const char* host)
 
 /**
  * @brief 往 multi 里加一个探测
- * @param ip 非空时用固定解析 (CURLOPT_RESOLVE), 为空则走 DNS
+ * @param ip 非空时用固定解析 (CURLOPT_RESOLVE); 为空表示地址本身是 IP, 直接请求
  */
 static bool probe_add(CURLM* multi, const char* url, const char* host, const char* ip,
                       const char* label, probe_t* probes, size_t* count)
@@ -211,13 +210,14 @@ static void probe_report_failure(const probe_t* probes, const size_t count)
 /**
  * @brief 并发探测一组目标, 谁先给出可用结果就采用谁
  *
- * 为什么要并发:
+ * 并发的原因:
  * - 这些 generate_204 地址在不同线路上的可达性差别很大 (某路由器一天里主地址连接
  *   超时 183 次、备用地址只失败 4 次), 串行试的话一个不可达地址就要吃满一次超时;
- * - 同一目标同时开 DNS 与固定 IP 两路 —— 校园网 DNS 可能根本解析不出来, 而固定 IP
- *   可能已经过期不可达, 两路都备着就不怕其中一种坏掉;
- * - 固定 IP 可以配多个 (一个域名对应多条 A 记录很正常), 每个 IP 各占一路并发 ——
- *   写成一条 `CURLOPT_RESOLVE` 多地址的话 curl 会串行试, 一样要等超时。
+ * - 每个固定 IP 各占一路并发 —— 写成一条 `CURLOPT_RESOLVE` 多地址的话 curl 会
+ *   串行试, 一样要等超时。
+ *
+ * **不走系统 DNS**: 目标地址都是固定的, 只发固定 IP 那几路 (IP 字面量的目标直接
+ * 请求)。这样 DNS 挂了、被劫持都不影响检测结果。
  *
  * @return STATUS_OK 拿到 204/301, STATUS_NEED_AUTH 拿到 302, 其余 STATUS_ERROR
  */
@@ -239,16 +239,20 @@ static network_status_t probe_group(const probe_target_t* targets, const size_t 
         const bool has_host = url_host(targets[i].url, host, sizeof(host));
         const known_host_t* known = has_host ? known_host_for(host) : NULL;
 
-        snprintf(labels[probe_count], sizeof(labels[0]), "%s/dns", targets[i].label);
-        probe_add(multi, targets[i].url, host, NULL, labels[probe_count], probes, &probe_count);
-
-        if (known != NULL)
+        if (known != NULL && known->ips[0] != NULL)
         {
+            // 域名: 只发固定 IP 的各路, 不走系统 DNS
             for (size_t k = 0; k < KNOWN_IP_MAX && known->ips[k] != NULL && probe_count < PROBE_MAX; k++)
             {
                 snprintf(labels[probe_count], sizeof(labels[0]), "%s/ip%zu", targets[i].label, k + 1);
                 probe_add(multi, targets[i].url, host, known->ips[k], labels[probe_count], probes, &probe_count);
             }
+        }
+        else
+        {
+            // IP 字面量 (认证服务器): 直接请求, curl 不会去查 DNS
+            snprintf(labels[probe_count], sizeof(labels[0]), "%s", targets[i].label);
+            probe_add(multi, targets[i].url, host, NULL, labels[probe_count], probes, &probe_count);
         }
     }
 

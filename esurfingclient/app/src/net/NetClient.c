@@ -21,6 +21,76 @@
 
 _Thread_local char g_request_url[LOCATION_LEN] = {0};
 
+/**
+ * @brief 域名 → 固定 IP 映射 (不经系统 DNS)
+ *
+ * 校园网的 DNS 本身经常不可用或被劫持, 而这些地址又是固定的, 所以直接写死:
+ * - `connect.rom.miui.com`: 踢网关那一下
+ * - `connectivitycheck.platform.hicloud.com`: 联网检测(探测线程自己也有表, 这里给 get 兜底)
+ * - `enet.10000.gd.cn`: 门户地址, 302 的 Location 里可能出现这个域名
+ *
+ * 每个域名给两个地址, 第一个连不上时换第二个重试一次。
+ */
+typedef struct
+{
+    const char* host;
+    const char* ips[2];
+} fixed_host_t;
+
+static const fixed_host_t s_fixed_hosts[] = {
+    {"connect.rom.miui.com", {"202.69.4.32", "220.181.104.183"}},
+    {"connectivitycheck.platform.hicloud.com", {"183.61.185.93", "125.88.255.53"}},
+    {"enet.10000.gd.cn", {"125.88.59.131", "61.140.12.23"}},
+};
+
+/** @brief 取 URL 里的端口, 没写就是 80 */
+static unsigned url_port(const char* url)
+{
+    if (url == NULL) return 80;
+
+    const char* start = strstr(url, "://");
+    start = (start != NULL) ? start + 3 : url;
+    start += strcspn(start, ":/");
+
+    if (*start != ':') return 80;
+
+    const unsigned port = (unsigned)strtoul(start + 1, NULL, 10);
+    return port == 0 ? 80 : port;
+}
+
+/** @brief 找 URL 的 host 在固定 IP 表里的条目 */
+static const fixed_host_t* fixed_host_for_url(const char* url)
+{
+    if (url == NULL) return NULL;
+
+    const char* start = strstr(url, "://");
+    start = (start != NULL) ? start + 3 : url;
+
+    const size_t len = strcspn(start, ":/?#");
+    if (len == 0 || len >= 128) return NULL;
+
+    for (size_t i = 0; i < sizeof(s_fixed_hosts) / sizeof(s_fixed_hosts[0]); i++)
+    {
+        if (strlen(s_fixed_hosts[i].host) == len && strncmp(start, s_fixed_hosts[i].host, len) == 0)
+        {
+            return &s_fixed_hosts[i];
+        }
+    }
+    return NULL;
+}
+
+/** @brief 为某个固定 IP 生成 curl 的 resolve 条目 (host:port:ip) */
+static struct curl_slist* fixed_host_resolve(const fixed_host_t* host, const char* ip, const char* url)
+{
+    if (host == NULL || ip == NULL) return NULL;
+
+    char entry[256];
+    snprintf(entry, sizeof(entry), "%s:%u:%s", host->host, url_port(url), ip);
+
+    LOG_DEBUG("固定解析: %s", entry);
+    return curl_slist_append(NULL, entry);
+}
+
 curl_resp_t post(const char* url, const char* data)
 {
     LOG_DEBUG("POST 地址: %s", url);
@@ -208,6 +278,18 @@ curl_resp_t get(const char* url)
     LOG_VERBOSE("设置 curl 选项");
     // GET URL
     curl_easy_setopt(curl, CURLOPT_URL, url);
+
+    /**
+     * 固定 IP 解析: 表里有的域名不走系统 DNS, 直接指定要连的地址
+     */
+    struct curl_slist* resolve = NULL;
+    const fixed_host_t* fixed = fixed_host_for_url(url);
+    if (fixed != NULL && fixed->ips[0] != NULL)
+    {
+        resolve = fixed_host_resolve(fixed, fixed->ips[0], url);
+        if (resolve != NULL) curl_easy_setopt(curl, CURLOPT_RESOLVE, resolve);
+    }
+
     // 连接超时时长
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, g_conn_timeout);
     // 总超时时长
@@ -232,7 +314,33 @@ curl_resp_t get(const char* url)
 
     LOG_VERBOSE("执行 CURL");
     watchdog_pet_network(); // 打卡: 下面这句最长会阻塞"连接超时 + 操作超时"
-    const CURLcode curl_code = curl_easy_perform(curl);
+    CURLcode curl_code = curl_easy_perform(curl);
+
+    /**
+     * 第一个固定 IP 连不上时换第二个再试一次
+     *
+     * 只在"压根没连上"这类错误上重试 (连不上/超时), 已经拿到响应的不重试 ——
+     * 免得把一个正常的 302/404 当成失败又打一遍。
+     */
+    if (curl_code != CURLE_OK && fixed != NULL && fixed->ips[1] != NULL)
+    {
+        LOG_DEBUG("固定 IP %s 请求失败 (CURLcode %d), 换 %s 重试", fixed->ips[0], (int)curl_code, fixed->ips[1]);
+
+        // 第一次可能已经写进一部分响应体, 重试前清掉
+        free(resp.body_data);
+        resp.body_data = NULL;
+        resp.body_size = 0;
+
+        curl_slist_free_all(resolve);
+        resolve = fixed_host_resolve(fixed, fixed->ips[1], url);
+        if (resolve != NULL)
+        {
+            curl_easy_setopt(curl, CURLOPT_RESOLVE, resolve);
+            watchdog_pet_network();
+            curl_code = curl_easy_perform(curl);
+        }
+    }
+
     if (curl_code != CURLE_OK)
     {
         // 先输出调试信息（此时 curl 句柄仍然有效）
@@ -240,6 +348,7 @@ curl_resp_t get(const char* url)
         // 再清理资源
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
+        curl_slist_free_all(resolve);
         resp.status = curl_err_msg_out(curl_code);
         resp.curl_code = curl_code;
         return resp;
@@ -251,6 +360,7 @@ curl_resp_t get(const char* url)
 
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
+    curl_slist_free_all(resolve);
 
     if (resp_code == 200)
     {
