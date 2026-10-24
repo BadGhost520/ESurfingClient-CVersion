@@ -164,7 +164,6 @@ static RunStatus run(void)
                  */
                 if (get_steady_tm_ms() - g_prog_status[tl_thread_idx].auth_cfg.tick >= g_prog_status[tl_thread_idx].auth_cfg.keep_retry * 1000)
                 {
-                    LOG_INFO("发送心跳包");
                     uint8_t retry_heartbeat = 1;
                     while (heartbeat() == false)
                     {
@@ -180,7 +179,7 @@ static RunStatus run(void)
                         retry_heartbeat++;
                         sleep_ms(1000, true);
                     }
-                    LOG_DEBUG("下一次重试: %" PRIu64 " 秒后",
+                    LOG_DEBUG("下一次发送心跳包: %" PRIu64 " 秒后",
                         g_prog_status[tl_thread_idx].auth_cfg.keep_retry);
                     g_prog_status[tl_thread_idx].auth_cfg.tick = get_steady_tm_ms(); // 重新给 tick 赋值 (与上面同源, 都用单调钟)
                 }
