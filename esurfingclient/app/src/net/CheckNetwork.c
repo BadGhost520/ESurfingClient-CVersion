@@ -1,5 +1,7 @@
 #include "net/NetClient.h"
 
+#include "NetClientInternal.h"
+
 #include "utils/log/Logger.h"
 #include "utils/sim/SimThread.h"
 #include "utils/time/TimeUtils.h"
@@ -147,6 +149,17 @@ static bool probe_add(CURLM* multi, const char* url, const char* host, const cha
      * 才回落到 IPv4 —— 表现就是"检测经常超时"。
      */
     curl_easy_setopt(handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+
+#ifdef __OPENWRT__
+    /**
+     * 探测也要绑路由标记 (SO_MARK)
+     *
+     * 多 WAN 分流的环境里, 每个账号的流量靠 mark 走各自的线路; 探测如果不绑 mark,
+     * 全部走主路由表 —— 主线路的会话一死, 所有账号的探测都看到 302, 于是所有账号
+     * 同时退登重登。探测必须和本账号的认证/心跳走同一条线路。
+     */
+    curl_easy_setopt(handle, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
+#endif
 
     if (ip != NULL && host != NULL)
     {

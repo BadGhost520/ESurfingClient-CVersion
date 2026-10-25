@@ -98,7 +98,11 @@ curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct 
         return CURL_SOCKET_BAD;
     }
 
-    if (g_prog_status[tl_thread_idx].login_cfg.mark != 0)
+    /**
+     * tl_thread_idx 为负表示不在认证线程里 (Web 进程的后台探测线程就是 -1),
+     * 此时没有账号上下文, 不绑 mark (走主路由表) —— 但绝不能去读 g_prog_status[-1]
+     */
+    if (tl_thread_idx >= 0 && g_prog_status[tl_thread_idx].login_cfg.mark != 0)
     {
         if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[tl_thread_idx].login_cfg.mark, sizeof(g_prog_status[tl_thread_idx].login_cfg.mark)) == -1)
         {
