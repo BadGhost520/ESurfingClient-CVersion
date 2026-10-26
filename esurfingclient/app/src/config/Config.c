@@ -542,8 +542,6 @@ bool load_cfg(void)
         LOG_INFO("配置文件缺少参数, 已按默认值补全 %" PRIu8 " 个", completed);
     }
 
-    cfg_t* global_cfg = &g_prog_status[0].cfg;
-
     /**
      * Web 服务端口与是否允许外部访问
      *
@@ -557,8 +555,6 @@ bool load_cfg(void)
     const long web_port = cfg_read_num(cfg_json, "web_port", DEFAULT_WEB_PORT);
     g_web_port = (web_port >= 1 && web_port <= 65535) ? (uint16_t)web_port : DEFAULT_WEB_PORT;
     g_web_external_acc = cfg_read_bool(cfg_json, "web_external_acc", DEFAULT_WEB_EXTERNAL_ACC);
-    global_cfg->web_port = g_web_port;
-    global_cfg->web_external_acc = g_web_external_acc;
 
     /**
      * 从这里开始"尽力解析": 配置不可用 (被禁用 / 账号没填全) 时不再半路返回,
@@ -591,11 +587,9 @@ bool load_cfg(void)
     {
         g_prog_enabled = true;
     }
-    global_cfg->enabled = g_prog_enabled;
 
     const long log_lv = cfg_read_num(cfg_json, "log_lv", LOG_LEVEL_INFO);
     set_logger_level((log_level_t)log_lv);
-    global_cfg->log_lv = log_lv;
 
     /**
      * 日志目录
@@ -615,25 +609,9 @@ bool load_cfg(void)
     {
         set_logger_dir(log_dir);
     }
-    snprintf(global_cfg->log_dir, sizeof(global_cfg->log_dir), "%s",
-        log_dir != NULL ? log_dir : get_logger_dir_cfg());
 
     g_conn_timeout = cfg_read_num(cfg_json, "conn_timeout", DEFAULT_CONN_TIMEOUT);
     g_op_timeout = cfg_read_num(cfg_json, "op_timeout", DEFAULT_OP_TIMEOUT);
-    global_cfg->conn_timeout = g_conn_timeout;
-    global_cfg->op_timeout = g_op_timeout;
-
-    /**
-     * 联网探测目标 (probe_hosts)
-     *
-     * 缺这一项时 complete_cfg 已经按默认值补上; 有就完全按用户的来 (写几组用几组,
-     * 不擅自补)。格式不对则回退内置默认。
-     */
-    probe_targets_defaults();
-    if (probe_targets_parse(cJSON_GetObjectItem(cfg_json, "probe_hosts")) == false)
-    {
-        LOG_WARN("probe_hosts 格式不对, 使用内置默认探测目标");
-    }
 
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
 
@@ -795,6 +773,38 @@ bool load_cfg(void)
     }
 
 #endif
+
+    /**
+     * 全局配置必须放在两个分支之后写: OpenWrt 分支上面会 realloc 掉 g_prog_status,
+     * 在重新分配之前写的话会写进旧的那一块, realloc + memset 之后全变 0 ——
+     * 表现为"配置文件里明明有值, 写回去全是 0/空"。
+     *
+     * 放在 cJSON_Delete(cfg_json) 之前, 因为探测目标还要从 cfg_json 里取
+     */
+    {
+        cfg_t* global_cfg = &g_prog_status[0].cfg;
+
+        global_cfg->enabled = g_prog_enabled;
+        global_cfg->web_external_acc = g_web_external_acc;
+        global_cfg->log_lv = log_lv;
+        snprintf(global_cfg->log_dir, sizeof(global_cfg->log_dir), "%s",
+            log_dir != NULL ? log_dir : get_logger_dir_cfg());
+        global_cfg->web_port = g_web_port;
+        global_cfg->conn_timeout = g_conn_timeout;
+        global_cfg->op_timeout = g_op_timeout;
+
+        /**
+         * 联网探测目标 (probe_hosts)
+         *
+         * 缺这一项时 complete_cfg 已经按默认值补上; 有就完全按用户的来 (写几组用几组,
+         * 不擅自补)。格式不对则回退内置默认。
+         */
+        probe_targets_defaults();
+        if (probe_targets_parse(cJSON_GetObjectItem(cfg_json, "probe_hosts")) == false)
+        {
+            LOG_WARN("probe_hosts 格式不对, 使用内置默认探测目标");
+        }
+    }
 
     cJSON_Delete(cfg_json);
 
