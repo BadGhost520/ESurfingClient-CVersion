@@ -29,15 +29,31 @@ typedef enum
  * 只读常量表, 留在 DialerClient.c。
  */
 
+/** 单次请求的失败类型: 让调用方区分"网络不通"和"服务端拒绝" */
+typedef enum
+{
+    DIALER_FAIL_NONE = 0,
+    DIALER_FAIL_NET,    // curl 层失败 (连不上/超时)
+    DIALER_FAIL_SERVER  // 服务端有响应, 但状态码或内容不对
+} dialer_fail_t;
+
+/** 心跳结果: 决定失败后是"退避重试"还是"重新认证" */
+typedef enum
+{
+    HB_OK = 0,
+    HB_NET_FAIL,   // 网络层失败 —— 重认证没有意义, 等网络恢复
+    HB_PROTO_FAIL  // 服务端有响应但内容不对 —— 可能已被踢下线, 需要重认证
+} hb_result_t;
+
 /* DialerNet.c */
 bool term(void);
 
-bool heartbeat(void);
+hb_result_t heartbeat(void);
 
 bool login(void);
 
 /** 构造/加密 → POST → 解密 (心跳 / 登录 / 取 ticket 共用) */
-char* dialer_request_plain(XmlChoose kind, const char* url, const char* what);
+char* dialer_request_plain(XmlChoose kind, const char* url, const char* what, dialer_fail_t* fail);
 
 /** 获取 Ticket，处理 Error-Code=200 + ZSM 的官方 algoid 更新流程 */
 char* dialer_request_ticket(XmlChoose kind, const char* url, const char* what);

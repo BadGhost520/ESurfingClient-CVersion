@@ -170,20 +170,64 @@ static RunStatus run(void)
                  */
                 if (get_steady_tm_ms() - g_prog_status[tl_thread_idx].auth_cfg.tick >= g_prog_status[tl_thread_idx].auth_cfg.keep_retry * 1000)
                 {
+                    /**
+                     * 心跳失败按递增间隔重试: 1 / 2 / 4 / 8 / 16 / 30 秒, 总窗口约 61 秒
+                     *
+                     * 失败原因分开处理:
+                     * - 网络类 (连不上/超时): 重认证没意义 —— 窗口用完后不退出进程,
+                     *   只把 tick 推到下个周期, 等网络恢复再试
+                     * - 协议类 (服务端有响应但内容不对): 错误码是 FATAL/SLOW (密码错/被踢/
+                     *   欠费) 时立即重新认证; 其余同样退避重试
+                     *
+                     * sleep_ms(..., true) 在退避期间仍可被重启/退出/重认证请求立刻打断。
+                     */
+                    static const uint32_t heartbeat_backoff_ms[] = {1000, 2000, 4000, 8000, 16000, 30000};
+                    const uint8_t heartbeat_retry_max =
+                        sizeof(heartbeat_backoff_ms) / sizeof(heartbeat_backoff_ms[0]);
+
                     uint8_t retry_heartbeat = 1;
-                    while (heartbeat() == false)
+                    hb_result_t hb = heartbeat();
+                    while (hb != HB_OK)
                     {
-                        if (retry_heartbeat > 5)
+                        if (hb == HB_PROTO_FAIL)
                         {
-                            LOG_ERROR("超过最多重试次数");
+                            const auth_error_kind_t kind =
+                                (auth_error_kind_t)g_prog_status[tl_thread_idx].runtime_status.last_error_kind;
+
+                            if (kind == AUTH_ERROR_FATAL || kind == AUTH_ERROR_SLOW)
+                            {
+                                LOG_WARN("心跳被服务端拒绝 (分类 %d), 立即重新认证", (int)kind);
+                                g_prog_status[tl_thread_idx].runtime_status.is_need_reauth = true;
+                                return RUN_SUCCESS;
+                            }
+                        }
+
+                        if (retry_heartbeat > heartbeat_retry_max)
+                        {
+                            if (hb == HB_NET_FAIL)
+                            {
+                                // 网络一直不通: 退登也没用, 下个心跳周期再试
+                                LOG_ERROR("心跳包连续 %" PRIu8 " 次网络失败, 下个周期再试", heartbeat_retry_max);
+                                g_prog_status[tl_thread_idx].auth_cfg.tick = get_steady_tm_ms();
+                                return RUN_SUCCESS;
+                            }
+
+                            LOG_ERROR("心跳包连续 %" PRIu8 " 次失败, 放弃本轮", heartbeat_retry_max);
                             return RUN_FAILED;
                         }
-                        LOG_WARN("配置 %" PRIu8 " 心跳包发送失败, 下标 %" PRIu8 ", 重试: 第 %" PRIu8 " 次, 最多 5 次",
+
+                        const uint32_t wait_ms = heartbeat_backoff_ms[retry_heartbeat - 1];
+                        LOG_WARN("配置 %" PRIu8 " 心跳包发送失败 (%s), 下标 %" PRIu8 ", 第 %" PRIu8 "/%" PRIu8 " 次, %" PRIu32 " 秒后重试",
                             g_prog_status[tl_thread_idx].login_cfg.idx,
+                            hb == HB_NET_FAIL ? "网络不通" : "服务端拒绝",
                             tl_thread_idx,
-                            retry_heartbeat);
+                            retry_heartbeat,
+                            heartbeat_retry_max,
+                            wait_ms / 1000);
+
                         retry_heartbeat++;
-                        sleep_ms(1000, true);
+                        sleep_ms(wait_ms, true);
+                        hb = heartbeat();
                     }
                     LOG_DEBUG("下一次发送心跳包: %" PRIu64 " 秒后",
                         g_prog_status[tl_thread_idx].auth_cfg.keep_retry);

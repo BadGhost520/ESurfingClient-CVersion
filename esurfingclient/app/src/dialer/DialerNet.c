@@ -56,16 +56,31 @@ static char* dialer_encrypt_payload(const XmlChoose kind)
  * @param what 日志里的动作名 (如 "心跳")
  * @return 解密后的明文 (调用方负责 free), 失败返回 NULL
  */
-char* dialer_request_plain(const XmlChoose kind, const char* url, const char* what)
+char* dialer_request_plain(const XmlChoose kind, const char* url, const char* what, dialer_fail_t* fail)
 {
+    if (fail != NULL) *fail = DIALER_FAIL_NONE;
+
     char* encrypt = dialer_encrypt_payload(kind);
-    if (encrypt == NULL) return NULL;
+    if (encrypt == NULL)
+    {
+        if (fail != NULL) *fail = DIALER_FAIL_SERVER; // 本地构造失败, 与"服务端拒绝"同路径处理
+        return NULL;
+    }
 
     curl_resp_t resp = post(url, encrypt);
     free(encrypt);
 
     if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
     {
+        /**
+         * curl_code 非 0 表示压根没连上 (连不上/超时/DNS 失败) —— 网络类;
+         * http_code 非 200 表示服务端回了, 但状态不对 —— 服务端类。
+         */
+        if (fail != NULL)
+        {
+            *fail = (resp.curl_code != CURLE_OK) ? DIALER_FAIL_NET : DIALER_FAIL_SERVER;
+        }
+
         LOG_ERROR("%s响应失败", safe_str(what));
         error_code_record(&resp);
         curl_resp_free(&resp);
@@ -77,6 +92,7 @@ char* dialer_request_plain(const XmlChoose kind, const char* url, const char* wh
     curl_resp_free(&resp);
     if (plain == NULL)
     {
+        if (fail != NULL) *fail = DIALER_FAIL_SERVER;
         LOG_ERROR("%s响应解密失败", safe_str(what));
         return NULL;
     }
@@ -209,10 +225,15 @@ bool term(void)
     return true;
 }
 
-bool heartbeat(void)
+hb_result_t heartbeat(void)
 {
-    char* decrypted_data = dialer_request_plain(HEART_BEAT, g_prog_status[tl_thread_idx].auth_cfg.keep_url, "心跳");
-    if (decrypted_data == NULL) return false;
+    dialer_fail_t fail = DIALER_FAIL_NONE;
+    char* decrypted_data = dialer_request_plain(HEART_BEAT, g_prog_status[tl_thread_idx].auth_cfg.keep_url, "心跳", &fail);
+    if (decrypted_data == NULL)
+    {
+        // 连不上 = 网络问题, 重认证也没用; 服务端有响应但不对 = 可能已被踢
+        return (fail == DIALER_FAIL_NET) ? HB_NET_FAIL : HB_PROTO_FAIL;
+    }
     LOG_VERBOSE("心跳响应内容: %s", decrypted_data);
 
     char* parsed_interval = xml_parser(decrypted_data, "interval"); // 获取心跳内容 (下一次重试时间)
@@ -220,7 +241,7 @@ bool heartbeat(void)
     if (parsed_interval == NULL)
     {
         LOG_ERROR("心跳内容解析失败");
-        return false;
+        return HB_PROTO_FAIL;
     }
 
     const uint64_t tmp_retry = str2uint64(parsed_interval); // 将字符串时间转成 uint64_t 时间
@@ -234,12 +255,12 @@ bool heartbeat(void)
     }
 
     free(parsed_interval);
-    return true;
+    return HB_OK;
 }
 
 bool login(void)
 {
-    char* decrypted_data = dialer_request_plain(LOGIN, g_prog_status[tl_thread_idx].auth_cfg.auth_url, "登录");
+    char* decrypted_data = dialer_request_plain(LOGIN, g_prog_status[tl_thread_idx].auth_cfg.auth_url, "登录", NULL);
     if (decrypted_data == NULL) return false;
 
     /**
