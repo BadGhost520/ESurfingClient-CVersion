@@ -32,8 +32,8 @@ static const char s_default_cfg[] = "{\n"
                                     "   \"web_external_acc\": false,\n"
                                     "   \"log_lv\": 4,\n"
                                     "   \"log_dir\": \"./\",\n"
-                                    "   \"conn_timeout\": 7,\n"
-                                    "   \"op_timeout\": 10,\n"
+                                    "   \"conn_timeout\": 10,\n"
+                                    "   \"op_timeout\": 15,\n"
                                     "   \"web_port\": 8888,\n"
                                     "   \"probe_hosts\": [\n"
                                     "       {\n"
@@ -49,7 +49,7 @@ static const char s_default_cfg[] = "{\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
                                     "           \"password\": \"\",\n"
-                                    "           \"channel\": 3,\n"
+                                    "           \"channel\": 1,\n"
                                     "           \"mark\": \"\",\n"
                                     "           \"time_windows\": []\n"
                                     "       }\n"
@@ -242,6 +242,25 @@ static bool save_cfg_from_cfg(const uint8_t account_count)
         cJSON_AddItemToArray(accounts, item);
     }
 
+    /**
+     * 一个可用账号都没有时 (配置被禁用/账号没填) 也要写一个空账号模板:
+     * 否则写回去的就是 accounts: [], 和新建配置时的样子不一致, 用户下次
+     * 打开文件还得自己回想字段名
+     */
+    if (account_count == 0 && accounts != NULL)
+    {
+        cJSON* item = cJSON_CreateObject();
+        if (item != NULL)
+        {
+            cJSON_AddStringToObject(item, "username", "");
+            cJSON_AddStringToObject(item, "password", "");
+            cJSON_AddNumberToObject(item, "channel", DEFAULT_CHANNEL);
+            cJSON_AddStringToObject(item, "mark", "");
+            cJSON_AddArrayToObject(item, "time_windows");
+            cJSON_AddItemToArray(accounts, item);
+        }
+    }
+
     const bool ok = write_cfg_json(root);
     cJSON_Delete(root);
     return ok;
@@ -279,11 +298,39 @@ const char* get_config_path(void)
     return config_file;
 }
 
-static uint64_t s_cfg_hash = 0;
-
 static bool s_cfg_waiting = false;
 
 #define CFG_WAIT_TICK_MS 1000
+
+/** @brief "保存并应用"标记文件: 没有控制通道的监管者/Web 进程靠它知道该重新读配置 */
+#define CFG_APPLY_MARK_SUFFIX ".apply"
+
+static void cfg_apply_mark_path(char* out, const size_t len)
+{
+    snprintf(out, len, "%s%s", get_config_path(), CFG_APPLY_MARK_SUFFIX);
+}
+
+void cfg_request_apply(void)
+{
+    char path[PATH_MAX + 16];
+    cfg_apply_mark_path(path, sizeof(path));
+
+    FILE* f = fopen(path, "w");
+    if (f != NULL) fclose(f);
+}
+
+bool cfg_take_apply_request(void)
+{
+    char path[PATH_MAX + 16];
+    cfg_apply_mark_path(path, sizeof(path));
+
+    FILE* f = fopen(path, "r");
+    if (f == NULL) return false;
+
+    fclose(f);
+    remove(path);
+    return true;
+}
 
 /**
  * @brief 读取配置文件的原文
@@ -322,63 +369,26 @@ char* read_cfg_file(void)
 }
 
 /**
- * @brief 取配置文件内容的指纹 (FNV-1a)
- *
- * 等配置的程序靠它判断配置文件有没有被改过: 没改就不必重新解析 (解析一次要写好几行
- * 日志, 一秒一次的话等一晚上日志就炸了)。
- *
- * 看内容而不是修改时间, 有两个原因:
- * - 修改时间在有些文件系统上只精确到秒 (FAT32 之类), 同一秒里改完保存会被漏掉,
- *   程序就一直等下去了
- * - 网页保存与手工编辑两条路都不用额外发信号, 内容变了就一定会被发现
- * 配置文件只有几百字节, 一秒读一次的开销可以忽略
- * @return 指纹值 (文件不存在或读不到时为 0)
- */
-uint64_t cfg_file_hash(void)
-{
-    FILE* file = fopen(config_file, "rb");
-    if (file == NULL) return 0;
-
-    uint64_t hash = 14695981039346656037ull;
-    int ch;
-    while ((ch = fgetc(file)) != EOF)
-    {
-        hash ^= (uint64_t)(uint8_t)ch;
-        hash *= 1099511628211ull;
-    }
-    fclose(file);
-
-    // 0 留给"读不到", 免得空文件与打不开撞在一起
-    return hash == 0 ? 1 : hash;
-}
-
-/**
  * @brief 等配置文件变成可用 (每次最多等一个固定的间隔)
  *
- * 配置没变就不重新解析: 解析一次要写好几行日志, 一秒一次的话等一晚上日志就炸了。
- * 网页上的"保存并应用"会置 g_need_reload, 那条路不必等下一次轮询
+ * 只有网页上的"保存并应用"会置 g_need_reload 才重新解析: 单纯保存只写文件,
+ * 这里不跟文件内容走 —— 否则用户一保存配置就被悄悄加载, 和"重启才生效"的约定冲突。
  * @return true 表示配置已可用 (此时 load_cfg 已经跑完)
  */
 bool wait_cfg_usable(void)
 {
-    /**
-     * 进入"等配置"状态时先记下配置文件的指纹:
-     * 之后只有它变了 (网页保存 / 手工编辑 / 点了"保存并应用") 才重新解析
-     */
     if (s_cfg_waiting == false)
     {
         s_cfg_waiting = true;
-        s_cfg_hash = cfg_file_hash();
         g_need_reload = false;
     }
 
     sleep_ms(CFG_WAIT_TICK_MS, false);
 
-    const uint64_t hash = cfg_file_hash();
-    if (g_need_reload == false && hash == s_cfg_hash) return false;
+    // 只有"应用"才重新加载
+    if (g_need_reload == false) return false;
 
     g_need_reload = false;
-    s_cfg_hash = hash;
 
     if (load_cfg() == true)
     {

@@ -101,7 +101,7 @@ typedef struct
 
 #define DEFAULT_OP_TIMEOUT 15
 
-#define DEFAULT_CHANNEL 3
+#define DEFAULT_CHANNEL 1
 
 #define DEFAULT_WEB_PORT 8888
 

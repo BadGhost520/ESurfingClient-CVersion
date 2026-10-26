@@ -10,9 +10,21 @@ function isValidProbeIpv4(value) {
     return text.split('.').every(function(part) { return Number(part) <= 255; });
 }
 
+/** 探测目标默认值 (与后端内置默认、以及 files/etc/config/esurfingclient 一致) */
+var DEFAULT_PROBE_HOSTS = [
+    { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
+    { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
+];
+
 /** 规范化 probe_hosts: 丢掉空条/非法 IP, 后端认识的是 { host, ips[] } */
 function normalizeProbeHosts(raw) {
-    if (!Array.isArray(raw)) return [];
+    // 没配就显示内置默认, 别让页面上一片空白 (保存时会把这个默认写进配置文件)
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return DEFAULT_PROBE_HOSTS.map(function(item) {
+            return { host: item.host, ips: item.ips.slice() };
+        });
+    }
+
     return raw
         .filter(function(item) { return item && typeof item === 'object' && typeof item.host === 'string'; })
         .map(function(item) {
@@ -64,10 +76,10 @@ return view.extend({
         self.config = self.config || {
             enabled: false,
             web_external_acc: false,
-            log_lv: 0,
-            log_dir: '/var/log/esurfing',
-            conn_timeout: 3,
-            op_timeout: 5,
+            log_lv: 4,
+            log_dir: './',
+            conn_timeout: 10,
+            op_timeout: 15,
             web_port: 8888,
             probe_hosts: [],
             accounts: []
@@ -123,7 +135,7 @@ return view.extend({
                         step: 1,
                         value: self.config.conn_timeout,
                         change: function(ev) {
-                            self.config.conn_timeout = self.normalizeTimeout(ev.target.value, 3);
+                            self.config.conn_timeout = self.normalizeTimeout(ev.target.value, 10);
                             ev.target.value = self.config.conn_timeout;
                         }
                     }),
@@ -141,7 +153,7 @@ return view.extend({
                         step: 1,
                         value: self.config.op_timeout,
                         change: function(ev) {
-                            self.config.op_timeout = self.normalizeTimeout(ev.target.value, 5);
+                            self.config.op_timeout = self.normalizeTimeout(ev.target.value, 15);
                             ev.target.value = self.config.op_timeout;
                         }
                     }),
@@ -285,9 +297,12 @@ return view.extend({
                     self.config = {};
                 }
                 // 旧配置文件可能缺少超时参数, 这里补齐默认值, 避免输入框显示空值
-                self.config.conn_timeout = self.normalizeTimeout(self.config.conn_timeout, 3);
-                self.config.op_timeout = self.normalizeTimeout(self.config.op_timeout, 5);
-                // 探测目标: 缺失就留空数组, 页面上显示为空 (保存时不写这个键, 后端用内置默认)
+                self.config.conn_timeout = self.normalizeTimeout(self.config.conn_timeout, 10);
+                self.config.op_timeout = self.normalizeTimeout(self.config.op_timeout, 15);
+                // 旧配置可能缺这几项: 补上默认值, 免得页面显示成"日志关闭/目录空白"
+                if (typeof self.config.log_lv !== 'number') self.config.log_lv = 4;
+                if (!self.config.log_dir) self.config.log_dir = './';
+                // 探测目标: 缺失就显示内置默认 (保存时会写进配置文件)
                 self.config.probe_hosts = normalizeProbeHosts(self.config.probe_hosts);
                 self.showNotification('读取配置文件成功', 'success');
                 return self.config;
@@ -296,10 +311,10 @@ return view.extend({
                 self.config = {
                     enabled: false,
                     web_external_acc: false,
-                    log_lv: 0,
-                    log_dir: '/var/log/esurfing',
-                    conn_timeout: 3,
-                    op_timeout: 5,
+                    log_lv: 4,
+                    log_dir: './',
+                    conn_timeout: 10,
+                    op_timeout: 15,
                     web_port: 8888,
                     probe_hosts: [],
                     accounts: [
@@ -576,7 +591,7 @@ return view.extend({
             account = {
                 username: '',
                 password: '',
-                channel: 'phone',
+                channel: 'windows',
                 mark: '',
                 time_windows: []
             };
@@ -960,15 +975,19 @@ return view.extend({
                         enabled: false,
                         web_external_acc: false,
                         log_lv: 4,
-                        log_dir: '/var/log/esurfing',
-                        conn_timeout: 3,
-                        op_timeout: 5,
+                        log_dir: './',
+                        conn_timeout: 10,
+                        op_timeout: 15,
                         web_port: 8888,
+                        probe_hosts: [
+                            { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
+                            { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
+                        ],
                         accounts: [
                             {
                                 username: '',
                                 password: '',
-                                channel: 'phone',
+                                channel: 'windows',
                                 mark: '',
                                 time_windows: []
                             }

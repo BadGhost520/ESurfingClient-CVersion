@@ -8,9 +8,9 @@ const CHANNEL_TEXT = {
 
 const CHANNEL_VALUES = ['windows', 'linux', 'android', 'ios', 'macos'];
 
-/** 归一化通道取值 */
+/** 归一化通道取值 (缺省用 Windows 通道, 与默认配置文件里的 channel: 1 一致) */
 function normalizeChannel(raw) {
-    if (raw === null || raw === undefined) return 'android';
+    if (raw === null || raw === undefined) return 'windows';
 
     const value = String(raw).trim().toLowerCase();
     switch (value) {
@@ -74,9 +74,9 @@ const TOAST_CLASS = {
 
 const MAX_TIME_WINDOWS = 16;
 
-const DEFAULT_CONN_TIMEOUT = 7;
+const DEFAULT_CONN_TIMEOUT = 10;
 
-const DEFAULT_OP_TIMEOUT = 10;
+const DEFAULT_OP_TIMEOUT = 15;
 
 const DEFAULT_WEB_PORT = 8888;
 
@@ -734,7 +734,11 @@ document.addEventListener('alpine:init', () => {
             const notify = Alpine.store('notify');
             Alpine.store('main').resetConfigs();
             const ok = await this.saveConfigs();
-            if (ok) notify.info('配置已复位到默认值, 需要重新填写账号后重启程序');
+            if (ok) {
+                // 和 LuCI 保持一致: 复位只写文件不重启, 提示完刷新页面, 让用户对着默认值填账号
+                notify.success('配置已复位到默认值, 页面即将刷新, 请重新填写账号');
+                setTimeout(() => location.reload(), 2000);
+            }
         },
 
         /** 等程序重启完成, 然后自动刷新页面。 */
@@ -775,6 +779,8 @@ document.addEventListener('alpine:init', () => {
         accounts: [],
         timeWindows: [],
         error: '',
+        /** 高级选项是否展开 (只是界面状态, 不写进配置) */
+        showAdvanced: false,
 
         init() {
             this.getAccounts();

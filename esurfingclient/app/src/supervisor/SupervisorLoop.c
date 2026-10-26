@@ -21,8 +21,6 @@
 
 static bool s_cfg_usable = false;
 
-static uint64_t s_cfg_hash = 0;
-
 static uint64_t s_cfg_check_time = 0;
 
 /* ------------------------------------------------------------------
@@ -117,10 +115,12 @@ static void supervisor_restart_due(void)
 }
 
 /**
- * @brief 按配置文件的变化调整子进程
+ * @brief 按"保存并应用"标记调整子进程
  *
- * 监管者与子进程之间没有通道, 网页上的"保存并应用"传不到这里, 只能盯着配置文件:
- * 内容变了才重新解析一次 (解析一次要写好几行日志, 每 200 毫秒来一次会把日志刷满)。
+ * 监管者与子进程之间没有通道, 网页上的"保存并应用"传不到这里, 只能靠 Web 进程
+ * 落下的 .apply 标记: 有标记才重新解析一次 (解析一次要写好几行日志)。
+ *
+ * 单纯保存配置不会让这里重读 —— 用户点了"应用"或重启才生效。
  *
  * 配置从不可用变回可用时要主动把认证子进程拉起来 —— 它们没有"待机"的形态,
  * 不可用期间压根没被拉起来过
@@ -132,9 +132,8 @@ static void supervisor_sync_cfg(void)
     if (now - s_cfg_check_time < SUPERVISOR_CFG_CHECK_MS) return;
     s_cfg_check_time = now;
 
-    const uint64_t hash = cfg_file_hash();
-    if (hash == s_cfg_hash) return;
-    s_cfg_hash = hash;
+    // 只有网页上点了"保存并应用"才重新解析
+    if (cfg_take_apply_request() == false) return;
 
     const bool usable = load_cfg();
 
@@ -306,7 +305,6 @@ int work_supervisor(void)
      * 和把 run.log 改名归档, 每次都归档就会在日志目录里堆一堆只有横幅的垃圾文件
      */
     s_cfg_usable = load_cfg();
-    s_cfg_hash = cfg_file_hash();
 
     if (s_cfg_usable == false)
     {

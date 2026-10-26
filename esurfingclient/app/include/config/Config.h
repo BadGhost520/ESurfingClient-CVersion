@@ -40,19 +40,23 @@ bool load_cfg(void);
 char* read_cfg_file(void);
 
 /**
- * @brief 取配置文件内容的指纹 (用于判断它有没有被改过)
+ * @brief 留下"保存并应用"标记 (写一个 .apply 文件)
  *
- * 等配置的地方靠它决定要不要重新解析: 配置没变就反复解析只会把日志刷满。
- * 看的是内容而不是修改时间, 见 Config.c 里的说明
- * @return 指纹值 (文件不存在或读不到时为 0)
+ * Web 进程没有控制通道直达监管者, 只能靠这个标记告诉它该重新读配置了
  */
-uint64_t cfg_file_hash(void);
+void cfg_request_apply(void);
+
+/**
+ * @brief 取走并清除"保存并应用"标记
+ * @return 是否有人请求过应用
+ */
+bool cfg_take_apply_request(void);
 
 /**
  * @brief 等配置文件变成可用 (每次最多等一个固定的间隔)
  *
- * 供配置不可用时的"等配置"状态使用: 网页上的"保存并应用"会置 g_need_reload,
- * 手工编辑配置文件则靠上面的指纹发现, 两者都能让本函数立刻重新解析一遍
+ * 供配置不可用时的"等配置"状态使用: 只有网页上的"保存并应用"会置 g_need_reload,
+ * 单纯保存不会被这里悄悄加载
  * @return true 表示配置已可用 (此时 load_cfg 已经跑完)
  */
 bool wait_cfg_usable(void);

@@ -1,5 +1,5 @@
 <%
-local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"/var/log/esurfing","conn_timeout":3,"op_timeout":5,"web_port":8888,"accounts":[{"username":"","password":"","channel":"phone","mark":"","time_windows":[]}]}'
+local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"./","conn_timeout":10,"op_timeout":15,"web_port":8888,"probe_hosts":[{"host":"connectivitycheck.platform.hicloud.com","ips":["183.61.185.93","125.88.255.53"]},{"host":"connect.rom.miui.com","ips":["202.69.4.32","220.181.104.183"]}],"accounts":[{"username":"","password":"","channel":"windows","mark":"","time_windows":[]}]}'
 local file = io.open("/etc/config/esurfingclient", "r")
 if file then
     local content = file:read("*a")
@@ -612,13 +612,20 @@ end
         showNotification('重置配置中', 'info');
         config = {
             enabled: false,
+            web_external_acc: false,
             log_lv: 4,
-            conn_timeout: 3,
-            op_timeout: 5,
+            log_dir: './',
+            conn_timeout: 10,
+            op_timeout: 15,
+            web_port: 8888,
+            probe_hosts: [
+                { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
+                { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
+            ],
             accounts: [{
                 username: '',
                 password: '',
-                channel: 'phone',
+                channel: 'windows',
                 mark: '',
                 time_windows: []
             }]
@@ -692,9 +699,21 @@ end
         return text.split('.').every(function(part) { return Number(part) <= 255; });
     }
 
+    /** 探测目标默认值 (与后端内置默认一致) */
+    var DEFAULT_PROBE_HOSTS = [
+        { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
+        { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
+    ];
+
     /** 规范化 probe_hosts: 丢掉空条/非法 IP */
     function normalizeProbeHosts(raw) {
-        if (!Array.isArray(raw)) return [];
+        // 没配就显示内置默认, 别让页面上一片空白
+        if (!Array.isArray(raw) || raw.length === 0) {
+            return DEFAULT_PROBE_HOSTS.map(function(item) {
+                return { host: item.host, ips: item.ips.slice() };
+            });
+        }
+
         return raw
             .filter(function(item) { return item && typeof item === 'object' && typeof item.host === 'string'; })
             .map(function(item) {
@@ -882,7 +901,7 @@ end
             account = {
                 username: '',
                 password: '',
-                channel: 'phone',
+                channel: 'windows',
                 mark: '',
                 time_windows: []
             };
@@ -1018,7 +1037,7 @@ end
     var conn_timeout = document.getElementById('conn_timeout');
 
     conn_timeout.addEventListener('change', function(e) {
-        config.conn_timeout = normalizeTimeout(e.target.value, 3);
+        config.conn_timeout = normalizeTimeout(e.target.value, 10);
         e.target.value = config.conn_timeout;
     });
 
@@ -1026,17 +1045,19 @@ end
     var op_timeout = document.getElementById('op_timeout');
 
     op_timeout.addEventListener('change', function(e) {
-        config.op_timeout = normalizeTimeout(e.target.value, 5);
+        config.op_timeout = normalizeTimeout(e.target.value, 15);
         e.target.value = config.op_timeout;
     });
 
     document.addEventListener('DOMContentLoaded', function() {
         showNotification('正在读取配置文件', 'info');
         enabled.checked = config.enabled;
+        // 旧配置文件可能缺少这些参数, 这里补齐默认值, 避免输入框显示成"关闭/空"
+        config.conn_timeout = normalizeTimeout(config.conn_timeout, 10);
+        config.op_timeout = normalizeTimeout(config.op_timeout, 15);
+        if (typeof config.log_lv !== 'number') config.log_lv = 4;
+        if (!config.log_dir) config.log_dir = './';
         log_lv.value = config.log_lv;
-        // 旧配置文件可能缺少超时参数, 这里补齐默认值, 避免输入框显示空值
-        config.conn_timeout = normalizeTimeout(config.conn_timeout, 3);
-        config.op_timeout = normalizeTimeout(config.op_timeout, 5);
         conn_timeout.value = config.conn_timeout;
         op_timeout.value = config.op_timeout;
         renderTable();

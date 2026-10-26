@@ -100,10 +100,14 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                  * 配置不可用时程序正停在"等配置"的状态, 网页开着就是为了让用户
                  * 把配置改回来 —— 这时"保存并应用"就是让主流程重新读一遍配置的
                  * 开关: 没有认证线程可下发, 也不需要下发
+                 *
+                 * 同时落下 .apply 标记: 监管者没有控制通道, 只能靠它知道该重读配置
+                 * (认证进程那边由监管者负责重启, 见 supervisor_sync_cfg)
                  */
                 if (g_waiting_cfg)
                 {
                     g_need_reload = true;
+                    cfg_request_apply();
                     LOG_INFO("收到 Web 应用配置文件请求, 主流程将重新加载配置文件");
                     mg_http_reply(c, 204, "", "");
                 }
@@ -137,7 +141,12 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                     }
                     else
                     {
-                        LOG_INFO("收到 Web 应用配置文件请求 (当前%s), 程序将重新加载配置文件",
+                        // 认证进程整个重启 (退出后由监管者重新拉起);
+                        // 监管者与 Web 进程自己走热重载, 不退出
+                        g_need_reload = true;
+                        cfg_request_apply();
+
+                        LOG_INFO("收到 Web 应用配置文件请求 (当前%s), 认证进程将重启, 其余进程热重载配置",
                             is_authed ? "已认证" : "未认证");
                         mg_http_reply(c, 204, "", "");
                     }

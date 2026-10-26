@@ -325,6 +325,21 @@
               <span class="label">日志的详细程度</span>
             </fieldset>
             <fieldset class="fieldset">
+              <legend class="fieldset-legend">高级选项</legend>
+              <input type="checkbox" class="checkbox"
+                     x-model="showAdvanced" />
+              <span class="label">显示超时、日志目录、Web 端口、外部访问与探测目标等高级设置</span>
+            </fieldset>
+          </div>
+        </div>
+      </div>
+      <div class="card bg-base-300 shadow-md" x-show="showAdvanced" x-cloak>
+        <div class="card-body">
+          <h2 class="card-title">
+            <span class="icon h-6 w-6" aria-hidden="true" style="--icon: url(assets/svg/advanced.svg)"></span>
+            高级选项</h2>
+          <div class="mx-[20%] text-lg">
+            <fieldset class="fieldset">
               <legend class="fieldset-legend">连接超时</legend>
               <input type="number" class="input" min="1" step="1"
                      x-model.number="$store.main.configs.conn_timeout" />
@@ -362,10 +377,10 @@
           </div>
         </div>
       </div>
-      <div class="card bg-base-300 shadow-md">
+      <div class="card bg-base-300 shadow-md" x-show="showAdvanced" x-cloak>
         <div class="card-body">
           <h2 class="card-title">
-            <span class="icon h-6 w-6" aria-hidden="true" style="--icon: url(assets/svg/settings.svg)"></span>
+            <span class="icon h-6 w-6" aria-hidden="true" style="--icon: url(assets/svg/probe.svg)"></span>
             联网探测目标</h2>
           <div class="overflow-x-auto">
             <table class="table table-zebra">
@@ -656,9 +671,6 @@
                href="https://github.com/BadGhost520/ESurfingClient-CVersion"
                target="_blank" rel="noopener">GitHub</a>
           </p>
-          <p class="mt-2">使用提示: 修改配置后点击"保存"; 点"保存并应用"会<b>重启程序</b>
-            (多进程模式下只重启认证进程), 新配置在启动时读取。日志目录、Web 端口与是否允许
-            外部访问同样在重启后生效。</p>
         </div>
       </div>
       <div
