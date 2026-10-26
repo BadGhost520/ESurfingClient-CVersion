@@ -132,7 +132,6 @@ if (NOT __OPENWRT__)
             src/control/ControlServer.c
             src/supervisor/SupervisorSignal.c
             src/supervisor/SupervisorChild.c
-            src/supervisor/SupervisorState.c
             src/supervisor/SupervisorLoop.c
             src/utils/runtime/Service.c
             src/utils/sim/SimProcess.c

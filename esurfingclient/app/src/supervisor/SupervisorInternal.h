@@ -3,13 +3,11 @@
 
 #include "core/States.h"
 
+/* child_t / child_handle_t / child_kind_t / stop_flag_t / SUPERVISOR_MAX_CHILDREN 都在 States.h */
+
 #ifdef _WIN32
 
 #include <windows.h>
-
-typedef HANDLE child_handle_t;
-#define CHILD_HANDLE_INVALID NULL
-typedef volatile LONG stop_flag_t;
 
 #else
 
@@ -22,17 +20,11 @@ typedef volatile LONG stop_flag_t;
 #include <sys/prctl.h>
 #endif
 
-typedef pid_t child_handle_t;
-#define CHILD_HANDLE_INVALID ((pid_t)-1)
-typedef volatile sig_atomic_t stop_flag_t;
-
 #ifndef EINTR
 #define EINTR 4
 #endif
 
 #endif
-
-#define SUPERVISOR_MAX_CHILDREN 17
 
 #define SUPERVISOR_HEALTHY_MS 60000
 
@@ -57,28 +49,6 @@ typedef volatile sig_atomic_t stop_flag_t;
 #define SUPERVISOR_TICK_MS 200
 
 #define SUPERVISOR_WAIT_SLICE_MS 100
-
-typedef enum
-{
-    CHILD_WEB = 0,
-    CHILD_AUTH = 1
-} child_kind_t;
-
-typedef struct
-{
-    child_handle_t handle;
-    child_kind_t kind;
-    uint8_t account;
-    uint16_t control_port;
-    bool running;
-    uint32_t restarts;
-    uint64_t start_time;
-    uint64_t next_start_time;
-} child_t;
-
-extern child_t g_children[SUPERVISOR_MAX_CHILDREN];
-extern int g_child_count;
-extern stop_flag_t g_supervisor_stop;
 
 const char* child_name(const child_t* child, char* buf, const size_t len);
 

@@ -8,31 +8,9 @@
 #include <unistd.h>
 #endif
 
-const char g_log_file_name[] = "run.log";
-
-char g_cfg_log_dir[LOG_PATH_MAX] = "";
-
-bool g_logger_inited = false;
-
 #define LOG_LINE_MAX 2560
 
 _Static_assert(LOG_LINE_MAX <= 4096, "日志行过长, 无法保证多进程下的原子写入");
-
-log_cfg_t g_logger_cfg = {
-    .lv = LOG_LEVEL_INFO,
-    .log_dir = "",
-    .log_file = "",
-    .file_handle = NULL,
-    .max_lines = 10000,
-    .cur_lines = 0,
-    .file_dev = 0,
-    .file_ino = 0,
-    .lines_since_check = 0
-};
-
-bool g_console_enabled = true;
-
-bool g_query_mode = false;
 
 const char* get_level_str(const log_level_t lv)
 {

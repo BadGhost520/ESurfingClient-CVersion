@@ -65,7 +65,7 @@ static int64_t get_current_week_ms(void)
  * 窗口按周循环，end_week_min 可能大于 WEEK_MINUTES（跨周）。
  * 通过 (t - start) mod WEEK_MINUTES 判断是否位于窗口持续时间内。
  */
-static bool is_in_windows_abs(const login_cfg_t* cfg, const int32_t week_min_abs)
+static bool is_in_windows_abs(const cfg_t* cfg, const int32_t week_min_abs)
 {
     for (uint8_t i = 0; i < cfg->time_window_count; i++)
     {
@@ -88,7 +88,7 @@ static bool is_in_windows_abs(const login_cfg_t* cfg, const int32_t week_min_abs
  * @brief 计算下一个状态切换（启用/禁用）的延迟毫秒数
  * @return 延迟毫秒数，无窗口时返回 (uint64_t)-1
  */
-static uint64_t compute_next_event_delay_ms(const login_cfg_t* cfg, const int64_t now_week_ms)
+static uint64_t compute_next_event_delay_ms(const cfg_t* cfg, const int64_t now_week_ms)
 {
     int64_t boundaries[MAX_TIME_WINDOWS * 10];
     int boundary_count = 0;
@@ -177,7 +177,7 @@ void time_control_sync(void)
 
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        login_cfg_t* cfg = &g_prog_status[i].login_cfg;
+        cfg_t* cfg = &g_prog_status[i].cfg;
         if (cfg->has_time_control == false)
         {
             // 没有时间控制的账号保持默认启用；防止保存配置去掉 time_windows 后残留禁用状态
@@ -236,7 +236,7 @@ uint64_t time_control_wait_ms(void)
 
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        const login_cfg_t* cfg = &g_prog_status[i].login_cfg;
+        const cfg_t* cfg = &g_prog_status[i].cfg;
         if (cfg->has_time_control == false)
         {
             continue;
@@ -303,7 +303,7 @@ bool time_control_init(void)
     bool has_time_control = false;
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        if (g_prog_status[i].login_cfg.has_time_control)
+        if (g_prog_status[i].cfg.has_time_control)
         {
             has_time_control = true;
             break;

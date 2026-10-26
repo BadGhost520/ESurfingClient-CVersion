@@ -35,7 +35,7 @@ bool logout_state_save(const prog_status_t* status)
     if (status == NULL) return false;
 
     char path[PATH_MAX + 32];
-    if (logout_state_path(path, sizeof(path), status->login_cfg.idx) == false)
+    if (logout_state_path(path, sizeof(path), status->cfg.idx) == false)
     {
         LOG_WARN("无法确定会话存档路径, 本次退出若被强杀将无法补登出");
         return false;
@@ -45,8 +45,8 @@ bool logout_state_save(const prog_status_t* status)
     if (root == NULL) return false;
 
     cJSON_AddBoolToObject(root, "dynamic", false); // 算法已全部硬编码, 不再保存动态 ZSM
-    cJSON_AddNumberToObject(root, "account", status->login_cfg.idx);
-    cJSON_AddStringToObject(root, "user_agent", safe_str(status->login_cfg.user_agent));
+    cJSON_AddNumberToObject(root, "account", status->cfg.idx);
+    cJSON_AddStringToObject(root, "user_agent", safe_str(status->cfg.user_agent));
     cJSON_AddStringToObject(root, "term_url", safe_str(status->auth_cfg.term_url));
     cJSON_AddStringToObject(root, "algo_id", safe_str(status->auth_cfg.algo_id));
     cJSON_AddStringToObject(root, "client_id", safe_str(status->auth_cfg.client_id));
@@ -99,7 +99,7 @@ bool logout_state_load(prog_status_t* status)
     if (status == NULL) return false;
 
     char path[PATH_MAX + 32];
-    if (logout_state_path(path, sizeof(path), status->login_cfg.idx) == false)
+    if (logout_state_path(path, sizeof(path), status->cfg.idx) == false)
     {
         LOG_DEBUG("未找到登出文件, 返回");
         return false;
@@ -127,14 +127,14 @@ bool logout_state_load(prog_status_t* status)
     // 存档里的账号序号必须与本次负责的账号一致, 否则说明文件放错了地方
     const cJSON* account = cJSON_GetObjectItem(root, "account");
     if (account == NULL || cJSON_IsNumber(account) == false ||
-        (uint8_t)account->valueint != status->login_cfg.idx)
+        (uint8_t)account->valueint != status->cfg.idx)
     {
         LOG_WARN("会话存档的账号序号与本次不符, 忽略: %s", path);
         cJSON_Delete(root);
         return false;
     }
 
-    read_str(root, "user_agent", status->login_cfg.user_agent, USER_AGENT_LEN);
+    read_str(root, "user_agent", status->cfg.user_agent, USER_AGENT_LEN);
     read_str(root, "term_url", status->auth_cfg.term_url, TERM_URL_LEN);
     read_str(root, "algo_id", status->auth_cfg.algo_id, ALGO_ID_LEN);
     read_str(root, "client_id", status->auth_cfg.client_id, CLIENT_ID_LEN);

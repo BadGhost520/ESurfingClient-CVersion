@@ -28,10 +28,6 @@
 #endif
 #endif
 
-char g_school_id[SCHOOL_ID_LENGTH] = {0};
-char g_school_domain[DOMAIN_LENGTH] = {0};
-char g_area[AREA_LENGTH] = {0};
-
 static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
 {
     if (out == NULL || out_len == 0) return;
@@ -102,15 +98,15 @@ curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct 
      * tl_thread_idx 为负表示不在认证线程里 (Web 进程的后台探测线程就是 -1),
      * 此时没有账号上下文, 不绑 mark (走主路由表) —— 但绝不能去读 g_prog_status[-1]
      */
-    if (tl_thread_idx >= 0 && g_prog_status[tl_thread_idx].login_cfg.mark != 0)
+    if (tl_thread_idx >= 0 && g_prog_status[tl_thread_idx].cfg.mark != 0)
     {
-        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[tl_thread_idx].login_cfg.mark, sizeof(g_prog_status[tl_thread_idx].login_cfg.mark)) == -1)
+        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[tl_thread_idx].cfg.mark, sizeof(g_prog_status[tl_thread_idx].cfg.mark)) == -1)
         {
-            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s", g_prog_status[tl_thread_idx].login_cfg.mark, g_prog_status[tl_thread_idx].login_cfg.mark, strerror(errno));
+            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark, strerror(errno));
         }
         else
         {
-            LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].login_cfg.mark, g_prog_status[tl_thread_idx].login_cfg.mark);
+            LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark);
         }
     }
 

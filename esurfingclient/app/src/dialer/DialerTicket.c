@@ -82,7 +82,7 @@ static bool is_bad_algo_id(const char* algo_id)
 
 bool get_ticket(void)
 {
-    LOG_DEBUG("get_ticket 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
+    LOG_DEBUG("get_ticket 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].cfg.idx, tl_thread_idx);
 
     char* decrypt = dialer_request_ticket(GET_TICKET, g_prog_status[tl_thread_idx].auth_cfg.ticket_url, "获取 Ticket");
     if (decrypt == NULL) return false;

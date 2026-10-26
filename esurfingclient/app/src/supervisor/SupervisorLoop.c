@@ -90,7 +90,7 @@ static bool supervisor_child_ready(child_t* child, const int index)
     if (child->kind != CHILD_AUTH) return true;
     if (s_cfg_usable == false) return false;
 
-    child->account = (index < g_prog_cnt) ? g_prog_status[index].login_cfg.idx : 0;
+    child->account = (index < g_prog_cnt) ? g_prog_status[index].cfg.idx : 0;
 
     return child->account != 0;
 }
@@ -270,7 +270,7 @@ static bool supervisor_build_children(void)
         memset(child, 0, sizeof(*child));
         child->handle = CHILD_HANDLE_INVALID;
         child->kind = CHILD_AUTH;
-        child->account = (i < g_prog_cnt) ? g_prog_status[i].login_cfg.idx : 0;
+        child->account = (i < g_prog_cnt) ? g_prog_status[i].cfg.idx : 0;
         child->control_port = child_control_port(CHILD_AUTH, g_child_count);
         g_child_count++;
     }

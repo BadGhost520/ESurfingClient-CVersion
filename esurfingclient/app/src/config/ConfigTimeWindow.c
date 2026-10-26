@@ -139,10 +139,10 @@ static bool parse_time_windows(const cJSON* arr, time_window_t* windows, uint8_t
 }
 
 /**
- * @brief 解析 time_windows 并写入 login_cfg
+ * @brief 解析 time_windows 并写入 cfg
  * @return 是否合法
  */
-bool apply_time_windows(const cJSON* item, login_cfg_t* cfg)
+bool apply_time_windows(const cJSON* item, cfg_t* cfg)
 {
     if (parse_time_windows(item, cfg->time_windows, &cfg->time_window_count) == false)
     {

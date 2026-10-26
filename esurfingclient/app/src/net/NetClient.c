@@ -116,7 +116,7 @@ curl_resp_t post(const char* url, const char* data)
 
     snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", safe_str(md5_hash));
     free(md5_hash);
-    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
+    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].cfg.user_agent));
     snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
     snprintf(a_id, MAX_LEN, "Algo-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.algo_id));
     snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", safe_str(g_school_id));
@@ -252,7 +252,7 @@ curl_resp_t get(const char* url)
     if (tl_thread_idx > -1)
     {
         snprintf(g_request_url, sizeof(g_request_url), "%s", safe_str(url));
-        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
+        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].cfg.user_agent));
         snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
 
         LOG_DEBUG("GET 添加头 %s", ua);

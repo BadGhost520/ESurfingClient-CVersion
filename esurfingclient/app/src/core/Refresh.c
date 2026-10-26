@@ -70,6 +70,6 @@ void refresh_states(void)
      * 不再跟随主机名随机生成
      */
     snprintf(g_prog_status[tl_thread_idx].auth_cfg.ostag, OSTAG_LEN, "%s",
-             channel_ostag(g_prog_status[tl_thread_idx].login_cfg.chn));
+             channel_ostag(g_prog_status[tl_thread_idx].cfg.chn));
     LOG_DEBUG("ostag: %s", g_prog_status[tl_thread_idx].auth_cfg.ostag);
 }

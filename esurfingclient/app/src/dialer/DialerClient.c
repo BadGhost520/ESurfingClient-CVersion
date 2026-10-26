@@ -229,7 +229,7 @@ static RunStatus run(void)
 
                         const uint32_t wait_ms = heartbeat_backoff_ms[retry_heartbeat - 1];
                         LOG_WARN("配置 %" PRIu8 " 心跳包发送失败 (%s), 下标 %" PRIu8 ", 第 %" PRIu8 "/%" PRIu8 " 次, %" PRIu32 " 秒后重试",
-                            g_prog_status[tl_thread_idx].login_cfg.idx,
+                            g_prog_status[tl_thread_idx].cfg.idx,
                             hb == HB_NET_FAIL ? "网络不通" : "服务端拒绝",
                             tl_thread_idx,
                             retry_heartbeat,
@@ -285,7 +285,7 @@ static RunStatus run(void)
             if (recent >= 2)
             {
                 LOG_ERROR("配置 %" PRIu8 " 在 60 秒内已登录 %" PRIu8 " 次仍被要求认证, 判定为配置错误或账号被限制, 暂停自动认证",
-                    g_prog_status[tl_thread_idx].login_cfg.idx, recent);
+                    g_prog_status[tl_thread_idx].cfg.idx, recent);
 
                 s_login_ms[0] = 0;
                 s_login_ms[1] = 0;
@@ -311,7 +311,7 @@ static RunStatus run(void)
             if (status->last_error_msg[0] != '\0')
             {
                 LOG_ERROR("配置 %" PRIu8 " 认证失败: %s (Error-Code: %s, Sub-Error: %s, 分类: %s)",
-                    g_prog_status[tl_thread_idx].login_cfg.idx,
+                    g_prog_status[tl_thread_idx].cfg.idx,
                     status->last_error_msg,
                     status->last_error_code[0] != '\0' ? status->last_error_code : "-",
                     status->last_sub_error[0] != '\0' ? status->last_sub_error : "-",
@@ -320,7 +320,7 @@ static RunStatus run(void)
             else
             {
                 LOG_ERROR("配置 %" PRIu8 " 认证失败: 没拿到服务端错误码, 按网络问题处理",
-                    g_prog_status[tl_thread_idx].login_cfg.idx);
+                    g_prog_status[tl_thread_idx].cfg.idx);
             }
 
             uint64_t wait_minutes = 0;
@@ -341,7 +341,7 @@ static RunStatus run(void)
                                         : (retry_auth <= table_len ? retry_auth : table_len);
                 wait_minutes = table[step - 1];
                 LOG_WARN("配置 %" PRIu8 " 将在 %" PRIu64 " 分钟后重试 (第 %" PRIu8 " 次失败, 不设上限, 重启或退出可立即打断)",
-                    g_prog_status[tl_thread_idx].login_cfg.idx, wait_minutes, retry_auth);
+                    g_prog_status[tl_thread_idx].cfg.idx, wait_minutes, retry_auth);
                 if (retry_auth < UINT8_MAX) retry_auth++;
             }
 
@@ -386,7 +386,7 @@ int dialer_app(void* arg)
     LOG_DEBUG("认证线程 %" PRId8 " 创建成功, ID: %" PRIu64 ", 使用配置: %" PRIu8,
         tl_thread_idx,
         g_prog_status[tl_thread_idx].thread_id,
-        g_prog_status[tl_thread_idx].login_cfg.idx);
+        g_prog_status[tl_thread_idx].cfg.idx);
 
     refresh_states(); // 刷新数据 (algo_id, host_name, client_id, mac_addr)
     if (get_last_location() == false) g_prog_status[tl_thread_idx].runtime_status.is_running = false;  // 获取 last_location, 用于获取认证配置
@@ -540,7 +540,7 @@ static int work_web(void)
         if (hold_for_cfg() == false) shut(0);
     }
 
-    LOG_DEBUG("以 Web 进程运行, 展示配置 %" PRIu8, g_prog_status[0].login_cfg.idx);
+    LOG_DEBUG("以 Web 进程运行, 展示配置 %" PRIu8, g_prog_status[0].cfg.idx);
 
     // Web 服务在独立线程里跑, 主线程只等退出
     while (g_need_exit == false && g_stop_requested == 0)
@@ -756,7 +756,7 @@ void work(void)
     {
         if (g_prog_status[i].runtime_status.is_time_disabled)
         {
-            LOG_INFO("配置 %" PRIu8 " 当前不在允许时段，暂不启动认证线程", g_prog_status[i].login_cfg.idx);
+            LOG_INFO("配置 %" PRIu8 " 当前不在允许时段，暂不启动认证线程", g_prog_status[i].cfg.idx);
             continue;
         }
         g_prog_status[i].thread = sim_thread_create_retry(dialer_app, (void*)(intptr_t)i, 5);
@@ -806,7 +806,7 @@ void work(void)
                             LOG_ERROR("超过重试次数, 强制退出线程");
                             sim_thread_destroy(g_prog_status[j].thread);
                         }
-                        LOG_DEBUG("等待配置 %" PRIu8 " 登出, 下标 %" PRIu8 ", 等待次数: %" PRIu8 ", 最多 5 次", g_prog_status[j].login_cfg.idx, j, retry_wte);
+                        LOG_DEBUG("等待配置 %" PRIu8 " 登出, 下标 %" PRIu8 ", 等待次数: %" PRIu8 ", 最多 5 次", g_prog_status[j].cfg.idx, j, retry_wte);
                         retry_wte++;
                         sleep_ms(2000, true);
                     }

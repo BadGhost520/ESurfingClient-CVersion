@@ -69,7 +69,7 @@ char* create_xml_payload(const XmlChoose choose)
             "    <ostag>%s</ostag>\n"
             "    <gwip>%s</gwip>\n"
             "</request>\n",
-            safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[tl_thread_idx].cfg.user_agent),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id),
             safe_str(cur_tm),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name),
@@ -90,12 +90,12 @@ char* create_xml_payload(const XmlChoose choose)
             "    <userid>%s</userid>\n"
             "    <passwd>%s</passwd>\n"
             "</request>\n",
-            safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[tl_thread_idx].cfg.user_agent),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.ticket),
             safe_str(cur_tm),
-            safe_str(g_prog_status[tl_thread_idx].login_cfg.usr),
-            safe_str(g_prog_status[tl_thread_idx].login_cfg.pwd)
+            safe_str(g_prog_status[tl_thread_idx].cfg.usr),
+            safe_str(g_prog_status[tl_thread_idx].cfg.pwd)
         );
         break;
     case HEART_BEAT:
@@ -113,7 +113,7 @@ char* create_xml_payload(const XmlChoose choose)
             "    <mac>%s</mac>\n"
             "    <ostag>%s</ostag>\n"
             "</request>\n",
-            safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent),
+            safe_str(g_prog_status[tl_thread_idx].cfg.user_agent),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id),
             safe_str(cur_tm),
             safe_str(g_prog_status[tl_thread_idx].auth_cfg.host_name),

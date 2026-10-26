@@ -208,7 +208,7 @@ bool term(void)
             curl_resp_free(&resp);
             return false;
         }
-        LOG_WARN("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx, resp.status, retry);
+        LOG_WARN("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].cfg.idx, tl_thread_idx, resp.status, retry);
         retry++;
         sleep_ms(1000, true);
         curl_resp_free(&resp); // 丢掉上一次的响应体, 否则重试会把它漏掉
@@ -221,7 +221,7 @@ bool term(void)
     g_prog_status[tl_thread_idx].runtime_status.is_authed = false;
 
     // 已经登出了, 存档没用了 (留着的话下次启动会白发一次无用的请求)
-    logout_state_clear(g_prog_status[tl_thread_idx].login_cfg.idx);
+    logout_state_clear(g_prog_status[tl_thread_idx].cfg.idx);
     return true;
 }
 
@@ -409,5 +409,5 @@ void logout_previous_session(void)
         LOG_WARN("恢复加解密工厂失败, 无法补登出");
     }
 
-    logout_state_clear(g_prog_status[0].login_cfg.idx);
+    logout_state_clear(g_prog_status[0].cfg.idx);
 }

@@ -23,7 +23,7 @@ static void clean_session(void)
 
 bool init_session(void)
 {
-    LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].login_cfg.idx, tl_thread_idx);
+    LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].cfg.idx, tl_thread_idx);
 
     /**
      * 向 ticket_url POST 获取 ZSM.
@@ -31,7 +31,7 @@ bool init_session(void)
      * Android/Linux 仍 POST 全 0 UUID.
      */
     const char* ticket_body = g_prog_status[tl_thread_idx].auth_cfg.algo_id;
-    if (g_prog_status[tl_thread_idx].login_cfg.chn == 4 || g_prog_status[tl_thread_idx].login_cfg.chn == 5)
+    if (g_prog_status[tl_thread_idx].cfg.chn == 4 || g_prog_status[tl_thread_idx].cfg.chn == 5)
     {
         ticket_body = "";
         LOG_DEBUG("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
@@ -88,7 +88,7 @@ void clean(void)
         if (g_prog_status[tl_thread_idx].runtime_status.is_authed == true) // 如果已经认证, 则进入
         {
             LOG_INFO("配置 %" PRIu8 " 登出, 下标: %" PRId8,
-                g_prog_status[tl_thread_idx].login_cfg.idx,
+                g_prog_status[tl_thread_idx].cfg.idx,
                 tl_thread_idx);
             term(); // 登出
         }

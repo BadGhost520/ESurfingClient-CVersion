@@ -3,6 +3,8 @@
 
 #include "Definition.h"
 
+#include <cJSON/cJSON.h>
+
 /**
  * @brief 带默认头的 POST
  * @param url 地址
@@ -35,6 +37,31 @@ void curl_resp_free(curl_resp_t* resp);
  * @return 网络状态
  */
 network_status_t check_network_status(bool connect_only);
+
+/**
+ * @brief 填内置的默认探测目标 (hicloud / miui 两组)
+ *
+ * 配置文件里没有 probe_hosts 时用这套; 有配置就由 probe_targets_parse 覆盖。
+ */
+void probe_targets_defaults(void);
+
+/**
+ * @brief 从配置解析探测目标
+ *
+ * 期望形如 `"probe_hosts": [{ "host": "...", "ips": ["1.2.3.4", "..."] }]`。
+ * 解析失败 (不是数组 / 没有合法条目) 返回 false, 调用方保留默认值。
+ * @param arr probe_hosts 数组
+ * @return 是否成功覆盖
+ */
+bool probe_targets_parse(const cJSON* arr);
+
+/**
+ * @brief 把当前生效的探测目标导出成 probe_hosts 数组
+ *
+ * 用于把补全后的结果写回配置文件, 让用户始终能看到实际生效的目标。
+ * @return 新建的 cJSON 数组 (调用方负责 cJSON_Delete), 失败返回 NULL
+ */
+cJSON* probe_targets_to_json(void);
 
 /**
  * @brief 网络状态变化时提示一次 (相同状态不重复打印)

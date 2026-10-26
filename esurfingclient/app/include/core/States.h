@@ -3,6 +3,7 @@
 
 #include "cipher/CipherInterface.h"
 
+#include "utils/log/Logger.h"
 #include "utils/sim/SimThread.h"
 
 #include <inttypes.h>
@@ -10,6 +11,50 @@
 #include <signal.h>
 
 #define SCHOOL_NETWORK_SYMBOL 8
+
+/* ---- 监管进程的子进程表 (原来在 supervisor/SupervisorState.c) ---- */
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+typedef HANDLE child_handle_t;
+#define CHILD_HANDLE_INVALID NULL
+typedef volatile LONG stop_flag_t;
+#else
+#include <signal.h>
+#include <sys/types.h>
+typedef pid_t child_handle_t;
+#define CHILD_HANDLE_INVALID ((pid_t)-1)
+typedef volatile sig_atomic_t stop_flag_t;
+#endif
+
+#define SUPERVISOR_MAX_CHILDREN 17
+
+typedef enum
+{
+    CHILD_WEB = 0,
+    CHILD_AUTH = 1
+} child_kind_t;
+
+typedef struct
+{
+    child_handle_t handle;
+    child_kind_t kind;
+    uint8_t account;
+    uint16_t control_port;
+    bool running;
+    uint32_t restarts;
+    uint64_t start_time;
+    uint64_t next_start_time;
+} child_t;
+
+extern child_t g_children[SUPERVISOR_MAX_CHILDREN];
+
+extern stop_flag_t g_supervisor_stop;
 
 #define TICKET_URL_LEN 512
 #define USER_AGENT_LEN 32
@@ -24,6 +69,19 @@
 
 #define USR_LEN 16
 #define PWD_LEN 128
+
+#define CFG_LOG_DIR_LEN 512
+
+/** 探测目标: 域名 + 固定 IP */
+#define PROBE_HOST_MAX 8
+#define PROBE_IP_MAX 4
+
+typedef struct
+{
+    char host[128];
+    char ips[PROBE_IP_MAX][46];
+    uint8_t ip_count;
+} probe_host_t;
 
 #define WEEK_MINUTES 10080
 #define MAX_TIME_WINDOWS 16
@@ -91,7 +149,6 @@ typedef struct
     char ticket[TICKET_LEN];
     char client_ip[IP_LEN];
     char ac_ip[IP_LEN];
-    /** 默认网关 IP: 认证报文的 <gwip> 用它 (不是 AC 地址) */
     char gwip[IP_LEN];
     cipher_interface_t* cipher;
     uint64_t keep_retry;
@@ -107,6 +164,7 @@ typedef struct
 
 typedef struct
 {
+    /* ---- 账号相关 ---- */
     char usr[USR_LEN];
     char pwd[PWD_LEN];
     uint8_t chn;
@@ -117,9 +175,19 @@ typedef struct
     uint8_t time_window_count;
     bool has_time_control;
     uint8_t idx;
-} login_cfg_t;
 
-/** 上次认证失败留下的错误码与说明 (长度) */
+    /* ---- 全局配置 (每个账号一份, 值相同; 保存时用第一份) ---- */
+    bool enabled;
+    bool web_external_acc;
+    long log_lv;
+    char log_dir[CFG_LOG_DIR_LEN];
+    uint16_t web_port;
+    long conn_timeout;
+    long op_timeout;
+    probe_host_t probe_hosts[PROBE_HOST_MAX];
+    uint8_t probe_host_count;
+} cfg_t;
+
 #define AUTH_ERROR_CODE_LEN 24
 #define AUTH_ERROR_MSG_LEN 128
 
@@ -130,7 +198,6 @@ typedef struct
     bool is_authed;
     bool is_need_reauth;
     bool is_time_disabled;
-    /** 上次认证失败时服务端返回的码与翻译, 供日志与网页显示使用 */
     uint8_t last_error_kind;
     uint64_t last_error_at;
     char last_error_code[AUTH_ERROR_CODE_LEN];
@@ -141,7 +208,7 @@ typedef struct
 typedef struct
 {
     auth_cfg_t auth_cfg;
-    login_cfg_t login_cfg;
+    cfg_t cfg;
     runtime_status_t runtime_status;
     uint64_t thread_id;
     sim_thread_t* thread;
@@ -205,6 +272,36 @@ extern _Thread_local const char* tl_thread_name;
 extern prog_status_t* g_prog_status;
 
 extern char g_school_network_symbol[SCHOOL_NETWORK_SYMBOL];
+
+/* 门户页面响应头里的 School Id / Domain / Area (都是短串) */
+#define SCHOOL_ID_LENGTH 8
+#define DOMAIN_LENGTH 16
+#define AREA_LENGTH 8
+
+extern char g_school_id[SCHOOL_ID_LENGTH];
+
+extern char g_school_domain[DOMAIN_LENGTH];
+
+extern char g_area[AREA_LENGTH];
+
+/* 日志模块的全局状态 (原来是 LogCore.c 里的定义) */
+extern const char g_log_file_name[];
+
+extern char g_cfg_log_dir[LOG_PATH_MAX];
+
+extern bool g_logger_inited;
+
+extern log_cfg_t g_logger_cfg;
+
+extern bool g_console_enabled;
+
+extern bool g_query_mode;
+
+/* --list-accounts / --print-log-dir 这类查询模式 (不走完整启动流程) */
+extern bool g_list_only;
+
+/* 监管进程拉起的子进程数 (子进程表本身在 SupervisorState.c) */
+extern int g_child_count;
 
 extern bool g_thread_keep_alive;
 

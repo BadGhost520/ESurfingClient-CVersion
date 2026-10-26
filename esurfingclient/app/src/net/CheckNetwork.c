@@ -4,8 +4,11 @@
 
 #include "utils/log/Logger.h"
 #include "utils/sim/SimThread.h"
+#include "utils/text/TextUtils.h"
 #include "utils/time/TimeUtils.h"
 
+#include <ctype.h>
+#include <cJSON/cJSON.h>
 #include <curl/curl.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -16,11 +19,8 @@
 #define AUTH_URL "http://14.146.227.141:7001"
 #define AUTH_BAK_URL "http://121.8.177.212:7001"
 
-/** 一次并发探测的 handle 上限 (每个目标可能同时开 DNS 一路 + 多个固定 IP) */
-#define PROBE_MAX 8
-
-/** 每个域名最多配几个兜底 IP (一个域名有多条 A 记录很正常) */
-#define KNOWN_IP_MAX 2
+/** 一次并发探测的 handle 上限 (每个目标可能同时开多路固定 IP) */
+#define PROBE_MAX 16
 
 /**
  * 单个探测的超时 (毫秒)
@@ -55,31 +55,171 @@ typedef struct
     const char* label;
 } probe_target_t;
 
-/**
- * 域名的固定解析表
- *
- * 校园网里 DNS 经常根本不可用 (未认证时被拦, curl 报 CURLcode 6 解析超时),
- * 甚至被劫持到错误地址。这些目标地址本来就是固定的, 所以探测只发固定 IP 的
- * 请求, 完全不查系统 DNS。
- */
-typedef struct
+/** @brief 判断字符串是不是合法的 IPv4 (只认 a.b.c.d 四段 0~255, 不查 DNS) */
+static bool probe_is_ipv4(const char* s)
 {
-    const char* host;
-    /** 固定 IP, 按顺序; 每个 IP 会各开一路并发探测, 空位填 NULL */
-    const char* ips[KNOWN_IP_MAX];
-} known_host_t;
+    if (s == NULL || *s == '\0') return false;
 
-static const known_host_t s_known_hosts[] = {
+    uint8_t parts = 0;
+    while (*s != '\0')
     {
-        "connectivitycheck.platform.hicloud.com",
-        {"183.61.185.93", "125.88.255.53"}
-        // {"183.61.185.93", "125.88.255.53", "183.61.228.80", "183.61.228.74", "14.29.44.97", "183.61.225.71", "14.29.44.94", "125.88.255.54", "183.61.225.72", "183.61.185.106"}
-    },
+        if (isdigit((unsigned char)*s) == 0) return false;
+
+        int value = 0;
+        while (isdigit((unsigned char)*s) != 0)
+        {
+            value = value * 10 + (*s - '0');
+            if (value > 255) return false;
+            s++;
+        }
+
+        parts++;
+        if (*s == '\0') break;
+        if (*s != '.') return false;
+        s++;
+    }
+    return parts == 4;
+}
+
+/**
+ * 探测目标放在全局配置里 (g_prog_status[0].cfg.probe_hosts), 这里用两个短名字
+ * 指向它, 省得到处写长前缀。内容由 probe_targets_defaults / probe_targets_parse 填。
+ */
+#define s_known_hosts (g_prog_status[0].cfg.probe_hosts)
+#define s_known_host_count (g_prog_status[0].cfg.probe_host_count)
+
+/** @brief 找 host 对应的槽位, 没有就新建一个 (新建时清空) */
+static probe_host_t* known_host_slot(const char* host)
+{
+    if (host == NULL) return NULL;
+
+    for (uint8_t i = 0; i < s_known_host_count; i++)
     {
-        "connect.rom.miui.com",
-        {"202.69.4.32", "220.181.104.183"}
-    },
-};
+        if (str_ieq(s_known_hosts[i].host, host)) return &s_known_hosts[i];
+    }
+
+    if (s_known_host_count >= PROBE_HOST_MAX) return NULL;
+
+    probe_host_t* slot = &s_known_hosts[s_known_host_count];
+    memset(slot, 0, sizeof(*slot));
+    snprintf(slot->host, sizeof(slot->host), "%s", host);
+    s_known_host_count++;
+    return slot;
+}
+
+static void known_host_add(const char* host, const char* ip)
+{
+    if (ip == NULL) return;
+
+    probe_host_t* slot = known_host_slot(host);
+    if (slot == NULL) return;
+    if (slot->ip_count >= PROBE_IP_MAX) return;
+
+    snprintf(slot->ips[slot->ip_count], sizeof(slot->ips[0]), "%s", ip);
+    slot->ip_count++;
+}
+
+void probe_targets_defaults(void)
+{
+    memset(s_known_hosts, 0, sizeof(s_known_hosts));
+    s_known_host_count = 0;
+
+    (void)known_host_slot("connectivitycheck.platform.hicloud.com");
+    known_host_add("connectivitycheck.platform.hicloud.com", "183.61.185.93");
+    known_host_add("connectivitycheck.platform.hicloud.com", "125.88.255.53");
+
+    (void)known_host_slot("connect.rom.miui.com");
+    known_host_add("connect.rom.miui.com", "202.69.4.32");
+    known_host_add("connect.rom.miui.com", "220.181.104.183");
+}
+
+/**
+ * @brief 解析配置里的 probe_hosts
+ *
+ * 语义是"替换": 配置里写了就用配置的这一套（写全写少由用户决定）;
+ * 完全没写时由调用方补默认值并写回配置文件。格式不对返回 false, 保留默认。
+ */
+bool probe_targets_parse(const cJSON* arr)
+{
+    if (arr == NULL) return false;
+
+    if (cJSON_IsArray(arr) == false)
+    {
+        LOG_WARN("probe_hosts 不是数组, 使用内置默认探测目标");
+        return false;
+    }
+
+    probe_host_t parsed[PROBE_HOST_MAX];
+    uint8_t parsed_count = 0;
+
+    const int item_count = cJSON_GetArraySize(arr);
+    for (int i = 0; i < item_count && parsed_count < PROBE_HOST_MAX; i++)
+    {
+        const cJSON* item = cJSON_GetArrayItem(arr, i);
+        const cJSON* host = cJSON_GetObjectItem(item, "host");
+        const cJSON* ips = cJSON_GetObjectItem(item, "ips");
+
+        if (cJSON_IsString(host) == false || host->valuestring[0] == '\0') continue;
+        if (cJSON_IsArray(ips) == false) continue;
+
+        probe_host_t t = {0};
+        snprintf(t.host, sizeof(t.host), "%s", host->valuestring);
+
+        const int ip_count = cJSON_GetArraySize(ips);
+        for (int k = 0; k < ip_count && t.ip_count < PROBE_IP_MAX; k++)
+        {
+            const cJSON* ip = cJSON_GetArrayItem(ips, k);
+            if (cJSON_IsString(ip) == false || ip->valuestring[0] == '\0') continue;
+            if (probe_is_ipv4(ip->valuestring) == false) continue;
+
+            snprintf(t.ips[t.ip_count], sizeof(t.ips[0]), "%s", ip->valuestring);
+            t.ip_count++;
+        }
+
+        if (t.ip_count == 0) continue;
+        parsed[parsed_count] = t;
+        parsed_count++;
+    }
+
+    if (parsed_count == 0) return false;
+
+    memcpy(s_known_hosts, parsed, sizeof(parsed[0]) * parsed_count);
+    s_known_host_count = parsed_count;
+
+    for (uint8_t i = 0; i < s_known_host_count; i++)
+    {
+        LOG_DEBUG("探测目标: %s (%" PRIu8 " 个固定 IP)", s_known_hosts[i].host, s_known_hosts[i].ip_count);
+    }
+    return true;
+}
+
+/** @brief 把当前探测目标导出成 probe_hosts 数组 (调用方负责 cJSON_Delete) */
+cJSON* probe_targets_to_json(void)
+{
+    cJSON* arr = cJSON_CreateArray();
+    if (arr == NULL) return NULL;
+
+    for (uint8_t i = 0; i < s_known_host_count; i++)
+    {
+        cJSON* item = cJSON_CreateObject();
+        if (item == NULL) break;
+
+        cJSON_AddStringToObject(item, "host", s_known_hosts[i].host);
+
+        cJSON* ips = cJSON_CreateArray();
+        if (ips != NULL)
+        {
+            for (uint8_t k = 0; k < s_known_hosts[i].ip_count; k++)
+            {
+                cJSON_AddItemToArray(ips, cJSON_CreateString(s_known_hosts[i].ips[k]));
+            }
+            cJSON_AddItemToObject(item, "ips", ips);
+        }
+
+        cJSON_AddItemToArray(arr, item);
+    }
+    return arr;
+}
 
 /** 一个在飞的探测 */
 typedef struct
@@ -110,13 +250,13 @@ static bool url_host(const char* url, char* out, size_t out_len)
 }
 
 /** @brief 找某个 host 的兜底 IP 表, 没有就返回 NULL */
-static const known_host_t* known_host_for(const char* host)
+static const probe_host_t* known_host_for(const char* host)
 {
     if (host == NULL) return NULL;
 
-    for (size_t i = 0; i < sizeof(s_known_hosts) / sizeof(s_known_hosts[0]); i++)
+    for (uint8_t i = 0; i < s_known_host_count; i++)
     {
-        if (strcmp(s_known_hosts[i].host, host) == 0) return &s_known_hosts[i];
+        if (str_ieq(s_known_hosts[i].host, host)) return &s_known_hosts[i];
     }
     return NULL;
 }
@@ -250,14 +390,14 @@ static network_status_t probe_group(const probe_target_t* targets, const size_t 
     {
         char host[128] = "";
         const bool has_host = url_host(targets[i].url, host, sizeof(host));
-        const known_host_t* known = has_host ? known_host_for(host) : NULL;
+        const probe_host_t* known = has_host ? known_host_for(host) : NULL;
 
-        if (known != NULL && known->ips[0] != NULL)
+        if (known != NULL && known->ip_count > 0)
         {
             // 域名: 只发固定 IP 的各路, 不走系统 DNS
-            for (size_t k = 0; k < KNOWN_IP_MAX && known->ips[k] != NULL && probe_count < PROBE_MAX; k++)
+            for (uint8_t k = 0; k < known->ip_count && probe_count < PROBE_MAX; k++)
             {
-                snprintf(labels[probe_count], sizeof(labels[0]), "%s/ip%zu", targets[i].label, k + 1);
+                snprintf(labels[probe_count], sizeof(labels[0]), "%s/ip%" PRIu8, targets[i].label, (uint8_t)(k + 1));
                 probe_add(multi, targets[i].url, host, known->ips[k], labels[probe_count], probes, &probe_count);
             }
         }
@@ -336,17 +476,29 @@ network_status_t check_network_status(const bool connect_only)
      */
     (void)connect_only;
 
-    static const probe_target_t internet_targets[] = {
-        {GENERATE_URL, "hicloud"},
-        {GENERATE_BAK_URL, "miui"},
-    };
+    /**
+     * 联网探测目标来自配置 (probe_hosts), 没配就用内置的 hicloud / miui 两组。
+     * 配置里只写 host, 检测路径统一拼 /generate_204。
+     */
+    probe_target_t internet_targets[PROBE_HOST_MAX];
+    char urls[PROBE_HOST_MAX][192];
+    uint8_t internet_count = 0;
+
+    for (uint8_t i = 0; i < s_known_host_count && internet_count < PROBE_HOST_MAX; i++)
+    {
+        snprintf(urls[internet_count], sizeof(urls[0]), "http://%s/generate_204", s_known_hosts[i].host);
+        internet_targets[internet_count].url = urls[internet_count];
+        internet_targets[internet_count].label = s_known_hosts[i].host;
+        internet_count++;
+    }
+
     static const probe_target_t auth_targets[] = {
         {AUTH_URL, "auth1"},
         {AUTH_BAK_URL, "auth2"},
     };
 
     const network_status_t status =
-        probe_group(internet_targets, sizeof(internet_targets) / sizeof(internet_targets[0]));
+        (internet_count > 0) ? probe_group(internet_targets, internet_count) : STATUS_ERROR;
     if (status != STATUS_ERROR) return status;
 
     /**

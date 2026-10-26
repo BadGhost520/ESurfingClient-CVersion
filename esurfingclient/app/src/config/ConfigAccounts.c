@@ -98,7 +98,7 @@ uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
     return 3;
 }
 
-void apply_channel_ua(login_cfg_t* cfg, const uint8_t cfg_no)
+void apply_channel_ua(cfg_t* cfg, const uint8_t cfg_no)
 {
     const channel_t* found = channel_find(cfg->chn);
     if (found == NULL)
@@ -146,7 +146,7 @@ int list_accounts(void)
 
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        printf("%" PRIu8 "\n", g_prog_status[i].login_cfg.idx);
+        printf("%" PRIu8 "\n", g_prog_status[i].cfg.idx);
     }
     fflush(stdout);
 

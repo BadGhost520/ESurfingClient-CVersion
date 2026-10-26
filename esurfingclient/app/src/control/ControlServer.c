@@ -193,7 +193,7 @@ static void ctl_reply_status(char* reply, const size_t reply_len)
 
     if (g_prog_status != NULL && g_prog_cnt > 0)
     {
-        account = g_prog_status[0].login_cfg.idx;
+        account = g_prog_status[0].cfg.idx;
         is_authed = g_prog_status[0].runtime_status.is_authed;
         is_running = g_prog_status[0].runtime_status.is_running;
         is_time_disabled = g_prog_status[0].runtime_status.is_time_disabled;

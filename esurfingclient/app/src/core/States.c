@@ -61,6 +61,43 @@ prog_status_t* g_prog_status;
 
 char g_school_network_symbol[SCHOOL_NETWORK_SYMBOL] = {0};
 
+/* 门户页面响应头里拿到的校园网标志 (由 NetClientCurl 的 header_cb 填) */
+char g_school_id[SCHOOL_ID_LENGTH] = {0};
+
+char g_school_domain[DOMAIN_LENGTH] = {0};
+
+char g_area[AREA_LENGTH] = {0};
+
+const char g_log_file_name[] = "run.log";
+
+char g_cfg_log_dir[LOG_PATH_MAX] = "";
+
+bool g_logger_inited = false;
+
+log_cfg_t g_logger_cfg = {
+    .lv = LOG_LEVEL_INFO,
+    .log_dir = "",
+    .log_file = "",
+    .file_handle = NULL,
+    .max_lines = 10000,
+    .cur_lines = 0,
+    .file_dev = 0,
+    .file_ino = 0,
+    .lines_since_check = 0
+};
+
+bool g_console_enabled = true;
+
+bool g_query_mode = false;
+
+bool g_list_only = false;
+
+int g_child_count = 0;
+
+child_t g_children[SUPERVISOR_MAX_CHILDREN];
+
+stop_flag_t g_supervisor_stop = 0;
+
 bool g_thread_keep_alive = false;
 
 bool g_is_webserver_running = false;

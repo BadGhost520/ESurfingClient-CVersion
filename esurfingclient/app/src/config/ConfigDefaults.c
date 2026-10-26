@@ -4,6 +4,8 @@
 
 #include "ConfigInternal.h"
 
+#include "net/NetClient.h"
+
 #include "utils/log/Logger.h"
 
 #include "cJSON/cJSON.h"
@@ -128,6 +130,30 @@ uint8_t complete_cfg(cJSON* cfg_json)
 {
     uint8_t added = complete_cfg_obj(cfg_json, s_cfg_defaults,
         sizeof(s_cfg_defaults) / sizeof(s_cfg_defaults[0]), "配置里");
+
+    /**
+     * probe_hosts 是对象数组 (host + ips[]), 默认值表表达不了, 单独补一份。
+     * 补进去的就是内置的两组默认探测目标, 用户下次打开配置就能看到实际在用什么。
+     */
+    if (cJSON_GetObjectItem(cfg_json, "probe_hosts") == NULL)
+    {
+        // 导出前必须确保 s_known_hosts 已经是默认值 (配置加载顺序上这时还没填过)
+        probe_targets_defaults();
+
+        cJSON* defaults = probe_targets_to_json();
+        if (defaults != NULL)
+        {
+            if (cJSON_AddItemToObject(cfg_json, "probe_hosts", defaults) != false)
+            {
+                LOG_INFO("配置里缺少 probe_hosts 参数, 已补上默认探测目标");
+                added++;
+            }
+            else
+            {
+                cJSON_Delete(defaults);
+            }
+        }
+    }
 
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (accounts != NULL && cJSON_IsArray(accounts))

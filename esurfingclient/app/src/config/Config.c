@@ -3,6 +3,7 @@
 #include "ConfigInternal.h"
 
 #include "core/States.h"
+#include "net/NetClient.h"
 #include "utils/log/Logger.h"
 #include "utils/platform/PlatformUtils.h"
 #include "utils/text/TextUtils.h"
@@ -14,6 +15,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #ifdef __OPENWRT__
 static const char config_file[] = "/etc/config/esurfingclient";
@@ -30,6 +35,16 @@ static const char s_default_cfg[] = "{\n"
                                     "   \"conn_timeout\": 7,\n"
                                     "   \"op_timeout\": 10,\n"
                                     "   \"web_port\": 8888,\n"
+                                    "   \"probe_hosts\": [\n"
+                                    "       {\n"
+                                    "           \"host\": \"connectivitycheck.platform.hicloud.com\",\n"
+                                    "           \"ips\": [\"183.61.185.93\", \"125.88.255.53\"]\n"
+                                    "       },\n"
+                                    "       {\n"
+                                    "           \"host\": \"connect.rom.miui.com\",\n"
+                                    "           \"ips\": [\"202.69.4.32\", \"220.181.104.183\"]\n"
+                                    "       }\n"
+                                    "   ],\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
@@ -98,18 +113,138 @@ static bool write_cfg_json(const cJSON* cfg_json)
         return false;
     }
 
-    FILE* cfg_file = fopen(config_file, "w");
+    /**
+     * 先写临时文件再 rename: 现在每次启动都会写一次配置, 桌面端三个进程几乎
+     * 同时启动, 直接覆盖同一个文件的话有可能互相截断 (写出半截 JSON)。
+     * 临时文件名带上进程号: 多进程各写各的 tmp, 再原子替换, 谁最后写完谁生效,
+     * 内容一样, 不会写坏也不会互相抢同一个 tmp。
+     */
+    char tmp_path[PATH_MAX + 32];
+#ifdef _WIN32
+    snprintf(tmp_path, sizeof(tmp_path), "%s.%lu.tmp", config_file, (unsigned long)GetCurrentProcessId());
+#else
+    snprintf(tmp_path, sizeof(tmp_path), "%s.%ld.tmp", config_file, (long)getpid());
+#endif
+
+    FILE* cfg_file = fopen(tmp_path, "w");
     if (!cfg_file)
     {
-        LOG_ERROR("无法生成文件: %s", config_file);
+        LOG_ERROR("无法生成文件: %s", tmp_path);
         free(cfg_text);
         return false;
     }
-    fprintf(cfg_file, "%s", cfg_text);
+    const bool written = (fprintf(cfg_file, "%s", cfg_text) > 0);
+    fflush(cfg_file);
     fclose(cfg_file);
-
     free(cfg_text);
-    return true;
+
+    if (written == false)
+    {
+        remove(tmp_path);
+        return false;
+    }
+
+#ifdef _WIN32
+    const bool replaced = (MoveFileExA(tmp_path, config_file, MOVEFILE_REPLACE_EXISTING) != 0);
+#else
+    const bool replaced = (rename(tmp_path, config_file) == 0);
+#endif
+
+    if (replaced == false)
+    {
+        LOG_ERROR("替换配置文件失败: %s", config_file);
+        remove(tmp_path);
+    }
+    return replaced;
+}
+
+/** @brief 周分钟 (0=周日 00:00) 转回 "mon 08:13" 格式 */
+static void format_week_time(const uint16_t week_min, char* out, const size_t len)
+{
+    static const char* const days[] = {"sun", "mon", "tue", "wed", "thu", "fri", "sat"};
+
+    const uint16_t day = week_min / 1440;
+    const uint16_t rest = week_min % 1440;
+    snprintf(out, len, "%s %02u:%02u", days[day % 7], rest / 60, rest % 60);
+}
+
+/**
+ * @brief 把内存里的配置按固定键序写成 JSON 文件
+ *
+ * 和"在旧 JSON 上补键"不同: 这里从 cfg 结构重新生成, 补全的参数会出现在默认
+ * 模板的位置, 而不是被追加到文件末尾。
+ *
+ * @param account_count 要写出的账号数
+ * @return 是否写入成功
+ */
+static bool save_cfg_from_cfg(const uint8_t account_count)
+{
+    const cfg_t* global = &g_prog_status[0].cfg;
+
+    cJSON* root = cJSON_CreateObject();
+    if (root == NULL) return false;
+
+    cJSON_AddBoolToObject(root, "enabled", global->enabled);
+    cJSON_AddBoolToObject(root, "web_external_acc", global->web_external_acc);
+    cJSON_AddNumberToObject(root, "log_lv", global->log_lv);
+    cJSON_AddStringToObject(root, "log_dir", global->log_dir);
+    cJSON_AddNumberToObject(root, "conn_timeout", global->conn_timeout);
+    cJSON_AddNumberToObject(root, "op_timeout", global->op_timeout);
+    cJSON_AddNumberToObject(root, "web_port", global->web_port);
+
+    cJSON* probes = cJSON_AddArrayToObject(root, "probe_hosts");
+    for (uint8_t i = 0; probes != NULL && i < global->probe_host_count; i++)
+    {
+        cJSON* item = cJSON_CreateObject();
+        if (item == NULL) break;
+
+        cJSON_AddStringToObject(item, "host", global->probe_hosts[i].host);
+        cJSON* ips = cJSON_AddArrayToObject(item, "ips");
+        for (uint8_t k = 0; ips != NULL && k < global->probe_hosts[i].ip_count; k++)
+        {
+            cJSON_AddItemToArray(ips, cJSON_CreateString(global->probe_hosts[i].ips[k]));
+        }
+        cJSON_AddItemToArray(probes, item);
+    }
+
+    cJSON* accounts = cJSON_AddArrayToObject(root, "accounts");
+    for (uint8_t i = 0; accounts != NULL && i < account_count; i++)
+    {
+        const cfg_t* a = &g_prog_status[i].cfg;
+
+        cJSON* item = cJSON_CreateObject();
+        if (item == NULL) break;
+
+        cJSON_AddStringToObject(item, "username", a->usr);
+        cJSON_AddStringToObject(item, "password", a->pwd);
+        cJSON_AddNumberToObject(item, "channel", a->chn);
+
+        char mark[16] = "";
+        if (a->use_cus_mark) snprintf(mark, sizeof(mark), "0x%" PRIx32, a->mark);
+        cJSON_AddStringToObject(item, "mark", mark);
+
+        cJSON* windows = cJSON_AddArrayToObject(item, "time_windows");
+        for (uint8_t k = 0; windows != NULL && k < a->time_window_count; k++)
+        {
+            cJSON* w = cJSON_CreateObject();
+            if (w == NULL) break;
+
+            char start[TIME_WINDOW_STR_LEN];
+            char end[TIME_WINDOW_STR_LEN];
+            format_week_time(a->time_windows[k].start_week_min, start, sizeof(start));
+            format_week_time(a->time_windows[k].end_week_min, end, sizeof(end));
+
+            cJSON_AddStringToObject(w, "start", start);
+            cJSON_AddStringToObject(w, "end", end);
+            cJSON_AddItemToArray(windows, w);
+        }
+
+        cJSON_AddItemToArray(accounts, item);
+    }
+
+    const bool ok = write_cfg_json(root);
+    cJSON_Delete(root);
+    return ok;
 }
 
 #ifndef __OPENWRT__
@@ -138,8 +273,6 @@ const char* get_config_file_path(void)
 }
 
 #endif
-
-bool g_list_only = false;
 
 const char* get_config_path(void)
 {
@@ -278,7 +411,7 @@ typedef enum
  * @param cfg 输出
  * @return 解析结果
  */
-static account_state_t fill_account(const cJSON* account, const uint8_t cfg_no, login_cfg_t* cfg)
+static account_state_t fill_account(const cJSON* account, const uint8_t cfg_no, cfg_t* cfg)
 {
     const cJSON* usr = cJSON_GetObjectItem(account, "username");
     const cJSON* pwd = cJSON_GetObjectItem(account, "password");
@@ -390,22 +523,16 @@ bool load_cfg(void)
     /**
      * 先把配置补全, 再往下解析
      *
-     * 放在这里是为了后面每一处解析都能拿到完整的对象; 补全后的内容要写回文件,
-     * 用户下次打开配置就能看见自己漏了什么 (写不回去也不影响本次运行, 值已经在内存里)
+     * 放在这里是为了后面每一处解析都能拿到完整的对象。补全的结果最终从 cfg 结构
+     * 重新生成并写回文件 (见文件末尾), 所以补出来的键会落在默认模板的位置。
      */
     const uint8_t completed = complete_cfg(cfg_json);
     if (completed > 0)
     {
         LOG_INFO("配置文件缺少参数, 已按默认值补全 %" PRIu8 " 个", completed);
-        if (write_cfg_json(cfg_json))
-        {
-            LOG_DEBUG("补全后的配置已写回 %s", config_file);
-        }
-        else
-        {
-            LOG_WARN("补全后的配置写回失败 (配置文件可能是只读的?), 本次仍按补全后的值运行");
-        }
     }
+
+    cfg_t* global_cfg = &g_prog_status[0].cfg;
 
     /**
      * Web 服务端口与是否允许外部访问
@@ -420,6 +547,8 @@ bool load_cfg(void)
     const long web_port = cfg_read_num(cfg_json, "web_port", DEFAULT_WEB_PORT);
     g_web_port = (web_port >= 1 && web_port <= 65535) ? (uint16_t)web_port : DEFAULT_WEB_PORT;
     g_web_external_acc = cfg_read_bool(cfg_json, "web_external_acc", DEFAULT_WEB_EXTERNAL_ACC);
+    global_cfg->web_port = g_web_port;
+    global_cfg->web_external_acc = g_web_external_acc;
 
     /**
      * 从这里开始"尽力解析": 配置不可用 (被禁用 / 账号没填全) 时不再半路返回,
@@ -452,8 +581,11 @@ bool load_cfg(void)
     {
         g_prog_enabled = true;
     }
+    global_cfg->enabled = g_prog_enabled;
 
-    set_logger_level((log_level_t)cfg_read_num(cfg_json, "log_lv", LOG_LEVEL_INFO));
+    const long log_lv = cfg_read_num(cfg_json, "log_lv", LOG_LEVEL_INFO);
+    set_logger_level((log_level_t)log_lv);
+    global_cfg->log_lv = log_lv;
 
     /**
      * 日志目录
@@ -473,9 +605,25 @@ bool load_cfg(void)
     {
         set_logger_dir(log_dir);
     }
+    snprintf(global_cfg->log_dir, sizeof(global_cfg->log_dir), "%s",
+        log_dir != NULL ? log_dir : get_logger_dir_cfg());
 
     g_conn_timeout = cfg_read_num(cfg_json, "conn_timeout", DEFAULT_CONN_TIMEOUT);
     g_op_timeout = cfg_read_num(cfg_json, "op_timeout", DEFAULT_OP_TIMEOUT);
+    global_cfg->conn_timeout = g_conn_timeout;
+    global_cfg->op_timeout = g_op_timeout;
+
+    /**
+     * 联网探测目标 (probe_hosts)
+     *
+     * 缺这一项时 complete_cfg 已经按默认值补上; 有就完全按用户的来 (写几组用几组,
+     * 不擅自补)。格式不对则回退内置默认。
+     */
+    probe_targets_defaults();
+    if (probe_targets_parse(cJSON_GetObjectItem(cfg_json, "probe_hosts")) == false)
+    {
+        LOG_WARN("probe_hosts 格式不对, 使用内置默认探测目标");
+    }
 
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
 
@@ -522,7 +670,7 @@ bool load_cfg(void)
         const cJSON* account = cJSON_GetArrayItem(accounts, i);
         const cJSON* mark = cJSON_GetObjectItem(account, "mark");
 
-        login_cfg_t* login = &g_prog_status[valid_i].login_cfg;
+        cfg_t* login = &g_prog_status[valid_i].cfg;
         const account_state_t state = fill_account(account, i + 1, login);
         if (state == ACCOUNT_SKIP) continue;
         if (state == ACCOUNT_INVALID)
@@ -615,7 +763,7 @@ bool load_cfg(void)
          * 桌面端只留一个槽位: fill_account 会先把用户写过的东西按原样填进 0 号,
          * 这样配置不可用时网页上的配置页仍能回显, 不会被一次保存覆盖成空账号
          */
-        login_cfg_t* login = &g_prog_status[0].login_cfg;
+        cfg_t* login = &g_prog_status[0].cfg;
         const account_state_t state = fill_account(account, i + 1, login);
 
         if (state == ACCOUNT_INVALID)
@@ -652,7 +800,7 @@ bool load_cfg(void)
         int8_t pick = -1;
         for (uint8_t i = 0; i < valid_cnt; i++)
         {
-            if (g_prog_status[i].login_cfg.idx == g_prog_account)
+            if (g_prog_status[i].cfg.idx == g_prog_account)
             {
                 pick = (int8_t)i;
                 break;
@@ -679,7 +827,7 @@ bool load_cfg(void)
             g_prog_status = shrunk;
         }
 
-        LOG_DEBUG("仅加载配置 %" PRIu8 ", 标记值: 0x%x", g_prog_account, g_prog_status[0].login_cfg.mark);
+        LOG_DEBUG("仅加载配置 %" PRIu8 ", 标记值: 0x%x", g_prog_account, g_prog_status[0].cfg.mark);
     }
 
     if (valid_cnt == 0)
@@ -689,6 +837,20 @@ bool load_cfg(void)
     }
 
     g_prog_cnt = valid_cnt;
+
+    /**
+     * 每次加载都把配置写回一次: 内容从 cfg 结构重新生成 (固定键序),
+     * 没缺失的时候也等于顺手把用户手写的格式统一成程序格式。
+     * 写不回去不影响本次运行, 值已经在内存里
+     */
+    if (save_cfg_from_cfg((uint8_t)valid_cnt))
+    {
+        LOG_DEBUG("配置已写回 %s", config_file);
+    }
+    else
+    {
+        LOG_WARN("配置写回失败 (配置文件可能是只读的?), 本次仍按内存里的值运行");
+    }
 
     /**
      * 配置不可用: 返回 false, 但内存里能读出来的值已经填好了。

@@ -325,14 +325,14 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON* accounts = cJSON_CreateArray();
         cJSON* account = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
-        cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
-        cJSON_AddStringToObject(account, "channel", channel_name(g_prog_status[0].login_cfg.chn));
+        cJSON_AddStringToObject(account, "username", g_prog_status[0].cfg.usr);
+        cJSON_AddStringToObject(account, "password", g_prog_status[0].cfg.pwd);
+        cJSON_AddStringToObject(account, "channel", channel_name(g_prog_status[0].cfg.chn));
 
         cJSON* time_windows = cJSON_CreateArray();
-        for (uint8_t i = 0; i < g_prog_status[0].login_cfg.time_window_count; i++)
+        for (uint8_t i = 0; i < g_prog_status[0].cfg.time_window_count; i++)
         {
-            const time_window_t* win = &g_prog_status[0].login_cfg.time_windows[i];
+            const time_window_t* win = &g_prog_status[0].cfg.time_windows[i];
             char start_str[TIME_WINDOW_STR_LEN];
             char end_str[TIME_WINDOW_STR_LEN];
             format_week_min(win->start_week_min, start_str);

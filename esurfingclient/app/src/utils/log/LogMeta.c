@@ -37,7 +37,7 @@ void get_proc_str(char* buf, const size_t len)
     /**
      * 认证进程标上账号序号: OpenWrt 上每个账号一个进程, 光看角色分不清是哪个。
      *
-     * 用 g_prog_account (即 --account 的值) 而不是 g_prog_status[0].login_cfg.idx:
+     * 用 g_prog_account (即 --account 的值) 而不是 g_prog_status[0].cfg.idx:
      * 两者必然相等 (load_cfg 就是按 idx == g_prog_account 挑的), 但 g_prog_status
      * 要等配置加载完才有值 —— 那样"仅加载配置 N"这一行反而标不出账号, 而它恰恰
      * 是最需要标明是哪个账号的一行
@@ -79,7 +79,7 @@ void get_thread_str(char* buf, const size_t len)
         {
             if (sim_thread_cur_id() == g_prog_status[i].thread_id)
             {
-                snprintf(buf, len, "auth#%" PRIu8, g_prog_status[i].login_cfg.idx);
+                snprintf(buf, len, "auth#%" PRIu8, g_prog_status[i].cfg.idx);
                 return;
             }
         }
