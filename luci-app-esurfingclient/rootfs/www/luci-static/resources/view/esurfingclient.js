@@ -3,6 +3,27 @@
 'require fs';
 'require ui';
 
+/** IPv4 校验 (与后端 probe_is_ipv4 一致: a.b.c.d 四段 0~255) */
+function isValidProbeIpv4(value) {
+    var text = String(value == null ? '' : value).trim();
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(text)) return false;
+    return text.split('.').every(function(part) { return Number(part) <= 255; });
+}
+
+/** 规范化 probe_hosts: 丢掉空条/非法 IP, 后端认识的是 { host, ips[] } */
+function normalizeProbeHosts(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .filter(function(item) { return item && typeof item === 'object' && typeof item.host === 'string'; })
+        .map(function(item) {
+            return {
+                host: item.host.trim(),
+                ips: Array.isArray(item.ips) ? item.ips.filter(isValidProbeIpv4) : []
+            };
+        })
+        .filter(function(item) { return item.host.length > 0; });
+}
+
 return view.extend({
     load: function() {
         var self = this;
@@ -48,6 +69,7 @@ return view.extend({
             conn_timeout: 3,
             op_timeout: 5,
             web_port: 8888,
+            probe_hosts: [],
             accounts: []
         };
         
@@ -147,7 +169,9 @@ return view.extend({
                         '相对路径按 ', E('code', {}, '/var/log/esurfing'), ' 解析; 改成闪存上的目录前请想清楚容量与写次数'
                     ])
                 ])
-            ])
+            ]),
+            E('h3', { style: 'margin-top: 20px;' }, '联网探测目标'),
+            self.renderProbeHosts()
         ]);
 
         self.tableBody = self.renderTable();
@@ -263,6 +287,8 @@ return view.extend({
                 // 旧配置文件可能缺少超时参数, 这里补齐默认值, 避免输入框显示空值
                 self.config.conn_timeout = self.normalizeTimeout(self.config.conn_timeout, 3);
                 self.config.op_timeout = self.normalizeTimeout(self.config.op_timeout, 5);
+                // 探测目标: 缺失就留空数组, 页面上显示为空 (保存时不写这个键, 后端用内置默认)
+                self.config.probe_hosts = normalizeProbeHosts(self.config.probe_hosts);
                 self.showNotification('读取配置文件成功', 'success');
                 return self.config;
             })
@@ -275,6 +301,7 @@ return view.extend({
                     conn_timeout: 3,
                     op_timeout: 5,
                     web_port: 8888,
+                    probe_hosts: [],
                     accounts: [
                         {
                             username: '加载失败',
@@ -292,6 +319,20 @@ return view.extend({
 
     saveConfig: function() {
         var self = this;
+
+        var too_many = (self.config.probe_hosts || []).filter(function(item) {
+            return item && Array.isArray(item.ips) && item.ips.length > 4;
+        })[0];
+        if (too_many) {
+            self.showNotification(too_many.host + ' 配了 ' + too_many.ips.length + ' 个 IP, 每个域名最多 4 个', 'error');
+            return Promise.reject(new Error('单个域名 IP 数超过 4'));
+        }
+
+        var total = self.probeIpTotal();
+        if (total > 14) {
+            self.showNotification('探测目标共 ' + total + ' 路, 最多 14 路 (认证服务器已占 2 路)', 'error');
+            return Promise.reject(new Error('探测目标超过 14 路'));
+        }
 
         return fs.write('/etc/config/esurfingclient', JSON.stringify(self.config, null, 2));
     },
@@ -316,6 +357,95 @@ return view.extend({
         var newBody = self.renderTable();
         self.tableBody.parentNode.replaceChild(newBody, self.tableBody);
         self.tableBody = newBody;
+    },
+
+    /**
+     * 探测目标总路数 (上限 14 路: 探测并发 PROBE_MAX=16, 认证服务器固定占 2 路)
+     */
+    probeIpTotal: function() {
+        var self = this;
+
+        return normalizeProbeHosts(self.config.probe_hosts)
+            .reduce(function(sum, item) { return sum + item.ips.length; }, 0);
+    },
+
+    /**
+     * 联网探测目标编辑区
+     *
+     * 配置里存的是 { host, ips[] }, 页面上把 ips 拼成逗号分隔的文本框;
+     * 改完点保存才会写回 /etc/config/esurfingclient。
+     */
+    renderProbeHosts: function() {
+        var self = this;
+
+        self.config.probe_hosts = normalizeProbeHosts(self.config.probe_hosts);
+        var at_limit = (self.probeIpTotal() >= 14);
+
+        var rows = self.config.probe_hosts.map(function(item, index) {
+            return E('tr', { class: 'tr' }, [
+                E('td', { class: 'td' }, E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    placeholder: 'connectivitycheck.platform.hicloud.com',
+                    value: item.host,
+                    change: function(ev) {
+                        item.host = ev.target.value.trim();
+                    }
+                })),
+                E('td', { class: 'td' }, E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    placeholder: '183.61.185.93, 125.88.255.53',
+                    value: (item.ips || []).join(', '),
+                    change: function(ev) {
+                        item.ips = ev.target.value.split(',').map(function(part) {
+                            return part.trim();
+                        }).filter(isValidProbeIpv4);
+                    }
+                })),
+                E('td', { class: 'td', style: 'width: 90px;' }, E('button', {
+                    class: 'cbi-button cbi-button-remove',
+                    click: function() {
+                        self.config.probe_hosts.splice(index, 1);
+                        self.refreshProbeHosts();
+                    }
+                }, '删除'))
+            ]);
+        });
+
+        var container = E('div', {}, [
+            E('table', { class: 'table cbi-section-table' }, [
+                E('thead', {}, E('tr', {}, [
+                    E('th', {}, '域名'),
+                    E('th', {}, '固定 IP (逗号分隔)')
+                ])),
+                E('tbody', {}, rows)
+            ]),
+            E('button', {
+                class: 'cbi-button cbi-button-add',
+                style: 'margin: 10px 0;',
+                disabled: at_limit ? '' : null,
+                click: function() {
+                    self.config.probe_hosts.push({ host: '', ips: [] });
+                    self.refreshProbeHosts();
+                }
+            }, '添加'),
+            E('div', { class: 'cbi-value-description' },
+                '联网检测用的地址 (域名 + 固定 IP, 不查 DNS); 一条都不填就用内置默认 (hicloud / miui 各两个 IP)'),
+            E('div', { class: 'cbi-value-description' },
+                '每个域名最多 4 个 IP; 最多 14 路 (认证服务器已占 2 路), 当前 ' + self.probeIpTotal() + ' 路')
+        ]);
+
+        self.probe_container = container;
+        return container;
+    },
+
+    refreshProbeHosts: function() {
+        var self = this;
+
+        if (!self.probe_container || !self.probe_container.parentNode) return;
+        var fresh = self.renderProbeHosts();
+        self.probe_container.parentNode.replaceChild(fresh, self.probe_container);
     },
 
     renderTable: function() {

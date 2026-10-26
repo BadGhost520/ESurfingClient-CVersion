@@ -365,6 +365,54 @@
       <div class="card bg-base-300 shadow-md">
         <div class="card-body">
           <h2 class="card-title">
+            <span class="icon h-6 w-6" aria-hidden="true" style="--icon: url(assets/svg/settings.svg)"></span>
+            联网探测目标</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+              <tr class="bg-base-200">
+                <th class="text-center">域名</th>
+                <th class="text-center">固定 IP (逗号分隔)</th>
+                <th></th>
+              </tr>
+              </thead>
+              <tbody>
+              <template x-for="(probe, index) in $store.main.configs.probe_hosts" :key="index">
+                <tr>
+                  <td>
+                    <input type="text" class="input w-full"
+                           x-model="probe.host"
+                           placeholder="connectivitycheck.platform.hicloud.com" />
+                  </td>
+                  <td>
+                    <input type="text" class="input w-full"
+                           x-model="probe.ipsText"
+                           placeholder="183.61.185.93, 125.88.255.53" />
+                  </td>
+                  <td class="text-center">
+                    <button class="btn btn-error btn-sm"
+                            @click="$store.main.configs.probe_hosts.splice(index, 1)">删除</button>
+                  </td>
+                </tr>
+              </template>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-primary btn-sm"
+                    :disabled="probeIpTotal() >= 14"
+                    @click="$store.main.configs.probe_hosts.push({ host: '', ipsText: '' })">添加探测目标</button>
+          </div>
+          <span class="label">联网检测用的地址 (域名 + 固定 IP, 不查 DNS); 填了会替代内置默认,
+            保存后重启生效</span>
+          <span class="label">每个域名最多 4 个 IP; 最多 14 路 (认证服务器已占 2 路), 当前
+            <span x-text="probeIpTotal()">0</span> 路</span>
+          <span class="label text-warning">全部删掉保存会回退到内置默认 (hicloud / miui 各两个 IP)</span>
+        </div>
+      </div>
+      <div class="card bg-base-300 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title">
             <span class="icon h-6 w-6" aria-hidden="true" style="--icon: url(assets/svg/account.svg)"></span>
             账号</h2>
           <div class="overflow-x-auto">

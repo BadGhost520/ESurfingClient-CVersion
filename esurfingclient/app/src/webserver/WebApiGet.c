@@ -322,6 +322,16 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddNumberToObject(configs, "op_timeout", (double)g_op_timeout);
         cJSON_AddNumberToObject(configs, "web_port", g_web_port);
 
+        /**
+         * 联网探测目标: 用内存里当前生效的那份 (缺省时就是内置默认)。
+         * 漏了它的话网页上会显示默认值, 用户改过的探测目标会被"保存"覆盖掉。
+         */
+        cJSON* probe_hosts = probe_targets_to_json();
+        if (probe_hosts != NULL)
+        {
+            cJSON_AddItemToObject(configs, "probe_hosts", probe_hosts);
+        }
+
         cJSON* accounts = cJSON_CreateArray();
         cJSON* account = cJSON_CreateObject();
 

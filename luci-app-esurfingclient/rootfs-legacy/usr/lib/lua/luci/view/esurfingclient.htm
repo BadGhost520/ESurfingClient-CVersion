@@ -229,6 +229,24 @@ end
                     <div class='cbi-value-description'>单次请求的总超时时长 (单位: 秒)</div>
                 </div>
             </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title'>联网探测目标</label>
+                <div class='cbi-value-field'>
+                    <table class='table cbi-section-table'>
+                        <thead class='thead'>
+                            <tr class='tr cbi-section-table-titles'>
+                                <th class='th'>域名</th>
+                                <th class='th'>固定 IP (逗号分隔)</th>
+                                <th class='th' style='width: 90px;'></th>
+                            </tr>
+                        </thead>
+                        <tbody id='probe-table-body'></tbody>
+                    </table>
+                    <button class='cbi-button cbi-button-add' id='add-probe-button' onclick='addProbeHost()'>添加</button>
+                    <div class='cbi-value-description'>联网检测用的地址 (域名 + 固定 IP, 不查 DNS); 一条都不填就用内置默认</div>
+                    <div class='cbi-value-description' id='probe-count-hint'></div>
+                </div>
+            </div>
         </div>
 
         <div class='cbi-tabcontainer' style='display: none;'>
@@ -484,6 +502,20 @@ end
 
     // 保存并应用配置
     function saveAndApplyConfig() {
+        var too_many = (config.probe_hosts || []).filter(function(item) {
+            return item && Array.isArray(item.ips) && item.ips.length > 4;
+        })[0];
+        if (too_many) {
+            showNotification(too_many.host + ' 配了 ' + too_many.ips.length + ' 个 IP, 每个域名最多 4 个', 'error');
+            return;
+        }
+        var total = (config.probe_hosts || []).reduce(function(sum, item) {
+            return sum + (item.ips || []).length;
+        }, 0);
+        if (total > 14) {
+            showNotification('探测目标共 ' + total + ' 路, 最多 14 路 (认证服务器已占 2 路)', 'error');
+            return;
+        }
         document.getElementById('save-and-apply-button').disabled = true;
         document.getElementById('save-button').disabled = true;
         document.getElementById('reset-button').disabled = true;
@@ -530,6 +562,20 @@ end
 
     // 保存配置
     function saveConfig() {
+        var too_many = (config.probe_hosts || []).filter(function(item) {
+            return item && Array.isArray(item.ips) && item.ips.length > 4;
+        })[0];
+        if (too_many) {
+            showNotification(too_many.host + ' 配了 ' + too_many.ips.length + ' 个 IP, 每个域名最多 4 个', 'error');
+            return;
+        }
+        var total = (config.probe_hosts || []).reduce(function(sum, item) {
+            return sum + (item.ips || []).length;
+        }, 0);
+        if (total > 14) {
+            showNotification('探测目标共 ' + total + ' 路, 最多 14 路 (认证服务器已占 2 路)', 'error');
+            return;
+        }
         document.getElementById('save-and-apply-button').disabled = true;
         document.getElementById('save-button').disabled = true;
         document.getElementById('reset-button').disabled = true;
@@ -639,9 +685,102 @@ end
         });
     }
 
+    /** IPv4 校验 (与后端 probe_is_ipv4 一致: a.b.c.d 四段 0~255) */
+    function isValidProbeIpv4(value) {
+        var text = String(value == null ? '' : value).trim();
+        if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(text)) return false;
+        return text.split('.').every(function(part) { return Number(part) <= 255; });
+    }
+
+    /** 规范化 probe_hosts: 丢掉空条/非法 IP */
+    function normalizeProbeHosts(raw) {
+        if (!Array.isArray(raw)) return [];
+        return raw
+            .filter(function(item) { return item && typeof item === 'object' && typeof item.host === 'string'; })
+            .map(function(item) {
+                return {
+                    host: item.host.trim(),
+                    ips: Array.isArray(item.ips) ? item.ips.filter(isValidProbeIpv4) : []
+                };
+            })
+            .filter(function(item) { return item.host.length > 0; });
+    }
+
+    /** 渲染探测目标表格 (host + 逗号分隔的 IP) */
+    function renderProbeTable() {
+        var tbody = document.getElementById('probe-table-body');
+        if (!tbody) return;
+
+        config.probe_hosts = normalizeProbeHosts(config.probe_hosts);
+        tbody.innerHTML = '';
+
+        config.probe_hosts.forEach(function(item, index) {
+            var row = tbody.insertRow();
+            row.className = 'tr';
+
+            var cell0 = row.insertCell(0);
+            cell0.className = 'td';
+            var hostInput = document.createElement('input');
+            hostInput.type = 'text';
+            hostInput.className = 'cbi-input-text';
+            hostInput.value = item.host;
+            hostInput.placeholder = 'connectivitycheck.platform.hicloud.com';
+            hostInput.addEventListener('change', function(e) {
+                item.host = e.target.value.trim();
+            });
+            cell0.appendChild(hostInput);
+
+            var cell1 = row.insertCell(1);
+            cell1.className = 'td';
+            var ipsInput = document.createElement('input');
+            ipsInput.type = 'text';
+            ipsInput.className = 'cbi-input-text';
+            ipsInput.value = (item.ips || []).join(', ');
+            ipsInput.placeholder = '183.61.185.93, 125.88.255.53';
+            ipsInput.addEventListener('change', function(e) {
+                item.ips = e.target.value.split(',').map(function(part) {
+                    return part.trim();
+                }).filter(isValidProbeIpv4);
+            });
+            cell1.appendChild(ipsInput);
+
+            var cell2 = row.insertCell(2);
+            cell2.className = 'td';
+            var btn = document.createElement('button');
+            btn.className = 'cbi-button cbi-button-remove';
+            btn.textContent = '删除';
+            btn.addEventListener('click', function() {
+                config.probe_hosts.splice(index, 1);
+                renderProbeTable();
+            });
+            cell2.appendChild(btn);
+        });
+
+        // 总路数上限 14 (探测并发 16 路, 认证服务器固定占 2 路)
+        var total = config.probe_hosts.reduce(function(sum, item) {
+            return sum + (item.ips || []).length;
+        }, 0);
+        var addBtn = document.getElementById('add-probe-button');
+        if (addBtn) addBtn.disabled = (total >= 14);
+        var hint = document.getElementById('probe-count-hint');
+        if (hint) hint.textContent = '每个域名最多 4 个 IP; 最多 14 路 (认证服务器已占 2 路), 当前 ' + total + ' 路';
+    }
+
+    function addProbeHost() {
+        var total = (config.probe_hosts || []).reduce(function(sum, item) {
+            return sum + (item.ips || []).length;
+        }, 0);
+        if (total >= 14) {
+            showNotification('探测目标最多 14 路 (认证服务器已占 2 路)', 'error');
+            return;
+        }
+        config.probe_hosts = config.probe_hosts || [];
+        config.probe_hosts.push({ host: '', ips: [] });
+        renderProbeTable();
+    }
+
     // 日志是否始终置底, 默认开启
     var logAutoScroll = true;
-
     // 滚动日志到底部
     function scrollLogToBottom() {
         var log_area = document.getElementById('log_content');
@@ -901,6 +1040,7 @@ end
         conn_timeout.value = config.conn_timeout;
         op_timeout.value = config.op_timeout;
         renderTable();
+        renderProbeTable();
         showNotification('读取配置文件完成', 'succ');
     });
 </script>

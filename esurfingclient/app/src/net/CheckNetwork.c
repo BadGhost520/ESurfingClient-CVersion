@@ -176,6 +176,13 @@ bool probe_targets_parse(const cJSON* arr)
             t.ip_count++;
         }
 
+        // 每个域名最多留 PROBE_IP_MAX 个 IP: 超出的不静默丢, 提示一下
+        if (ip_count > PROBE_IP_MAX)
+        {
+            LOG_WARN("探测目标 %s 配了 %d 个 IP, 超过每域名 %d 个上限, 多余的会被忽略",
+                t.host, ip_count, PROBE_IP_MAX);
+        }
+
         if (t.ip_count == 0) continue;
         parsed[parsed_count] = t;
         parsed_count++;
@@ -185,6 +192,21 @@ bool probe_targets_parse(const cJSON* arr)
 
     memcpy(s_known_hosts, parsed, sizeof(parsed[0]) * parsed_count);
     s_known_host_count = parsed_count;
+
+    /**
+     * 总路数超过 14 只提示, 不做处理 (探测并发 PROBE_MAX = 16, 其中两台认证
+     * 服务器固定占 2 路); 超出的部分会由 probe_group 的 probe_count 截断
+     */
+    uint16_t total_ips = 0;
+    for (uint8_t i = 0; i < s_known_host_count; i++)
+    {
+        total_ips += s_known_hosts[i].ip_count;
+    }
+    if (total_ips > PROBE_MAX - 2)
+    {
+        LOG_WARN("探测目标共 %" PRIu16 " 路, 超过 %d 路上限 (认证服务器已占 2 路), 超出部分不会被探测",
+            total_ips, PROBE_MAX - 2);
+    }
 
     for (uint8_t i = 0; i < s_known_host_count; i++)
     {

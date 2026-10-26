@@ -1,18 +1,23 @@
 {
-  "enabled": false,
-  "web_external_acc": false,
-  "log_lv":  4,
-  "log_dir": "./",
-  "conn_timeout": 10,
-  "op_timeout": 15,
-  "web_port": 8888,
-  "accounts": [
-    {
-      "username": "",
-      "password": "",
-      "channel": 3,
-      "mark": "",
-      "time_windows": []
-    }
-  ]
+	"enabled":	false,
+	"web_external_acc":	false,
+	"log_lv":	4,
+	"log_dir":	"./",
+	"conn_timeout":	10,
+	"op_timeout":	15,
+	"web_port":	8888,
+	"probe_hosts":	[{
+			"host":	"connectivitycheck.platform.hicloud.com",
+			"ips":	["183.61.185.93", "125.88.255.53"]
+		}, {
+			"host":	"connect.rom.miui.com",
+			"ips":	["202.69.4.32", "220.181.104.183"]
+		}],
+	"accounts":	[{
+			"username":	"",
+			"password":	"",
+			"channel":	1,
+			"mark":	"",
+			"time_windows":	[]
+		}]
 }
