@@ -18,6 +18,7 @@
 
 #ifdef __OPENWRT__
 #include <errno.h>
+#include <unistd.h>
 
 #ifndef SOL_SOCKET
 #define SOL_SOCKET 1
@@ -102,12 +103,21 @@ curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct 
     {
         if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[tl_thread_idx].cfg.mark, sizeof(g_prog_status[tl_thread_idx].cfg.mark)) == -1)
         {
-            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark, strerror(errno));
+            /**
+             * 绑 mark 失败就直接放弃这次请求: 继续发的话这个 socket 会走主路由表,
+             * 也就是用别的账号的线路出去 —— 多 WAN 下就是串线 (认证请求从 A 线发出,
+             * 会话却记在 B 线的 IP 上)。
+             *
+             * 返回 CURL_SOCKET_BAD 后 curl 不会再管这个 fd, 得自己关掉。
+             */
+            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s, 放弃本次请求",
+                g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark, strerror(errno));
+
+            close(sock_fd);
+            return CURL_SOCKET_BAD;
         }
-        else
-        {
-            LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark);
-        }
+
+        LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark);
     }
 
     return sock_fd;

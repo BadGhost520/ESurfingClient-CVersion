@@ -230,6 +230,15 @@ int work_auth(void)
     LOG_DEBUG("以认证进程运行, 负责配置 %" PRIu8, g_prog_status[0].cfg.idx);
 
     /**
+     * 认证进程只有一个账号, 主线程的探测/请求都按 0 号账号绑 mark。
+     *
+     * 不设的话主线程 tl_thread_idx 是 -1, open_socket_callback 会当成"没有账号
+     * 上下文"而不绑 SO_MARK —— 等待网络阶段的探测就会走主路由表, 看到的是主线路
+     * 状态 (多 WAN 下别的线路的会话一死, 本账号也会被误判成需要认证)。
+     */
+    tl_thread_idx = 0;
+
+    /**
      * 记下本进程的线程 ID, 让日志能标出这是哪个账号的进程
      * 必须放在 load_cfg 之后: 日志标识用的是配置序号
      */
