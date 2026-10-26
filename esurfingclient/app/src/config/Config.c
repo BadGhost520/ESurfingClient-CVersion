@@ -531,6 +531,19 @@ bool load_cfg(void)
             return false;
         }
 
+        /**
+         * mark 必须是字符串 (如 "0x100")。
+         *
+         * 写成数字 ("mark": 256) 或对象时 cJSON 的 valuestring 是 NULL, 下面直接取
+         * [0] 就是段错误 —— 配置写错一个字段就崩进程。这类写法一律按"没填"处理,
+         * 让它走自动分配 (或按下面的自定义 mark 规则跳过)。
+         */
+        if (mark != NULL && cJSON_IsString(mark) == false)
+        {
+            LOG_WARN("配置 %" PRIu8 " 填写了非法 mark 值, 将忽略该 mark 值", i + 1);
+            mark = NULL;
+        }
+
         // 标记值按"放进哪个槽位"分配, 所以留在循环里
         if (mark == NULL)
         {
