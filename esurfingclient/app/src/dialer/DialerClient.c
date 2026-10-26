@@ -17,10 +17,16 @@
 #include "utils/log/Logger.h"
 #include "utils/sim/SimThread.h"
 
+#include <stdio.h>
+
 #ifdef _WIN32
+#include <windows.h>
 extern bool get_service_mode(void);
 #else
+#include <fcntl.h>
 #include <stdlib.h>
+#include <sys/file.h>
+#include <unistd.h>
 #endif
 
 #ifndef __OPENWRT__
@@ -462,8 +468,81 @@ static int work_web(void)
 
 #endif
 
+/**
+ * @brief 抢"单实例锁"
+ *
+ * 同类型实例只能有一个:
+ * - 认证进程按账号 (auth-N) —— 两个同账号进程同时认证会互相把对方踢下线, 只能手动杀进程
+ * - supervisor / standalone 用 main
+ * - Web 子进程用 web
+ *
+ * POSIX 用 /tmp 下的锁文件 + flock, Windows 用命名互斥; fd / 句柄都故意不关,
+ * 交给进程退出时释放。Windows 重启时旧进程还没退干净, 所以重试等最多 3 秒。
+ *
+ * @param key 锁的 key
+ * @return 是否抢到 (false 表示已有同类型实例)
+ */
+static bool single_instance_acquire(const char* key)
+{
+#ifdef _WIN32
+    char narrow[128];
+    snprintf(narrow, sizeof(narrow), "Local\\ESurfingClient-%s", key);
+
+    wchar_t name[128];
+    if (MultiByteToWideChar(CP_UTF8, 0, narrow, -1, name, 128) <= 0) return true;
+
+    for (int i = 0; i < 15; i++)
+    {
+        HANDLE mutex = CreateMutexW(NULL, FALSE, name);
+        if (mutex == NULL) return true; // 建不出来就别拦着程序
+        if (GetLastError() != ERROR_ALREADY_EXISTS) return true; // 抢到 (句柄故意不关)
+
+        CloseHandle(mutex);
+        Sleep(200);
+    }
+    return false;
+#else
+    char path[128];
+    snprintf(path, sizeof(path), "/tmp/esurfingclient-%s.lock", key);
+
+    /**
+     * O_CLOEXEC 必须带: supervisor 拉起的 auth 子进程是 exec 出来的, 继承 fd 会把
+     * main 锁一起带过去 —— supervisor 退出后子进程还持有它, 下次启动就抢不到了
+     */
+    static int lock_fd = -1;
+    lock_fd = open(path, O_CREAT | O_RDWR | O_CLOEXEC, 0644);
+    if (lock_fd < 0) return true; // 打不开锁文件就别拦着程序
+
+    return flock(lock_fd, LOCK_EX | LOCK_NB) == 0;
+#endif
+}
+
 void work(void)
 {
+    /**
+     * 单实例检查放在最前面: 同一账号的两个进程会互相踢下线且无法自愈,
+     * 重复启动必须先拦住。日志系统这时还没起来, 所以只写 stderr。
+     */
+    char lock_key[32];
+    if (g_prog_role == ROLE_AUTH)
+    {
+        snprintf(lock_key, sizeof(lock_key), "auth-%" PRIu8, g_prog_account);
+    }
+    else if (g_prog_role == ROLE_WEB)
+    {
+        snprintf(lock_key, sizeof(lock_key), "web");
+    }
+    else
+    {
+        snprintf(lock_key, sizeof(lock_key), "main");
+    }
+
+    if (single_instance_acquire(lock_key) == false)
+    {
+        fprintf(stderr, "[ERROR] 已有同类型的实例在运行 (%s), 本次退出\n", lock_key);
+        exit(1);
+    }
+
     /**
      * 各角色走各自的流程
      */
