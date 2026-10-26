@@ -49,10 +49,13 @@ typedef enum
 /**
  * 认证失败后的退避间隔 (分钟)
  *
- * 网络/服务端临时故障按这张表走, 用完之后固定用最后一档 (30 分钟), 一直重试;
- * 需要人工处理的错误不走这张表, 直接等到重启或退出
+ * 网络/服务端临时故障按这张表走, 用完之后固定用最后一档, 一直重试;
+ * 需要人工处理的错误不走这张表, 直接等到重启或退出。
+ *
+ * 最后一档特意取 35 而不是 30: 服务端对反复登录的惩罚是锁 30 分钟,
+ * 卡着 30 分钟整点重试很可能还在锁定窗口里, 多等 5 分钟才稳。
  */
-static const uint64_t table[] = {1, 3, 5, 10, 20, 30};
+static const uint64_t table[] = {1, 3, 5, 10, 20, 35};
 
 /**
  * @brief 各角色入口的公共起步动作
@@ -132,6 +135,13 @@ static RunStatus run(void)
     static uint8_t retry_timeout = 1;
     static uint8_t retry_auth = 1;
 
+    /** 连续 302 的确认计数: 要连续两次才认定需要重新认证 */
+    static _Thread_local uint8_t s_need_auth_hits = 0;
+
+    /** 最近两次登录的时间 (单调钟), 用来限流; 60 秒内满 2 次就停手等 35 分钟 */
+    static _Thread_local uint64_t s_login_ms[2] = {0, 0};
+    static _Thread_local uint8_t s_login_slot = 0;
+
     // 时间控制/重置请求优先于一切网络操作:
     // 到点下线后不应再发送心跳包，也不应继续认证或重试
     if (g_prog_status[tl_thread_idx].runtime_status.is_time_disabled)
@@ -153,6 +163,7 @@ static RunStatus run(void)
     case STATUS_OK: // 正常联网
         retry_timeout = 1;
         retry_auth = 1;
+        s_need_auth_hits = 0; // 中间有一次正常联网, 之前的 302 就不算"连续"了
         /**
          * 检测是否初始化会话和认证登录
          * 如果已经初始化会话和认证登录, 则进入, 否则按已连接互联网处理
@@ -240,6 +251,49 @@ static RunStatus run(void)
         return RUN_SUCCESS;
     case STATUS_NEED_AUTH: // 需要认证
         retry_timeout = 1;
+
+        /**
+         * 连续两次 302 才认定需要重新认证
+         *
+         * 单次 302 可能只是网关抖动、探测超时被误判。一次误判就会把好会话登出
+         * 再重认证 —— 而重认证就是一次登录, 频繁登录会被服务端锁 30 分钟。
+         */
+        if (s_need_auth_hits < 2)
+        {
+            s_need_auth_hits++;
+            LOG_DEBUG("检测到 302, 第 %" PRIu8 "/2 次确认", s_need_auth_hits);
+            sleep_ms(1000, true);
+            return RUN_SUCCESS;
+        }
+        s_need_auth_hits = 0;
+
+        /**
+         * 登录频率保护
+         *
+         * 60 秒内已经登录过 2 次, 却再次被要求认证 —— 说明认证虽然"成功"但立刻
+         * 又不生效, 基本可判定配置有问题(或账号已被限制)。继续试下去服务端会锁
+         * 30 分钟, 所以暂停自动认证, 等 35 分钟(服务端锁 30 分钟, 不能卡点)。
+         */
+        {
+            const uint64_t now_ms = get_steady_tm_ms();
+            uint8_t recent = 0;
+            for (uint8_t i = 0; i < 2; i++)
+            {
+                if (s_login_ms[i] != 0 && now_ms - s_login_ms[i] < 60000) recent++;
+            }
+
+            if (recent >= 2)
+            {
+                LOG_ERROR("配置 %" PRIu8 " 在 60 秒内已登录 %" PRIu8 " 次仍被要求认证, 判定为配置错误或账号被限制, 暂停自动认证",
+                    g_prog_status[tl_thread_idx].login_cfg.idx, recent);
+
+                s_login_ms[0] = 0;
+                s_login_ms[1] = 0;
+                (void)wait_auth_retry(35); // 服务端锁定 30 分钟, 多等 5 分钟避开卡点
+                return RUN_SUCCESS;
+            }
+        }
+
         if (g_prog_status[tl_thread_idx].runtime_status.is_initialized) // 进入认证流程的时候如果会话已经初始化, 重置认证配置参数
         {
             reset();
@@ -298,6 +352,10 @@ static RunStatus run(void)
             return RUN_SUCCESS;
         }
         retry_auth = 1; // 认证成功: 下次失败重新从最短间隔开始
+
+        // 记下这次登录时间, 供上面的频率保护判断 (两个槽轮转, 只看最近两次)
+        s_login_slot ^= 1;
+        s_login_ms[s_login_slot] = get_steady_tm_ms();
         return RUN_SUCCESS;
     case STATUS_ERROR: // 网络错误
         retry_auth = 1;
