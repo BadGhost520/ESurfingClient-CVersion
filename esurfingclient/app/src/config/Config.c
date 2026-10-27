@@ -158,26 +158,20 @@ static bool write_cfg_json(const cJSON* cfg_json)
     return replaced;
 }
 
-/** @brief 周分钟 (0=周日 00:00) 转回 "mon 08:13" 格式 */
-static void format_week_time(const uint16_t week_min, char* out, const size_t len)
-{
-    static const char* const days[] = {"sun", "mon", "tue", "wed", "thu", "fri", "sat"};
-
-    const uint16_t day = week_min / 1440;
-    const uint16_t rest = week_min % 1440;
-    snprintf(out, len, "%s %02u:%02u", days[day % 7], rest / 60, rest % 60);
-}
-
 /**
  * @brief 把内存里的配置按固定键序写成 JSON 文件
  *
  * 和"在旧 JSON 上补键"不同: 这里从 cfg 结构重新生成, 补全的参数会出现在默认
  * 模板的位置, 而不是被追加到文件末尾。
  *
- * @param account_count 要写出的账号数
+ * 账号一律从 cfg_json 原样带出来 (complete_cfg 已经补全缺失的键), 不能从
+ * g_prog_status 重建 —— OpenWrt 上每个进程只加载自己那一个账号, 按它写回会
+ * 把配置文件里别的账号直接抹掉。
+ *
+ * @param cfg_json 已补全的配置对象 (账号仍然完整)
  * @return 是否写入成功
  */
-static bool save_cfg_from_cfg(const uint8_t account_count)
+static bool save_cfg_from_cfg(const cJSON* cfg_json)
 {
     const cfg_t* global = &g_prog_status[0].cfg;
 
@@ -208,46 +202,26 @@ static bool save_cfg_from_cfg(const uint8_t account_count)
     }
 
     cJSON* accounts = cJSON_AddArrayToObject(root, "accounts");
-    for (uint8_t i = 0; accounts != NULL && i < account_count; i++)
+    if (accounts != NULL)
     {
-        const cfg_t* a = &g_prog_status[i].cfg;
-
-        cJSON* item = cJSON_CreateObject();
-        if (item == NULL) break;
-
-        cJSON_AddStringToObject(item, "username", a->usr);
-        cJSON_AddStringToObject(item, "password", a->pwd);
-        cJSON_AddNumberToObject(item, "channel", a->chn);
-
-        char mark[16] = "";
-        if (a->use_cus_mark) snprintf(mark, sizeof(mark), "0x%" PRIx32, a->mark);
-        cJSON_AddStringToObject(item, "mark", mark);
-
-        cJSON* windows = cJSON_AddArrayToObject(item, "time_windows");
-        for (uint8_t k = 0; windows != NULL && k < a->time_window_count; k++)
+        const cJSON* src = cJSON_GetObjectItem(cfg_json, "accounts");
+        if (cJSON_IsArray(src))
         {
-            cJSON* w = cJSON_CreateObject();
-            if (w == NULL) break;
-
-            char start[TIME_WINDOW_STR_LEN];
-            char end[TIME_WINDOW_STR_LEN];
-            format_week_time(a->time_windows[k].start_week_min, start, sizeof(start));
-            format_week_time(a->time_windows[k].end_week_min, end, sizeof(end));
-
-            cJSON_AddStringToObject(w, "start", start);
-            cJSON_AddStringToObject(w, "end", end);
-            cJSON_AddItemToArray(windows, w);
+            const int count = cJSON_GetArraySize(src);
+            for (int i = 0; i < count; i++)
+            {
+                cJSON* copy = cJSON_Duplicate(cJSON_GetArrayItem(src, i), 1);
+                if (copy != NULL) cJSON_AddItemToArray(accounts, copy);
+            }
         }
-
-        cJSON_AddItemToArray(accounts, item);
     }
 
     /**
-     * 一个可用账号都没有时 (配置被禁用/账号没填) 也要写一个空账号模板:
+     * 一个账号都没有时 (配置被禁用/账号没填) 也要写一个空账号模板:
      * 否则写回去的就是 accounts: [], 和新建配置时的样子不一致, 用户下次
      * 打开文件还得自己回想字段名
      */
-    if (account_count == 0 && accounts != NULL)
+    if (accounts != NULL && cJSON_GetArraySize(accounts) == 0)
     {
         cJSON* item = cJSON_CreateObject();
         if (item != NULL)
@@ -775,45 +749,13 @@ bool load_cfg(void)
 #endif
 
     /**
-     * 全局配置必须放在两个分支之后写: OpenWrt 分支上面会 realloc 掉 g_prog_status,
-     * 在重新分配之前写的话会写进旧的那一块, realloc + memset 之后全变 0 ——
-     * 表现为"配置文件里明明有值, 写回去全是 0/空"。
-     *
-     * 放在 cJSON_Delete(cfg_json) 之前, 因为探测目标还要从 cfg_json 里取
-     */
-    {
-        cfg_t* global_cfg = &g_prog_status[0].cfg;
-
-        global_cfg->enabled = g_prog_enabled;
-        global_cfg->web_external_acc = g_web_external_acc;
-        global_cfg->log_lv = log_lv;
-        snprintf(global_cfg->log_dir, sizeof(global_cfg->log_dir), "%s",
-            log_dir != NULL ? log_dir : get_logger_dir_cfg());
-        global_cfg->web_port = g_web_port;
-        global_cfg->conn_timeout = g_conn_timeout;
-        global_cfg->op_timeout = g_op_timeout;
-
-        /**
-         * 联网探测目标 (probe_hosts)
-         *
-         * 缺这一项时 complete_cfg 已经按默认值补上; 有就完全按用户的来 (写几组用几组,
-         * 不擅自补)。格式不对则回退内置默认。
-         */
-        probe_targets_defaults();
-        if (probe_targets_parse(cJSON_GetObjectItem(cfg_json, "probe_hosts")) == false)
-        {
-            LOG_WARN("probe_hosts 格式不对, 使用内置默认探测目标");
-        }
-    }
-
-    cJSON_Delete(cfg_json);
-
-    /**
      * 指定了 --account 时只保留该序号的配置
      *
      * 挑选必须放在全部配置加载完成之后:
      * 自动标记值是按"可用配置"的顺序算出来的 (0x100 + valid_i * 0x100),
      * 若在遍历时就跳过其它配置, valid_i 会从头计数, 标记值就会全部错位
+     *
+     * cfg_json 要留到最后写回配置时再用, 这里先不能删
      */
     if (g_prog_account != 0)
     {
@@ -830,6 +772,7 @@ bool load_cfg(void)
         if (pick < 0)
         {
             LOG_FATAL("配置 %" PRIu8 " 不存在或该配置不可用, 请检查配置文件", g_prog_account);
+            cJSON_Delete(cfg_json);
             return false;
         }
 
@@ -859,11 +802,43 @@ bool load_cfg(void)
     g_prog_cnt = valid_cnt;
 
     /**
-     * 每次加载都把配置写回一次: 内容从 cfg 结构重新生成 (固定键序),
-     * 没缺失的时候也等于顺手把用户手写的格式统一成程序格式。
+     * 全局配置与探测目标必须在【所有分支和 --account 挑选都结束之后】写:
+     * - OpenWrt 分支上面会 realloc 掉 g_prog_status, 提前写会写进旧块, memset 后全变 0
+     * - --account 挑选会把 g_prog_status[pick] 整体拷到 [0], 提前写会被那次拷贝覆盖
+     *
+     * 放在 cJSON_Delete(cfg_json) 之前, 因为探测目标还要从 cfg_json 里取
+     */
+    {
+        cfg_t* global_cfg = &g_prog_status[0].cfg;
+
+        global_cfg->enabled = g_prog_enabled;
+        global_cfg->web_external_acc = g_web_external_acc;
+        global_cfg->log_lv = log_lv;
+        snprintf(global_cfg->log_dir, sizeof(global_cfg->log_dir), "%s",
+            log_dir != NULL ? log_dir : get_logger_dir_cfg());
+        global_cfg->web_port = g_web_port;
+        global_cfg->conn_timeout = g_conn_timeout;
+        global_cfg->op_timeout = g_op_timeout;
+
+        /**
+         * 联网探测目标 (probe_hosts)
+         *
+         * 缺这一项时 complete_cfg 已经按默认值补上; 有就完全按用户的来 (写几组用几组,
+         * 不擅自补)。格式不对则回退内置默认。
+         */
+        probe_targets_defaults();
+        if (probe_targets_parse(cJSON_GetObjectItem(cfg_json, "probe_hosts")) == false)
+        {
+            LOG_WARN("probe_hosts 格式不对, 使用内置默认探测目标");
+        }
+    }
+
+    /**
+     * 每次加载都把配置写回一次: 全局字段与探测目标用当前进程解析出来的值,
+     * 账号原样带出来。没缺失的时候也等于顺手把用户手写的格式统一成程序格式。
      * 写不回去不影响本次运行, 值已经在内存里
      */
-    if (save_cfg_from_cfg((uint8_t)valid_cnt))
+    if (save_cfg_from_cfg(cfg_json))
     {
         LOG_DEBUG("配置已写回 %s", config_file);
     }
@@ -871,6 +846,9 @@ bool load_cfg(void)
     {
         LOG_WARN("配置写回失败 (配置文件可能是只读的?), 本次仍按内存里的值运行");
     }
+
+    // 写回用完了, 这里再释放 (上面按 --account 挑选、写回都还要读它)
+    cJSON_Delete(cfg_json);
 
     /**
      * 配置不可用: 返回 false, 但内存里能读出来的值已经填好了。
