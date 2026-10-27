@@ -119,7 +119,7 @@ static bool write_cfg_json(const cJSON* cfg_json)
      * 临时文件名带上进程号: 多进程各写各的 tmp, 再原子替换, 谁最后写完谁生效,
      * 内容一样, 不会写坏也不会互相抢同一个 tmp。
      */
-    char tmp_path[PATH_MAX + 32];
+    char tmp_path[sizeof(config_file) + 32];
 #ifdef _WIN32
     snprintf(tmp_path, sizeof(tmp_path), "%s.%lu.tmp", config_file, (unsigned long)GetCurrentProcessId());
 #else
@@ -279,6 +279,9 @@ static bool s_cfg_waiting = false;
 /** @brief "保存并应用"标记文件: 没有控制通道的监管者/Web 进程靠它知道该重新读配置 */
 #define CFG_APPLY_MARK_SUFFIX ".apply"
 
+/** 标记文件完整路径的最大长度 (配置路径 + 后缀, 用 sizeof 让编译器自己算) */
+#define CFG_APPLY_MARK_PATH_MAX (sizeof(config_file) + sizeof(CFG_APPLY_MARK_SUFFIX))
+
 static void cfg_apply_mark_path(char* out, const size_t len)
 {
     snprintf(out, len, "%s%s", get_config_path(), CFG_APPLY_MARK_SUFFIX);
@@ -286,7 +289,7 @@ static void cfg_apply_mark_path(char* out, const size_t len)
 
 void cfg_request_apply(void)
 {
-    char path[PATH_MAX + 16];
+    char path[CFG_APPLY_MARK_PATH_MAX];
     cfg_apply_mark_path(path, sizeof(path));
 
     FILE* f = fopen(path, "w");
@@ -295,7 +298,7 @@ void cfg_request_apply(void)
 
 bool cfg_take_apply_request(void)
 {
-    char path[PATH_MAX + 16];
+    char path[CFG_APPLY_MARK_PATH_MAX];
     cfg_apply_mark_path(path, sizeof(path));
 
     FILE* f = fopen(path, "r");
