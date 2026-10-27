@@ -87,43 +87,10 @@ return view.extend({
         
         self.currentTab = 'tab1';
 
-        self.basic_panel = E('div', { id: 'basic_panel', style: 'width: 100%' }, [
-            E('h3', { style: 'margin-top: 0;' }, '基本设置'),
-            E('div', { class: 'cbi-value' }, [
-                E('label', { class: 'cbi-value-title' }, '启用'),
-                E('div', { class: 'cbi-value-field' }, [
-                    E('input', {
-                        type: 'checkbox',
-                        id: 'enabled',
-                        checked: self.config.enabled ? true : undefined,
-                        change: function(ev) {
-                            self.config.enabled = ev.target.checked;
-                        }
-                    }),
-                    E('div', { class: 'cbi-value-description' }, '启用 ESurfing 客户端')
-                ])
-            ]),
-            E('div', { class: 'cbi-value' }, [
-                E('label', { class: 'cbi-value-title' }, '日志等级'),
-                E('div', { class: 'cbi-value-field' }, [
-                    E('select', {
-                        id: 'log_lv',
-                        class: 'cbi-input-select',
-                        change: function(ev) {
-                            self.config.log_lv = parseInt(ev.target.value);
-                        }
-                    }, [
-                        E('option', { value: 0, selected: self.config.log_lv === 0 ? true : undefined }, '0 - 关闭'),
-                        E('option', { value: 1, selected: self.config.log_lv === 1 ? true : undefined }, '1 - 致命'),
-                        E('option', { value: 2, selected: self.config.log_lv === 2 ? true : undefined }, '2 - 错误'),
-                        E('option', { value: 3, selected: self.config.log_lv === 3 ? true : undefined }, '3 - 警告'),
-                        E('option', { value: 4, selected: self.config.log_lv === 4 ? true : undefined }, '4 - 信息'),
-                        E('option', { value: 5, selected: self.config.log_lv === 5 ? true : undefined }, '5 - 调试'),
-                        E('option', { value: 6, selected: self.config.log_lv === 6 ? true : undefined }, '6 - 全部')
-                    ]),
-                    E('div', { class: 'cbi-value-description' }, '日志的详细程度')
-                ])
-            ]),
+        /**
+         * 高级选项默认收起, 勾选之后才显示 (和桌面网页的设置页保持一致)
+         */
+        self.advanced_container = E('div', { id: 'advanced_container', style: 'display: none;' }, [
             E('div', { class: 'cbi-value' }, [
                 E('label', { class: 'cbi-value-title' }, '连接超时'),
                 E('div', { class: 'cbi-value-field' }, [
@@ -184,6 +151,59 @@ return view.extend({
             ]),
             E('h3', { style: 'margin-top: 20px;' }, '联网探测目标'),
             self.renderProbeHosts()
+        ]);
+
+        self.basic_panel = E('div', { id: 'basic_panel', style: 'width: 100%' }, [
+            E('h3', { style: 'margin-top: 0;' }, '基本设置'),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '启用'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'checkbox',
+                        id: 'enabled',
+                        checked: self.config.enabled ? true : undefined,
+                        change: function(ev) {
+                            self.config.enabled = ev.target.checked;
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, '启用 ESurfing 客户端')
+                ])
+            ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '日志等级'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('select', {
+                        id: 'log_lv',
+                        class: 'cbi-input-select',
+                        change: function(ev) {
+                            self.config.log_lv = parseInt(ev.target.value);
+                        }
+                    }, [
+                        E('option', { value: 0, selected: self.config.log_lv === 0 ? true : undefined }, '0 - 关闭'),
+                        E('option', { value: 1, selected: self.config.log_lv === 1 ? true : undefined }, '1 - 致命'),
+                        E('option', { value: 2, selected: self.config.log_lv === 2 ? true : undefined }, '2 - 错误'),
+                        E('option', { value: 3, selected: self.config.log_lv === 3 ? true : undefined }, '3 - 警告'),
+                        E('option', { value: 4, selected: self.config.log_lv === 4 ? true : undefined }, '4 - 信息'),
+                        E('option', { value: 5, selected: self.config.log_lv === 5 ? true : undefined }, '5 - 调试'),
+                        E('option', { value: 6, selected: self.config.log_lv === 6 ? true : undefined }, '6 - 全部')
+                    ]),
+                    E('div', { class: 'cbi-value-description' }, '日志的详细程度')
+                ])
+            ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '高级选项'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'checkbox',
+                        id: 'show_advanced',
+                        change: function(ev) {
+                            self.advanced_container.style.display = ev.target.checked ? '' : 'none';
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, '显示超时、日志目录与联网探测目标等高级设置')
+                ])
+            ]),
+            self.advanced_container
         ]);
 
         self.tableBody = self.renderTable();

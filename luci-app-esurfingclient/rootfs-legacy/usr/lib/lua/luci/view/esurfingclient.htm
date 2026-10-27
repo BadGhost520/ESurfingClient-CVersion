@@ -216,6 +216,14 @@ end
                 </div>
             </div>
             <div class='cbi-value'>
+                <label class='cbi-value-title' for='show_advanced'>高级选项</label>
+                <div class='cbi-value-field'>
+                    <input type='checkbox' id='show_advanced' />
+                    <div class='cbi-value-description'>显示超时、日志目录与联网探测目标等高级设置</div>
+                </div>
+            </div>
+            <div id='advanced-container' style='display: none;'>
+            <div class='cbi-value'>
                 <label class='cbi-value-title' for='conn_timeout'>连接超时</label>
                 <div class='cbi-value-field'>
                     <input type='number' id='conn_timeout' class='cbi-input-text' name='conn_timeout' min='1' step='1' />
@@ -246,6 +254,7 @@ end
                     <div class='cbi-value-description'>联网检测用的地址 (域名 + 固定 IP, 不查 DNS); 一条都不填就用内置默认</div>
                     <div class='cbi-value-description' id='probe-count-hint'></div>
                 </div>
+            </div>
             </div>
         </div>
 
@@ -1052,6 +1061,14 @@ end
     document.addEventListener('DOMContentLoaded', function() {
         showNotification('正在读取配置文件', 'info');
         enabled.checked = config.enabled;
+        // 高级选项默认收起, 勾选之后才显示
+        var show_advanced = document.getElementById('show_advanced');
+        var advanced_container = document.getElementById('advanced-container');
+        if (show_advanced && advanced_container) {
+            show_advanced.addEventListener('change', function() {
+                advanced_container.style.display = show_advanced.checked ? '' : 'none';
+            });
+        }
         // 旧配置文件可能缺少这些参数, 这里补齐默认值, 避免输入框显示成"关闭/空"
         config.conn_timeout = normalizeTimeout(config.conn_timeout, 10);
         config.op_timeout = normalizeTimeout(config.op_timeout, 15);
