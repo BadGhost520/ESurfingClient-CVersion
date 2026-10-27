@@ -417,7 +417,7 @@ return view.extend({
         var at_limit = (self.probeIpTotal() >= 14);
 
         var rows = self.config.probe_hosts.map(function(item, index) {
-            return E('tr', { class: 'tr' }, [
+            return E('tr', { class: 'tr', 'data-index': index }, [
                 E('td', { class: 'td' }, E('input', {
                     type: 'text',
                     class: 'cbi-input-text',
@@ -438,7 +438,7 @@ return view.extend({
                         }).filter(isValidProbeIpv4);
                     }
                 })),
-                E('td', { class: 'td', style: 'width: 90px;' }, E('button', {
+                E('td', { class: 'td' }, E('button', {
                     class: 'cbi-button cbi-button-remove',
                     click: function() {
                         self.config.probe_hosts.splice(index, 1);
@@ -450,15 +450,18 @@ return view.extend({
 
         var container = E('div', {}, [
             E('table', { class: 'table cbi-section-table' }, [
-                E('thead', {}, E('tr', {}, [
-                    E('th', {}, '域名'),
-                    E('th', {}, '固定 IP (逗号分隔)')
-                ])),
-                E('tbody', {}, rows)
+                E('thead', { class: 'thead' }, [
+                    E('tr', { class: 'tr cbi-section-table-titles' }, [
+                        E('th', { class: 'th' }, '域名'),
+                        E('th', { class: 'th' }, '固定 IP (逗号分隔)'),
+                        E('th', { class: 'th', style: 'width: 135px;' }, '')
+                    ])
+                ]),
+                E('tbody', { class: 'tbody' }, rows)
             ]),
             E('button', {
                 class: 'cbi-button cbi-button-add',
-                style: 'margin: 10px 0;',
+                style: 'margin: 10px; margin-left: 15px;',
                 disabled: at_limit ? '' : null,
                 click: function() {
                     self.config.probe_hosts.push({ host: '', ips: [] });

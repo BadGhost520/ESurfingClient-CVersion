@@ -245,12 +245,14 @@ end
                             <tr class='tr cbi-section-table-titles'>
                                 <th class='th'>域名</th>
                                 <th class='th'>固定 IP (逗号分隔)</th>
-                                <th class='th' style='width: 90px;'></th>
+                                <th class='th' style='width: 135px;'></th>
                             </tr>
                         </thead>
-                        <tbody id='probe-table-body'></tbody>
+                        <tbody id='probe-table-body' class='tbody'></tbody>
                     </table>
-                    <button class='cbi-button cbi-button-add' id='add-probe-button' onclick='addProbeHost()'>添加</button>
+                    <div style='text-align: left; padding: 10px;'>
+                        <button class='cbi-button cbi-button-apply' id='add-probe-button' onclick='addProbeHost()'>添加</button>
+                    </div>
                     <div class='cbi-value-description'>联网检测用的地址 (域名 + 固定 IP, 不查 DNS); 一条都不填就用内置默认</div>
                     <div class='cbi-value-description' id='probe-count-hint'></div>
                 </div>
