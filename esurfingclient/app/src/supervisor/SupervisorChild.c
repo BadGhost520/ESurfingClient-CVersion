@@ -1,11 +1,12 @@
 #include "control/Control.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/time/TimeUtils.h"
+#include "utils/log/Logger.h"
 
-#include "supervisor/SupervisorInternal.h"
+#include "SupervisorInternal.h"
 
 /* ------------------------------------------------------------------
  * 子进程名称 (日志用)
@@ -105,18 +106,11 @@ extern char** environ;
 /**
  * @brief 组装子进程的环境变量, 把控制通道令牌塞进去
  *
- * 令牌不走命令行是有原因的: Linux 上 /proc/<PID>/cmdline 是**全局可读**的,
- * 同机其它用户 ps 一下就能拿到令牌。环境变量对应的 /proc/<PID>/environ
- * 只有属主和 root 可读, 能把暴露面收窄一个数量级。
- *
- * 新环境数组必须在 fork **之前**准备好: setenv() 内部会 malloc,
- * 而 fork 之后只允许调用 async-signal-safe 的函数 ——
- * 与上面"子进程里不能打日志"是同一个原因。
- *
+ * 令牌不走命令行: /proc/<PID>/cmdline 全局可读, /proc/<PID>/environ 只有属主与
+ * root 能读。环境数组必须在 fork 之前备好 (fork 后只能调 async-signal-safe 函数)。
  * @param token_env 存放 "ESURFING_CONTROL_TOKEN=<令牌>" 的缓冲
  * @param token_env_len 缓冲长度
- * @return 环境数组 (调用方负责 free); 没有令牌或分配失败时返回 NULL,
- *         此时调用方退回继承当前环境
+ * @return 环境数组 (调用方 free); 没有令牌或分配失败返回 NULL, 调用方退回继承当前环境
  */
 static char** child_build_env(char* token_env, const size_t token_env_len)
 {
@@ -213,12 +207,12 @@ bool child_spawn(child_t* child)
     char* argv[12];
     child_build_argv(child, exec_path, account_arg, control_arg, argv);
 
-    // Windows 需要一整条命令行字符串, 可执行文件路径可能含空格, 必须加引号
+    // Windows 需要一整条命令行字符串
     char cmdline[PATH_MAX + 64];
-    int used = snprintf(cmdline, sizeof(cmdline), "\"%s\"", exec_path);
-    for (int i = 1; argv[i] != NULL && used > 0 && (size_t)used < sizeof(cmdline); i++)
+    if (build_windows_cmdline(exec_path, argv, cmdline, sizeof(cmdline)) == false)
     {
-        used += snprintf(cmdline + used, sizeof(cmdline) - (size_t)used, " %s", argv[i]);
+        LOG_ERROR("命令行过长, 无法拉起子进程");
+        return false;
     }
 
     STARTUPINFOA si;
@@ -292,7 +286,7 @@ void child_schedule_restart(child_t* child, const int exit_code)
     if (delay > SUPERVISOR_BACKOFF_MAX_MS) delay = SUPERVISOR_BACKOFF_MAX_MS;
 
     child->next_start_time = now + delay;
-    LOG_INFO("%s 将在 %" PRIu64 " 毫秒后重新拉起", name, delay);
+    LOG_DEBUG("%s 将在 %" PRIu64 " 毫秒后重新拉起", name, delay);
 }
 
 /* ------------------------------------------------------------------
@@ -303,11 +297,11 @@ void child_schedule_restart(child_t* child, const int exit_code)
 
 child_t* child_find(const child_handle_t handle)
 {
-    for (int i = 0; i < s_child_count; i++)
+    for (int i = 0; i < g_child_count; i++)
     {
-        if (s_children[i].running && s_children[i].handle == handle)
+        if (g_children[i].running && g_children[i].handle == handle)
         {
-            return &s_children[i];
+            return &g_children[i];
         }
     }
     return NULL;
@@ -344,7 +338,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     char name[32];
     child_name(child, name, sizeof(name));
 
-    LOG_INFO("正在停止 %s ...", name);
+    LOG_DEBUG("正在停止 %s ...", name);
 
     if (kill(child->handle, SIGTERM) != 0)
     {
@@ -363,7 +357,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     child->running = false;
     child->handle = CHILD_HANDLE_INVALID;
 
-    LOG_INFO("%s 已停止", name);
+    LOG_DEBUG("%s 已停止", name);
 }
 
 #else
@@ -411,7 +405,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     char name[32];
     child_name(child, name, sizeof(name));
 
-    LOG_INFO("正在停止 %s ...", name);
+    LOG_DEBUG("正在停止 %s ...", name);
 
     const bool asked = child_ask_stop(child, name);
     if (asked == false)
@@ -427,7 +421,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
         CloseHandle(child->handle);
         child->handle = CHILD_HANDLE_INVALID;
         child->running = false;
-        LOG_INFO("%s 已停止", name);
+        LOG_DEBUG("%s 已停止", name);
         return;
     }
 
@@ -438,7 +432,7 @@ void child_stop(child_t* child, const uint32_t grace_ms)
     child->handle = CHILD_HANDLE_INVALID;
     child->running = false;
 
-    LOG_INFO("%s 已停止", name);
+    LOG_DEBUG("%s 已停止", name);
 }
 
 #endif

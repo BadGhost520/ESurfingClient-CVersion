@@ -1,5 +1,7 @@
 #include "utils/sim/SimThread.h"
 
+#include "utils/log/Logger.h"
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -159,3 +161,17 @@ void sim_thread_destroy(sim_thread_t* thread)
 }
 
 #endif
+
+/* 两个平台共用: 所以写在平台分支之外 */
+sim_thread_t* sim_thread_create_retry(sim_thread_func func, void* arg, const int retries)
+{
+    sim_thread_t* thread = sim_thread_create(func, arg);
+
+    for (int i = 0; thread == NULL && i < retries; i++)
+    {
+        LOG_ERROR("线程创建失败, 重试第 %d 次 (最多 %d 次)", i + 1, retries);
+        thread = sim_thread_create(func, arg);
+    }
+
+    return thread;
+}

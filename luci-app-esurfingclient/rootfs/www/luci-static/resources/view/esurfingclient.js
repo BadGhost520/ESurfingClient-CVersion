@@ -3,6 +3,39 @@
 'require fs';
 'require ui';
 
+/** IPv4 校验 (与后端 probe_is_ipv4 一致: a.b.c.d 四段 0~255) */
+function isValidProbeIpv4(value) {
+    var text = String(value == null ? '' : value).trim();
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(text)) return false;
+    return text.split('.').every(function(part) { return Number(part) <= 255; });
+}
+
+/** 探测目标默认值 (与后端内置默认、以及 files/etc/config/esurfingclient 一致) */
+var DEFAULT_PROBE_HOSTS = [
+    { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
+    { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
+];
+
+/** 规范化 probe_hosts: 丢掉空条/非法 IP, 后端认识的是 { host, ips[] } */
+function normalizeProbeHosts(raw) {
+    // 没配就显示内置默认, 别让页面上一片空白 (保存时会把这个默认写进配置文件)
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return DEFAULT_PROBE_HOSTS.map(function(item) {
+            return { host: item.host, ips: item.ips.slice() };
+        });
+    }
+
+    return raw
+        .filter(function(item) { return item && typeof item === 'object' && typeof item.host === 'string'; })
+        .map(function(item) {
+            return {
+                host: item.host.trim(),
+                ips: Array.isArray(item.ips) ? item.ips.filter(isValidProbeIpv4) : []
+            };
+        })
+        .filter(function(item) { return item.host.length > 0; });
+}
+
 return view.extend({
     load: function() {
         var self = this;
@@ -43,15 +76,82 @@ return view.extend({
         self.config = self.config || {
             enabled: false,
             web_external_acc: false,
-            log_lv: 0,
-            log_dir: '/var/log/esurfing',
-            conn_timeout: 3,
-            op_timeout: 5,
+            log_lv: 4,
+            log_dir: './',
+            conn_timeout: 10,
+            op_timeout: 15,
             web_port: 8888,
+            probe_hosts: [],
             accounts: []
         };
         
         self.currentTab = 'tab1';
+
+        /**
+         * 高级选项默认收起, 勾选之后才显示 (和桌面网页的设置页保持一致)
+         */
+        self.advanced_container = E('div', { id: 'advanced_container', style: 'display: none;' }, [
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '连接超时'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'number',
+                        id: 'conn_timeout',
+                        class: 'cbi-input-text',
+                        min: 1,
+                        step: 1,
+                        value: self.config.conn_timeout,
+                        change: function(ev) {
+                            self.config.conn_timeout = self.normalizeTimeout(ev.target.value, 10);
+                            ev.target.value = self.config.conn_timeout;
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, '连接阶段的超时时长 (单位: 秒)')
+                ])
+            ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '操作超时'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'number',
+                        id: 'op_timeout',
+                        class: 'cbi-input-text',
+                        min: 1,
+                        step: 1,
+                        value: self.config.op_timeout,
+                        change: function(ev) {
+                            self.config.op_timeout = self.normalizeTimeout(ev.target.value, 15);
+                            ev.target.value = self.config.op_timeout;
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, '单次请求的总超时时长 (单位: 秒)')
+                ])
+            ]),
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '日志目录'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'text',
+                        id: 'log_dir',
+                        class: 'cbi-input-text',
+                        placeholder: '/var/log/esurfing',
+                        value: self.config.log_dir,
+                        change: function(ev) {
+                            self.config.log_dir = ev.target.value;
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' }, [
+                        '日志会存放在这个目录下的 logs 里; 默认 ',
+                        E('code', {}, '/var/log/esurfing'),
+                        ' (也就是日志在 ', E('code', {}, '/var/log/esurfing/logs'), ' 下, tmpfs, 重启即清)',
+                        E('br'),
+                        '相对路径按 ', E('code', {}, '/var/log/esurfing'), ' 解析; 改成闪存上的目录前请想清楚容量与写次数'
+                    ])
+                ])
+            ]),
+            E('h3', { style: 'margin-top: 20px;' }, '联网探测目标'),
+            self.renderProbeHosts()
+        ]);
 
         self.basic_panel = E('div', { id: 'basic_panel', style: 'width: 100%' }, [
             E('h3', { style: 'margin-top: 0;' }, '基本设置'),
@@ -91,63 +191,19 @@ return view.extend({
                 ])
             ]),
             E('div', { class: 'cbi-value' }, [
-                E('label', { class: 'cbi-value-title' }, '连接超时'),
+                E('label', { class: 'cbi-value-title' }, '高级选项'),
                 E('div', { class: 'cbi-value-field' }, [
                     E('input', {
-                        type: 'number',
-                        id: 'conn_timeout',
-                        class: 'cbi-input-text',
-                        min: 1,
-                        step: 1,
-                        value: self.config.conn_timeout,
+                        type: 'checkbox',
+                        id: 'show_advanced',
                         change: function(ev) {
-                            self.config.conn_timeout = self.normalizeTimeout(ev.target.value, 3);
-                            ev.target.value = self.config.conn_timeout;
+                            self.advanced_container.style.display = ev.target.checked ? '' : 'none';
                         }
                     }),
-                    E('div', { class: 'cbi-value-description' }, '连接阶段的超时时长 (单位: 秒)')
+                    E('div', { class: 'cbi-value-description' }, '显示超时、日志目录与联网探测目标等高级设置')
                 ])
             ]),
-            E('div', { class: 'cbi-value' }, [
-                E('label', { class: 'cbi-value-title' }, '操作超时'),
-                E('div', { class: 'cbi-value-field' }, [
-                    E('input', {
-                        type: 'number',
-                        id: 'op_timeout',
-                        class: 'cbi-input-text',
-                        min: 1,
-                        step: 1,
-                        value: self.config.op_timeout,
-                        change: function(ev) {
-                            self.config.op_timeout = self.normalizeTimeout(ev.target.value, 5);
-                            ev.target.value = self.config.op_timeout;
-                        }
-                    }),
-                    E('div', { class: 'cbi-value-description' }, '单次请求的总超时时长 (单位: 秒)')
-                ])
-            ]),
-            E('div', { class: 'cbi-value' }, [
-                E('label', { class: 'cbi-value-title' }, '日志目录'),
-                E('div', { class: 'cbi-value-field' }, [
-                    E('input', {
-                        type: 'text',
-                        id: 'log_dir',
-                        class: 'cbi-input-text',
-                        placeholder: '/var/log/esurfing',
-                        value: self.config.log_dir,
-                        change: function(ev) {
-                            self.config.log_dir = ev.target.value;
-                        }
-                    }),
-                    E('div', { class: 'cbi-value-description' }, [
-                        '日志会存放在这个目录下的 logs 里; 默认 ',
-                        E('code', {}, '/var/log/esurfing'),
-                        ' (也就是日志在 ', E('code', {}, '/var/log/esurfing/logs'), ' 下, tmpfs, 重启即清)',
-                        E('br'),
-                        '相对路径按 ', E('code', {}, '/var/log/esurfing'), ' 解析; 改成闪存上的目录前请想清楚容量与写次数'
-                    ])
-                ])
-            ])
+            self.advanced_container
         ]);
 
         self.tableBody = self.renderTable();
@@ -261,8 +317,13 @@ return view.extend({
                     self.config = {};
                 }
                 // 旧配置文件可能缺少超时参数, 这里补齐默认值, 避免输入框显示空值
-                self.config.conn_timeout = self.normalizeTimeout(self.config.conn_timeout, 3);
-                self.config.op_timeout = self.normalizeTimeout(self.config.op_timeout, 5);
+                self.config.conn_timeout = self.normalizeTimeout(self.config.conn_timeout, 10);
+                self.config.op_timeout = self.normalizeTimeout(self.config.op_timeout, 15);
+                // 旧配置可能缺这几项: 补上默认值, 免得页面显示成"日志关闭/目录空白"
+                if (typeof self.config.log_lv !== 'number') self.config.log_lv = 4;
+                if (!self.config.log_dir) self.config.log_dir = './';
+                // 探测目标: 缺失就显示内置默认 (保存时会写进配置文件)
+                self.config.probe_hosts = normalizeProbeHosts(self.config.probe_hosts);
                 self.showNotification('读取配置文件成功', 'success');
                 return self.config;
             })
@@ -270,11 +331,12 @@ return view.extend({
                 self.config = {
                     enabled: false,
                     web_external_acc: false,
-                    log_lv: 0,
-                    log_dir: '/var/log/esurfing',
-                    conn_timeout: 3,
-                    op_timeout: 5,
+                    log_lv: 4,
+                    log_dir: './',
+                    conn_timeout: 10,
+                    op_timeout: 15,
                     web_port: 8888,
+                    probe_hosts: [],
                     accounts: [
                         {
                             username: '加载失败',
@@ -292,6 +354,20 @@ return view.extend({
 
     saveConfig: function() {
         var self = this;
+
+        var too_many = (self.config.probe_hosts || []).filter(function(item) {
+            return item && Array.isArray(item.ips) && item.ips.length > 4;
+        })[0];
+        if (too_many) {
+            self.showNotification(too_many.host + ' 配了 ' + too_many.ips.length + ' 个 IP, 每个域名最多 4 个', 'error');
+            return Promise.reject(new Error('单个域名 IP 数超过 4'));
+        }
+
+        var total = self.probeIpTotal();
+        if (total > 14) {
+            self.showNotification('探测目标共 ' + total + ' 路, 最多 14 路 (认证服务器已占 2 路)', 'error');
+            return Promise.reject(new Error('探测目标超过 14 路'));
+        }
 
         return fs.write('/etc/config/esurfingclient', JSON.stringify(self.config, null, 2));
     },
@@ -316,6 +392,98 @@ return view.extend({
         var newBody = self.renderTable();
         self.tableBody.parentNode.replaceChild(newBody, self.tableBody);
         self.tableBody = newBody;
+    },
+
+    /**
+     * 探测目标总路数 (上限 14 路: 探测并发 PROBE_MAX=16, 认证服务器固定占 2 路)
+     */
+    probeIpTotal: function() {
+        var self = this;
+
+        return normalizeProbeHosts(self.config.probe_hosts)
+            .reduce(function(sum, item) { return sum + item.ips.length; }, 0);
+    },
+
+    /**
+     * 联网探测目标编辑区
+     *
+     * 配置里存的是 { host, ips[] }, 页面上把 ips 拼成逗号分隔的文本框;
+     * 改完点保存才会写回 /etc/config/esurfingclient。
+     */
+    renderProbeHosts: function() {
+        var self = this;
+
+        self.config.probe_hosts = normalizeProbeHosts(self.config.probe_hosts);
+        var at_limit = (self.probeIpTotal() >= 14);
+
+        var rows = self.config.probe_hosts.map(function(item, index) {
+            return E('tr', { class: 'tr', 'data-index': index }, [
+                E('td', { class: 'td' }, E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    placeholder: 'connectivitycheck.platform.hicloud.com',
+                    value: item.host,
+                    change: function(ev) {
+                        item.host = ev.target.value.trim();
+                    }
+                })),
+                E('td', { class: 'td' }, E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    placeholder: '183.61.185.93, 125.88.255.53',
+                    value: (item.ips || []).join(', '),
+                    change: function(ev) {
+                        item.ips = ev.target.value.split(',').map(function(part) {
+                            return part.trim();
+                        }).filter(isValidProbeIpv4);
+                    }
+                })),
+                E('td', { class: 'td' }, E('button', {
+                    class: 'cbi-button cbi-button-remove',
+                    click: function() {
+                        self.config.probe_hosts.splice(index, 1);
+                        self.refreshProbeHosts();
+                    }
+                }, '删除'))
+            ]);
+        });
+
+        var container = E('div', {}, [
+            E('table', { class: 'table cbi-section-table' }, [
+                E('thead', { class: 'thead' }, [
+                    E('tr', { class: 'tr cbi-section-table-titles' }, [
+                        E('th', { class: 'th' }, '域名'),
+                        E('th', { class: 'th' }, '固定 IP (逗号分隔)'),
+                        E('th', { class: 'th', style: 'width: 135px;' }, '')
+                    ])
+                ]),
+                E('tbody', { class: 'tbody' }, rows)
+            ]),
+            E('button', {
+                class: 'cbi-button cbi-button-add',
+                style: 'margin: 10px; margin-left: 15px;',
+                disabled: at_limit ? '' : null,
+                click: function() {
+                    self.config.probe_hosts.push({ host: '', ips: [] });
+                    self.refreshProbeHosts();
+                }
+            }, '添加'),
+            E('div', { class: 'cbi-value-description' },
+                '联网检测用的地址 (域名 + 固定 IP, 不查 DNS); 一条都不填就用内置默认 (hicloud / miui 各两个 IP)'),
+            E('div', { class: 'cbi-value-description' },
+                '每个域名最多 4 个 IP; 最多 14 路 (认证服务器已占 2 路), 当前 ' + self.probeIpTotal() + ' 路')
+        ]);
+
+        self.probe_container = container;
+        return container;
+    },
+
+    refreshProbeHosts: function() {
+        var self = this;
+
+        if (!self.probe_container || !self.probe_container.parentNode) return;
+        var fresh = self.renderProbeHosts();
+        self.probe_container.parentNode.replaceChild(fresh, self.probe_container);
     },
 
     renderTable: function() {
@@ -446,7 +614,7 @@ return view.extend({
             account = {
                 username: '',
                 password: '',
-                channel: 'phone',
+                channel: 'windows',
                 mark: '',
                 time_windows: []
             };
@@ -830,15 +998,19 @@ return view.extend({
                         enabled: false,
                         web_external_acc: false,
                         log_lv: 4,
-                        log_dir: '/var/log/esurfing',
-                        conn_timeout: 3,
-                        op_timeout: 5,
+                        log_dir: './',
+                        conn_timeout: 10,
+                        op_timeout: 15,
                         web_port: 8888,
+                        probe_hosts: [
+                            { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
+                            { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
+                        ],
                         accounts: [
                             {
                                 username: '',
                                 password: '',
-                                channel: 'phone',
+                                channel: 'windows',
                                 mark: '',
                                 time_windows: []
                             }

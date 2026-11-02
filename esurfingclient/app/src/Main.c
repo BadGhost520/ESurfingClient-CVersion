@@ -1,13 +1,18 @@
+#include "config/Config.h"
 #include "control/Control.h"
+#include "core/States.h"
+#include "utils/log/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/time/TimeUtils.h"
+#include "utils/runtime/Service.h"
 
-#include "states/States.h"
-
-#include "utils/PlatformUtils.h"
-#include "utils/Service.h"
+#include <curl/curl.h>
 
 #include <stdio.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <string.h>
 #include <stdlib.h>
 #endif
@@ -20,19 +25,59 @@ static bool s_list_accounts = false;
 
 static bool s_print_log_dir = false;
 
+#ifdef _WIN32
+static UINT s_console_output_cp = 0;
+static UINT s_console_input_cp = 0;
+
+/**
+ * @brief 退出时把控制台代码页切回原来的值
+ *
+ * 切了不恢复的话, 用户之后在同一个窗口里跑别的程序 (期待 GBK) 反而会乱码。
+ */
+static void console_utf8_restore(void)
+{
+    if (s_console_output_cp != 0) SetConsoleOutputCP(s_console_output_cp);
+    if (s_console_input_cp != 0) SetConsoleCP(s_console_input_cp);
+}
+
+/**
+ * @brief 把控制台切到 UTF-8
+ *
+ * 程序里的中文是 UTF-8 编码的字节, 而 Windows 控制台默认按 GBK(936) 解释 ——
+ * 不切代码页的话, 终端里所有中文都是乱码。服务模式没有控制台,
+ * SetConsoleOutputCP 会失败, 此时不注册恢复函数即可。
+ */
+static void console_utf8_init(void)
+{
+    s_console_output_cp = GetConsoleOutputCP();
+    s_console_input_cp = GetConsoleCP();
+
+    if (SetConsoleOutputCP(CP_UTF8) != 0)
+    {
+        atexit(console_utf8_restore);
+    }
+    SetConsoleCP(CP_UTF8);
+}
+#endif
+
 /**
  * @brief 显示帮助信息
  */
-static void PrintUsage()
+static void PrintUsage(void)
 {
     printf("使用格式: ESurfingClient [选项]\n");
-    printf("  [nothing]            直接运行程序 (前台模式)\n");
+#ifdef __OPENWRT__
+    printf("  [nothing]            直接运行程序 (单实例: 一个进程带所有账号的认证线程)\n");
+    printf("  -r, --role <角色>     程序角色: auth (认证; 由 init 脚本按账号各起一个)\n");
+#else
+    printf("  [nothing]            直接运行程序 (等同于 --role supervisor: 认证与 Web 各起独立进程)\n");
     printf("  -r, --role <角色>     程序角色: supervisor (守护) / auth (认证) / web (网页)\n");
+#endif
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
     printf("  --print-log-dir      打印实际使用的日志目录后退出 (日志目录由配置里的 log_dir 决定)\n");
 #ifndef __OPENWRT__
-    printf("  --control-port <端口> 控制通道端口 (默认 %d; 认证进程监听, Web 进程连接)\n", CONTROL_DEFAULT_PORT);
+    printf("  --control-port <端口> 控制通道端口 (默认 %d; 被占用时自动往后顺延)\n", CONTROL_DEFAULT_PORT);
     printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 守护进程会自动生成并下发)\n");
     printf("  (Web 服务端口与是否允许外部访问在配置文件的 web_port / web_external_acc 里改)\n");
 #endif
@@ -113,7 +158,7 @@ static bool parse_port(const char* str, uint16_t* port)
  * @brief 校验角色与序号的组合是否合法
  * @return 0 合法, 其它值作为退出码返回
  */
-static int check_args()
+static int check_args(void)
 {
     /**
      * 列举账号与打印日志目录都是独立的查询动作, 由 init 脚本调用,
@@ -305,7 +350,7 @@ static int parse_args(const int argc, char* argv[])
  * 显式给的 --control-token 优先, 这里只在没给的时候兜底。
  * (Windows 上监管者仍然走命令行, 原因见 SupervisorChild.c 的 child_build_argv)
  */
-static void load_control_token_env()
+static void load_control_token_env(void)
 {
     if (g_control_token[0] != '\0') return;
 
@@ -323,7 +368,22 @@ static void load_control_token_env()
 
 int main(const int argc, char *argv[])
 {
+#ifdef _WIN32
+    console_utf8_init(); // 让控制台按 UTF-8 显示中文 (退出时会切回原代码页)
+#endif
+
     g_start_run_tm = get_cur_tm_ms(); // 获取开始运行的时间
+
+    /**
+     * libcurl 的硬性要求: 多线程程序里全局初始化必须在创建任何线程之前做一次。
+     * 否则每个线程第一次 curl_easy_init 各自触发的隐式初始化存在竞态
+     * (可能拿到还没初始化完的解析器/SSL 状态)。本程序会起认证/Web/网速等多个线程。
+     */
+    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK)
+    {
+        fprintf(stderr, "[ERROR] libcurl 全局初始化失败\n");
+        return 1;
+    }
 
     // 记下来: 重启进程时要原样带上这些参数, 否则重启后会变成另一个角色
     g_main_argc = argc;
@@ -331,12 +391,6 @@ int main(const int argc, char *argv[])
 
     // 记下启动时的父进程号: 被监管的子进程靠它判断监管者是否还活着
     record_parent_pid();
-
-#ifdef _WIN32
-
-    system("chcp 65001 >nul");
-
-#endif
 
     const int arg_result = parse_args(argc, argv);
     if (arg_result != ARG_CONTINUE)

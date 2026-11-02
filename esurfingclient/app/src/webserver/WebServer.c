@@ -1,20 +1,18 @@
 #include "webserver/WebServer.h"
 
-#include "webserver/WebInternal.h"
+#include "WebInternal.h"
 
 #include <mongoose/mongoose.h>
 
 #include "control/Control.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
 #include "utils/sim/SimThread.h"
 
-#include "utils/Logger.h"
+#include "utils/log/Logger.h"
 
 static sim_thread_t* web_thread;
-
-bool s_local_state = true;
 
 #define WEB_LISTEN_LEN 64
 
@@ -51,10 +49,14 @@ static int web_server(void* arg)
     }
 
     g_is_webserver_running = 1;
-    LOG_INFO("Web 服务器已启动, 访问地址: %s", listen_addr);
+    LOG_DEBUG("Web 服务器已启动: %s", listen_addr);
+
+    // 这条是给用户看的: 告诉他去哪打开后台 (带上 http:// 方便直接复制)
+    LOG_INFO("在浏览器输入 %s 以访问后台管理页面", listen_addr);
+
     while (g_is_webserver_running) mg_mgr_poll(&mgr, 1000);
     mg_mgr_free(&mgr);
-    LOG_INFO("Web 服务器已停止");
+    LOG_DEBUG("Web 服务器已停止");
     return 0;
 }
 
@@ -62,42 +64,27 @@ static int web_server(void* arg)
  * @brief 启动 Web 服务线程
  * @return 是否启动成功
  */
-static bool start_web_thread()
+static bool start_web_thread(void)
 {
-    web_thread = sim_thread_create(web_server, (void*)(intptr_t)-2);
-
-    uint8_t retry = 1;
-    while (web_thread == NULL)
+    web_thread = sim_thread_create_retry(web_server, (void*)(intptr_t)-2, 5);
+    if (web_thread == NULL)
     {
-        if (retry > 5)
-        {
-            LOG_FATAL("超过重试次数");
-            return false;
-        }
-        LOG_ERROR("Web 服务器线程创建失败, 重试中, 重试次数: %" PRIu8 ", 最多 5 次", retry);
-        web_thread = sim_thread_create(web_server, (void*)(intptr_t)-2);
-        retry++;
+        LOG_FATAL("Web 服务器线程创建失败");
+        return false;
     }
     return true;
 }
 
-bool start_web_server()
-{
-    s_local_state = true;
-    return start_web_thread();
-}
-
-bool start_web_server_remote()
+bool start_web_server_remote(void)
 {
     control_set_port(g_control_port);
-    s_local_state = false;
 
-    LOG_INFO("Web 进程模式: 认证状态通过控制通道 127.0.0.1:%" PRIu16 " 获取", g_control_port);
+    LOG_DEBUG("Web 进程模式: 认证状态通过控制通道 127.0.0.1:%" PRIu16 " 获取", g_control_port);
 
     return start_web_thread();
 }
 
-void stop_web_server()
+void stop_web_server(void)
 {
     g_is_webserver_running = 0;
     int result_code = 0;

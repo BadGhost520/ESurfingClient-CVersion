@@ -14,8 +14,6 @@ char* bytes_2_hex(const uint8_t* bytes, size_t len);
 
 uint8_t* hex_2_bytes(const char* hex, size_t* out_len);
 
-void zsm_blob_free(ios_zsm_blob_t* blob);
-
 void* s_malloc(size_t size);
 
 void* s_calloc(size_t count, size_t size);
@@ -29,6 +27,9 @@ uint8_t* pkcs7_padding(const uint8_t* data, size_t data_len, size_t block_size, 
 uint8_t* rm_pkcs7_padding(const uint8_t* data, size_t data_len, size_t* out_len);
 
 uint8_t* pad_2_multiple(const uint8_t* data, size_t data_len, size_t multiple, size_t* out_len);
+
+/** 32 位字节序翻转 */
+uint32_t uint32_bswap(uint32_t value);
 
 uint32_t bytes_2_uint32_be(const uint8_t* bytes);
 

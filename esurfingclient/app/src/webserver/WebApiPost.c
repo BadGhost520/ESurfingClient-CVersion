@@ -1,47 +1,36 @@
-#include "webserver/WebInternal.h"
-
-#include <mongoose/mongoose.h>
+#include "WebInternal.h"
 
 #include "config/Config.h"
-
 #include "control/Control.h"
-
-#include "states/States.h"
-
-#include "utils/Logger.h"
+#include "core/States.h"
+#include "utils/log/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "webserver/HotspotControl.h"
 
 #include <cJSON/cJSON.h>
+#include <mongoose/mongoose.h>
 
 /**
- * @brief 请求重新认证
+ * @brief 重新认证 (与"应用配置"一致: 都是重启)
+ *
+ * Web 进程不碰认证状态: 一律通过控制通道让认证进程退出, 再由监管者重新拉起。
+ * 进程内热重载已经去掉, 重新认证不再走 is_need_reauth 那条老路。
  * @return 是否成功
  */
-static bool request_restart_auth()
+static bool request_restart_auth(void)
 {
-    if (s_local_state)
-    {
-        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-        g_prog_status[0].runtime_status.is_need_reauth = true;
-        return true;
-    }
-
     return control_restart_auth();
 }
 
 /**
- * @brief 请求重新加载配置并重新认证
+ * @brief 应用新配置
+ *
+ * 不再做进程内的热重载: 认证进程退出, 由监管者用新配置重新拉起它
+ * (新配置在它启动时读取), Web 进程与网页不受影响。
  * @return 是否成功
  */
-static bool request_apply_config()
+static bool request_apply_config(void)
 {
-    if (s_local_state)
-    {
-        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-        g_cfg_loaded = false;
-        g_prog_status[0].runtime_status.is_need_reauth = true;
-        return true;
-    }
-
     return control_apply_config();
 }
 
@@ -107,7 +96,22 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
         {
             if (cJSON_IsBool(apply))
             {
-                if (g_prog_status == NULL)
+                /**
+                 * 配置不可用时程序正停在"等配置"的状态, 网页开着就是为了让用户
+                 * 把配置改回来 —— 这时"保存并应用"就是让主流程重新读一遍配置的
+                 * 开关: 没有认证线程可下发, 也不需要下发
+                 *
+                 * 同时落下 .apply 标记: 监管者没有控制通道, 只能靠它知道该重读配置
+                 * (认证进程那边由监管者负责重启, 见 supervisor_sync_cfg)
+                 */
+                if (g_waiting_cfg)
+                {
+                    g_need_reload = true;
+                    cfg_request_apply();
+                    LOG_INFO("收到 Web 应用配置文件请求, 主流程将重新加载配置文件");
+                    mg_http_reply(c, 204, "", "");
+                }
+                else if (g_prog_status == NULL)
                 {
                     LOG_WARN("收到 Web 应用配置文件请求, 但程序尚未加载完成, 拒绝操作");
                     mg_http_reply(c, 403, "", "");
@@ -117,15 +121,18 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                     bool is_authed = false;
                     const bool reachable = query_is_authed(&is_authed);
 
+                    /**
+                     * 只要认证进程在 (reachable), 就把"重新加载配置"的请求发下去。
+                     *
+                     * 不要求"正在认证": 配置刚加载完时认证线程还没起 (要等网络进入
+                     * "需要认证"的状态), 而这恰恰是用户会去改配置的时候 ——
+                     * 卡在这里的话, 用户在等网络时把程序关掉会收到一个"应用失败",
+                     * 程序却照旧拿着旧配置往下走
+                     */
                     if (reachable == false)
                     {
                         LOG_WARN("收到 Web 应用配置文件请求, 但认证进程不可达");
                         mg_http_reply(c, 503, "", "");
-                    }
-                    else if (is_authed == false)
-                    {
-                        LOG_WARN("收到 Web 应用配置文件请求, 但没有线程在认证, 拒绝操作");
-                        mg_http_reply(c, 403, "", "");
                     }
                     else if (request_apply_config() == false)
                     {
@@ -134,7 +141,13 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
                     }
                     else
                     {
-                        LOG_INFO("收到 Web 应用配置文件请求, 程序将重新加载配置文件并进行认证");
+                        // 认证进程整个重启 (退出后由监管者重新拉起);
+                        // 监管者与 Web 进程自己走热重载, 不退出
+                        g_need_reload = true;
+                        cfg_request_apply();
+
+                        LOG_INFO("收到 Web 应用配置文件请求 (当前%s), 认证进程将重启, 其余进程热重载配置",
+                            is_authed ? "已认证" : "未认证");
                         mg_http_reply(c, 204, "", "");
                     }
                 }
@@ -167,15 +180,14 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
             bool is_authed = false;
             const bool reachable = query_is_authed(&is_authed);
 
+            /**
+             * 不再要求"正在认证": 重新认证已经改成重启, 任何时候都可以做,
+             * 正在等网络 / 正在退避时反而是最需要重启的时候
+             */
             if (reachable == false)
             {
                 LOG_WARN("收到 Web 重新认证请求, 但认证进程不可达");
                 mg_http_reply(c, 503, "", "");
-            }
-            else if (is_authed == false)
-            {
-                LOG_WARN("收到 Web 重新认证请求, 但没有线程在认证, 拒绝操作");
-                mg_http_reply(c, 403, "", "");
             }
             else if (request_restart_auth() == false)
             {
@@ -184,7 +196,7 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
             }
             else
             {
-                LOG_INFO("收到 Web 重新认证请求, 认证线程将重新进行认证");
+                LOG_INFO("收到 Web 重新认证请求, 程序将重启");
                 mg_http_reply(c, 204, "", "");
             }
         }
@@ -194,6 +206,37 @@ bool handle_api_post(struct mg_connection* c, struct mg_http_message* hm)
     }
 
     free(data);
+
+    /**
+     * 热点开关: 立刻回"已受理", 真正的切换在后台线程里跑 (要起一次 PowerShell,
+     * 快则一秒慢则十几秒, 不能占着 Web 线程); 页面随后轮询 /api/hotspot/status 看结果
+     */
+    if (mg_match(hm->uri, mg_str("/api/hotspot/start"), NULL) ||
+        mg_match(hm->uri, mg_str("/api/hotspot/stop"), NULL))
+    {
+        const bool is_start = mg_match(hm->uri, mg_str("/api/hotspot/start"), NULL);
+        char adapter[ADAPTER_ID_LEN] = {0};
+        const int adapter_len = mg_http_get_var(&hm->query, "adapter", adapter, sizeof(adapter));
+        if (adapter_len <= 0)
+        {
+            LOG_WARN("收到热点%s请求, 但没有指定网卡", is_start ? "开启" : "关闭");
+            mg_http_reply(c, 400, "", "");
+            return true;
+        }
+
+        char* body = NULL;
+        const int status = hotspot_request(is_start ? "start" : "stop", adapter, &body);
+        if (body != NULL)
+        {
+            mg_http_reply(c, status, HEADER_JSON, "%s", body);
+            free(body);
+        }
+        else
+        {
+            mg_http_reply(c, status, "", "");
+        }
+        return true;
+    }
 
     // 未知的 POST 路径
     mg_http_reply(c, 404, HEADER_TEXT, "Not found\n");

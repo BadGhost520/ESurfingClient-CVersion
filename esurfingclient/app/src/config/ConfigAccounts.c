@@ -1,10 +1,11 @@
-#include "utils/PlatformUtils.h"
+#include "core/States.h"
 
-#include "states/States.h"
+#include "config/Config.h"
 
-#include "config/ConfigInternal.h"
+#include "ConfigInternal.h"
 
-#include "utils/Logger.h"
+#include "utils/log/Logger.h"
+#include "utils/text/TextUtils.h"
 
 #include "cJSON/cJSON.h"
 
@@ -20,13 +21,45 @@
 #define IOS_UA "CCTP/iOSdy/4023"
 #define MACOS_UA "CCTP/macdy/5019"
 
-static bool channel_str_eq(const char* a, const char* b)
+/** 通道表: 名字 / 别名 / UA / ostag 集中一处, 免得"名字→序号"和"序号→UA"两张表各写一遍 */
+typedef struct
 {
-#ifdef _WIN32
-    return _stricmp(a, b) == 0;
-#else
-    return strcasecmp(a, b) == 0;
-#endif
+    uint8_t chn;
+    const char* name;
+    const char* alias;
+    const char* ua;
+    const char* ostag;
+} channel_t;
+
+static const channel_t s_channels[] = {
+    {1, "windows", "1", WINDOWS_UA, "Windows 11"},
+    {2, "linux", "2", LINUX_UA, "Linux"},
+    {3, "android", "3", ANDROID_UA, "Android 14"},
+    {4, "ios", "4", IOS_UA, "iOS 17.0"},
+    {5, "macos", "5", MACOS_UA, "macOS,14.4"},
+};
+
+#define CHANNEL_COUNT (sizeof(s_channels) / sizeof(s_channels[0]))
+
+static const channel_t* channel_find(const uint8_t chn)
+{
+    for (size_t i = 0; i < CHANNEL_COUNT; i++)
+    {
+        if (s_channels[i].chn == chn) return &s_channels[i];
+    }
+    return NULL;
+}
+
+const char* channel_name(const uint8_t chn)
+{
+    const channel_t* found = channel_find(chn);
+    return found != NULL ? found->name : s_channels[2].name; // 默认 android
+}
+
+const char* channel_ostag(const uint8_t chn)
+{
+    const channel_t* found = channel_find(chn);
+    return found != NULL ? found->ostag : s_channels[2].ostag;
 }
 
 uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
@@ -39,11 +72,9 @@ uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
 
     if (cJSON_IsNumber(chn))
     {
-        const int value = chn->valueint;
-        if (value >= 1 && value <= 5)
-        {
-            return (uint8_t)value;
-        }
+        const uint8_t value = (uint8_t)chn->valueint;
+        if (channel_find(value) != NULL) return value;
+
         LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 3 (Android)", cfg_no);
         return 3;
     }
@@ -51,65 +82,37 @@ uint8_t parse_channel_json(const cJSON* chn, const uint8_t cfg_no)
     if (cJSON_IsString(chn) && chn->valuestring != NULL)
     {
         const char* value = chn->valuestring;
-        if (channel_str_eq(value, "windows") || channel_str_eq(value, "1"))
+        for (size_t i = 0; i < CHANNEL_COUNT; i++)
         {
-            return 1;
+            if (str_ieq(value, s_channels[i].name) || str_ieq(value, s_channels[i].alias))
+            {
+                return s_channels[i].chn;
+            }
         }
-        if (channel_str_eq(value, "linux") || channel_str_eq(value, "2"))
-        {
-            return 2;
-        }
-        if (channel_str_eq(value, "android") || channel_str_eq(value, "3"))
-        {
-            return 3;
-        }
-        if (channel_str_eq(value, "ios") || channel_str_eq(value, "iphone") || channel_str_eq(value, "4"))
-        {
-            return 4;
-        }
-        if (channel_str_eq(value, "macos") || channel_str_eq(value, "mac") || channel_str_eq(value, "osx") || channel_str_eq(value, "5"))
-        {
-            return 5;
-        }
+        // 这几个别名不在表里 (历史叫法), 仍然认
+        if (str_ieq(value, "iphone")) return 4;
+        if (str_ieq(value, "mac") || str_ieq(value, "osx")) return 5;
     }
 
     LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 3 (Android)", cfg_no);
     return 3;
 }
 
-void apply_channel_ua(login_cfg_t* cfg, uint8_t cfg_no)
+void apply_channel_ua(cfg_t* cfg, const uint8_t cfg_no)
 {
-    switch (cfg->chn)
+    const channel_t* found = channel_find(cfg->chn);
+    if (found == NULL)
     {
-    case 1:
-        LOG_INFO("使用通道 1: Windows");
-        snprintf(cfg->user_agent, USER_AGENT_LEN, WINDOWS_UA);
-        break;
-    case 2:
-        LOG_INFO("使用通道 2: Linux");
-        snprintf(cfg->user_agent, USER_AGENT_LEN, LINUX_UA);
-        break;
-    case 3:
-        LOG_INFO("使用通道 3: Android");
-        snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
-        break;
-    case 4:
-        LOG_INFO("使用通道 4: iOS");
-        snprintf(cfg->user_agent, USER_AGENT_LEN, IOS_UA);
-        break;
-    case 5:
-        LOG_INFO("使用通道 5: macOS");
-        snprintf(cfg->user_agent, USER_AGENT_LEN, MACOS_UA);
-        break;
-    default:
         LOG_WARN("配置 %" PRIu8 " channel 参数错误, 使用默认通道 3 (Android)", cfg_no);
         cfg->chn = 3;
-        snprintf(cfg->user_agent, USER_AGENT_LEN, ANDROID_UA);
-        break;
+        found = channel_find(3);
     }
+
+    LOG_DEBUG("使用通道 %" PRIu8 ": %s", found->chn, found->name);
+    snprintf(cfg->user_agent, USER_AGENT_LEN, "%s", found->ua);
 }
 
-int list_accounts()
+int list_accounts(void)
 {
     /**
      * stdout 要留给账号列表, 日志一行都不落盘 (全部改写到 stderr).
@@ -131,9 +134,9 @@ int list_accounts()
      * 复用 load_cfg 的整套校验:
      * 列举出来的账号与真正会被加载的必须完全一致, 否则 init 脚本会起出跑不起来的实例
      */
-    s_list_only = true;
+    g_list_only = true;
     const bool loaded = load_cfg();
-    s_list_only = false;
+    g_list_only = false;
 
     if (loaded == false)
     {
@@ -143,7 +146,7 @@ int list_accounts()
 
     for (uint8_t i = 0; i < g_prog_cnt; i++)
     {
-        printf("%" PRIu8 "\n", g_prog_status[i].login_cfg.idx);
+        printf("%" PRIu8 "\n", g_prog_status[i].cfg.idx);
     }
     fflush(stdout);
 

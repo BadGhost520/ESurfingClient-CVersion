@@ -1,0 +1,428 @@
+#include "NetClientInternal.h"
+
+#include "core/States.h"
+
+#include "utils/sim/SimEvp.h"
+
+#include "utils/log/Logger.h"
+#include "utils/text/TextUtils.h"
+
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+
+#ifdef _WIN32
+#else
+#include <stdlib.h>
+#endif
+
+#ifdef __OPENWRT__
+#include <errno.h>
+#include <unistd.h>
+
+#ifndef SOL_SOCKET
+#define SOL_SOCKET 1
+#endif
+
+#ifndef SO_MARK
+#define SO_MARK 36
+#endif
+#endif
+
+static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
+{
+    if (out == NULL || out_len == 0) return;
+    out[0] = '\0';
+    if (ref == NULL || ref[0] == '\0')
+    {
+        if (base) snprintf(out, out_len, "%s", base);
+        return;
+    }
+    if (strncmp(ref, "http://", 7) == 0 || strncmp(ref, "https://", 8) == 0)
+    {
+        snprintf(out, out_len, "%s", ref);
+        return;
+    }
+    if (base == NULL || base[0] == '\0')
+    {
+        snprintf(out, out_len, "%s", ref);
+        return;
+    }
+    if (ref[0] == '/' && ref[1] == '/')
+    {
+        const char* scheme_end = strstr(base, "://");
+        if (scheme_end) snprintf(out, out_len, "%.*s:%s", (int)(scheme_end - base), base, ref);
+        else snprintf(out, out_len, "http:%s", ref);
+        return;
+    }
+
+    const char* scheme = strstr(base, "://");
+    const char* host_start = scheme ? scheme + 3 : base;
+    const char* path_start = strchr(host_start, '/');
+    if (ref[0] == '/')
+    {
+        if (path_start) snprintf(out, out_len, "%.*s%s", (int)(path_start - base), base, ref);
+        else snprintf(out, out_len, "%s%s", base, ref);
+        return;
+    }
+
+    if (path_start)
+    {
+        const char* query = strchr(path_start, '?');
+        const char* end = query ? query : path_start + strlen(path_start);
+        const char* last_slash = path_start;
+        for (const char* p = path_start; p < end; p++)
+        {
+            if (*p == '/') last_slash = p;
+        }
+        snprintf(out, out_len, "%.*s/%s", (int)(last_slash - base), base, ref);
+    }
+    else
+    {
+        snprintf(out, out_len, "%s/%s", base, ref);
+    }
+}
+
+#ifdef __OPENWRT__
+curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct curl_sockaddr* addr)
+{
+    (void)client_p;
+    (void)purpose;
+    curl_socket_t sock_fd = socket(addr->family, addr->socktype, addr->protocol);
+    if (sock_fd == CURL_SOCKET_BAD)
+    {
+        LOG_ERROR("创建 socket 失败: %s", strerror(errno));
+        return CURL_SOCKET_BAD;
+    }
+
+    /**
+     * tl_thread_idx 为负表示不在认证线程里 (Web 进程的后台探测线程就是 -1),
+     * 此时没有账号上下文, 不绑 mark (走主路由表) —— 但绝不能去读 g_prog_status[-1]
+     */
+    if (tl_thread_idx >= 0 && g_prog_status[tl_thread_idx].cfg.mark != 0)
+    {
+        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[tl_thread_idx].cfg.mark, sizeof(g_prog_status[tl_thread_idx].cfg.mark)) == -1)
+        {
+            /**
+             * 绑 mark 失败就直接放弃这次请求: 继续发的话这个 socket 会走主路由表,
+             * 也就是用别的账号的线路出去 —— 多 WAN 下就是串线 (认证请求从 A 线发出,
+             * 会话却记在 B 线的 IP 上)。
+             *
+             * 返回 CURL_SOCKET_BAD 后 curl 不会再管这个 fd, 得自己关掉。
+             */
+            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s, 放弃本次请求",
+                g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark, strerror(errno));
+
+            close(sock_fd);
+            return CURL_SOCKET_BAD;
+        }
+
+        LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark);
+    }
+
+    return sock_fd;
+}
+#endif
+
+/**
+ * @brief 这一行响应头是不是某个名字 (大小写不敏感, 后面必须紧跟冒号)
+ *
+ * HTTP 头名不区分大小写, 服务端有时发 "Error-Code:", 有时发 "error-code:"
+ */
+static bool header_name_is(const char* header, const char* name)
+{
+    if (str_iprefix(header, name) == false) return false;
+    return header[strlen(name)] == ':';
+}
+
+/**
+ * @brief 把响应头里的值抄进定长缓冲 (跳过前导空格, 到 CR/LF 为止)
+ */
+static void header_copy_value(const char* header, const size_t name_len, char* out, const size_t out_len)
+{
+    if (out == NULL || out_len == 0) return;
+    const char* value = header + name_len + 1; // 跳过冒号
+    while (*value == ' ' || *value == '\t') value++;
+    size_t value_len = strcspn(value, "\r\n");
+    while (value_len > 0 && (value[value_len - 1] == ' ' || value[value_len - 1] == '\t')) value_len--; // 去掉尾部空白, 否则码表匹配不上
+    const size_t copy_len = value_len < out_len - 1 ? value_len : out_len - 1;
+    memcpy(out, value, copy_len);
+    out[copy_len] = '\0';
+}
+
+/**
+ * @brief 把响应头名规范成"小写 + 去空格", 用于宽松匹配
+ *
+ * 例: "School Id" / "schoolid" / "SCHOOLID" 都规范成 "schoolid"
+ */
+static void header_name_normalize(const char* header, char* out, const size_t out_len)
+{
+    if (out == NULL || out_len == 0) return;
+    out[0] = '\0';
+    if (header == NULL) return;
+
+    size_t n = 0;
+    for (size_t i = 0; header[i] != '\0' && header[i] != ':' && n + 1 < out_len; i++)
+    {
+        if (header[i] == ' ' || header[i] == '\t') continue;
+        out[n++] = (char)tolower((unsigned char)header[i]);
+    }
+    out[n] = '\0';
+}
+
+size_t header_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
+{
+    const size_t real_size = size * nmemb;
+    const char* header = contents;
+    curl_resp_t* resp = userdata;
+
+    /**
+     * 服务端的错误码在这两个响应头上 (登录 /auth.cgi 的 POST 响应里就会出现),
+     * 记到本次请求的结果里, 由认证流程翻译成"要不要重试、要不要等用户改配置"
+     */
+    if (resp != NULL && real_size > 2)
+    {
+        if (resp->error_code[0] == '\0' && header_name_is(header, "error-code"))
+        {
+            header_copy_value(header, strlen("error-code"), resp->error_code, sizeof(resp->error_code));
+            LOG_DEBUG("响应头 Error-Code: %s", resp->error_code);
+        }
+        else if (resp->sub_error[0] == '\0' && header_name_is(header, "sub-error"))
+        {
+            header_copy_value(header, strlen("sub-error"), resp->sub_error, sizeof(resp->sub_error));
+            LOG_DEBUG("响应头 Sub-Error: %s", resp->sub_error);
+        }
+    }
+
+    /**
+     * 学校信息头 (School Id / Domain / Area)
+     *
+     * 头名写成 "School Id: 221" 还是 "schoolid: 221" 各家 AC 不一样, 所以比较时
+     * 统一去掉空格、转小写; 值仍然交给 header_copy_value 去空格后抄进定长缓冲。
+     */
+    char header_name[32];
+    header_name_normalize(header, header_name, sizeof(header_name));
+
+    const char* header_colon = strchr(header, ':');
+    if (header_colon != NULL)
+    {
+        const size_t name_len = (size_t)(header_colon - header);
+
+        if (strcmp(header_name, "schoolid") == 0 && g_school_id[0] == '\0')
+        {
+            header_copy_value(header, name_len, g_school_id, SCHOOL_ID_LENGTH);
+            LOG_DEBUG("School Id: %s", g_school_id);
+        }
+        else if (strcmp(header_name, "domain") == 0 && g_school_domain[0] == '\0')
+        {
+            header_copy_value(header, name_len, g_school_domain, DOMAIN_LENGTH);
+            LOG_DEBUG("Domain: %s", g_school_domain);
+        }
+        else if (strcmp(header_name, "area") == 0 && g_area[0] == '\0')
+        {
+            header_copy_value(header, name_len, g_area, AREA_LENGTH);
+            LOG_DEBUG("Area: %s", g_area);
+        }
+    }
+
+    if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
+    {
+        if (tl_thread_idx > -1)
+        {
+            if (!g_prog_status[tl_thread_idx].last_location_lock)
+            {
+                LOG_VERBOSE("原始数据: %s", header);
+
+                const char* value = header + 9;
+                while (*value == ' ') value++;
+                const size_t valid_len = strcspn(value, "\r\n");
+
+                size_t copy_len = valid_len;
+                if (copy_len >= LOCATION_LEN)
+                {
+                    copy_len = LOCATION_LEN - 1;
+                    LOG_WARN("Location 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, LOCATION_LEN);
+                }
+
+                char location[LOCATION_LEN];
+                memcpy(location, value, copy_len);
+                location[copy_len] = '\0';
+
+                char resolved[LAST_LOCATION_LEN];
+                resolve_url(resolved, sizeof(resolved), g_request_url, location);
+                snprintf(g_prog_status[tl_thread_idx].last_location, LAST_LOCATION_LEN, "%s", resolved);
+
+                LOG_VERBOSE("现在的 last_location: %s (长度: %zu)",
+                            g_prog_status[tl_thread_idx].last_location,
+                            strlen(g_prog_status[tl_thread_idx].last_location));
+            }
+        }
+    }
+
+    return real_size;
+}
+
+size_t write_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
+{
+    curl_resp_t* resp = userdata;
+    const size_t real_size = size * nmemb;
+    char* ptr = realloc(resp->body_data, resp->body_size + real_size + 1);
+
+    if (!ptr) return 0;
+
+    resp->body_data = ptr;
+    memcpy(&resp->body_data[resp->body_size], contents, real_size);
+    resp->body_size += real_size;
+    resp->body_data[resp->body_size] = 0;
+
+    return real_size;
+}
+
+char* calc_md5(const char* data)
+{
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_len;
+    char* md5_str = malloc(33);
+
+    if (!md5_str)
+    {
+        LOG_ERROR("分配内存失败");
+        return NULL;
+    }
+
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx)
+    {
+        free(md5_str);
+        return NULL;
+    }
+
+    const EVP_MD* md = EVP_md5();
+    if (EVP_DigestInit_ex(mdctx, md, NULL) != 1)
+    {
+        EVP_MD_CTX_free(mdctx);
+        free(md5_str);
+        return NULL;
+    }
+
+    if (EVP_DigestUpdate(mdctx, data, strlen(data)) != 1)
+    {
+        EVP_MD_CTX_free(mdctx);
+        free(md5_str);
+        return NULL;
+    }
+
+    if (EVP_DigestFinal_ex(mdctx, digest, &digest_len) != 1)
+    {
+        EVP_MD_CTX_free(mdctx);
+        free(md5_str);
+        return NULL;
+    }
+    EVP_MD_CTX_free(mdctx);
+
+    for (unsigned int i = 0; i < digest_len; i++) sprintf(&md5_str[i*2], "%02x", (unsigned int)digest[i]);
+
+    return md5_str;
+}
+
+network_status_t curl_err_msg_out(const CURLcode curl_code)
+{
+    switch (curl_code)
+    {
+    case CURLE_URL_MALFORMAT:
+        LOG_ERROR("curl 错误码: 3, 错误信息: URL 格式错误");
+        break;
+    case CURLE_COULDNT_RESOLVE_HOST:
+        LOG_ERROR("curl 错误码: 6, 错误信息: DNS 解析错误");
+        break;
+    case CURLE_COULDNT_CONNECT:
+        LOG_ERROR("curl 错误码: 7, 错误信息: 连接服务器失败");
+        break;
+    case CURLE_HTTP_RETURNED_ERROR:
+        LOG_ERROR("curl 错误码: 22, 错误信息: HTTP 状态码 ≥ 400");
+        break;
+    case CURLE_WRITE_ERROR:
+        LOG_ERROR("curl 错误码: 23, 错误信息: 写入数据失败");
+        break;
+    case CURLE_OPERATION_TIMEDOUT:
+        LOG_WARN("curl 错误码: 28, 错误信息: 操作超时");
+        break;
+    case CURLE_ABORTED_BY_CALLBACK:
+        LOG_ERROR("curl 错误码: 42, 错误信息: 回调函数中止");
+        break;
+    case CURLE_GOT_NOTHING:
+        LOG_ERROR("curl 错误码: 52, 错误信息: 服务器返回空数据");
+        break;
+    case CURLE_RECV_ERROR:
+        LOG_ERROR("curl 错误码: 56, 错误信息: 接收数据时失败");
+        break;
+    default:
+        LOG_ERROR("未知错误");
+    }
+    return STATUS_ERROR;
+}
+
+void log_curl_error(CURL* curl, const CURLcode code, const char *errbuf, const char *url, const char *func_name)
+{
+    LOG_ERROR("[%s] curl 请求失败: %s", func_name, curl_easy_strerror(code));
+    LOG_DEBUG("[%s] URL: %s", func_name, url ? url : "(null)");
+    LOG_DEBUG("[%s] CURLcode: %d", func_name, code);
+
+    if (errbuf && errbuf[0] != '\0')
+    {
+        LOG_DEBUG("[%s] 错误详情: %s", func_name, errbuf);
+    }
+
+    if (curl)
+    {
+        double connect_time = 0.0;
+        double total_time = 0.0;
+        // 获取连接阶段实际耗时 (秒, double 类型)
+        curl_easy_getinfo(curl, CURLINFO_CONNECT_TIME, &connect_time);
+        // 获取整个请求实际总耗时 (秒, double 类型)
+        curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &total_time);
+
+        LOG_DEBUG("[%s] 实际连接耗时: %.3f 秒", func_name, connect_time);
+        LOG_DEBUG("[%s] 实际总耗时:   %.3f 秒", func_name, total_time);
+        LOG_DEBUG("[%s] 连接超时时长: %ld 秒", func_name, g_conn_timeout);
+        LOG_DEBUG("[%s] 总超时时长:   %ld 秒", func_name, g_op_timeout);
+
+        /**
+         * 超时原因分析
+         *
+         * 注意 CURLINFO_CONNECT_TIME 的语义: 只有 TCP 连接**建立成功**才有值。
+         * 连接阶段就超时时它是 0.000, 而 TOTAL_TIME 会等于 CONNECTTIMEOUT ——
+         * 这就是"连接耗时 0.000 秒 / 总耗时 7.001 秒"看起来自相矛盾的原因,
+         * 不能只用 connect_time 去和阈值比较, 否则这种情况会落进"原因不明确"。
+         */
+        if (code == CURLE_OPERATION_TIMEDOUT)
+        {
+            double name_time = 0.0;
+            curl_easy_getinfo(curl, CURLINFO_NAMELOOKUP_TIME, &name_time);
+            LOG_DEBUG("[%s] DNS 解析耗时: %.3f 秒", func_name, name_time);
+
+            if (connect_time <= 0.0)
+            {
+                LOG_WARN("[%s] 结论: 连接阶段超时 —— TCP 三次握手没有完成 (所以连接耗时是 0.000), "
+                         "对端的 SYN 没有回应: 目标不可达, 或被网关/防火墙静默丢弃。"
+                         "这与服务器响应快慢无关, 调大超时只会等更久, 应换一个可达地址",
+                         func_name);
+            }
+            else if (g_op_timeout > 0 && total_time >= (double)g_op_timeout * 0.9)
+            {
+                LOG_WARN("[%s] 结论: 总操作时间超时 (CURLOPT_TIMEOUT = %ld 秒): 连接已建立 (%.3f 秒), "
+                         "但服务器迟迟没有返回完整响应", func_name, g_op_timeout, connect_time);
+            }
+            else if (g_conn_timeout > 0 && connect_time >= (double)g_conn_timeout * 0.9)
+            {
+                LOG_WARN("[%s] 结论: 连接耗时接近连接超时 (%.3f 秒), 链路质量差或对端握手很慢",
+                         func_name, connect_time);
+            }
+            else
+            {
+                LOG_WARN("[%s] 结论: 超时原因不明确 (连接 %.3f 秒 / 总计 %.3f 秒), 请检查网络稳定性",
+                         func_name, connect_time, total_time);
+            }
+        }
+    }
+}

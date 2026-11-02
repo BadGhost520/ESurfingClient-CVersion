@@ -4,18 +4,18 @@
 #include <stdbool.h>
 
 /**
- * @brief 启动 Web 服务器 (单进程模式: 与认证逻辑同进程, 直接读共享状态)
+ * @brief 启动 Web 服务器
+ *
+ * 桌面端只有多进程这一种形态, Web 服务永远跑在独立的 Web 进程里: 认证状态与
+ * "重新认证 / 应用新配置"都通过控制通道 (127.0.0.1) 转给认证进程, 本进程不读
+ * 认证线程的共享状态。
+ * @return 是否启动成功
  */
-bool start_web_server();
-
-/**
- * @brief 启动 Web 服务器 (Web 进程模式: 认证状态通过控制通道获取)
- */
-bool start_web_server_remote();
+bool start_web_server_remote(void);
 
 /**
  * @brief 停止 Web 服务器
  */
-void stop_web_server();
+void stop_web_server(void);
 
 #endif

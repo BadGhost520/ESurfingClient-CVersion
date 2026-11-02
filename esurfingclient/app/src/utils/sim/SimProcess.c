@@ -1,9 +1,9 @@
 #include "utils/sim/SimProcess.h"
 
-#include "states/States.h"
+#include "core/States.h"
 
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/log/Logger.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #endif
 
-void restart_process()
+void restart_process(void)
 {
     char exec_path[PATH_MAX];
     if (get_exec_path(exec_path) == false)
@@ -26,14 +26,13 @@ void restart_process()
 
     /**
      * 必须把原始参数一起带上:
-     * 丢掉参数会让重启后的进程退化成另一个角色 (比如 --role auth 变成单进程模式)
-     * 路径可能含空格, 所以要加引号
+     * 丢掉参数会让重启后的进程退化成另一个角色 (比如 --role auth 变成守护进程)
      */
     char cmdline[PATH_MAX + 256];
-    int used = snprintf(cmdline, sizeof(cmdline), "\"%s\"", exec_path);
-    for (int i = 1; i < g_main_argc && used > 0 && (size_t)used < sizeof(cmdline); i++)
+    if (build_windows_cmdline(exec_path, g_main_argv, cmdline, sizeof(cmdline)) == false)
     {
-        used += snprintf(cmdline + used, sizeof(cmdline) - (size_t)used, " %s", g_main_argv[i]);
+        fprintf(stderr, "[ERROR] 重启命令行过长, 重启失败\n");
+        exit(1);
     }
 
     STARTUPINFO si = {0};

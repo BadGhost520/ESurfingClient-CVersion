@@ -1,5 +1,5 @@
 const CHANNEL_TEXT = {
-    windows: 'Windows (未实现, Android 替代)',
+    windows: 'Windows',
     linux: 'Linux',
     android: 'Android',
     ios: 'iOS',
@@ -8,16 +8,9 @@ const CHANNEL_TEXT = {
 
 const CHANNEL_VALUES = ['windows', 'linux', 'android', 'ios', 'macos'];
 
-/**
- * 归一化通道取值
- * 只认 1~5 与 windows / linux / android / ios / macos
- * (iphone / mac / osx 是 LuCI 也保留的历史写法)
- * 其它取值一律按后端默认的 Android 处理
- * @param {*} raw 原始取值
- * @returns {string} windows / linux / android / ios / macos
- */
+/** 归一化通道取值 (缺省用 Windows 通道, 与默认配置文件里的 channel: 1 一致) */
 function normalizeChannel(raw) {
-    if (raw === null || raw === undefined) return 'android';
+    if (raw === null || raw === undefined) return 'windows';
 
     const value = String(raw).trim().toLowerCase();
     switch (value) {
@@ -46,14 +39,7 @@ function normalizeChannel(raw) {
     }
 }
 
-/**
- * 归一化超时参数 (秒)
- * 数字输入框清空后会取到 '' 或 NaN, 非正数一律按默认值处理
- * (后端 load_cfg 遇到非法值也会回退到默认值, 这里保持一致)
- * @param {*} raw 原始取值
- * @param {number} fallback 默认值
- * @returns {number} 正整数秒数
- */
+/** 归一化超时参数 (秒) */
 function normalizeTimeout(raw, fallback) {
     const timeout = Math.floor(Number(raw));
     if (!Number.isFinite(timeout) || timeout <= 0) return fallback;
@@ -88,9 +74,9 @@ const TOAST_CLASS = {
 
 const MAX_TIME_WINDOWS = 16;
 
-const DEFAULT_CONN_TIMEOUT = 7;
+const DEFAULT_CONN_TIMEOUT = 10;
 
-const DEFAULT_OP_TIMEOUT = 10;
+const DEFAULT_OP_TIMEOUT = 15;
 
 const DEFAULT_WEB_PORT = 8888;
 
@@ -103,35 +89,137 @@ const STATUS_INTERVAL = 5000;
 const LOG_INTERVAL = 5000;
 
 /** 默认配置 (与后端 s_default_cfg 保持一致) */
+/** 配置字段表: 默认值 / 读取时归一化 / 保存时转换 (新增字段只改这里) */
+/** 探测目标: 域名 + 固定 IP (与后端内置默认一致) */
+const DEFAULT_PROBE_HOSTS = [
+    { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
+    { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
+];
+
+/** IPv4 字面量校验 (和后端 probe_is_ipv4 一个要求: a.b.c.d 四段 0~255) */
+function isValidIPv4(value) {
+    const text = String(value == null ? '' : value).trim();
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(text)) return false;
+    return text.split('.').every(part => Number(part) <= 255);
+}
+
+/** 前端用 ipsText (逗号分隔) 编辑, 提交时再拆回 ips 数组 */
+function normalizeProbeHosts(raw) {
+    const list = Array.isArray(raw) ? raw : DEFAULT_PROBE_HOSTS;
+    return list
+        .filter(item => item && typeof item === 'object' && typeof item.host === 'string')
+        .map(item => ({
+            host: item.host.trim(),
+            ipsText: Array.isArray(item.ips) ? item.ips.filter(isValidIPv4).join(', ') : ''
+        }));
+}
+
+/** 提交给后端: 拆 ipsText, 丢掉空条目/非法 IP */
+function probeHostsOut(list) {
+    return (Array.isArray(list) ? list : [])
+        .map(item => ({
+            host: String(item.host || '').trim(),
+            ips: String(item.ipsText || '').split(',').map(part => part.trim()).filter(isValidIPv4)
+        }))
+        .filter(item => item.host.length > 0 && item.ips.length > 0);
+}
+
+const CONFIG_FIELDS = [
+    { key: 'enabled', def: false, norm: v => !!v, out: v => !!v },
+    { key: 'web_external_acc', def: false, norm: v => !!v, out: v => !!v },
+    { key: 'log_lv', def: 4, norm: v => clampLogLevel(v), out: v => Number(v) || 0 },
+    {
+        key: 'log_dir', def: DEFAULT_LOG_DIR, norm: normalizeLogDir, out: normalizeLogDir,
+        check: value => (normalizeLogDir(value).length > MAX_LOG_DIR_LEN ? `日志目录过长 (最多 ${MAX_LOG_DIR_LEN} 个字符)` : null)
+    },
+    {
+        key: 'conn_timeout', def: DEFAULT_CONN_TIMEOUT,
+        norm: v => normalizeTimeout(v, DEFAULT_CONN_TIMEOUT),
+        out: v => normalizeTimeout(v, DEFAULT_CONN_TIMEOUT)
+    },
+    {
+        key: 'op_timeout', def: DEFAULT_OP_TIMEOUT,
+        norm: v => normalizeTimeout(v, DEFAULT_OP_TIMEOUT),
+        out: v => normalizeTimeout(v, DEFAULT_OP_TIMEOUT)
+    },
+    {
+        key: 'web_port', def: DEFAULT_WEB_PORT,
+        norm: v => (isValidWebPort(v) ? Number(v) : DEFAULT_WEB_PORT),
+        out: v => Number(v),
+        check: value => (isValidWebPort(value) ? null : `Web 服务端口应为 1 - 65535 的整数 (当前: ${value})`)
+    },
+    {
+        key: 'probe_hosts', def: normalizeProbeHosts(DEFAULT_PROBE_HOSTS),
+        norm: normalizeProbeHosts,
+        out: probeHostsOut,
+        check: value => {
+            const list = probeHostsOut(value);
+            if (list.length === 0) return '探测目标至少要有一条 (域名 + 合法 IPv4), 留空会回退内置默认';
+
+            const too_many = list.find(item => item.ips.length > 4);
+            if (too_many) return `${too_many.host} 配了 ${too_many.ips.length} 个 IP, 每个域名最多 4 个`;
+
+            const total = list.reduce((sum, item) => sum + item.ips.length, 0);
+            if (total > 14) return `探测目标共 ${total} 路, 最多 14 路 (认证服务器已占 2 路)`;
+            return null;
+        }
+    }
+];
+
 function defaultConfigs() {
-    return {
-        enabled: false,
-        web_external_acc: false,
-        log_lv: 4,
-        log_dir: DEFAULT_LOG_DIR,
-        conn_timeout: DEFAULT_CONN_TIMEOUT,
-        op_timeout: DEFAULT_OP_TIMEOUT,
-        web_port: DEFAULT_WEB_PORT,
-        accounts: [
-            {
-                username: '',
-                password: '',
-                channel: 3,
-                time_windows: []
-            }
-        ]
-    };
+    const configs = {};
+    CONFIG_FIELDS.forEach(field => { configs[field.key] = field.def; });
+    configs.accounts = [normalizeAccount({}, true)];
+    return configs;
 }
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-/** 字节数格式化 */
-function formatBytes(bytes) {
+/** 轮询: 页面可见且停在指定面板时才执行 */
+function startPolling(fn, ms, panel) {
+    return setInterval(() => {
+        if (document.hidden) return;
+        if (panel && Alpine.store('main').activePanel !== panel) return;
+        fn();
+    }, ms);
+}
+
+/** 日志等级: 0~6, 非法值回默认 INFO */
+function clampLogLevel(value) {
+    const level = Number(value);
+    return Number.isFinite(level) ? Math.min(Math.max(level, 0), 6) : 4;
+}
+
+/**
+ * 账号对象归一化
+ * @param {object} source 来源对象
+ * @param {boolean} forSave 为真时补上后端要的 mark 字段 (写回配置用)
+ */
+function normalizeAccount(source = {}, forSave = false) {
+    const windows = (Array.isArray(source.time_windows) ? source.time_windows : [])
+        .map(window => ({
+            start: String((window && window.start) || ''),
+            end: String((window && window.end) || '')
+        }));
+
+    return {
+        username: String(source.username || ''),
+        password: String(source.password || ''),
+        channel: normalizeChannel(source.channel),
+        ...(forSave ? { mark: '' } : {}),
+        // 显示时丢掉空行; 保存时原样带回, 避免界面上的空行被静默丢弃
+        time_windows: forSave ? windows : windows.filter(window => window.start && window.end)
+    };
+}
+
+/** 字节数格式化; perSecond 为真时按速率显示 */
+function formatBytes(bytes, perSecond = false) {
     const size = Number(bytes);
-    if (!Number.isFinite(size) || size < 0) return '未知大小';
-    if (size < 1024) return size + ' B';
-    if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB';
-    return (size / 1024 / 1024).toFixed(2) + ' MB';
+    if (!Number.isFinite(size) || size < 0) return perSecond ? '—' : '未知大小';
+    const unit = perSecond ? '/s' : '';
+    if (size < 1024) return Math.round(size) + ' B' + unit;
+    if (size < 1048576) return (size / 1024).toFixed(perSecond ? 2 : 1) + ' KB' + unit;
+    return (size / 1048576).toFixed(2) + ' MB' + unit;
 }
 
 /** 运行时长格式化 */
@@ -197,10 +285,7 @@ function timeWindowsToEdit(windows) {
     });
 }
 
-/**
- * 编辑格式 -> 后端格式
- * 校验规则与后端 parse_time_window 保持一致, 不合法时抛出带中文说明的 Error
- */
+/** 编辑格式 -> 后端格式 */
 function editToTimeWindows(editWindows) {
     const windows = [];
     (editWindows || []).forEach((edit, index) => {
@@ -249,107 +334,88 @@ class ApiError extends Error {
 
 const REQUEST_TIMEOUT = 8000;
 
-/** 兼容性: 不支持 AbortSignal.timeout 时退化为无超时 */
-function timeoutSignal(ms) {
-    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
-        return AbortSignal.timeout(ms);
-    }
-    return undefined;
-}
+/** 底层请求: 带超时与可中止, 解析 JSON (空响应视为 {}) */
+async function httpJson(url, { method = 'GET', json, timeout = REQUEST_TIMEOUT, signal } = {}) {
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    if (signal) signal.addEventListener('abort', abort, { once: true });
+    const timer = setTimeout(abort, timeout);
 
-/**
- * 统一的请求封装
- * @param {string} method 请求方法
- * @param {string} url 请求地址
- * @param {object} [options] { json, allow, timeout }
- */
-async function request(method, url, options = {}) {
-    const { json, allow = [], timeout = REQUEST_TIMEOUT } = options;
-    let response;
     try {
-        response = await fetch(url, {
+        const response = await fetch(url, {
             method,
             cache: 'no-store',
             headers: json === undefined ? undefined : { 'Content-Type': 'application/json' },
             body: json === undefined ? undefined : JSON.stringify(json),
-            signal: timeoutSignal(timeout)
+            signal: controller.signal
         });
+        const text = await response.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch (_) { data = {}; }
+        return { ok: response.ok, status: response.status, text, data, headers: response.headers };
     } catch (error) {
-        // 网络层错误: 程序没启动 / 正在重启 / 后端不支持该接口且不返回响应
-        if (error && error.name === 'TimeoutError') {
-            throw new ApiError(`后端响应超时 (${timeout} ms)`, 0);
-        }
-        throw new ApiError('无法连接到程序后端, 请确认程序正在运行', 0);
+        const timedOut = controller.signal.aborted && !(signal && signal.aborted);
+        throw new ApiError(timedOut ? `后端响应超时 (${timeout} ms)` : '无法连接到程序后端, 请确认程序正在运行', 0);
+    } finally {
+        clearTimeout(timer);
+        if (signal) signal.removeEventListener('abort', abort);
     }
+}
 
-    // 2xx 视为成功; 其它有意义的状态码 (如 302 / 400 / 500 / 503) 由调用方通过 allow 显式接收
-    if (response.ok || allow.includes(response.status)) return response;
-    if (response.status === 404) throw new ApiError('后端未提供该接口 (404)', 404);
-    throw new ApiError(`请求失败 (HTTP ${response.status})`, response.status);
+/** 把接口错误翻译成给用户看的提示; messages 按 HTTP 状态码覆盖默认文案 */
+function describeError(error, messages = {}) {
+    const known = error && messages[error.status];
+    return known || (error && error.message) || '操作失败';
+}
+
+/** 接口请求: allow 里的状态码也算正常返回 */
+async function request(method, url, options = {}) {
+    const { allow = [] } = options;
+    const result = await httpJson(url, { ...options, method });
+    if (result.ok || allow.includes(result.status)) return result;
+    if (result.status === 404) throw new ApiError('后端未提供该接口 (404)', 404);
+    throw new ApiError(`请求失败 (HTTP ${result.status})`, result.status);
 }
 
 const api = {
     async getConfigs() {
-        const response = await request('GET', '/api/getConfigs');
-        return response.json();
+        return (await request('GET', '/api/getConfigs')).data;
     },
 
     async authStatus() {
-        const response = await request('GET', '/api/status/auth');
-        return response.json();
+        return (await request('GET', '/api/status/auth')).data;
     },
 
     async onlineStatus() {
-        const response = await request('GET', '/api/status/online', {
-            allow: [204, 302, 503],
-            timeout: 25000
-        });
-        return response.status;
+        return (await request('GET', '/api/status/online', { allow: [204, 302, 503], timeout: 25000 })).status;
     },
 
     async saveConfigs(configs) {
-        const response = await request('POST', '/api/saveConfigs', {
-            json: configs,
-            allow: [204, 400, 500]
-        });
-        return response.status;
+        return (await request('POST', '/api/saveConfigs', { json: configs, allow: [204, 400, 500] })).status;
     },
 
     async applyConfigs() {
-        const response = await request('POST', '/api/applyConfigs', {
-            json: { apply: true },
-            allow: [204, 400, 403, 500, 503]
-        });
-        return response.status;
+        return (await request('POST', '/api/applyConfigs', { json: { apply: true }, allow: [204, 400, 403, 500, 503] })).status;
     },
 
     async restartAuth() {
-        const response = await request('POST', '/api/restartAuth', {
-            json: { restart: true },
-            allow: [204]
-        });
-        return response.status;
+        return (await request('POST', '/api/restartAuth', { json: { restart: true }, allow: [204] })).status;
     },
 
     async sysInfo() {
-        const response = await request('GET', '/api/status/sys', { allow: [200, 404] });
-        return response.status === 404 ? null : response.json();
+        const { status, data } = await request('GET', '/api/status/sys', { allow: [200, 404] });
+        return status === 404 ? null : data;
     },
 
     async logFiles() {
-        const response = await request('GET', '/api/logs', { allow: [200, 404] });
-        return response.status === 404 ? null : response.json();
+        const { status, data } = await request('GET', '/api/logs', { allow: [200, 404] });
+        return status === 404 ? null : data;
     },
 
     async logContent(name) {
-        const response = await request('GET', '/api/logs?file=' + encodeURIComponent(name), {
-            allow: [200, 404]
-        });
-        if (response.status === 404) throw new ApiError('日志文件不存在或已被轮转', 404);
-        return {
-            text: await response.text(),
-            truncated: response.headers.get('X-Log-Truncated') === '1'
-        };
+        const { status, text, headers } = await request('GET', '/api/logs?file=' + encodeURIComponent(name), { allow: [200, 404] });
+        if (status === 404) throw new ApiError('日志文件不存在或已被轮转', 404);
+        return { text, truncated: headers.get('X-Log-Truncated') === '1' };
     }
 };
 
@@ -358,25 +424,20 @@ async function restartAuthRequest() {
     const notify = Alpine.store('notify');
     try {
         await api.restartAuth();
-        notify.success('已请求重新认证, 认证状态稍后自动刷新');
-        setTimeout(() => Alpine.store('status').refreshNow(), 1500);
+        notify.success('已请求重启, 正在等待程序恢复…');
+        await Alpine.store('settings').waitForRestart();
         return true;
     } catch (error) {
-        if (error.status === 404) {
-            notify.error('后端未提供重新认证接口');
-        } else if (error.status === 403) {
-            notify.error('没有正在认证的线程');
-        } else if (error.status === 503) {
-            notify.error('程序未加载完成');
-        } else {
-            notify.error('重新认证失败: ' + error.message);
-        }
+        const text = describeError(error, {
+            404: '后端未提供重启认证接口',
+            503: '程序未加载完成或认证进程不可达'
+        });
+        notify.error(text.startsWith('后端') || text.startsWith('程序') ? text : '重启认证失败: ' + text);
         return false;
     }
 }
 
 document.addEventListener('alpine:init', () => {
-
 
     Alpine.store('notify', {
         items: [],
@@ -398,7 +459,6 @@ document.addEventListener('alpine:init', () => {
             this.items = this.items.filter(item => item.id !== id);
         }
     });
-
 
     Alpine.store('main', {
         configs: defaultConfigs(),
@@ -475,10 +535,11 @@ document.addEventListener('alpine:init', () => {
         }
     });
 
-
     Alpine.store('status', {
         authStatusText: '未知认证状态',
+        authErrorText: '',
         authStatusOk: null,
+        authBootId: '',
         onlineStatusText: '未知联网状态',
         onlineStatusLevel: 'error',
         lastCheckAt: null,
@@ -487,7 +548,36 @@ document.addEventListener('alpine:init', () => {
         async updateAuthStatus() {
             try {
                 const data = await api.authStatus();
-                if (data && data.reachable === false) {
+                // 查不到认证状态有好几种原因, 由后端给出 reason, 这里换成对应的说法,
+                // 不然"配置还没填"也会被显示成"认证进程未运行"
+                const reasonText = {
+                    config: '配置未就绪',
+                    'no-account': '没有可用账号',
+                    disabled: '程序已禁用',
+                    'not-running': '认证进程未运行'
+                };
+                // 上一次服务端返回的失败原因 (Error-Code / Sub-Error 翻译过来的话)
+                const message = data && data.errorMessage ? data.errorMessage : '';
+                const code = data && data.errorCode ? data.errorCode : '';
+                const subCode = data && data.subError ? data.subError : '';
+                const detail = [code && 'Error-Code: ' + code, subCode && 'Sub-Error: ' + subCode].filter(Boolean).join(', ');
+                this.authErrorText = message ? (detail ? message + '（' + detail + '）' : message) : '';
+
+                const bootId = data && data.bootId ? data.bootId : '';
+
+                /** 程序换过一次启动 (被监管者重启、在别的页面点了重启、崩溃后自动重拉): */
+                if (this.authBootId && bootId && this.authBootId !== bootId) {
+                    this.authBootId = bootId;
+                    location.reload();
+                    return;
+                }
+                this.authBootId = bootId;
+
+                const reason = data && data.reason ? data.reason : '';
+                if (reason && reasonText[reason]) {
+                    this.authStatusOk = null;
+                    this.authStatusText = reasonText[reason];
+                } else if (data && data.reachable === false) {
                     // 拆分多进程后, 认证进程可能没在跑。
                     // 这时不是"未认证", 而是根本查不到, 要区分开免得误导
                     this.authStatusOk = null;
@@ -529,10 +619,7 @@ document.addEventListener('alpine:init', () => {
         start() {
             if (this.timer) return;
             this.refreshNow();
-            this.timer = setInterval(() => {
-                if (document.hidden) return;
-                this.refreshNow();
-            }, STATUS_INTERVAL);
+            this.timer = startPolling(() => this.refreshNow(), STATUS_INTERVAL);
         },
 
         stop() {
@@ -542,7 +629,6 @@ document.addEventListener('alpine:init', () => {
         }
     });
 
-
     Alpine.store('settings', {
         saving: false,
         applying: false,
@@ -550,52 +636,26 @@ document.addEventListener('alpine:init', () => {
         /** 组装提交给后端的配置 (只包含后端认识的字段, 并纠正类型) */
         buildPayload() {
             const configs = Alpine.store('main').configs || {};
-            const account = (configs.accounts && configs.accounts[0]) || {};
-            return {
-                enabled: !!configs.enabled,
-                // 开关与端口都要按类型写回: 后端解析 web_port 时认的是数字
-                web_external_acc: !!configs.web_external_acc,
-                // 下拉框取到的值是字符串, 这里必须转成数字, 否则后端会当成 0 (关闭日志)
-                log_lv: Number(configs.log_lv) || 0,
-                log_dir: normalizeLogDir(configs.log_dir),
-                // 数字输入框同样可能取到字符串或空值, 统一兜底成正整数秒
-                conn_timeout: normalizeTimeout(configs.conn_timeout, DEFAULT_CONN_TIMEOUT),
-                op_timeout: normalizeTimeout(configs.op_timeout, DEFAULT_OP_TIMEOUT),
-                web_port: Number(configs.web_port),
-                accounts: [
-                    {
-                        username: String(account.username || ''),
-                        password: String(account.password || ''),
-                        // 通道统一成 LuCI 的写法 (windows/linux/android/ios/macos)
-                        channel: normalizeChannel(account.channel),
-                        time_windows: (account.time_windows || []).map(window => ({
-                            start: String(window.start || ''),
-                            end: String(window.end || '')
-                        }))
-                    }
-                ]
-            };
+            const payload = {};
+            CONFIG_FIELDS.forEach(field => { payload[field.key] = field.out(configs[field.key]); });
+            payload.accounts = [normalizeAccount((configs.accounts || [])[0], true)];
+            return payload;
         },
 
         /** 保存前校验, 返回错误说明或 null */
         validate(payload) {
-            const account = payload.accounts[0];
+            // 时间窗必须能解析, 否则后端会拒绝整份配置
             try {
-                // 时间窗口必须合法, 否则后端会拒绝整个配置
-                editToTimeWindows(timeWindowsToEdit(account.time_windows));
+                editToTimeWindows(timeWindowsToEdit(payload.accounts[0].time_windows));
             } catch (error) {
                 return error.message;
             }
+
+            // 其余字段的校验规则跟着字段表走
             const configs = Alpine.store('main').configs || {};
-            if (!isValidWebPort(configs.web_port)) {
-                return `Web 服务端口应为 1 - 65535 的整数 (当前: ${configs.web_port})`;
-            }
-            if (normalizeLogDir(configs.log_dir).length > MAX_LOG_DIR_LEN) {
-                return `日志目录过长 (最多 ${MAX_LOG_DIR_LEN} 个字符)`;
-            }
-            if (!account.username || !account.password) {
-                // 允许保存空账号 (复位后就是这样), 仅提示
-                return null;
+            for (const field of CONFIG_FIELDS) {
+                const invalid = field.check && field.check(configs[field.key]);
+                if (invalid) return invalid;
             }
             return null;
         },
@@ -628,14 +688,10 @@ document.addEventListener('alpine:init', () => {
                     }
                     return true;
                 }
-                if (code === 400) {
-                    notify.error('保存失败: 配置内容为空');
-                } else {
-                    notify.error('保存失败: 配置非法或无法写入配置文件');
-                }
+                notify.error(code === 400 ? '保存失败: 配置内容为空' : '保存失败: 配置非法或无法写入配置文件');
                 return false;
             } catch (error) {
-                notify.error('保存失败: ' + error.message);
+                notify.error('保存失败: ' + describeError(error, { 400: '配置内容为空' }));
                 return false;
             } finally {
                 this.saving = false;
@@ -647,24 +703,18 @@ document.addEventListener('alpine:init', () => {
             try {
                 const code = await api.applyConfigs();
                 if (code === 204) {
-                    notify.info('已请求应用配置, 程序即将重启');
+                    notify.info('配置已提交, 程序正在重启…');
                     this.waitForRestart();
                     return true;
                 }
                 return false;
             } catch (error) {
-                if (error.status === 404) {
-                    notify.error('后端未提供应用接口');
-                } else if (error.status === 400) {
-                    notify.error('应用失败: 请求内容为空');
-                } else if (error.status === 403) {
-                    notify.error('应用失败: 没有线程正在认证');
-                } else if (error.status === 500) {
-                    notify.error('应用失败: JSON 内容错误');
-                }
-                else {
-                    notify.error('应用失败: ' + error.message);
-                }
+                notify.error('应用失败: ' + describeError(error, {
+                    404: '后端未提供应用接口',
+                    400: '请求内容为空',
+                    403: '没有线程正在认证',
+                    500: 'JSON 内容错误'
+                }));
                 return false;
             }
         },
@@ -684,38 +734,53 @@ document.addEventListener('alpine:init', () => {
             const notify = Alpine.store('notify');
             Alpine.store('main').resetConfigs();
             const ok = await this.saveConfigs();
-            if (ok) notify.info('配置已复位到默认值, 需要重新填写账号后重启程序');
+            if (ok) {
+                // 和 LuCI 保持一致: 复位只写文件不重启, 提示完刷新页面, 让用户对着默认值填账号
+                notify.success('配置已复位到默认值, 页面即将刷新, 请重新填写账号');
+                setTimeout(() => location.reload(), 2000);
+            }
         },
 
+        /** 等程序重启完成, 然后自动刷新页面。 */
         async waitForRestart() {
             const notify = Alpine.store('notify');
+            const status = Alpine.store('status');
+            const before = status.authBootId;
             let offline = false;
-            for (let i = 0; i < 15; i++) {
-                await sleep(2000);
+
+            for (let i = 0; i < 40; i++) {
+                await sleep(1000);
                 try {
-                    await api.authStatus();
-                    if (offline) {
-                        notify.success('程序已重启完成');
-                        Alpine.store('status').refreshNow();
+                    const data = await api.authStatus();
+                    const now = data && data.bootId ? data.bootId : '';
+                    if (now && before && now !== before) {
+                        notify.success('程序已重启, 正在刷新页面…');
+                        location.reload();
+                        return;
+                    }
+                    if (offline && now) {
+                        // 曾经掉线过又回来了, 但没拿到可比的旧值: 直接刷新
+                        notify.success('程序已重启, 正在刷新页面…');
+                        location.reload();
                         return;
                     }
                 } catch (error) {
+                    // 重启期间连不上是正常的, 继续等
                     offline = true;
                 }
             }
-            if (!offline) {
-                notify.info('配置已应用, 程序未重启 (若修改了账号信息请手动重启程序)');
-            } else {
-                notify.warning('等待程序重启超时, 请检查程序是否正常运行');
-            }
+
+            notify.warning('等待重启信号超时, 将刷新页面重新获取状态');
+            location.reload();
         }
     });
-
 
     Alpine.data('editConfigs', () => ({
         accounts: [],
         timeWindows: [],
         error: '',
+        /** 高级选项是否展开 (只是界面状态, 不写进配置) */
+        showAdvanced: false,
 
         init() {
             this.getAccounts();
@@ -750,6 +815,12 @@ document.addEventListener('alpine:init', () => {
             }
             this.error = '';
             this.timeWindows.push(defaultEditTimeWindow());
+        },
+
+        /** 探测目标总路数: 添加按钮用它判断是否已到 14 路上限 */
+        probeIpTotal() {
+            const configs = Alpine.store('main').configs || {};
+            return probeHostsOut(configs.probe_hosts).reduce((sum, item) => sum + item.ips.length, 0);
         },
 
         removeTimeWindow(index) {
@@ -793,7 +864,6 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
-
     Alpine.data('restartAuth', () => ({
         busy: false,
 
@@ -814,7 +884,6 @@ document.addEventListener('alpine:init', () => {
             }
         }
     }));
-
 
     Alpine.data('dashboard', () => ({
         sys: null,
@@ -907,7 +976,6 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
-
     Alpine.data('logViewer', () => ({
         files: [],
         selected: '',
@@ -923,12 +991,9 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.loadFiles();
-            this.timer = setInterval(() => {
-                if (document.hidden) return;
-                if (Alpine.store('main').activePanel !== 'logs') return;
-                if (!this.autoRefresh) return;
-                this.refresh();
-            }, LOG_INTERVAL);
+            this.timer = startPolling(() => {
+                if (this.autoRefresh) this.refresh();
+            }, LOG_INTERVAL, 'logs');
             // x-ref 要等子树初始化完才可用, 所以放到 nextTick 里
             this.$nextTick(() => this.observeLayout());
         },
@@ -1061,37 +1126,7 @@ function normalizeConfigs(raw) {
     const configs = defaultConfigs();
     if (!raw || typeof raw !== 'object') return configs;
 
-    configs.enabled = !!raw.enabled;
-    configs.web_external_acc = !!raw.web_external_acc;
-
-    const level = Number(raw.log_lv);
-    configs.log_lv = Number.isFinite(level) ? Math.min(Math.max(level, 0), 6) : 4;
-
-    // 日志目录: 后端给的是配置里的原文, 空值按默认的 "./" 显示
-    configs.log_dir = normalizeLogDir(raw.log_dir);
-
-    // 后端可能返回缺失或非法的超时参数, 这里同样兜底, 避免输入框显示空值
-    configs.conn_timeout = normalizeTimeout(raw.conn_timeout, DEFAULT_CONN_TIMEOUT);
-    configs.op_timeout = normalizeTimeout(raw.op_timeout, DEFAULT_OP_TIMEOUT);
-
-    // 端口非法时先用默认值填上输入框; 真要保存时 validate 会拦下来
-    configs.web_port = isValidWebPort(raw.web_port) ? Number(raw.web_port) : DEFAULT_WEB_PORT;
-
-    const accounts = Array.isArray(raw.accounts) ? raw.accounts : [];
-    const account = accounts[0] || {};
-    configs.accounts = [
-        {
-            username: String(account.username || ''),
-            password: String(account.password || ''),
-            // 后端可能返回 1~5 或 windows/linux/android/ios/macos
-            channel: normalizeChannel(account.channel),
-            time_windows: (Array.isArray(account.time_windows) ? account.time_windows : [])
-                .map(window => ({
-                    start: String((window && window.start) || ''),
-                    end: String((window && window.end) || '')
-                }))
-                .filter(window => window.start && window.end)
-        }
-    ];
+    CONFIG_FIELDS.forEach(field => { configs[field.key] = field.norm(raw[field.key]); });
+    configs.accounts = [normalizeAccount((raw.accounts || [])[0])];
     return configs;
 }

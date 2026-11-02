@@ -1,0 +1,326 @@
+name: 1 Build Desktop Windows Binary
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  WGET_OPTS: "-t 3 --timeout=30 --waitretry=5 --retry-connrefused --retry-on-http-error=429,500,502,503,504"
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      full_version:
+        required: true
+        type: string
+      curl_version:
+        required: true
+        type: string
+      tail_wind_labs_version:
+        required: true
+        type: string
+      llvm_mingw_version:
+        required: true
+        type: string
+      architecture:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: debian:13
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 解析架构参数
+        id: params
+        shell: bash
+        env:
+          ARCH: ${{ inputs.architecture }}
+        run: |
+          set -euo pipefail
+
+          case "$ARCH" in
+            x86)
+              TRIPLE="i686-w64-mingw32"
+              PE_MACHINE="014c"
+              ;;
+            x86_64)
+              TRIPLE="x86_64-w64-mingw32"
+              PE_MACHINE="8664"
+              ;;
+            aarch64)
+              TRIPLE="aarch64-w64-mingw32"
+              PE_MACHINE="aa64"
+              ;;
+            *)
+              echo "::error::不支持的架构: $ARCH"
+              exit 1
+              ;;
+          esac
+
+          echo "triple=$TRIPLE" >> "$GITHUB_OUTPUT"
+          echo "pe_machine=$PE_MACHINE" >> "$GITHUB_OUTPUT"
+          echo "curl_prefix=/opt/sysroot/$TRIPLE" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "cache_paths<<EOF"
+            echo "/opt/sysroot/$TRIPLE/lib/libcurl.a"
+            echo "/opt/sysroot/$TRIPLE/include/curl"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "架构: $ARCH | 三元组: $TRIPLE | PE Machine: 0x$PE_MACHINE"
+
+      - name: 安装软件包 (最多重试 3 次)
+        run: |
+          PACKAGES="build-essential cmake ninja-build wget make xz-utils upx-ucl file zip perl libperl-dev"
+
+          ok=0
+          for i in 1 2 3; do
+            echo "尝试 $i: 正在安装 $PACKAGES"
+            if apt-get update && apt-get install -y $PACKAGES; then
+              echo "所有软件包已完成安装"
+              ok=1
+              break
+            fi
+            echo "尝试 $i 失败"
+            sleep 3
+          done
+
+          if [ "$ok" != "1" ]; then
+            echo "::error::依赖安装连续失败 3 次"
+            exit 1
+          fi
+
+      - name: 获取 llvm-mingw 缓存
+        id: cache-llvm-mingw
+        uses: actions/cache@v6
+        with:
+          path: /opt/llvm-mingw
+          key: llvm-mingw-${{ inputs.llvm_mingw_version }}-msvcrt-ubuntu-22.04-x86_64
+
+      - name: 下载 llvm-mingw
+        if: steps.cache-llvm-mingw.outputs.cache-hit != 'true'
+        env:
+          LLVM_MINGW_VERSION: ${{ inputs.llvm_mingw_version }}
+        run: |
+          ASSET="llvm-mingw-${LLVM_MINGW_VERSION}-msvcrt-ubuntu-22.04-x86_64"
+
+          wget $WGET_OPTS "https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/${ASSET}.tar.xz"
+          tar -xf "${ASSET}.tar.xz"
+          rm -f "${ASSET}.tar.xz"
+
+          mkdir -p /opt
+          rm -rf /opt/llvm-mingw
+          mv "$ASSET" /opt/llvm-mingw
+
+      - name: 配置 llvm-mingw 环境变量
+        run: echo "/opt/llvm-mingw/bin" >> "$GITHUB_PATH"
+
+      - name: 检查工具链
+        env:
+          TRIPLE: ${{ steps.params.outputs.triple }}
+        run: |
+          cat ci/toolchains/mingw.cmake
+          "$TRIPLE-clang" --version
+          "$TRIPLE-objdump" --version
+
+      - name: 获取 libcurl 缓存
+        id: cache-curl
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.params.outputs.cache_paths }}
+          key: curl-${{ inputs.curl_version }}-windows-${{ inputs.architecture }}
+
+      - name: 构建 libcurl 静态链接库
+        if: steps.cache-curl.outputs.cache-hit != 'true'
+        env:
+          TRIPLE: ${{ steps.params.outputs.triple }}
+          CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
+        run: |
+          cd /tmp
+          wget $WGET_OPTS https://curl.se/download/curl-${{ inputs.curl_version }}.tar.gz
+          tar -xzf curl-${{ inputs.curl_version }}.tar.gz
+          cd curl-${{ inputs.curl_version }}
+
+          export CC="$TRIPLE-clang"
+          export CXX="$TRIPLE-clang++"
+          export AR="$TRIPLE-ar"
+          export RANLIB="$TRIPLE-ranlib"
+          export STRIP="$TRIPLE-strip"
+
+          ./configure --host="$TRIPLE" \
+            --prefix="$CURL_PREFIX" \
+            --enable-static \
+            --disable-shared \
+            --without-ssl \
+            --enable-http \
+            --enable-proxy \
+            --enable-cookies \
+            --enable-basic-auth \
+            --enable-digest-auth \
+            --disable-ftp \
+            --disable-file \
+            --disable-ldap \
+            --disable-ldaps \
+            --disable-rtsp \
+            --disable-dict \
+            --disable-telnet \
+            --disable-tftp \
+            --disable-pop3 \
+            --disable-imap \
+            --disable-smb \
+            --disable-smtp \
+            --disable-gopher \
+            --disable-mqtt \
+            --disable-websockets \
+            --disable-bearer-auth \
+            --disable-kerberos-auth \
+            --disable-negotiate-auth \
+            --disable-ntlm \
+            --disable-tls-srp \
+            --disable-aws \
+            --disable-rtmp \
+            --without-brotli \
+            --without-zstd \
+            --without-libpsl \
+            --without-libssh2 \
+            --without-librtmp \
+            --without-libidn2 \
+            --without-nghttp2 \
+            --without-ngtcp2 \
+            --without-nghttp3 \
+            --without-quiche \
+            --without-msh3 \
+            --without-libgsasl \
+            --without-libssh \
+            --without-wolfssh \
+            --without-hyper \
+            --without-zlib \
+            --disable-ares \
+            --disable-rt \
+            --disable-threaded-resolver \
+            --disable-ipv6 \
+            --disable-manual \
+            --disable-docs \
+            --disable-verbose \
+            --disable-versioned-symbols \
+            --disable-sspi
+
+          make -j$(nproc)
+          make install
+
+      - name: 构建 ESurfingClient 程序
+        env:
+          ARCH: ${{ inputs.architecture }}
+          TRIPLE: ${{ steps.params.outputs.triple }}
+          PE_MACHINE: ${{ steps.params.outputs.pe_machine }}
+          CURL_PREFIX: ${{ steps.params.outputs.curl_prefix }}
+        run: |
+          BIN="ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe"
+
+          cd esurfingclient/app
+
+          cmake -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=../../ci/toolchains/mingw.cmake \
+            -DMINGW_ARCH="$ARCH" \
+            -DMINGW_TRIPLE="$TRIPLE" \
+            -DMINGW_PREFIX="$CURL_PREFIX" \
+            -DMINGW_CC=clang \
+            -DBUILD_SHARED_LIBS=OFF \
+            -B build \
+            -S .
+
+          cmake --build build -j$(nproc)
+
+          cp build/ESurfingClient.exe "../../$BIN"
+
+          cd ../..
+
+          file "$BIN"
+
+          pe_off=$(od -An -tu4 -j 60 -N 4 "$BIN" | tr -d ' ')
+          machine=$(od -An -tx2 -j $((pe_off + 4)) -N 2 "$BIN" | tr -d ' ')
+          echo "PE Machine: 0x$machine"
+
+          if [ "$machine" != "$PE_MACHINE" ]; then
+            echo "::error::架构不符: 期望 PE Machine 0x$PE_MACHINE, 实际 0x$machine"
+            exit 1
+          fi
+          echo "架构校验通过: 0x$machine"
+
+          "$TRIPLE-objdump" -p "$BIN" | grep "DLL Name" | head -20 || true
+
+          upx --best --lzma "$BIN" || echo "::warning::upx 压缩跳过 (该架构可能不被支持)"
+
+          ls -lh "$BIN"
+
+      - name: 验证
+        env:
+          ARCH: ${{ inputs.architecture }}
+          TRIPLE: ${{ steps.params.outputs.triple }}
+        run: |
+          BIN="ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe"
+
+          if [ ! -f "$BIN" ]; then
+            echo "::error::未找到二进制文件 $BIN"
+            exit 1
+          fi
+
+          echo "构建成功"
+          echo "文件大小: $(stat -c%s "$BIN") bytes"
+
+          deps=$("$TRIPLE-objdump" -p "$BIN" | grep "DLL Name" || true)
+          echo "$deps" | head -20
+
+          if echo "$deps" | grep -qE "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"; then
+            echo "::error::链接了第三方动态库"
+            echo "$deps" | grep -E "libcurl|libssl|libcrypto|libssh2|libnghttp2|libzstd|libidn2|libpsl|libbrotli|libunistring|libiconv"
+            exit 1
+          fi
+
+          echo "完全静态: 没有链接第三方动态库"
+
+      - name: 获取 web 处理缓存
+        id: cache-web
+        uses: actions/cache@v6
+        with:
+          path: tailwindcss-linux-x64
+          key: tailwindcss-${{ inputs.tail_wind_labs_version }}-linux-x86_64
+
+      - name: 下载 tailwind_labs 打包程序
+        if: steps.cache-web.outputs.cache-hit != 'true'
+        run: |
+          wget $WGET_OPTS https://github.com/tailwindlabs/tailwindcss/releases/download/${{ inputs.tail_wind_labs_version }}/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+
+      - name: 处理 web 文件
+        run: |
+          bash scripts/build-portal.sh esurfingclient/app/portal portal ./tailwindcss-linux-x64
+
+      - name: 复制配置文件到根目录
+        run: |
+          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
+
+      - name: 打包成 zip 压缩包
+        env:
+          ARCH: ${{ inputs.architecture }}
+        run: |
+          zip -r "esurfingclient-${{ inputs.full_version }}-windows-${ARCH}.zip" \
+            "ESurfingClient-${{ inputs.full_version }}-windows-${ARCH}.exe" \
+            ESurfingClient.json \
+            portal/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: esurfingclient-${{ inputs.full_version }}-windows-${{ inputs.architecture }}
+          path: esurfingclient-${{ inputs.full_version }}-windows-${{ inputs.architecture }}.zip
+          retention-days: 30

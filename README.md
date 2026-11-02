@@ -5,7 +5,7 @@
 
 **根据 [Rsplwe](https://github.com/Rsplwe) 佬的 Kotlin 源码编写的纯 C 版本的 `广东` 天翼校园认证客户端** 👍
 
-**使用了 [cJSON](https://github.com/DaveGamble/cJSON), [mongoose](https://github.com/cesanta/mongoose), [curl](https://github.com/curl/curl), [7z-lzma](https://github.com/ip7z/7zip) 开源库**
+**使用了 [cJSON](https://github.com/DaveGamble/cJSON), [mongoose](https://github.com/cesanta/mongoose), [curl](https://github.com/curl/curl) 开源库**
 
 **优点是主程序文件超级小 (所有版本均是仅占用 200-300kB 左右的储存空间😋), 并且跨平台跨架构能力超强**
 
@@ -37,11 +37,11 @@
 > [!TIP]
 > 经实测, 运行十天后运行内存占用仅增加 28 kB 左右
 >
-> 初运行 (单进程)
+> 初运行 (单账号)
 >
 > VmPeak: 912 kB, VmSize: 800 kB, VmHWM: 536 kB, VmRSS: 536 kB
 >
-> 十天后
+> 十天后 (单账号)
 >
 > VmPeak: 1088 kB, VmSize: 884 kB, VmHWM: 668 kB, VmRSS: 564 kB
 > 
@@ -51,25 +51,47 @@
 
 # 目前支持的系统和架构
 
-> [!NOTE]
-> 不知道有没有自己需要的架构可以在这看怎么查 ☞ [吃什么](docs/OpenWRT_targets.md)
+### 主程序 (插件包)
 
-### 主程序插件包
-
-|  系统   |              架构              |    包管理器    |     理论最低支持版本      |        推荐版本         |
-|:-------:|:------------------------------:|:--------------:|:-------------------------:|:-----------------------:|
-| Windows |             x86_64             | 便携二进制文件 |     Windows Vista x64     |     Windows 10 x64	      |
-|  Linux  |       x86_64/loongarch64       | 便携二进制文件 |        glibc 2.36         |       glibc 2.39        |
-| Android |  x86_64/arm64-v8a/armeabi-v7a  | 便携二进制文件 |         Android 7         |       Android 10        |
-|  macOS  |             x86_64             | 便携二进制文件 |         macOS 12          |        macOS 13         |
-|  macOS  |            aarch64             | 便携二进制文件 |         macOS 13          |        macOS 14         |
-| OpenWRT | [All](docs/OpenWRT_targets.md) |    opkg/apk    | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
+|  系统   |               架构               | 包管理器 |     理论最低支持版本      |        推荐版本         |
+|:-------:|:--------------------------------:|:--------:|:-------------------------:|:-----------------------:|
+| Windows |        x86_64/x86/aarch64        | portable |     Windows Vista x64     |     Windows 10 x64	      |
+|  Linux  | x86_64/aarch64/armv7/loongarch64 | portable |        glibc 2.36         |       glibc 2.39        |
+| Android |   x86_64/arm64-v8a/armeabi-v7a   | portable |         Android 7         |       Android 10        |
+|  macOS  |              x86_64              | portable |         macOS 12          |        macOS 13         |
+|  macOS  |             aarch64              | portable |         macOS 13          |        macOS 14         |
+| OpenWRT |  [All](docs/OpenWRT_targets.md)  | opkg/apk | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
 
 ### OpenWRT LuCI 插件包
 
 |  系统   |              架构              | 包管理器 |     理论最低支持版本      |        推荐版本         |
 |:-------:|:------------------------------:|:--------:|:-------------------------:|:-----------------------:|
 | OpenWRT | [All](docs/OpenWRT_targets.md) | opkg/apk | OpenWRT 15.05/25.12.0-rc1 | OpenWRT 19.07.0/25.12.0 |
+
+### OpenWRT 快速架构自查指令
+
+#### opkg 包管理器
+
+```shell
+# 指令
+opkg print-architecture
+# 示例输出
+arch all 1
+arch noarch 1
+arch mipsel_24kc 10 # mipsel_24kc 即为要下载的架构
+```
+
+#### apk 包管理器
+
+```shell
+# 指令
+cat /etc/apk/arch
+# 示例输出
+mipsel_24kc # mipsel_24kc 即为要下载的架构
+```
+
+> [!NOTE]
+> 实在找不到可以在这查 ☞ [吃什么](docs/OpenWRT_targets.md)
 
 > [!TIP]
 > 如果有其它兼容需求, 可以提交一个 issue, 会尝试进行兼容
@@ -99,7 +121,7 @@
 - 可控制日志存放路径, OpenWRT 系统默认在 /var/log/esurfing 新建 logs 目录, 非 OpenWRT 系统默认在程序目录新建 logs 目录
 - 程序运行时, logs 目录下会生成实时更新的 run.log 日志文件
 - 程序退出时, run.log 日志文件会被重命名为 <时间>.log (比如 19700101-114514.log)
-- 日志行数超过 1000 行会进行轮转操作
+- 日志行数超过 10000 行会进行轮转操作
 
 ## 广东天翼校园网 QQ 交流群 (转自 [ESurfingPy-CLI](https://github.com/Pandaft/ESurfingPy-CLI))
 

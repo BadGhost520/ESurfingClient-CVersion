@@ -1,22 +1,49 @@
-#include "webserver/WebInternal.h"
-
-#include <mongoose/mongoose.h>
-
-#include "clients/net/NetClient.h"
+#include "WebInternal.h"
 
 #include "config/Config.h"
-
 #include "control/Control.h"
-
-#include "states/States.h"
-
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
+#include "core/States.h"
+#include "dialer/ErrorCode.h"
+#include "net/NetClient.h"
+#include "net/NetTraffic.h"
+#include "utils/log/Logger.h"
+#include "utils/platform/PlatformUtils.h"
+#include "utils/text/TextUtils.h"
+#include "utils/time/TimeUtils.h"
+#include "webserver/HotspotControl.h"
 
 #include <cJSON/cJSON.h>
+#include <mongoose/mongoose.h>
 
 #define LOG_FILE_MAX 64
 #define LOG_READ_MAX (256 * 1024)
+
+/**
+ * @brief 把一个 cJSON 对象按 JSON 回给浏览器, 并负责释放它
+ *
+ * "Print → 回包 → free → Delete" 这套在每个接口里都写了一遍, 统一到这里,
+ * 顺手也把 Print 失败 (内存不足) 的情况处理成 500
+ */
+static void reply_json(struct mg_connection* c, cJSON* root)
+{
+    if (root == NULL)
+    {
+        mg_http_reply(c, 500, "", "");
+        return;
+    }
+
+    char* text = cJSON_Print(root);
+    if (text == NULL)
+    {
+        mg_http_reply(c, 500, "", "");
+    }
+    else
+    {
+        mg_http_reply(c, 200, HEADER_JSON, "%s", text);
+        free(text);
+    }
+    cJSON_Delete(root);
+}
 
 /**
  * @brief 查询认证状态
@@ -25,12 +52,7 @@
  */
 bool query_is_authed(bool* out)
 {
-    if (s_local_state)
-    {
-        if (g_prog_status == NULL || g_prog_cnt <= 0) return false;
-        *out = g_prog_status[0].runtime_status.is_authed;
-        return true;
-    }
+    if (out == NULL) return false;
 
     control_status_t status;
     if (control_query_status(&status) == false) return false;
@@ -116,24 +138,116 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
     // 获取认证状态
     if (mg_match(hm->uri, mg_str("/api/status/auth"), NULL))
     {
-        bool is_authed = false;
-        const bool reachable = query_is_authed(&is_authed);
+        /**
+         * 只查一次控制通道
+         *
+         * 每次查询都是一次回环 TCP 往返, 而 Web 线程是单线程的 —— 查两次会把耗时
+         * 翻倍 (认证进程不在时尤其明显, 见 ControlClient.c 里非阻塞 connect 的说明),
+         * 顺带会把同时轮询的 /api/traffic 拖到前端超时。
+         */
+        control_status_t remote;
+        memset(&remote, 0, sizeof(remote));
+        const bool reachable = control_query_status(&remote);
+        const bool is_authed = reachable && remote.is_authed;
+
+        /**
+         * 查不到认证状态时, 说清楚是哪一种:
+         *   config      配置还没就绪 (程序停在"等配置", 还没开始认证)
+         *   no-account  配置读起来了, 但没有可用账号
+         *   disabled    程序被 enabled=false 关掉了
+         *   not-running 服务模式下连不上认证子进程
+         * 前端据此换个说法, 不要一律显示成"认证进程未运行"
+         */
+        const char* reason = "";
+        if (g_cfg_loaded == false)
+        {
+            // 配置还没读起来 (或读起来不可用): 程序停在"等配置", 认证根本没开始
+            reason = "config";
+        }
+        else if (g_prog_enabled == false)
+        {
+            reason = "disabled";
+        }
+        else if (reachable == false)
+        {
+            reason = "not-running";
+        }
 
         cJSON* auth = cJSON_CreateObject();
         cJSON_AddBoolToObject(auth, "status", is_authed);
         // 认证进程不可达时额外标出来, 前端可据此提示 (不认这个字段的前端会忽略它)
         cJSON_AddBoolToObject(auth, "reachable", reachable);
-        char* status_str = cJSON_Print(auth);
-        mg_http_reply(c, 200, HEADER_JSON, "%s", status_str);
-        free(status_str);
-        cJSON_Delete(auth);
+        cJSON_AddStringToObject(auth, "reason", reason);
+
+        // 认证进程的启动标识: 重启后它会变, 网页据此判断"重启完成"
+        char boot_id[16 + 1] = "";
+        if (reachable) snprintf(boot_id, sizeof(boot_id), "%s", remote.boot_id);
+        cJSON_AddStringToObject(auth, "bootId", boot_id);
+
+        // 上一次认证失败的服务端错误码与翻译, 让网页能直接显示"为什么失败"
+        const char* error_code = "";
+        const char* sub_error = "";
+        const char* error_message = "";
+        const char* error_kind = "";
+        double error_at = 0;
+        if (g_prog_status != NULL && g_prog_cnt > 0)
+        {
+            const runtime_status_t* status = &g_prog_status[0].runtime_status;
+            error_code = status->last_error_code;
+            sub_error = status->last_sub_error;
+            error_message = status->last_error_msg;
+            if (status->last_error_kind != AUTH_ERROR_NONE)
+            {
+                error_kind = auth_error_kind_name((auth_error_kind_t)status->last_error_kind);
+            }
+            error_at = (double)status->last_error_at;
+        }
+        cJSON_AddStringToObject(auth, "errorCode", error_code);
+        cJSON_AddStringToObject(auth, "subError", sub_error);
+        cJSON_AddStringToObject(auth, "errorMessage", error_message);
+        cJSON_AddStringToObject(auth, "errorKind", error_kind);
+        cJSON_AddNumberToObject(auth, "errorAt", error_at);
+        reply_json(c, auth);
         return true;
     }
 
-    // 获取联网状态
+    // 实时网速: 由本程序自己的采样线程提供 (不再读 portal/assets/traffic.json)
+    if (mg_match(hm->uri, mg_str("/api/traffic"), NULL))
+    {
+        char* traffic = net_traffic_json();
+        if (traffic == NULL)
+        {
+            // 平台暂不支持, 或者采样还没建立起第一帧
+            mg_http_reply(c, 503, "", "");
+        }
+        else
+        {
+            mg_http_reply(c, 200, HEADER_JSON, "%s", traffic);
+            free(traffic);
+        }
+        return true;
+    }
+
+    // 热点状态: 读后台缓存的快照, 不在这里起 PowerShell, 免得把 Web 线程卡住
+    if (mg_match(hm->uri, mg_str("/api/hotspot/status"), NULL))
+    {
+        char* hotspot = hotspot_status_json();
+        if (hotspot == NULL)
+        {
+            mg_http_reply(c, 501, "", "");
+        }
+        else
+        {
+            mg_http_reply(c, 200, HEADER_JSON, "%s", hotspot);
+            free(hotspot);
+        }
+        return true;
+    }
+
+    // 获取联网状态: 读后台探测线程的缓存, 不在 Web 线程里现做 (会拖住其它接口)
     if (mg_match(hm->uri, mg_str("/api/status/online"), NULL))
     {
-        switch (check_network_status(true))
+        switch (net_probe_status())
         {
         case STATUS_OK:
             mg_http_reply(c, 204, "", "");
@@ -160,16 +274,39 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddBoolToObject(info, "restart_pending", g_need_restart);
         cJSON_AddNumberToObject(info, "account_count", g_prog_cnt);
         cJSON_AddNumberToObject(info, "thread_count", g_prog_cnt);
-        char* info_str = cJSON_Print(info);
-        mg_http_reply(c, 200, HEADER_JSON, "%s", info_str);
-        free(info_str);
-        cJSON_Delete(info);
+        cJSON_AddStringToObject(info, "bootId", boot_id_get());
+        reply_json(c, info);
         return true;
     }
 
     // 获取配置
     if (mg_match(hm->uri, mg_str("/api/getConfigs"), NULL))
     {
+        /**
+         * 配置还没加载起来时 (停在"等配置"状态, 或者网页刚保存、重新加载还没跑完)
+         * 直接返回配置文件里的内容: 内存里那份是空的或者旧的, 显示成空账号的话,
+         * 用户一保存就把自己写过的账号密码覆盖掉了
+         *
+         * 文件内容要能解析才敢返回 —— 配置写坏时网页至少要能打开, 那时按内存里的
+         * 默认值显示, 用户在网页上重新填一份保存就是
+         */
+        if (g_cfg_loaded == false)
+        {
+            char* cfg_text = read_cfg_file();
+            if (cfg_text != NULL)
+            {
+                cJSON* probe = cJSON_Parse(cfg_text);
+                if (probe != NULL)
+                {
+                    cJSON_Delete(probe);
+                    mg_http_reply(c, 200, HEADER_JSON, "%s", cfg_text);
+                    free(cfg_text);
+                    return true;
+                }
+                free(cfg_text);
+            }
+        }
+
         cJSON* configs = cJSON_CreateObject();
 
         cJSON_AddBoolToObject(configs, "enabled", g_prog_enabled);
@@ -185,41 +322,27 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddNumberToObject(configs, "op_timeout", (double)g_op_timeout);
         cJSON_AddNumberToObject(configs, "web_port", g_web_port);
 
+        /**
+         * 联网探测目标: 用内存里当前生效的那份 (缺省时就是内置默认)。
+         * 漏了它的话网页上会显示默认值, 用户改过的探测目标会被"保存"覆盖掉。
+         */
+        cJSON* probe_hosts = probe_targets_to_json();
+        if (probe_hosts != NULL)
+        {
+            cJSON_AddItemToObject(configs, "probe_hosts", probe_hosts);
+        }
+
         cJSON* accounts = cJSON_CreateArray();
         cJSON* account = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(account, "username", g_prog_status[0].login_cfg.usr);
-        cJSON_AddStringToObject(account, "password", g_prog_status[0].login_cfg.pwd);
-        {
-            const char* channel_name = "android";
-            switch (g_prog_status[0].login_cfg.chn)
-            {
-            case 1:
-                channel_name = "windows";
-                break;
-            case 2:
-                channel_name = "linux";
-                break;
-            case 3:
-                channel_name = "android";
-                break;
-            case 4:
-                channel_name = "ios";
-                break;
-            case 5:
-                channel_name = "macos";
-                break;
-            default:
-                channel_name = "android";
-                break;
-            }
-            cJSON_AddStringToObject(account, "channel", channel_name);
-        }
+        cJSON_AddStringToObject(account, "username", g_prog_status[0].cfg.usr);
+        cJSON_AddStringToObject(account, "password", g_prog_status[0].cfg.pwd);
+        cJSON_AddStringToObject(account, "channel", channel_name(g_prog_status[0].cfg.chn));
 
         cJSON* time_windows = cJSON_CreateArray();
-        for (uint8_t i = 0; i < g_prog_status[0].login_cfg.time_window_count; i++)
+        for (uint8_t i = 0; i < g_prog_status[0].cfg.time_window_count; i++)
         {
-            const time_window_t* win = &g_prog_status[0].login_cfg.time_windows[i];
+            const time_window_t* win = &g_prog_status[0].cfg.time_windows[i];
             char start_str[TIME_WINDOW_STR_LEN];
             char end_str[TIME_WINDOW_STR_LEN];
             format_week_min(win->start_week_min, start_str);
@@ -235,12 +358,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         cJSON_AddItemToArray(accounts, account);
         cJSON_AddItemToObject(configs, "accounts", accounts);
 
-        char* config_str = cJSON_Print(configs);
-
-        mg_http_reply(c, 200, HEADER_JSON, "%s", config_str);
-
-        free(config_str);
-        cJSON_Delete(configs);
+        reply_json(c, configs);
         return true;
     }
 
@@ -293,10 +411,7 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
         }
         cJSON_AddItemToObject(root, "files", files);
 
-        char* files_str = cJSON_Print(root);
-        mg_http_reply(c, 200, HEADER_JSON, "%s", files_str);
-        free(files_str);
-        cJSON_Delete(root);
+        reply_json(c, root);
         return true;
     }
 

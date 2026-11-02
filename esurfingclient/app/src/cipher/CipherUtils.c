@@ -31,15 +31,6 @@ uint8_t* hex_2_bytes(const char* hex, size_t* out_len)
     return bytes;
 }
 
-void zsm_blob_free(ios_zsm_blob_t* blob)
-{
-    if (!blob) return;
-    s_free(blob->key);
-    s_free(blob->iv);
-    s_free(blob->js);
-    memset(blob, 0, sizeof(*blob));
-}
-
 void* s_malloc(const size_t size)
 {
     if (size == 0) return NULL;
@@ -109,6 +100,14 @@ uint8_t* pad_2_multiple(const uint8_t* data, const size_t data_len, const size_t
     memcpy(padded, data, data_len);
     *out_len = padded_len;
     return padded;
+}
+
+uint32_t uint32_bswap(const uint32_t value)
+{
+    return (value & 0x000000FFu) << 24 |
+           (value & 0x0000FF00u) << 8 |
+           (value & 0x00FF0000u) >> 8 |
+           (value & 0xFF000000u) >> 24;
 }
 
 uint32_t bytes_2_uint32_be(const uint8_t* bytes)

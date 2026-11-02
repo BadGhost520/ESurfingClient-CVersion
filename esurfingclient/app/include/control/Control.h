@@ -14,9 +14,23 @@ typedef struct
     bool is_authed;
     bool is_running;
     bool is_time_disabled;
+    char boot_id[16 + 1];  // 认证进程的启动标识, 网页靠它判断重启是否完成
 } control_status_t;
 
 /* -------------------- 认证进程侧 -------------------- */
+
+/**
+ * @brief 探测某个端口现在能不能绑定
+ *
+ * 供监管者在拉起子进程之前挑控制通道端口: 默认端口被别的程序占着时 (本机就遇到
+ * 过系统进程占 8890) 往后顺延, 而不是让认证进程绑不上、整个远程控制降级。
+ *
+ * 刻意不设 SO_REUSEADDR: 处于 TIME_WAIT 的端口也算不可用 —— 否则这里判"可用",
+ * 子进程真去绑的时候还是会失败。
+ * @param port 端口
+ * @return 能否绑定
+ */
+bool control_port_available(uint16_t port);
 
 /**
  * @brief 启动控制服务
@@ -60,13 +74,8 @@ bool control_apply_config(void);
 /**
  * @brief 请求认证进程优雅退出 (监管者停止子进程时用)
  *
- * 为什么需要它: Windows 上没有 SIGTERM, 监管者原本靠 GenerateConsoleCtrlEvent
- * 发 CTRL_BREAK。但那个 API 要求调用方与目标在同一个控制台, 而**服务由 SCM
- * 启动时根本没有控制台**, 于是这一路必然失败, 只能 TerminateProcess 强杀 ——
- * 认证子进程跑不到 clean(), 也就不会登出。
- *
- * 控制通道走的是回环 TCP, 不依赖控制台, 三种场景 (服务 / 控制台 / POSIX)
- * 行为一致, 因此作为首选路径; 发不出去时监管者再退回原来的办法。
+ * 首选路径: 控制通道走回环 TCP, 不依赖控制台 (Windows 服务由 SCM 启动时没有
+ * 控制台, GenerateConsoleCtrlEvent 发不出去, 只能强杀、跑不到 clean())
  * @return 是否下发成功 (子进程没监听控制端口时为 false)
  */
 bool control_request_shutdown(void);

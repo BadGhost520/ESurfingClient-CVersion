@@ -1,0 +1,810 @@
+name: 0 Build Manager
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CURL_VERSION: "8.20.0"
+  LLVM_MINGW_VERSION: "20260922"
+  OPENWRT_IPK_SDK_VERSION: "24.10.8"
+  OPENWRT_APK_SDK_VERSION: "25.12.5"
+  TAIL_WIND_LABS_VERSION: "v4.3.0"
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: '选择要构建的平台'
+        type: choice
+        required: true
+        default: 'all'
+        options:
+          - all
+          - windows
+          - windows-x86
+          - windows-x86_64
+          - windows-aarch64
+          - linux
+          - linux-x86_64
+          - linux-aarch64
+          - linux-armv7
+          - linux-loongarch64
+          - macos-x86_64
+          - macos-aarch64
+          - android
+          - android-arm64-v8a
+          - android-armeabi-v7a
+          - android-x86_64
+          - openwrt-aarch64_cortex-a53-ipk
+          - openwrt-aarch64_cortex-a53-apk
+          - openwrt-aarch64_cortex-a72-ipk
+          - openwrt-aarch64_cortex-a72-apk
+          - openwrt-aarch64_cortex-a76-ipk
+          - openwrt-aarch64_cortex-a76-apk
+          - openwrt-aarch64_generic-ipk
+          - openwrt-aarch64_generic-apk
+          - openwrt-arm_arm1176jzf-s_vfp-ipk
+          - openwrt-arm_arm1176jzf-s_vfp-apk
+          - openwrt-arm_arm926ej-s-ipk
+          - openwrt-arm_arm926ej-s-apk
+          - openwrt-arm_cortex-a15_neon-vfpv4-ipk
+          - openwrt-arm_cortex-a15_neon-vfpv4-apk
+          - openwrt-arm_cortex-a5_vfpv4-ipk
+          - openwrt-arm_cortex-a5_vfpv4-apk
+          - openwrt-arm_cortex-a7-ipk
+          - openwrt-arm_cortex-a7-apk
+          - openwrt-arm_cortex-a7_neon-vfpv4-ipk
+          - openwrt-arm_cortex-a7_neon-vfpv4-apk
+          - openwrt-arm_cortex-a7_vfpv4-ipk
+          - openwrt-arm_cortex-a7_vfpv4-apk
+          - openwrt-arm_cortex-a8_vfpv3-ipk
+          - openwrt-arm_cortex-a8_vfpv3-apk
+          - openwrt-arm_cortex-a9-ipk
+          - openwrt-arm_cortex-a9-apk
+          - openwrt-arm_cortex-a9_neon-ipk
+          - openwrt-arm_cortex-a9_neon-apk
+          - openwrt-arm_cortex-a9_vfpv3-d16-ipk
+          - openwrt-arm_cortex-a9_vfpv3-d16-apk
+          - openwrt-arm_fa526-ipk
+          - openwrt-arm_fa526-apk
+          - openwrt-arm_xscale-ipk
+          - openwrt-arm_xscale-apk
+          - openwrt-armeb_xscale-ipk
+          - openwrt-armeb_xscale-apk
+          - openwrt-i386_pentium-mmx-ipk
+          - openwrt-i386_pentium-mmx-apk
+          - openwrt-i386_pentium4-ipk
+          - openwrt-i386_pentium4-apk
+          - openwrt-loongarch64_generic-ipk
+          - openwrt-loongarch64_generic-apk
+          - openwrt-mips64_mips64r2-ipk
+          - openwrt-mips64_mips64r2-apk
+          - openwrt-mips64_octeonplus-ipk
+          - openwrt-mips64_octeonplus-apk
+          - openwrt-mips64el_mips64r2-ipk
+          - openwrt-mips64el_mips64r2-apk
+          - openwrt-mips_24kc-ipk
+          - openwrt-mips_24kc-apk
+          - openwrt-mips_mips32-ipk
+          - openwrt-mips_mips32-apk
+          - openwrt-mipsel_24kc-ipk
+          - openwrt-mipsel_24kc-apk
+          - openwrt-mipsel_24kc_24kf-ipk
+          - openwrt-mipsel_24kc_24kf-apk
+          - openwrt-mipsel_74kc-ipk
+          - openwrt-mipsel_74kc-apk
+          - openwrt-mipsel_mips32-ipk
+          - openwrt-mipsel_mips32-apk
+          - openwrt-powerpc64_e5500-ipk
+          - openwrt-powerpc64_e5500-apk
+          - openwrt-powerpc_464fp-ipk
+          - openwrt-powerpc_464fp-apk
+          - openwrt-powerpc_8548-ipk
+          - openwrt-powerpc_8548-apk
+          - openwrt-riscv64_generic-ipk
+          - openwrt-riscv64_generic-apk
+          - openwrt-x86_64-ipk
+          - openwrt-x86_64-apk
+          - openwrt-luci-ipk
+          - openwrt-luci-apk
+      release_type:
+        description: '发布类型'
+        type: choice
+        required: true
+        default: 'prerelease'
+        options:
+          - latest
+          - prerelease
+      release_notes:
+        description: '主要更新内容 (多行请用 \n 分隔, 例如: 1. xxx\n2. yyy)'
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+      full_version: ${{ steps.version.outputs.full_version }}
+      curl_version: ${{ env.CURL_VERSION }}
+      llvm_mingw_version: ${{ env.LLVM_MINGW_VERSION }}
+      openwrt_ipk_sdk_version: ${{ env.OPENWRT_IPK_SDK_VERSION }}
+      openwrt_apk_sdk_version: ${{ env.OPENWRT_APK_SDK_VERSION }}
+      tail_wind_labs_version: ${{ env.TAIL_WIND_LABS_VERSION }}
+      ipk_matrix: ${{ steps.matrix.outputs.ipk_matrix }}
+      apk_matrix: ${{ steps.matrix.outputs.apk_matrix }}
+      luci_matrix: ${{ steps.luci_matrix.outputs.luci_matrix }}
+      android_matrix: ${{ steps.android_matrix.outputs.android_matrix }}
+      macos_matrix: ${{ steps.macos_matrix.outputs.macos_matrix }}
+      windows_matrix: ${{ steps.windows_matrix.outputs.windows_matrix }}
+      linux_matrix: ${{ steps.linux_matrix.outputs.linux_matrix }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 获取版本号
+        id: version
+        run: |
+          bash scripts/sync-version.sh --print >> "$GITHUB_OUTPUT"
+
+      - name: 生成 Windows 桌面端编译动态矩阵
+        id: windows_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86"},
+            {"architecture":"x86_64"},
+            {"architecture":"aarch64"}
+          ]'
+
+          case "$INPUT" in
+            all|windows)
+              RESULT="$ALL"
+              ;;
+            windows-*)
+              ARCH="${INPUT#windows-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "windows_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Windows 矩阵: $RESULT"
+
+      - name: 生成 Linux 桌面端编译动态矩阵
+        id: linux_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86_64"},
+            {"architecture":"aarch64"},
+            {"architecture":"armv7"},
+            {"architecture":"loongarch64"}
+          ]'
+
+          case "$INPUT" in
+            all|linux)
+              RESULT="$ALL"
+              ;;
+            linux-*)
+              ARCH="${INPUT#linux-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "linux_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Linux 矩阵: $RESULT"
+
+      - name: 生成 MacOS 编译动态矩阵
+        id: macos_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"architecture":"x86_64", "tail_wind_labs_architecture":"x64",   "runs_on":"15-intel"},
+            {"architecture":"aarch64","tail_wind_labs_architecture":"arm64", "runs_on":"latest"}
+          ]'
+
+          case "$INPUT" in
+            all|macos)
+              RESULT="$ALL"
+              ;;
+            macos-*)
+              ARCH="${INPUT#macos-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ARCH" '[.[] | select(.architecture == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "macos_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "MacOS 矩阵: $RESULT"
+
+      - name: 生成 Android 编译动态矩阵
+        id: android_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"abi":"arm64-v8a"},
+            {"abi":"armeabi-v7a"},
+            {"abi":"x86_64"}
+          ]'
+
+          case "$INPUT" in
+            all|android)
+              RESULT="$ALL"
+              ;;
+            android-*)
+              ABI="${INPUT#android-}"
+              RESULT=$(printf '%s' "$ALL" | jq -c --arg a "$ABI" '[.[] | select(.abi == $a)]')
+              ;;
+            *)
+              RESULT="[]"
+              ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "android_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "Android 矩阵: $RESULT"
+
+      - name: 生成 OpenWRT 主程序插件包编译动态矩阵
+        id: matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+        run: |
+          set -euo pipefail
+
+          ALL='[
+            {"target":"bcm27xx-bcm2710","architecture":"aarch64_cortex-a53"},
+            {"target":"bcm27xx-bcm2711","architecture":"aarch64_cortex-a72"},
+            {"target":"bcm27xx-bcm2712","architecture":"aarch64_cortex-a76"},
+            {"target":"armsr-armv8","architecture":"aarch64_generic"},
+            {"target":"bcm27xx-bcm2708","architecture":"arm_arm1176jzf-s_vfp"},
+            {"target":"at91-sam9x","architecture":"arm_arm926ej-s"},
+            {"target":"armsr-armv7","architecture":"arm_cortex-a15_neon-vfpv4"},
+            {"target":"at91-sama5","architecture":"arm_cortex-a5_vfpv4"},
+            {"target":"mediatek-mt7629","architecture":"arm_cortex-a7"},
+            {"target":"bcm27xx-bcm2709","architecture":"arm_cortex-a7_neon-vfpv4"},
+            {"target":"at91-sama7","architecture":"arm_cortex-a7_vfpv4"},
+            {"target":"omap-generic","architecture":"arm_cortex-a8_vfpv3"},
+            {"target":"bcm53xx-generic","architecture":"arm_cortex-a9"},
+            {"target":"imx-cortexa9","architecture":"arm_cortex-a9_neon"},
+            {"target":"mvebu-cortexa9","architecture":"arm_cortex-a9_vfpv3-d16"},
+            {"target":"gemini-generic","architecture":"arm_fa526"},
+            {"target":"kirkwood-generic","architecture":"arm_xscale"},
+            {"target":"ixp4xx-generic","architecture":"armeb_xscale"},
+            {"target":"x86-legacy","architecture":"i386_pentium-mmx"},
+            {"target":"x86-generic","architecture":"i386_pentium4"},
+            {"target":"loongarch64-generic","architecture":"loongarch64_generic"},
+            {"target":"malta-be64","architecture":"mips64_mips64r2"},
+            {"target":"octeon-generic","architecture":"mips64_octeonplus"},
+            {"target":"malta-le64","architecture":"mips64el_mips64r2"},
+            {"target":"ath79-generic","architecture":"mips_24kc"},
+            {"target":"bmips-bcm6318","architecture":"mips_mips32"},
+            {"target":"malta-le","architecture":"mipsel_24kc"},
+            {"target":"pistachio-generic","architecture":"mipsel_24kc_24kf"},
+            {"target":"bcm47xx-mips74k","architecture":"mipsel_74kc"},
+            {"target":"bcm47xx-generic","architecture":"mipsel_mips32"},
+            {"target":"qoriq-generic","architecture":"powerpc64_e5500"},
+            {"target":"apm821xx-nand","architecture":"powerpc_464fp"},
+            {"target":"mpc85xx-p1010","architecture":"powerpc_8548"},
+            {"target":"d1-generic","architecture":"riscv64_generic"},
+            {"target":"x86-64","architecture":"x86_64"}
+          ]'
+
+          gen() {
+            local suffix="$1"
+            if [ "$INPUT" = "all" ]; then
+              printf '%s' "$ALL"
+              return
+            fi
+            if [[ "$INPUT" == openwrt-*-"$suffix" && "$INPUT" != openwrt-luci-* ]]; then
+              local arch="${INPUT#openwrt-}"
+              arch="${arch%-$suffix}"
+              printf '%s' "$ALL" \
+                | jq -c --arg a "$arch" '[.[] | select(.architecture == $a)]'
+            else
+              printf '[]'
+            fi
+          }
+
+          IPK=$(gen ipk | jq -c .)
+          APK=$(gen apk | jq -c .)
+
+          echo "ipk_matrix=$IPK" >> "$GITHUB_OUTPUT"
+          echo "apk_matrix=$APK" >> "$GITHUB_OUTPUT"
+          echo "IPK 矩阵: $IPK"
+          echo "APK 矩阵: $APK"
+
+      - name: 生成 OpenWRT LuCI 插件包编译动态矩阵
+        id: luci_matrix
+        shell: bash
+        env:
+          INPUT: ${{ github.event.inputs.platforms }}
+          IPK_SDK: ${{ env.OPENWRT_IPK_SDK_VERSION }}
+          APK_SDK: ${{ env.OPENWRT_APK_SDK_VERSION }}
+        run: |
+          set -euo pipefail
+
+          IPK_ENTRY=$(jq -nc \
+            --arg t "x86-64" \
+            --arg s "$IPK_SDK" \
+            '{target:$t, package_type:"ipk", sdk_version:$s}')
+          
+          APK_ENTRY=$(jq -nc \
+            --arg t "x86-64" \
+            --arg s "$APK_SDK" \
+            '{target:$t, package_type:"apk", sdk_version:$s}')
+
+          case "$INPUT" in
+            all)                RESULT="[$IPK_ENTRY,$APK_ENTRY]" ;;
+            openwrt-luci-ipk)   RESULT="[$IPK_ENTRY]" ;;
+            openwrt-luci-apk)   RESULT="[$APK_ENTRY]" ;;
+            *)                  RESULT="[]" ;;
+          esac
+
+          RESULT=$(printf '%s' "$RESULT" | jq -c .)
+          echo "luci_matrix=$RESULT" >> "$GITHUB_OUTPUT"
+          echo "LuCI 矩阵: $RESULT"
+
+  # Windows
+  windows:
+    if: needs.get-version.outputs.windows_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.windows_matrix) }}
+    uses: ./.github/workflows/1-build-windows-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      full_version:           ${{ needs.get-version.outputs.full_version }}
+      curl_version:           ${{ needs.get-version.outputs.curl_version }}
+      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      llvm_mingw_version:     ${{ needs.get-version.outputs.llvm_mingw_version }}
+      architecture:           ${{ matrix.architecture }}
+
+  # Linux
+  linux:
+    if: needs.get-version.outputs.linux_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.linux_matrix) }}
+    uses: ./.github/workflows/2-build-linux-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      full_version:           ${{ needs.get-version.outputs.full_version }}
+      curl_version:           ${{ needs.get-version.outputs.curl_version }}
+      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      architecture:           ${{ matrix.architecture }}
+
+  # MacOS
+  macos:
+    if: needs.get-version.outputs.macos_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.macos_matrix) }}
+    uses: ./.github/workflows/3-build-macos-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      full_version: ${{ needs.get-version.outputs.full_version }}
+      curl_version: ${{ needs.get-version.outputs.curl_version }}
+      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      tail_wind_labs_architecture: ${{ matrix.tail_wind_labs_architecture }}
+      runs_on: ${{ matrix.runs_on }}
+      architecture: ${{ matrix.architecture }}
+
+  # Android
+  android:
+    if: needs.get-version.outputs.android_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.android_matrix) }}
+    uses: ./.github/workflows/4-build-android-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      full_version:           ${{ needs.get-version.outputs.full_version }}
+      curl_version:           ${{ needs.get-version.outputs.curl_version }}
+      tail_wind_labs_version: ${{ needs.get-version.outputs.tail_wind_labs_version }}
+      abi:                    ${{ matrix.abi }}
+
+  # OpenWRT IPK
+  openwrt-packages-ipk:
+    if: needs.get-version.outputs.ipk_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.ipk_matrix) }}
+    uses: ./.github/workflows/5-build-openwrt-packages-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version:      ${{ needs.get-version.outputs.version }}
+      release:      ${{ needs.get-version.outputs.release }}
+      sdk_version:  ${{ needs.get-version.outputs.openwrt_ipk_sdk_version }}
+      target:       ${{ matrix.target }}
+      architecture: ${{ matrix.architecture }}
+      package_type: "ipk"
+
+  # OpenWRT APK
+  openwrt-packages-apk:
+    if: needs.get-version.outputs.apk_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.apk_matrix) }}
+    uses: ./.github/workflows/5-build-openwrt-packages-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version:      ${{ needs.get-version.outputs.version }}
+      release:      ${{ needs.get-version.outputs.release }}
+      sdk_version:  ${{ needs.get-version.outputs.openwrt_apk_sdk_version }}
+      target:       ${{ matrix.target }}
+      architecture: ${{ matrix.architecture }}
+      package_type: "apk"
+
+  # OpenWRT LuCI
+  openwrt-luci:
+    if: needs.get-version.outputs.luci_matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.get-version.outputs.luci_matrix) }}
+    uses: ./.github/workflows/6-build-openwrt-luci-packages-all.yml
+    secrets: inherit
+    needs: get-version
+    with:
+      version:      ${{ needs.get-version.outputs.version }}
+      release:      ${{ needs.get-version.outputs.release }}
+      sdk_version:  ${{ matrix.sdk_version }}
+      target:       ${{ matrix.target }}
+      package_type: ${{ matrix.package_type }}
+
+  release:
+    needs:
+      - get-version
+      - windows
+      - linux
+      - macos
+      - android
+      - openwrt-packages-ipk
+      - openwrt-packages-apk
+      - openwrt-luci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 下载所有工件
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: 列出所有下载的文件
+        run: |
+          echo "已下载工件:"
+          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.apk" -o -name "*.tar.gz" \) | sort
+
+      - name: 展平发布文件
+        run: |
+          mkdir -p release_files
+          find artifacts -type f \( -name "*.zip" -o -name "*.ipk" -o -name "*.apk" -o -name "*.tar.gz" \) -exec cp {} release_files/ \;
+          echo "=== release_files 目录内容 ==="
+          ls -la release_files/
+          echo "=============================="
+
+      - name: 生成 Release 正文
+        id: body
+        env:
+          FULL_VERSION: ${{ needs.get-version.outputs.full_version }}
+          RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+          RAW_NOTES: ${{ github.event.inputs.release_notes }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # ===== 1. 确定 tag / name / prerelease 标志 =====
+          if [ "$RELEASE_TYPE" = "prerelease" ]; then
+            TAG="master-latest"
+            PRERELEASE="true"
+            export TZ='Asia/Shanghai'
+            RELEASE_NAME="ESurfing Client Build - $(date +'%Y-%m-%d %H:%M:%S CST')"
+          else
+            TAG="v${FULL_VERSION}"
+            PRERELEASE="false"
+            RELEASE_NAME="$TAG"
+          fi
+
+          echo "tag=$TAG"                 >> "$GITHUB_OUTPUT"
+          echo "name=$RELEASE_NAME"       >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE"   >> "$GITHUB_OUTPUT"
+
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+          # OpenWrt 包名格式: 2.1.5-r6 -> 2.1.5-6
+          OPENWRT_VER=$(echo "$FULL_VERSION" | sed -E 's/-r([0-9]+)$/-\1/')
+
+          echo "Tag: $TAG"
+          echo "Name: $RELEASE_NAME"
+          echo "OpenWrt 版本: $OPENWRT_VER"
+
+          # ===== 2. 查找上一个正式 Release (排除自己, 排除 pre-release) =====
+          PREV_TAG=$(gh release list \
+              --exclude-pre-releases \
+              --limit 50 \
+              --json tagName \
+              --jq ".[] | select(.tagName != \"$TAG\") | .tagName" \
+              2>/dev/null | head -n1 || true)
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "上一个正式 Release: $PREV_TAG"
+            echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "未找到上一个正式 Release (首次发布)"
+          fi
+
+          # ===== 3. 按 release_type 生成不同正文 =====
+          if [ "$RELEASE_TYPE" = "prerelease" ]; then
+            # ---------- pre-release 正文 (原始格式) ----------
+            {
+              echo "# 这里是预发布版本下载"
+              echo ""
+              echo "## 主要更新内容"
+              echo ""
+              printf '%b\n' "$RAW_NOTES"
+              echo ""
+              echo "**能在这里下载最新编译的包, 可以尝鲜, 尝试新功能**"
+              echo ""
+              echo "> [!WARNING]"
+              echo "> 未经完全测试, 可能不稳定, 仅供尝鲜!"
+              echo ""
+              echo "### 全部包的下载 ☞ [吱吱吱](${BASE_URL}/master-latest.zip)"
+              echo ""
+              echo "### 最新正式版下载链接 ☞ [吱吱吱](https://github.com/${REPO}/releases/latest)"
+            } > release_body.md
+          else
+            # ---------- 正式 release 正文 (完整表格) ----------
+            if [ -n "$PREV_TAG" ]; then
+              CHANGELOG_TAIL="**Full Changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${TAG}"
+            else
+              CHANGELOG_TAIL="**Full Changelog**: 首次发布"
+            fi
+
+            {
+              echo "## 主要更新内容"
+              echo ""
+              printf '%b\n' "$RAW_NOTES"
+              echo ""
+              echo "### 完整更新日志 -> [吃什么](https://github.com/${REPO}/blob/master/CHANGELOG.md)"
+              echo ""
+              echo "> [!WARNING]"
+              echo "> 每次更新最好都看一看教程有没有新内容"
+              echo ""
+              echo "## 根据自己需要下载"
+              echo ""
+              echo "> [!NOTE]"
+              echo '> 点下面的 `Read more` 再点开表, 预览会有问题'
+              echo ""
+              echo "<details>"
+              echo "<summary>"
+              echo "主程序插件包"
+              echo "</summary>"
+              echo ""
+              echo "|  系统   |           架构            |    包管理器    |     理论最低支持版本      |        推荐版本         |                                                                                                                                             下载                                                                                                                                              |"
+              echo "|:-------:|:-------------------------:|:--------------:|:-------------------------:|:-----------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|"
+
+              # --- Windows ---
+              declare -A WIN_MIN=(["x86"]="Windows Vista x86" ["x86_64"]="Windows Vista x64" ["aarch64"]="Windows 10 1709 (16299)")
+              declare -A WIN_REC=(["x86"]="Windows 10 22H2" ["x86_64"]="Windows 10 22H2 / 11" ["aarch64"]="Windows 11 ARM64")
+              for arch in x86 x86_64 aarch64; do
+                f="esurfingclient-${FULL_VERSION}-windows-${arch}.zip"
+                if [ -f "release_files/$f" ]; then
+                  echo "| Windows | $arch | 便携二进制文件 | ${WIN_MIN[$arch]} | ${WIN_REC[$arch]} | [Download](${BASE_URL}/${f}) |"
+                fi
+              done
+
+              # --- Linux ---
+              declare -A LIN_MIN=(["x86_64"]="glibc 2.36" ["aarch64"]="glibc 2.36" ["armv7"]="glibc 2.36" ["loongarch64"]="glibc 2.36")
+              declare -A LIN_REC=(["x86_64"]="glibc 2.39" ["aarch64"]="glibc 2.39" ["armv7"]="glibc 2.39" ["loongarch64"]="glibc 2.39")
+              for arch in x86_64 aarch64 armv7 loongarch64; do
+                f="esurfingclient-${FULL_VERSION}-linux-${arch}.tar.gz"
+                if [ -f "release_files/$f" ]; then
+                  echo "| Linux | $arch | 便携二进制文件 | ${LIN_MIN[$arch]} | ${LIN_REC[$arch]} | [Download](${BASE_URL}/${f}) |"
+                fi
+              done
+
+              # --- Android ---
+              declare -A AND_MIN=(["x86_64"]="Android 7" ["arm64-v8a"]="Android 7" ["armeabi-v7a"]="Android 7")
+              declare -A AND_REC=(["x86_64"]="Android 10" ["arm64-v8a"]="Android 10" ["armeabi-v7a"]="Android 10")
+              for abi in x86_64 arm64-v8a armeabi-v7a; do
+                f="esurfingclient-${FULL_VERSION}-android-${abi}.tar.gz"
+                if [ -f "release_files/$f" ]; then
+                  echo "| Android | $abi | 便携二进制文件 | ${AND_MIN[$abi]} | ${AND_REC[$abi]} | [Download](${BASE_URL}/${f}) |"
+                fi
+              done
+
+              # --- macOS (文件名使用 darwin) ---
+              declare -A MAC_MIN=(["x86_64"]="macOS 12" ["aarch64"]="macOS 12")
+              declare -A MAC_REC=(["x86_64"]="macOS 13" ["aarch64"]="macOS 14")
+              for arch in x86_64 aarch64; do
+                f="esurfingclient-${FULL_VERSION}-darwin-${arch}.tar.gz"
+                if [ -f "release_files/$f" ]; then
+                  echo "| macOS | $arch | 便携二进制文件 | ${MAC_MIN[$arch]} | ${MAC_REC[$arch]} | [Download](${BASE_URL}/${f}) |"
+                fi
+              done
+
+              # --- OpenWrt 主程序 ---
+              OPENWRT_ARCHES="aarch64_cortex-a53 aarch64_cortex-a72 aarch64_cortex-a76 aarch64_generic \
+                arm_arm1176jzf-s_vfp arm_arm926ej-s arm_cortex-a15_neon-vfpv4 arm_cortex-a5_vfpv4 \
+                arm_cortex-a7 arm_cortex-a7_neon-vfpv4 arm_cortex-a7_vfpv4 arm_cortex-a8_vfpv3 \
+                arm_cortex-a9 arm_cortex-a9_neon arm_cortex-a9_vfpv3-d16 arm_fa526 arm_xscale \
+                armeb_xscale i386_pentium-mmx i386_pentium4 loongarch64_generic \
+                mips64_mips64r2 mips64_octeonplus mips64el_mips64r2 mips_24kc mips_mips32 \
+                mipsel_24kc mipsel_24kc_24kf mipsel_74kc mipsel_mips32 powerpc64_e5500 \
+                powerpc_464fp powerpc_8548 riscv64_generic x86_64"
+
+              for arch in $OPENWRT_ARCHES; do
+                ipk="esurfingclient_${OPENWRT_VER}_${arch}.ipk"
+                apk="esurfingclient_${OPENWRT_VER}_${arch}.apk"
+                ipk_link=""
+                apk_link=""
+                [ -f "release_files/$ipk" ] && ipk_link="[ipk](${BASE_URL}/${ipk})"
+                [ -f "release_files/$apk" ] && apk_link="[apk](${BASE_URL}/${apk})"
+                if [ -n "$ipk_link" ] || [ -n "$apk_link" ]; then
+                  dl="$ipk_link"
+                  if [ -n "$apk_link" ]; then
+                    if [ -n "$dl" ]; then dl="${dl}/${apk_link}"; else dl="$apk_link"; fi
+                  fi
+                  echo "| OpenWrt | $arch | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 | ${dl} |"
+                fi
+              done
+
+              echo ""
+              echo "</details>"
+              echo ""
+
+              # --- LuCI ---
+              echo "<details>"
+              echo "<summary>"
+              echo "OpenWRT LuCI 插件包"
+              echo "</summary>"
+              echo ""
+              echo "|  系统   | 架构 | 包管理器 |     理论最低支持版本      |        推荐版本         |                                                                                                                                下载                                                                                                                                 |"
+              echo "|:-------:|:----:|:--------:|:-------------------------:|:-----------------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|"
+
+              luci_ipk="luci-app-esurfingclient_${OPENWRT_VER}_all.ipk"
+              luci_apk="luci-app-esurfingclient_${OPENWRT_VER}_all.apk"
+              luci_dl=""
+              [ -f "release_files/$luci_ipk" ] && luci_dl="[ipk](${BASE_URL}/${luci_ipk})"
+              if [ -f "release_files/$luci_apk" ]; then
+                if [ -n "$luci_dl" ]; then luci_dl="${luci_dl}/[apk](${BASE_URL}/${luci_apk})"; else luci_dl="[apk](${BASE_URL}/${luci_apk})"; fi
+              fi
+              if [ -n "$luci_dl" ]; then
+                echo "| OpenWrt | All | opkg/apk | OpenWrt 15.05/25.12.0-rc1 | OpenWrt 19.07.0/25.12.0 | ${luci_dl} |"
+              fi
+              echo ""
+              echo "</details>"
+              echo ""
+
+              echo "$CHANGELOG_TAIL"
+            } > release_body.md
+          fi
+
+          echo "===== Release Body ($RELEASE_TYPE) ====="
+          cat release_body.md
+          echo "========================================"
+
+      - name: 打包 master-latest.zip
+        run: |
+          cd release_files
+          zip -r "../master-latest.zip" .
+          cd ..
+          ls -lh master-latest.zip
+
+      - name: 删除同名 Release (如果存在)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ steps.body.outputs.tag }}" -y --cleanup-tag 2>/dev/null \
+            && echo "已删除同名 Release: ${{ steps.body.outputs.tag }}" \
+            || echo "无同名 Release, 跳过"
+
+      # ---- pre-release: 只上传 master-latest.zip ----
+      - name: 创建 GitHub Pre-release
+        if: github.event.inputs.release_type == 'prerelease'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.body.outputs.tag }}
+          name: ${{ steps.body.outputs.name }}
+          body_path: release_body.md
+          draft: false
+          prerelease: true
+          files: master-latest.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---- 正式 release: 只上传各个包 ----
+      - name: 创建 GitHub Release
+        if: github.event.inputs.release_type == 'latest'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.body.outputs.tag }}
+          name: ${{ steps.body.outputs.name }}
+          body_path: release_body.md
+          draft: false
+          prerelease: false
+          files: release_files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 给上一个正式 Release 加上"旧版"标记
+        if: github.event.inputs.release_type == 'latest' && steps.body.outputs.prev_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PREV_TAG="${{ steps.body.outputs.prev_tag }}"
+          REPO="${{ github.repository }}"
+
+          echo "处理上一个正式 Release: $PREV_TAG"
+
+          BODY=$(gh release view "$PREV_TAG" --json body --jq .body)
+
+          if [[ "$BODY" == "# 这是旧版"* ]]; then
+            echo "该 Release 已经被标记为旧版, 跳过"
+            exit 0
+          fi
+
+          HEADER="# 这是旧版，[最新版](https://github.com/${REPO}/releases/latest)"
+
+          {
+            printf '%s\n' "$HEADER"
+            printf '\n'
+            printf '%s\n' "$BODY"
+          } > new_body.md
+
+          gh release edit "$PREV_TAG" --notes-file new_body.md
+          echo "已将 $PREV_TAG 标记为旧版"
