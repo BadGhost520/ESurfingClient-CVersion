@@ -31,7 +31,7 @@ typedef enum {
     LOG_LEVEL_WARN  = 3,
     LOG_LEVEL_INFO  = 4,
     LOG_LEVEL_DEBUG = 5,
-    LOG_LEVEL_VERBOSE = 6
+    LOG_LEVEL_TRACE = 6
 } log_level_t;
 
 typedef struct {
@@ -46,8 +46,8 @@ typedef struct {
     size_t      lines_since_check;
 } log_cfg_t;
 
-#define LOG_VERBOSE(fmt, ...) \
-log_out(LOG_LEVEL_VERBOSE, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_TRACE(fmt, ...) \
+log_out(LOG_LEVEL_TRACE, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
 #define LOG_DEBUG(fmt, ...) \
 log_out(LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
@@ -64,8 +64,8 @@ log_out(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_FATAL(fmt, ...) \
 log_out(LOG_LEVEL_FATAL, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_WEB_VERBOSE(file, line, fmt, ...) \
-log_out(LOG_LEVEL_VERBOSE, file, line, fmt, ##__VA_ARGS__)
+#define LOG_WEB_TRACE(file, line, fmt, ...) \
+log_out(LOG_LEVEL_TRACE, file, line, fmt, ##__VA_ARGS__)
 
 #define LOG_WEB_INFO(file, line, fmt, ...) \
 log_out(LOG_LEVEL_INFO, file, line, fmt, ##__VA_ARGS__)

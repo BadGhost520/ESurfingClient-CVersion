@@ -812,7 +812,7 @@ bool init_cipher(const char* algo_id)
 {
     LOG_DEBUG("开始初始化加解密工厂");
     cipher_interface_t* cipher = NULL;
-    LOG_VERBOSE("创建加解密工厂, 使用 algo_id: %s", algo_id);
+    LOG_TRACE("创建加解密工厂, 使用 algo_id: %s", algo_id);
     cipher = create_cipher_factory(algo_id);
     if (cipher == NULL)
     {
@@ -828,7 +828,7 @@ char* session_encrypt(const char* text)
 {
     if (strstr(text, "userid") == NULL)
     {
-        LOG_VERBOSE("要加密的文本:\n%s", text);
+        LOG_TRACE("要加密的文本:\n%s", text);
     }
     cipher_interface_t* cipher = g_prog_status[tl_thread_idx].auth_cfg.cipher;
     return cipher->encrypt(cipher, text);
@@ -836,7 +836,7 @@ char* session_encrypt(const char* text)
 
 char* session_decrypt(const char* text)
 {
-    LOG_VERBOSE("要解密的文本:\n%s", text);
+    LOG_TRACE("要解密的文本:\n%s", text);
     cipher_interface_t* cipher = g_prog_status[tl_thread_idx].auth_cfg.cipher;
     return cipher->decrypt(cipher, text);
 }

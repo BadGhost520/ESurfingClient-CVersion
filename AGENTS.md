@@ -134,7 +134,7 @@ generate_204 并发探测（固定 IP 多路，不发 DNS）
 
 ## 11. 日志
 
-- 级别：FATAL / ERROR / WARN / INFO / DEBUG / VERBOSE；`log_lv` 0–6，默认 4。
+- 级别：FATAL / ERROR / WARN / INFO / DEBUG / TRACE；`log_lv` 0–6，默认 4。
 - **INFO 只留用户必须看见的**：认证/联网状态、banner 5 行、Web 访问地址、配置路径/首次创建指引、用户操作反馈、退出码。
 - 其余（模块启停、配置加载细节、子进程拉起/停止、关闭步骤）= DEBUG。
 - 状态类提示用"变化才打"（`log_network_state_change`），不要每轮刷屏。

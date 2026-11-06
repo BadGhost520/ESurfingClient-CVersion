@@ -55,7 +55,7 @@ bool logout_state_save(const prog_status_t* status)
     cJSON_AddStringToObject(root, "mac_addr", safe_str(status->auth_cfg.mac_addr));
     cJSON_AddStringToObject(root, "ostag", safe_str(status->auth_cfg.ostag));
     cJSON_AddStringToObject(root, "ticket", safe_str(status->auth_cfg.ticket));
-    LOG_VERBOSE("添加各类普通登出参数");
+    LOG_TRACE("添加各类普通登出参数");
 
     char* text = cJSON_Print(root);
     cJSON_Delete(root);

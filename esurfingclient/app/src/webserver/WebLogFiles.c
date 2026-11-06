@@ -211,7 +211,7 @@ void logFn(const char ch, void *param)
                 LOG_WEB_INFO(file, file_line, "%s", msg);
                 break;
             default:
-                LOG_WEB_VERBOSE(file, file_line, "%s", msg);
+                LOG_WEB_TRACE(file, file_line, "%s", msg);
             }
             free(file);
             free(file_line_str);

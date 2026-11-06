@@ -123,16 +123,16 @@ curl_resp_t post(const char* url, const char* data)
     snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", safe_str(g_school_domain));
     snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", safe_str(g_area));
 
-    LOG_VERBOSE("POST 添加头 %s", md5_hash_str);
-    LOG_VERBOSE("POST 添加头 %s", REQ_CONTENT_TYPE);
+    LOG_TRACE("POST 添加头 %s", md5_hash_str);
+    LOG_TRACE("POST 添加头 %s", REQ_CONTENT_TYPE);
     LOG_DEBUG("POST 添加头 %s", ua);
-    LOG_VERBOSE("POST 添加头 %s", REQ_ACCEPT);
-    LOG_VERBOSE("POST 添加头 %s", c_id);
+    LOG_TRACE("POST 添加头 %s", REQ_ACCEPT);
+    LOG_TRACE("POST 添加头 %s", c_id);
     LOG_DEBUG("POST 添加头 %s", a_id);
-    LOG_VERBOSE("POST 添加头 %s", cdc_sid);
-    LOG_VERBOSE("POST 添加头 %s", cdc_d);
-    LOG_VERBOSE("POST 添加头 %s", cdc_a);
-    LOG_VERBOSE("线程下标: %" PRId8, tl_thread_idx);
+    LOG_TRACE("POST 添加头 %s", cdc_sid);
+    LOG_TRACE("POST 添加头 %s", cdc_d);
+    LOG_TRACE("POST 添加头 %s", cdc_a);
+    LOG_TRACE("线程下标: %" PRId8, tl_thread_idx);
 
     struct curl_slist* headers = NULL;
 
@@ -154,9 +154,9 @@ curl_resp_t post(const char* url, const char* data)
         curl_slist_free_all(headers);
         return resp;
     }
-    LOG_VERBOSE("curl 初始化完成, curl: %p", curl);
+    LOG_TRACE("curl 初始化完成, curl: %p", curl);
 
-    LOG_VERBOSE("设置 curl 选项");
+    LOG_TRACE("设置 curl 选项");
     // POST URL
     curl_easy_setopt(curl, CURLOPT_URL, url);
     // 连接超时时长
@@ -177,7 +177,7 @@ curl_resp_t post(const char* url, const char* data)
     curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
 #endif
 
-    LOG_VERBOSE("执行 CURL");
+    LOG_TRACE("执行 CURL");
     watchdog_pet_network(); // 打卡: 下面这句最长会阻塞"连接超时 + 操作超时"
     const CURLcode curl_code = curl_easy_perform(curl);
     if (curl_code != CURLE_OK)
@@ -192,7 +192,7 @@ curl_resp_t post(const char* url, const char* data)
         return resp;
     }
 
-    LOG_VERBOSE("获取响应码");
+    LOG_TRACE("获取响应码");
     long resp_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
 
@@ -256,9 +256,9 @@ curl_resp_t get(const char* url)
         snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
 
         LOG_DEBUG("GET 添加头 %s", ua);
-        LOG_VERBOSE("GET 添加头 %s", REQ_ACCEPT);
-        LOG_VERBOSE("GET 添加头 %s", c_id);
-        LOG_VERBOSE("线程下标: %" PRId8, tl_thread_idx);
+        LOG_TRACE("GET 添加头 %s", REQ_ACCEPT);
+        LOG_TRACE("GET 添加头 %s", c_id);
+        LOG_TRACE("线程下标: %" PRId8, tl_thread_idx);
 
         headers = curl_slist_append(headers, ua);
         headers = curl_slist_append(headers, REQ_ACCEPT);
@@ -273,9 +273,9 @@ curl_resp_t get(const char* url)
         curl_slist_free_all(headers);
         return resp;
     }
-    LOG_VERBOSE("curl 初始化完成, curl = %p", curl);
+    LOG_TRACE("curl 初始化完成, curl = %p", curl);
 
-    LOG_VERBOSE("设置 curl 选项");
+    LOG_TRACE("设置 curl 选项");
     // GET URL
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
@@ -312,7 +312,7 @@ curl_resp_t get(const char* url)
     #endif
     }
 
-    LOG_VERBOSE("执行 CURL");
+    LOG_TRACE("执行 CURL");
     watchdog_pet_network(); // 打卡: 下面这句最长会阻塞"连接超时 + 操作超时"
     CURLcode curl_code = curl_easy_perform(curl);
 
@@ -354,7 +354,7 @@ curl_resp_t get(const char* url)
         return resp;
     }
 
-    LOG_VERBOSE("获取响应码");
+    LOG_TRACE("获取响应码");
     long resp_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
 
@@ -371,7 +371,7 @@ curl_resp_t get(const char* url)
     }
     if (resp_code == 204)
     {
-        LOG_VERBOSE("无内容, 响应码: 204");
+        LOG_TRACE("无内容, 响应码: 204");
         resp.http_code = HTTP_NO_CONTENT;
         resp.status = STATUS_OK;
         return resp;
