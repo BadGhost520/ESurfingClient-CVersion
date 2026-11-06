@@ -44,11 +44,32 @@ endef
 
 define Package/esurfingclient/conffiles
 /etc/config/esurfingclient
+/etc/esurfingclient/ESurfingClient.json
 endef
 
 define Package/esurfingclient/postinst
 #!/bin/sh
 echo "ESurfing 客户端主程序安装完成"
+
+# 旧版本把 JSON 直接放在 /etc/config 下 (uci 会把它当配置文件解析, 连带 uci set 报错),
+# 这里把旧配置迁到新目录, 再补上只存目录路径的 UCI 配置
+mkdir -p /etc/esurfingclient
+
+if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" = "{" ]; then
+	if [ -f "/etc/esurfingclient/ESurfingClient.json" ]; then
+		cp "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json.migrated"
+		echo "旧配置已保留为 /etc/esurfingclient/ESurfingClient.json.migrated"
+	else
+		cp "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json.bak"
+		mv "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json"
+		echo "旧配置已迁移到 /etc/esurfingclient/ESurfingClient.json (备份: .bak)"
+	fi
+fi
+
+# UCI 文件缺失时补一份默认的 (conffiles 升级时用户改过的旧文件会被保留, 新模板落在 .opkg-new)
+if [ ! -f "/etc/config/esurfingclient" ]; then
+	printf "config main\n\toption dir '/etc/esurfingclient'\n" > /etc/config/esurfingclient
+fi
 
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
 	echo "有新的模板文件, 可查看是否有更新"
@@ -71,6 +92,8 @@ echo "正在清理 ESurfing 客户端残留文件"
 
 rm -f /etc/config/esurfingclient*
 
+rm -rf /etc/esurfingclient
+
 rm -rf /var/log/esurfing
 
 exit 0
@@ -89,6 +112,9 @@ define Package/esurfingclient/install
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) $(CURDIR)/files/etc/config/esurfingclient $(1)/etc/config/esurfingclient
+
+	$(INSTALL_DIR) $(1)/etc/esurfingclient
+	$(INSTALL_CONF) $(CURDIR)/files/etc/esurfingclient/ESurfingClient.json $(1)/etc/esurfingclient/ESurfingClient.json
 endef
 
 define Build/Compile

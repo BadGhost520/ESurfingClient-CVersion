@@ -1,6 +1,17 @@
 <%
 local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"./","conn_timeout":10,"op_timeout":15,"web_port":8888,"probe_hosts":[{"host":"connectivitycheck.platform.hicloud.com","ips":["183.61.185.93","125.88.255.53"]},{"host":"connect.rom.miui.com","ips":["202.69.4.32","220.181.104.183"]}],"accounts":[{"username":"","password":"","channel":"windows","mark":"","time_windows":[]}]}'
-local file = io.open("/etc/config/esurfingclient", "r")
+
+-- 配置目录由 UCI 决定: /etc/config/esurfingclient 里 option dir 指向真实的 JSON 目录
+-- (JSON 放在 /etc/config 下会让 uci 把它当配置文件解析, 连带 uci set 别的软件时报错)
+local cfg_dir = "/etc/esurfingclient"
+do
+    local uci = require("luci.model.uci").cursor()
+    local dir = uci:get("esurfingclient", "main", "dir")
+    if dir and dir ~= "" then cfg_dir = dir end
+end
+local cfg_path = cfg_dir .. "/ESurfingClient.json"
+
+local file = io.open(cfg_path, "r")
 if file then
     local content = file:read("*a")
     file:close()
@@ -47,6 +58,40 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
             return
         end
 
+        if string.find(data, '"action":"setdir"') then
+            local dir = data:match('"dir":"([^"]*)"')
+            if dir and dir ~= "" and dir:sub(1, 1) == "/" then
+                local uci = require("luci.model.uci").cursor()
+                uci:set("esurfingclient", "main", "dir", dir)
+                uci:commit("esurfingclient")
+
+                -- 旧目录的配置搬到新目录 (目标已存在就不覆盖, 但先备份一份, 免得后续保存直接盖掉)
+                os.execute(string.format("mkdir -p %q", dir))
+                local old_file = cfg_dir .. "/ESurfingClient.json"
+                local new_file = dir .. "/ESurfingClient.json"
+                local exists = io.open(new_file, "r")
+                if exists then
+                    exists:close()
+                    local bak = new_file .. ".bak"
+                    local has_bak = io.open(bak, "r")
+                    if has_bak then
+                        has_bak:close()
+                    else
+                        os.execute(string.format("cp -a %q %q", new_file, bak))
+                    end
+                else
+                    os.execute(string.format("cp -a %q %q", old_file, new_file))
+                end
+
+                luci.http.prepare_content("application/json")
+                luci.http.write('{"status":"ok"}')
+            else
+                luci.http.status(400)
+                luci.http.write('{"status":"error","message":"Invalid dir"}')
+            end
+            return
+        end
+
         if string.find(data, '"action":"getlog"') then
             local file_name = data:match('"file":"([^"]+)"')
             if not file_name or file_name == "" then
@@ -66,7 +111,8 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
             return
         end
 
-        local f = io.open("/etc/config/esurfingclient", "w")
+        os.execute(string.format("mkdir -p %q", cfg_dir))
+        local f = io.open(cfg_path, "w")
         if f then
             f:write(data)
             f:close()
@@ -223,6 +269,13 @@ end
                 </div>
             </div>
             <div id='advanced-container' style='display: none;'>
+            <div class='cbi-value'>
+                <label class='cbi-value-title' for='cfg_dir'>配置目录</label>
+                <div class='cbi-value-field'>
+                    <input type='text' id='cfg_dir' class='cbi-input-text' value='<%= cfg_dir %>' />
+                    <div class='cbi-value-description'>配置文件所在目录 (JSON 固定叫 ESurfingClient.json); 改完会自动迁移旧配置并重启服务, 旧目录的配置不会自动删除</div>
+                </div>
+            </div>
             <div class='cbi-value'>
                 <label class='cbi-value-title' for='conn_timeout'>连接超时</label>
                 <div class='cbi-value-field'>
@@ -1071,6 +1124,37 @@ end
                 advanced_container.style.display = show_advanced.checked ? '' : 'none';
             });
         }
+
+        // 配置目录: 改完立刻写回 UCI 并迁移旧配置 (新 LuCI 那边是保存时一起做)
+        var cfg_dir_input = document.getElementById('cfg_dir');
+        if (cfg_dir_input) {
+            cfg_dir_input.addEventListener('change', function() {
+                var dir = (cfg_dir_input.value || '').trim();
+                if (!dir || dir.charAt(0) !== '/') {
+                    showNotification('配置目录必须是绝对路径 (以 / 开头)', 'error');
+                    return;
+                }
+
+                fetch(window.location.href, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'setdir', dir: dir })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.status === 'ok') {
+                        showNotification('配置目录已修改, 页面即将刷新', 'succ');
+                        setTimeout(function() { location.reload(); }, 1500);
+                    } else {
+                        showNotification('配置目录修改失败', 'error');
+                    }
+                })
+                .catch(function() {
+                    showNotification('配置目录修改失败', 'error');
+                });
+            });
+        }
+
         // 旧配置文件可能缺少这些参数, 这里补齐默认值, 避免输入框显示成"关闭/空"
         config.conn_timeout = normalizeTimeout(config.conn_timeout, 10);
         config.op_timeout = normalizeTimeout(config.op_timeout, 15);

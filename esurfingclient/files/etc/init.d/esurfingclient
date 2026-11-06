@@ -8,11 +8,40 @@ PROG=/usr/bin/esurfingclient
 
 LOG_DIR_DEFAULT=/var/log/esurfing/logs
 
+CFG_DIR_DEFAULT=/etc/esurfingclient
+
+# 配置目录由 UCI 决定: /etc/config/esurfingclient 里 option dir 指向真实的 JSON 目录
+# (把 JSON 放在 /etc/config 下会让 uci 把它当配置文件解析, 连带 uci set 别的软件时报错)
+get_cfg_dir() {
+  local dir
+  dir="$(uci -q get esurfingclient.main.dir 2>/dev/null)"
+  [ -n "$dir" ] || dir="$CFG_DIR_DEFAULT"
+  echo "$dir"
+}
+
 get_log_dir() {
   local dir
-  dir="$($PROG --print-log-dir 2>/dev/null)"
+  dir="$($PROG --print-log-dir --config-dir "$(get_cfg_dir)" 2>/dev/null)"
   [ -n "$dir" ] || dir="$LOG_DIR_DEFAULT"
   echo "$dir"
+}
+
+# 配置目录换到别处时, 新目录里还没有 JSON: 把默认目录里的配置搬过去。
+# 只覆盖"从 /etc/esurfingclient 换到自定义目录"这一种; 目标已存在就什么都不做,
+# 所以重复启动不会重复搬, 也不会覆盖用户在新目录里写的内容。
+migrate_cfg() {
+  local dir="$1"
+  local new_file="$dir/ESurfingClient.json"
+  local old_file="$CFG_DIR_DEFAULT/ESurfingClient.json"
+
+  [ -n "$dir" ] || return 0
+  [ -f "$new_file" ] && return 0
+  [ -f "$old_file" ] || return 0
+
+  mkdir -p "$dir" 2>/dev/null || return 0
+  if cp -a "$old_file" "$new_file" 2>/dev/null; then
+      echo "esurfingclient: 配置已从 $old_file 迁移到 $new_file"
+  fi
 }
 
 wait_network() {
@@ -65,8 +94,14 @@ start_service() {
 
   sleep 5
 
+  local cfg_dir
+  cfg_dir="$(get_cfg_dir)"
+
+  # 换过配置目录时把旧配置搬过去 (幂等: 目标已存在就跳过)
+  migrate_cfg "$cfg_dir"
+
   local accounts
-  accounts="$($PROG --list-accounts 2>/dev/null)"
+  accounts="$($PROG --list-accounts --config-dir "$cfg_dir" 2>/dev/null)"
 
   if [ -z "$accounts" ]; then
       echo "esurfingclient: 没有可用账号, 或程序 enabled 参数未设置为启用, 未启动任何实例, 请检查配置文件"
@@ -78,7 +113,7 @@ start_service() {
   local flat=""
   for idx in $accounts; do
       procd_open_instance "account${idx}"
-      procd_set_param command $PROG --role auth --account $idx
+      procd_set_param command $PROG --role auth --account $idx --config-dir "$cfg_dir"
       procd_set_param respawn 60 5 5
       procd_set_param term_timeout 15
       procd_set_param stdout 1

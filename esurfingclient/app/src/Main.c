@@ -76,6 +76,9 @@ static void PrintUsage(void)
     printf("  -a, --account <序号>  指定本进程负责的配置序号 (从 1 开始, auth 角色必填)\n");
     printf("  --list-accounts      列出配置文件中所有可用账号的序号后退出 (供 init 脚本使用)\n");
     printf("  --print-log-dir      打印实际使用的日志目录后退出 (日志目录由配置里的 log_dir 决定)\n");
+#ifdef __OPENWRT__
+    printf("  --config-dir <目录>  配置目录 (init 脚本从 UCI 的 option dir 读取; 默认 %s)\n", "/etc/esurfingclient");
+#endif
 #ifndef __OPENWRT__
     printf("  --control-port <端口> 控制通道端口 (默认 %d; 被占用时自动往后顺延)\n", CONTROL_DEFAULT_PORT);
     printf("  --control-token <令牌> 控制通道令牌 (不填则不校验; 守护进程会自动生成并下发)\n");
@@ -289,6 +292,22 @@ static int parse_args(const int argc, char* argv[])
             s_print_log_dir = true;
             continue;
         }
+
+#ifdef __OPENWRT__
+
+        if (strcmp(arg, "--config-dir") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                fprintf(stderr, "[ERROR] %s 缺少配置目录\n", arg);
+                PrintUsage();
+                return 1;
+            }
+            set_config_dir(argv[++i]);
+            continue;
+        }
+
+#endif
 
 #ifndef __OPENWRT__
 

@@ -2,6 +2,27 @@
 'require view';
 'require fs';
 'require ui';
+'require uci';
+
+/**
+ * 配置目录由 UCI 决定: /etc/config/esurfingclient 里 option dir 指向真实的 JSON 目录
+ * (JSON 放在 /etc/config 下会让 uci 把它当配置文件解析, 连带 uci set 别的软件时报错)
+ */
+function cfgDir() {
+    var dir = null;
+    try {
+        uci.load('esurfingclient');
+        dir = uci.get('esurfingclient', 'main', 'dir');
+    } catch (e) {
+        dir = null;
+    }
+    return (typeof dir === 'string' && dir.length > 0) ? dir : '/etc/esurfingclient';
+}
+
+/** 配置文件完整路径 (与桌面端同名) */
+function cfgPath() {
+    return cfgDir() + '/ESurfingClient.json';
+}
 
 /** IPv4 校验 (与后端 probe_is_ipv4 一致: a.b.c.d 四段 0~255) */
 function isValidProbeIpv4(value) {
@@ -84,13 +105,33 @@ return view.extend({
             probe_hosts: [],
             accounts: []
         };
-        
+
+        // 配置目录 (来自 UCI 的 option dir), 保存时如果改了就写回 UCI
+        self.cfg_dir = cfgDir();
+
         self.currentTab = 'tab1';
 
         /**
          * 高级选项默认收起, 勾选之后才显示 (和桌面网页的设置页保持一致)
          */
         self.advanced_container = E('div', { id: 'advanced_container', style: 'display: none;' }, [
+            E('div', { class: 'cbi-value' }, [
+                E('label', { class: 'cbi-value-title' }, '配置目录'),
+                E('div', { class: 'cbi-value-field' }, [
+                    E('input', {
+                        type: 'text',
+                        id: 'cfg_dir',
+                        class: 'cbi-input-text',
+                        placeholder: '/etc/esurfingclient',
+                        value: self.cfg_dir,
+                        change: function(ev) {
+                            self.cfg_dir = ev.target.value.trim();
+                        }
+                    }),
+                    E('div', { class: 'cbi-value-description' },
+                        '配置文件所在目录 (JSON 固定叫 ESurfingClient.json); 改完保存会自动重启服务, 旧目录的配置不会自动迁移')
+                ])
+            ]),
             E('div', { class: 'cbi-value' }, [
                 E('label', { class: 'cbi-value-title' }, '连接超时'),
                 E('div', { class: 'cbi-value-field' }, [
@@ -309,7 +350,7 @@ return view.extend({
 
         self.showNotification('正在读取配置文件', 'info');
 
-        return fs.read('/etc/config/esurfingclient')
+        return fs.read(cfgPath())
             .then(function(data) {
                 try {
                     self.config = JSON.parse(data);
@@ -369,7 +410,53 @@ return view.extend({
             return Promise.reject(new Error('探测目标超过 14 路'));
         }
 
-        return fs.write('/etc/config/esurfingclient', JSON.stringify(self.config, null, 2));
+        // 配置目录: 校验 + 改了先写回 UCI (保存后自动重启服务)
+        var dir = (self.cfg_dir || '').trim();
+        if (dir === '' || dir.charAt(0) !== '/') {
+            self.showNotification('配置目录必须是绝对路径 (以 / 开头)', 'error');
+            return Promise.reject(new Error('配置目录无效'));
+        }
+        while (dir.length > 1 && dir.charAt(dir.length - 1) === '/') {
+            dir = dir.slice(0, -1);
+        }
+        self.cfg_dir = dir;
+
+        var old_dir = cfgDir();
+        var dir_changed = (dir !== old_dir);
+        if (dir_changed) {
+            uci.load('esurfingclient');
+            uci.set('esurfingclient', 'main', 'dir', dir);
+            uci.save();
+            uci.commit('esurfingclient');
+        }
+
+        var target_file = dir + '/ESurfingClient.json';
+
+        // 目录变了且目标已有配置: 先备份成 .bak (已有 .bak 就不重复盖), 避免直接盖掉用户内容
+        function backup_target() {
+            if (dir_changed === false) return Promise.resolve();
+            return fs.stat(target_file).then(function() {
+                return fs.stat(target_file + '.bak').then(function() {
+                    return null;
+                }, function() {
+                    return fs.exec('/bin/cp', ['-a', target_file, target_file + '.bak']);
+                });
+            }, function() {
+                return null;
+            });
+        }
+
+        // 目录可能还没建出来 (第一次装/用户改过 option dir): 写之前补一下
+        return fs.stat(dir).catch(function() {
+            return fs.exec('/bin/mkdir', ['-p', dir]);
+        }).then(backup_target).then(function() {
+            return fs.write(target_file, JSON.stringify(self.config, null, 2));
+        }).then(function() {
+            if (dir_changed === false) return null;
+            self.showNotification('配置目录已修改, 服务正在重启…', 'info');
+            setTimeout(function() { location.reload(); }, 3000);
+            return self.applyConfig();
+        });
     },
 
     applyConfig: function() {
