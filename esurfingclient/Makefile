@@ -55,41 +55,38 @@ mkdir -p /etc/esurfingclient
 
 if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" = "{" ]; then
 	cp "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json"
-
-	if [ -f "/etc/config/esurfingclient.apk-new" ]; then
-		cp "/etc/config/esurfingclient.apk-new" "/etc/config/esurfingclient"
-		rm -f "/etc/config/esurfingclient.apk-new"
-	elif [ -f "/etc/config/esurfingclient-opkg" ]; then
-		cp "/etc/config/esurfingclient-opkg" "/etc/config/esurfingclient"
-		rm -f "/etc/config/esurfingclient-opkg"
-	else
-		printf "config global 'config'\n\toption dir '/etc/esurfingclient'\n" > /etc/config/esurfingclient
-	fi
-
 	echo "旧配置已迁移到 /etc/esurfingclient/ESurfingClient.json"
 fi
 
-if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" != "{" ]; then
-	changed=0
-
-	uci -q get esurfingclient.config.dir >/dev/null 2>&1 || {
-		uci set esurfingclient.config.dir='/etc/esurfingclient'
-		changed=1
-	}
-
-	for key in ; do
-		uci -q get "esurfingclient.config.$$key" >/dev/null 2>&1 || continue
-		uci delete "esurfingclient.config.$$key"
-		changed=1
-	done
-
-	[ "$$changed" = "1" ] && uci commit esurfingclient 2>/dev/null
-fi
+cfg_dir="$$(uci -q get esurfingclient.config.dir 2>/dev/null)"
+[ -n "$$cfg_dir" ] || cfg_dir='/etc/esurfingclient'
 
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
-	cmp -s "/etc/config/esurfingclient" "/etc/config/esurfingclient.apk-new" \
-		&& rm -f "/etc/config/esurfingclient.apk-new"
+	mv -f "/etc/config/esurfingclient.apk-new" "$$cfg_dir/esurfingclient.apk-new"
+	echo "检测到新配置模板, 已移动到 $$cfg_dir/esurfingclient.apk-new (当前配置未改动)"
+elif [ -f "/etc/config/esurfingclient-opkg" ]; then
+	mv -f "/etc/config/esurfingclient-opkg" "$$cfg_dir/esurfingclient-opkg"
+	echo "检测到新配置模板, 已移动到 $$cfg_dir/esurfingclient-opkg (当前配置未改动)"
 fi
+
+if [ ! -f "/etc/config/esurfingclient" ] || [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" = "{" ]; then
+	printf "config global 'config'\n\toption dir '/etc/esurfingclient'\n" > /etc/config/esurfingclient
+fi
+
+changed=0
+
+uci -q get esurfingclient.config.dir >/dev/null 2>&1 || {
+	uci set esurfingclient.config.dir='/etc/esurfingclient'
+	changed=1
+}
+
+for key in ; do
+	uci -q get "esurfingclient.config.$$key" >/dev/null 2>&1 || continue
+	uci delete "esurfingclient.config.$$key"
+	changed=1
+done
+
+[ "$$changed" = "1" ] && uci commit esurfingclient 2>/dev/null
 
 exit 0
 endef
