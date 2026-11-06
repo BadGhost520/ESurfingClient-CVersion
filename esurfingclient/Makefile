@@ -51,34 +51,50 @@ define Package/esurfingclient/postinst
 #!/bin/sh
 echo "ESurfing 客户端主程序安装完成"
 
-# 旧版本把 JSON 直接放在 /etc/config 下 (uci 会把它当配置文件解析, 连带 uci set 报错),
-# 这里把旧配置迁到新目录, 再补上只存目录路径的 UCI 配置
 mkdir -p /etc/esurfingclient
 
 if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" = "{" ]; then
-	if [ -f "/etc/esurfingclient/ESurfingClient.json" ]; then
-		cp "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json.migrated"
-		echo "旧配置已保留为 /etc/esurfingclient/ESurfingClient.json.migrated"
+	# 触发迁移: 不管新目录有没有文件, 旧配置都覆盖过去
+	cp "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json"
+
+	# conffiles 保护会把新模板写成 .apk-new / -opkg, 用它覆盖 /etc/config 下的旧 JSON
+	if [ -f "/etc/config/esurfingclient.apk-new" ]; then
+		cp "/etc/config/esurfingclient.apk-new" "/etc/config/esurfingclient"
+		rm -f "/etc/config/esurfingclient.apk-new"
+	elif [ -f "/etc/config/esurfingclient-opkg" ]; then
+		cp "/etc/config/esurfingclient-opkg" "/etc/config/esurfingclient"
+		rm -f "/etc/config/esurfingclient-opkg"
 	else
-		cp "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json.bak"
-		mv "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json"
-		echo "旧配置已迁移到 /etc/esurfingclient/ESurfingClient.json (备份: .bak)"
+		printf "config main\n\toption dir '/etc/esurfingclient'\n" > /etc/config/esurfingclient
 	fi
+
+	echo "旧配置已迁移到 /etc/esurfingclient/ESurfingClient.json"
 fi
 
-# UCI 文件缺失时补一份默认的 (conffiles 升级时用户改过的旧文件会被保留, 新模板落在 .opkg-new)
-if [ ! -f "/etc/config/esurfingclient" ]; then
-	printf "config main\n\toption dir '/etc/esurfingclient'\n" > /etc/config/esurfingclient
+# UCI 选项维护: 缺的补默认值, 废弃的删掉 (以后加/删选项只改这一段)
+if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" != "{" ]; then
+	changed=0
+
+	# 补齐新选项: 已有值不动, 缺的写默认值
+	uci -q get esurfingclient.@main[0].dir >/dev/null 2>&1 || {
+		uci set esurfingclient.@main[0].dir='/etc/esurfingclient'
+		changed=1
+	}
+
+	# 删除已废弃的选项: 旧版本有、新版本不再使用的 key 填在 for 列表里
+	for key in ; do
+		uci -q get "esurfingclient.@main[0].$$key" >/dev/null 2>&1 || continue
+		uci delete "esurfingclient.@main[0].$$key"
+		changed=1
+	done
+
+	[ "$$changed" = "1" ] && uci commit esurfingclient 2>/dev/null
 fi
 
+# 模板与当前文件完全一致时清掉 .apk-new, 避免升级后留下无意义的副本
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
-	echo "有新的模板文件, 可查看是否有更新"
-	echo "-> /etc/config/esurfingclient.apk-new"
-fi
-
-if [ -f "/etc/config/esurfingclient-opkg" ]; then
-	echo "有新的模板文件, 可查看是否有更新"
-	echo "-> /etc/config/esurfingclient-opkg"
+	cmp -s "/etc/config/esurfingclient" "/etc/config/esurfingclient.apk-new" \
+		&& rm -f "/etc/config/esurfingclient.apk-new"
 fi
 
 exit 0
