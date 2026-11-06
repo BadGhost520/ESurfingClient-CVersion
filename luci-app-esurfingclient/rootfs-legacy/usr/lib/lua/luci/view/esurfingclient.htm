@@ -6,7 +6,7 @@ local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_d
 local cfg_dir = "/etc/esurfingclient"
 do
     local uci = require("luci.model.uci").cursor()
-    local dir = uci:get("esurfingclient", "main", "dir")
+    local dir = uci:get("esurfingclient", "config", "dir")
     if dir and dir ~= "" then cfg_dir = dir end
 end
 local cfg_path = cfg_dir .. "/ESurfingClient.json"
@@ -62,7 +62,7 @@ if luci.http.getenv("REQUEST_METHOD") == "POST" then
             local dir = data:match('"dir":"([^"]*)"')
             if dir and dir ~= "" and dir:sub(1, 1) == "/" then
                 local uci = require("luci.model.uci").cursor()
-                uci:set("esurfingclient", "main", "dir", dir)
+                uci:set("esurfingclient", "config", "dir", dir)
                 uci:commit("esurfingclient")
 
                 -- 旧目录的配置搬到新目录 (目标已存在就不覆盖, 但先备份一份, 免得后续保存直接盖掉)

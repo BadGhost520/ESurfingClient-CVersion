@@ -43,7 +43,7 @@ cmake -S esurfingclient/app -B build-openwrt -D__OPENWRT__=1 && cmake --build bu
 - 写回顺序硬约束：全局字段与 `probe_targets_parse` 必须在 OpenWrt realloc + `--account` 挑选 + `g_prog_cnt` 之后；`accounts` 从 `cfg_json` 用 `cJSON_Duplicate` 拷贝（不得从 `g_prog_status` 重建）；`cJSON_Delete(cfg_json)` 在 `save_cfg_from_cfg()` 之后。
 - **保存 = 只写文件；应用 = auth 进程退出重拉，supervisor / web 热重载**（靠 `.apply` 标记文件）。
 - Web：`/api/saveConfigs` 只保存；`/api/applyConfigs` 带 `{"apply":true}` 才应用。
-- **OpenWrt 配置目录由 UCI 决定**：`/etc/config/esurfingclient` 只有 `option dir`，JSON 在 `<dir>/ESurfingClient.json`，init 脚本传 `--config-dir`（程序不解析 UCI）。**别把 JSON 放回 `/etc/config`**（`uci` 解析失败会连带 `uci set` 报错）。
+- **OpenWrt 配置目录由 UCI 决定**：`/etc/config/esurfingclient` 是 `config global 'config'` + `option dir`，JSON 在 `<dir>/ESurfingClient.json`，init 脚本用 `--config-dir` 传给程序（程序侧不解析 UCI）。访问写法统一用 `esurfingclient.config.dir`。**别把 JSON 放回 `/etc/config`**（`uci` 解析失败会连带 `uci set` 报错）。
 - 默认值以 `files/etc/esurfingclient/ESurfingClient.json` 与 `s_default_cfg` 为准。
 
 ## 7. 探测目标

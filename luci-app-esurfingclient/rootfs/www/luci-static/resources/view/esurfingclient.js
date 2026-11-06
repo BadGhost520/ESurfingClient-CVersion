@@ -12,7 +12,7 @@ function cfgDir() {
     var dir = null;
     try {
         uci.load('esurfingclient');
-        dir = uci.get('esurfingclient', 'main', 'dir');
+        dir = uci.get('esurfingclient', 'config', 'dir');
     } catch (e) {
         dir = null;
     }
@@ -425,7 +425,7 @@ return view.extend({
         var dir_changed = (dir !== old_dir);
         if (dir_changed) {
             uci.load('esurfingclient');
-            uci.set('esurfingclient', 'main', 'dir', dir);
+            uci.set('esurfingclient', 'config', 'dir', dir);
             uci.save();
             uci.commit('esurfingclient');
         }

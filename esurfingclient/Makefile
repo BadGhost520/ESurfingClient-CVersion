@@ -54,10 +54,8 @@ echo "ESurfing 客户端主程序安装完成"
 mkdir -p /etc/esurfingclient
 
 if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" = "{" ]; then
-	# 触发迁移: 不管新目录有没有文件, 旧配置都覆盖过去
 	cp "/etc/config/esurfingclient" "/etc/esurfingclient/ESurfingClient.json"
 
-	# conffiles 保护会把新模板写成 .apk-new / -opkg, 用它覆盖 /etc/config 下的旧 JSON
 	if [ -f "/etc/config/esurfingclient.apk-new" ]; then
 		cp "/etc/config/esurfingclient.apk-new" "/etc/config/esurfingclient"
 		rm -f "/etc/config/esurfingclient.apk-new"
@@ -65,33 +63,29 @@ if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingcl
 		cp "/etc/config/esurfingclient-opkg" "/etc/config/esurfingclient"
 		rm -f "/etc/config/esurfingclient-opkg"
 	else
-		printf "config main\n\toption dir '/etc/esurfingclient'\n" > /etc/config/esurfingclient
+		printf "config global 'config'\n\toption dir '/etc/esurfingclient'\n" > /etc/config/esurfingclient
 	fi
 
 	echo "旧配置已迁移到 /etc/esurfingclient/ESurfingClient.json"
 fi
 
-# UCI 选项维护: 缺的补默认值, 废弃的删掉 (以后加/删选项只改这一段)
 if [ -f "/etc/config/esurfingclient" ] && [ "$$(head -c 1 /etc/config/esurfingclient 2>/dev/null)" != "{" ]; then
 	changed=0
 
-	# 补齐新选项: 已有值不动, 缺的写默认值
-	uci -q get esurfingclient.@main[0].dir >/dev/null 2>&1 || {
-		uci set esurfingclient.@main[0].dir='/etc/esurfingclient'
+	uci -q get esurfingclient.config.dir >/dev/null 2>&1 || {
+		uci set esurfingclient.config.dir='/etc/esurfingclient'
 		changed=1
 	}
 
-	# 删除已废弃的选项: 旧版本有、新版本不再使用的 key 填在 for 列表里
 	for key in ; do
-		uci -q get "esurfingclient.@main[0].$$key" >/dev/null 2>&1 || continue
-		uci delete "esurfingclient.@main[0].$$key"
+		uci -q get "esurfingclient.config.$$key" >/dev/null 2>&1 || continue
+		uci delete "esurfingclient.config.$$key"
 		changed=1
 	done
 
 	[ "$$changed" = "1" ] && uci commit esurfingclient 2>/dev/null
 fi
 
-# 模板与当前文件完全一致时清掉 .apk-new, 避免升级后留下无意义的副本
 if [ -f "/etc/config/esurfingclient.apk-new" ]; then
 	cmp -s "/etc/config/esurfingclient" "/etc/config/esurfingclient.apk-new" \
 		&& rm -f "/etc/config/esurfingclient.apk-new"

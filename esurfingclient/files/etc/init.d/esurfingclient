@@ -14,7 +14,7 @@ CFG_DIR_DEFAULT=/etc/esurfingclient
 # (把 JSON 放在 /etc/config 下会让 uci 把它当配置文件解析, 连带 uci set 别的软件时报错)
 get_cfg_dir() {
   local dir
-  dir="$(uci -q get esurfingclient.main.dir 2>/dev/null)"
+  dir="$(uci -q get esurfingclient.config.dir 2>/dev/null)"
   [ -n "$dir" ] || dir="$CFG_DIR_DEFAULT"
   echo "$dir"
 }
