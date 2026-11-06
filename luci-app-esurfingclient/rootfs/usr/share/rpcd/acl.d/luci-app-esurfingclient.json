@@ -4,14 +4,19 @@
         "read": {
             "file": {
                 "/etc/config/esurfingclient": [ "read" ],
+                "/etc/esurfingclient/*": [ "read", "list" ],
+                "/etc/esurfingclient/**": [ "read", "list" ],
                 "/etc/init.d/esurfingclient": [ "exec" ],
-                "/var/log/*.log": ["read", "list"]
+                "/var/log/*.log": ["read", "list"],
+                "/var/log/esurfing/**": ["read", "list"]
             }
         },
         "write": {
             "file": {
                 "/etc/init.d/esurfingclient": [ "exec" ],
-                "/etc/config/esurfingclient": [ "write" ]
+                "/etc/config/esurfingclient": [ "write" ],
+                "/etc/esurfingclient/*": [ "write" ],
+                "/etc/esurfingclient/**": [ "write" ]
             }
         },
         "ubus": {
