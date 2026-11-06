@@ -27,7 +27,11 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
 
 ## 三、启动服务 (终端方式)
 
-### 1. vi 修改 /etc/config/esurfingclient
+### 1. vi 修改 /etc/esurfingclient/ESurfingClient.json
+
+> 配置目录由 UCI 决定：`/etc/config/esurfingclient` 里只有一个 `option dir`，指向 JSON 所在目录。
+> 想换目录：`uci set esurfingclient.main.dir='/your/dir' && uci commit esurfingclient`，然后重启服务。
+> 这样 `/etc/config` 下不会出现非 UCI 格式的文件（否则 `uci set` 会报解析错误）。
 
 ```json
 {
@@ -35,8 +39,8 @@ apk add --allow-untrusted --no-network esurfingclient_*.apk luci-*-esurfingclien
   "web_external_acc": false,
   "log_lv": 4,
   "log_dir": "./",
-  "conn_timeout": 7,
-  "op_timeout":   10,
+  "conn_timeout": 10,
+  "op_timeout": 15,
   "web_port": 8888,
   "accounts": [
     {

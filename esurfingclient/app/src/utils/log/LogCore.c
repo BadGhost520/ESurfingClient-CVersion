@@ -16,7 +16,7 @@ const char* get_level_str(const log_level_t lv)
 {
     switch (lv)
     {
-    case LOG_LEVEL_VERBOSE: return "VERBOSE";
+    case LOG_LEVEL_TRACE: return "TRACE";
     case LOG_LEVEL_DEBUG:   return "DEBUG";
     case LOG_LEVEL_INFO:    return "INFO";
     case LOG_LEVEL_WARN:    return "WARN";

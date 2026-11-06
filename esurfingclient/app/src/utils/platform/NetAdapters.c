@@ -66,7 +66,7 @@ static void get_adapters(void)
                 s_adaptor = new_adaptor;
                 snprintf(s_adaptor[cnt].name, NAME_LENGTH, "%s", p_adapter->Description);
                 snprintf(s_adaptor[cnt].ip, IP_LEN, "%s", p_adapter->IpAddressList.IpAddress.String);
-                LOG_VERBOSE("IP: %s", p_adapter->IpAddressList.IpAddress.String);
+                LOG_TRACE("IP: %s", p_adapter->IpAddressList.IpAddress.String);
                 p_adapter = p_adapter->Next;
                 cnt++;
             }

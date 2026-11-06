@@ -20,11 +20,64 @@
 #include <windows.h>
 #endif
 
-#ifdef __OPENWRT__
-static const char config_file[] = "/etc/config/esurfingclient";
-#else
 #define DIALER_CONFIG_FILE "ESurfingClient.json"
+
+#ifdef __OPENWRT__
+
+/**
+ * OpenWrt: 配置目录由 init 脚本用 --config-dir 传进来 (UCI 里的 option dir),
+ * 目录下固定找 ESurfingClient.json; 没传时用 /etc/esurfingclient。
+ * 桌面端路径仍在 load_cfg 里按可执行文件目录确定, 不受影响。
+ */
+#define OPENWRT_CFG_DIR_DEFAULT "/etc/esurfingclient"
+
 static char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
+
+/** --config-dir 指定的目录 (空串表示用默认值) */
+static char s_cfg_dir[PATH_MAX];
+
+static bool s_cfg_dir_set = false;
+
+void set_config_dir(const char* dir)
+{
+    if (dir == NULL || dir[0] == '\0') return;
+
+    // 去掉结尾的分隔符: "/etc/esurfingclient/" 与 "/etc/esurfingclient" 等价
+    size_t len = strlen(dir);
+    while (len > 1 && (dir[len - 1] == '/' || dir[len - 1] == '\\')) len--;
+
+    if (len >= sizeof(s_cfg_dir))
+    {
+        LOG_WARN("配置目录路径过长 (最多 %zu 个字符), 已忽略 --config-dir", sizeof(s_cfg_dir) - 1);
+        return;
+    }
+
+    memcpy(s_cfg_dir, dir, len);
+    s_cfg_dir[len] = '\0';
+    s_cfg_dir_set = true;
+}
+
+/**
+ * @brief 按 --config-dir (或默认目录) 拼出配置文件完整路径
+ * @return 是否成功 (路径过长时失败)
+ */
+static bool resolve_config_file(void)
+{
+    const char* dir = s_cfg_dir_set ? s_cfg_dir : OPENWRT_CFG_DIR_DEFAULT;
+
+    const int written = snprintf(config_file, sizeof(config_file), "%s%c%s", dir, SEP, DIALER_CONFIG_FILE);
+    if (written <= 0 || (size_t)written >= sizeof(config_file))
+    {
+        LOG_FATAL("配置文件路径过长: %s", dir);
+        return false;
+    }
+    return true;
+}
+
+#else
+
+static char config_file[PATH_MAX + 1 + sizeof(DIALER_CONFIG_FILE)];
+
 #endif
 
 static const char s_default_cfg[] = "{\n"
@@ -269,6 +322,10 @@ const char* get_config_file_path(void)
 
 const char* get_config_path(void)
 {
+#ifdef __OPENWRT__
+    // 首次调用时按 --config-dir 解析一次 (init 脚本传进来的目录)
+    if (config_file[0] == '\0') resolve_config_file();
+#endif
     return config_file;
 }
 
@@ -448,7 +505,12 @@ bool load_cfg(void)
             return false;
         }
     }
-#ifndef __OPENWRT__
+#ifdef __OPENWRT__
+
+    // OpenWrt: 配置目录由 --config-dir 决定 (缺省 /etc/esurfingclient)
+    if (resolve_config_file() == false) return false;
+
+#else
 
     char dir[PATH_MAX];
     if (get_exec_dir(dir) == false)

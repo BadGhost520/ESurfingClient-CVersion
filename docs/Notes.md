@@ -38,8 +38,11 @@
 
 ## 配置
 
-- **默认参数必须与 `esurfingclient/files/etc/config/esurfingclient` 及 `s_default_cfg` 三处一致**
+- **默认参数必须与 `esurfingclient/files/etc/esurfingclient/ESurfingClient.json` 及 `s_default_cfg` 三处一致**
   （`src/config/ConfigDefaults.c`）。缺哪个参数，用户下次打开配置文件就会看到它被补上。
+- **OpenWrt 的配置目录由 UCI 决定**：`/etc/config/esurfingclient` 只存 `option dir`，JSON 本体在
+  `<dir>/ESurfingClient.json`，init 脚本用 `--config-dir` 传给程序。不要把 JSON 放回 `/etc/config`
+  （`uci` 会把它当配置文件解析，连带 `uci set` 别的软件时报错）。
 - **`s_cfg_log_dir` 只存配置里的原样文本**（定义在 `src/utils/log/LogCore.c`，声明在 `src/utils/log/LoggerInternal.h`）。
   它是给页面回显用的，不能回显解析后的绝对路径 —— 否则用户改一次配置就被写成一长串路径。
 
@@ -193,8 +196,8 @@
     标记，有就先停一次（归档日志、等实例登出）再起新的，整个升级仍然只有一次重启。
     opkg 那边 `prerm` 已经把实例停干净，这个检查检测不到东西，是空操作。
   - **apk 的 `pre-deinstall` / `post-deinstall` 只在真卸载时跑**（升级不跑），所以升级不会
-    执行 `postrm` 里那段清理，`/etc/config/esurfingclient` 与自启软链接都原样保留
-    （`PKG_UPGRADE` 那道保险只需要对付 opkg）。
+    执行 `postrm` 里那段清理，`/etc/config/esurfingclient`、`/etc/esurfingclient/ESurfingClient.json`
+    与自启软链接都原样保留（`PKG_UPGRADE` 那道保险只需要对付 opkg）。
 - **`luci-app` 的 `/tmp/luci-staging` 中转是故意的**：postinst 在目标机上探测属于哪一代 LuCI，
   再决定装 JS 那套还是 Lua/HTM 那套，别"顺手清理"。
 - **portal 的网页资源**：`app/portal` 里是源（`index.html` 引用 CDN、`input.css` 是 Tailwind

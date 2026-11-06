@@ -41,7 +41,7 @@ static char* dialer_encrypt_payload(const XmlChoose kind)
         return NULL;
     }
 
-    LOG_VERBOSE("发送加密内容 (类型 %d): %s", (int)kind, encrypt);
+    LOG_TRACE("发送加密内容 (类型 %d): %s", (int)kind, encrypt);
     return encrypt;
 }
 
@@ -86,7 +86,7 @@ char* dialer_request_plain(const XmlChoose kind, const char* url, const char* wh
         curl_resp_free(&resp);
         return NULL;
     }
-    LOG_VERBOSE("%s响应内容: %s", safe_str(what), resp.body_data);
+    LOG_TRACE("%s响应内容: %s", safe_str(what), resp.body_data);
 
     char* plain = session_decrypt(resp.body_data);
     curl_resp_free(&resp);
@@ -180,7 +180,7 @@ char* dialer_request_ticket(const XmlChoose kind, const char* url, const char* w
             continue;
         }
 
-        LOG_VERBOSE("%s响应内容: %s", safe_str(what), resp.body_data);
+        LOG_TRACE("%s响应内容: %s", safe_str(what), resp.body_data);
         char* plain = session_decrypt(resp.body_data);
         curl_resp_free(&resp);
         if (plain == NULL)
@@ -234,7 +234,7 @@ hb_result_t heartbeat(void)
         // 连不上 = 网络问题, 重认证也没用; 服务端有响应但不对 = 可能已被踢
         return (fail == DIALER_FAIL_NET) ? HB_NET_FAIL : HB_PROTO_FAIL;
     }
-    LOG_VERBOSE("心跳响应内容: %s", decrypted_data);
+    LOG_TRACE("心跳响应内容: %s", decrypted_data);
 
     char* parsed_interval = xml_parser(decrypted_data, "interval"); // 获取心跳内容 (下一次重试时间)
     free(decrypted_data);

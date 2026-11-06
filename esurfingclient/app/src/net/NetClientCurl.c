@@ -117,7 +117,7 @@ curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct 
             return CURL_SOCKET_BAD;
         }
 
-        LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark);
+        LOG_TRACE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].cfg.mark, g_prog_status[tl_thread_idx].cfg.mark);
     }
 
     return sock_fd;
@@ -231,7 +231,7 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
         {
             if (!g_prog_status[tl_thread_idx].last_location_lock)
             {
-                LOG_VERBOSE("原始数据: %s", header);
+                LOG_TRACE("原始数据: %s", header);
 
                 const char* value = header + 9;
                 while (*value == ' ') value++;
@@ -252,7 +252,7 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
                 resolve_url(resolved, sizeof(resolved), g_request_url, location);
                 snprintf(g_prog_status[tl_thread_idx].last_location, LAST_LOCATION_LEN, "%s", resolved);
 
-                LOG_VERBOSE("现在的 last_location: %s (长度: %zu)",
+                LOG_TRACE("现在的 last_location: %s (长度: %zu)",
                             g_prog_status[tl_thread_idx].last_location,
                             strlen(g_prog_status[tl_thread_idx].last_location));
             }

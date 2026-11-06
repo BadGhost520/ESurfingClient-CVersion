@@ -7,11 +7,25 @@
 /**
  * @brief 取配置文件的完整路径
  *
- * OpenWrt 上是 /etc/config/esurfingclient, 桌面分支是程序目录下的 ESurfingClient.json。
+ * OpenWrt 上是 --config-dir 指定目录下的 ESurfingClient.json (缺省 /etc/esurfingclient),
+ * 桌面分支是程序目录下的 ESurfingClient.json。
  * 注意桌面分支要等 load_cfg() 跑过才有值。
  * @return 配置文件的完整路径
  */
 const char* get_config_path(void);
+
+#ifdef __OPENWRT__
+
+/**
+ * @brief 设置配置目录 (来自 init 脚本的 --config-dir, 内容取自 UCI 的 option dir)
+ *
+ * 目录下固定找 ESurfingClient.json。不调用时用默认目录 /etc/esurfingclient。
+ * 传空串或路径过长会被忽略 (保持默认值)。
+ * @param dir 配置目录的绝对路径
+ */
+void set_config_dir(const char* dir);
+
+#endif
 
 /**
  * @brief 保存配置文件
