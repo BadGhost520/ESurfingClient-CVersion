@@ -17,7 +17,7 @@
 #define GENERATE_URL "http://connectivitycheck.platform.hicloud.com/generate_204"
 #define GENERATE_BAK_URL "http://connect.rom.miui.com/generate_204"
 #define AUTH_URL "http://14.146.227.141:7001"
-#define AUTH_BAK_URL "http://121.8.177.212:7001"
+#define AUTH_BAK_URL "http://14.146.227.141:7001"
 
 /** 一次并发探测的 handle 上限 (每个目标可能同时开多路固定 IP) */
 #define PROBE_MAX 16

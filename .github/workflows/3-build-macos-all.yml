@@ -172,7 +172,7 @@ jobs:
 
       - name: 复制配置文件到根目录
         run: |
-          cp esurfingclient/files/etc/config/esurfingclient ./ESurfingClient.json
+          cp esurfingclient/files/etc/esurfingclient/ESurfingClient.json ./ESurfingClient.json
 
       - name: 打包成 tar.gz 压缩包
         run: |

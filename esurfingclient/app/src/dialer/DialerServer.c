@@ -14,7 +14,7 @@
 
 static const char* const s_auth_servers[] = {
     "14.146.227.141",
-    "121.8.177.212",
+    "14.146.227.141",
 };
 
 #define AUTH_SERVER_COUNT (sizeof(s_auth_servers) / sizeof(s_auth_servers[0]))
