@@ -83,6 +83,10 @@ typedef struct
     uint8_t ip_count;
 } probe_host_t;
 
+/** 认证服务器列表 (host:port, 默认端口 7001) */
+#define AUTH_SERVER_MAX 8
+#define AUTH_SERVER_LEN 64
+
 #define WEEK_MINUTES 10080
 #define MAX_TIME_WINDOWS 16
 #define TIME_WINDOW_STR_LEN 32
@@ -186,6 +190,8 @@ typedef struct
     long op_timeout;
     probe_host_t probe_hosts[PROBE_HOST_MAX];
     uint8_t probe_host_count;
+    char auth_servers[AUTH_SERVER_MAX][AUTH_SERVER_LEN];
+    uint8_t auth_server_count;
 } cfg_t;
 
 #define AUTH_ERROR_CODE_LEN 24

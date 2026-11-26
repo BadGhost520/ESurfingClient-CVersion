@@ -29,7 +29,7 @@
 #endif
 #endif
 
-static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
+void net_resolve_url(char* out, size_t out_len, const char* base, const char* ref)
 {
     if (out == NULL || out_len == 0) return;
     out[0] = '\0';
@@ -249,7 +249,7 @@ size_t header_cb(const void* contents, const size_t size, const size_t nmemb, vo
                 location[copy_len] = '\0';
 
                 char resolved[LAST_LOCATION_LEN];
-                resolve_url(resolved, sizeof(resolved), g_request_url, location);
+                net_resolve_url(resolved, sizeof(resolved), g_request_url, location);
                 snprintf(g_prog_status[tl_thread_idx].last_location, LAST_LOCATION_LEN, "%s", resolved);
 
                 LOG_TRACE("现在的 last_location: %s (长度: %zu)",

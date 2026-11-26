@@ -1,5 +1,5 @@
 <%
-local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"./","conn_timeout":10,"op_timeout":15,"web_port":8888,"probe_hosts":[{"host":"connectivitycheck.platform.hicloud.com","ips":["183.61.185.93","125.88.255.53"]},{"host":"connect.rom.miui.com","ips":["202.69.4.32","220.181.104.183"]}],"accounts":[{"username":"","password":"","channel":"windows","mark":"","time_windows":[]}]}'
+local config_json = '{"enabled":false,"web_external_acc":false,"log_lv":4,"log_dir":"./","conn_timeout":10,"op_timeout":15,"web_port":8888,"probe_hosts":[{"host":"connectivitycheck.platform.hicloud.com","ips":["183.61.185.93","125.88.255.53"]},{"host":"connect.rom.miui.com","ips":["202.69.4.32","220.181.104.183"]}],"auth_servers":["14.146.227.141:7001","121.8.177.212:7001"],"accounts":[{"username":"","password":"","channel":"windows","mark":"","time_windows":[]}]}'
 
 -- 配置目录由 UCI 决定: /etc/config/esurfingclient 里 option dir 指向真实的 JSON 目录
 -- (JSON 放在 /etc/config 下会让 uci 把它当配置文件解析, 连带 uci set 别的软件时报错)
@@ -310,6 +310,24 @@ end
                     <div class='cbi-value-description' id='probe-count-hint'></div>
                 </div>
             </div>
+            <div class='cbi-value'>
+                <label class='cbi-value-title'>认证服务器</label>
+                <div class='cbi-value-field'>
+                    <table class='table cbi-section-table'>
+                        <thead class='thead'>
+                            <tr class='tr cbi-section-table-titles'>
+                                <th class='th'>服务器地址 (host:port, 仅 HTTP)</th>
+                                <th class='th' style='width: 135px;'></th>
+                            </tr>
+                        </thead>
+                        <tbody id='auth-server-table-body' class='tbody'></tbody>
+                    </table>
+                    <div style='text-align: left; padding: 10px;'>
+                        <button class='cbi-button cbi-button-apply' id='add-auth-server-button' onclick='addAuthServer()'>添加</button>
+                    </div>
+                    <div class='cbi-value-description'>认证服务器地址 (默认端口 7001, 运行中自动测速与故障切换); 最多 8 台, 全空保存将回退内置默认</div>
+                </div>
+            </div>
             </div>
         </div>
 
@@ -580,6 +598,7 @@ end
             showNotification('探测目标共 ' + total + ' 路, 最多 14 路 (认证服务器已占 2 路)', 'error');
             return;
         }
+        if (!validateAndNormalizeAuthServers()) return;
         document.getElementById('save-and-apply-button').disabled = true;
         document.getElementById('save-button').disabled = true;
         document.getElementById('reset-button').disabled = true;
@@ -640,6 +659,7 @@ end
             showNotification('探测目标共 ' + total + ' 路, 最多 14 路 (认证服务器已占 2 路)', 'error');
             return;
         }
+        if (!validateAndNormalizeAuthServers()) return;
         document.getElementById('save-and-apply-button').disabled = true;
         document.getElementById('save-button').disabled = true;
         document.getElementById('reset-button').disabled = true;
@@ -686,6 +706,7 @@ end
                 { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
                 { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
             ],
+            auth_servers: DEFAULT_AUTH_SERVERS.slice(),
             accounts: [{
                 username: '',
                 password: '',
@@ -860,6 +881,106 @@ end
         config.probe_hosts = config.probe_hosts || [];
         config.probe_hosts.push({ host: '', ips: [] });
         renderProbeTable();
+    }
+
+    var DEFAULT_AUTH_SERVERS = ['14.146.227.141:7001', '121.8.177.212:7001'];
+
+    function normalizeAuthServer(raw) {
+        var text = String(raw == null ? '' : raw).trim();
+        if (!text || /^https:\/\//i.test(text)) return '';
+        text = text.replace(/^http:\/\//i, '').split(/[/?#]/)[0].trim();
+        if (!text || /[\s@\\]/.test(text)) return '';
+        var parts = text.split(':');
+        if (parts.length > 2) return '';
+        var host = parts[0].toLowerCase();
+        var port = 7001;
+        if (parts.length === 2) {
+            if (!/^\d+$/.test(parts[1])) return '';
+            port = parseInt(parts[1], 10);
+            if (isNaN(port) || port < 1 || port > 65535) return '';
+        }
+        if (!host || host.length > 55 || !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(host) || host.indexOf('..') !== -1) {
+            return '';
+        }
+        return host + ':' + port;
+    }
+
+    function normalizeAuthServers(raw) {
+        if (!Array.isArray(raw) || raw.length === 0) {
+            return DEFAULT_AUTH_SERVERS.slice();
+        }
+        var out = [];
+        raw.forEach(function(item) {
+            var norm = normalizeAuthServer(item);
+            if (norm && out.indexOf(norm) === -1 && out.length < 8) {
+                out.push(norm);
+            }
+        });
+        return out.length > 0 ? out : DEFAULT_AUTH_SERVERS.slice();
+    }
+
+    function validateAndNormalizeAuthServers() {
+        var raw = Array.isArray(config.auth_servers) ? config.auth_servers : [];
+        for (var i = 0; i < raw.length; i++) {
+            var item = String(raw[i] == null ? '' : raw[i]).trim();
+            if (item && !normalizeAuthServer(item)) {
+                showNotification('认证服务器格式无效: ' + item + ' (应为 host:port, 不支持 https)', 'error');
+                return false;
+            }
+        }
+        config.auth_servers = normalizeAuthServers(raw);
+        return true;
+    }
+
+    function renderAuthServerTable() {
+        var tbody = document.getElementById('auth-server-table-body');
+        if (!tbody) return;
+
+        if (!Array.isArray(config.auth_servers) || config.auth_servers.length === 0) {
+            config.auth_servers = DEFAULT_AUTH_SERVERS.slice();
+        }
+        tbody.innerHTML = '';
+
+        config.auth_servers.forEach(function(srv, index) {
+            var row = tbody.insertRow();
+            row.className = 'tr';
+
+            var cell0 = row.insertCell(0);
+            cell0.className = 'td';
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'cbi-input-text';
+            input.value = srv || '';
+            input.placeholder = '14.146.227.141:7001';
+            input.addEventListener('change', function(e) {
+                config.auth_servers[index] = e.target.value.trim();
+            });
+            cell0.appendChild(input);
+
+            var cell1 = row.insertCell(1);
+            cell1.className = 'td';
+            var btn = document.createElement('button');
+            btn.className = 'cbi-button cbi-button-remove';
+            btn.textContent = '删除';
+            btn.addEventListener('click', function() {
+                config.auth_servers.splice(index, 1);
+                renderAuthServerTable();
+            });
+            cell1.appendChild(btn);
+        });
+
+        var addBtn = document.getElementById('add-auth-server-button');
+        if (addBtn) addBtn.disabled = (config.auth_servers.length >= 8);
+    }
+
+    function addAuthServer() {
+        config.auth_servers = config.auth_servers || [];
+        if (config.auth_servers.length >= 8) {
+            showNotification('最多支持 8 台认证服务器', 'error');
+            return;
+        }
+        config.auth_servers.push('');
+        renderAuthServerTable();
     }
 
     // 日志是否始终置底, 默认开启
@@ -1165,6 +1286,7 @@ end
         op_timeout.value = config.op_timeout;
         renderTable();
         renderProbeTable();
+        renderAuthServerTable();
         showNotification('读取配置文件完成', 'succ');
     });
 </script>

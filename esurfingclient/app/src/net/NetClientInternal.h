@@ -10,6 +10,8 @@
 extern _Thread_local char g_request_url[LOCATION_LEN];
 
 /* NetClientCurl.c */
+void net_resolve_url(char* out, size_t out_len, const char* base, const char* ref);
+
 size_t header_cb(const void* contents, size_t size, size_t nmemb, void* userdata);
 
 size_t write_cb(const void* contents, size_t size, size_t nmemb, void* userdata);

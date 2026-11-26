@@ -10,9 +10,14 @@
 
 
 #include "utils/platform/PlatformUtils.h"
+#include "utils/time/TimeUtils.h"
 #include "utils/log/Logger.h"
 
 #include <string.h>
+
+/** 会话初始化最大尝试轮数 & 连续非 ZSM 响应上限 (防异常网关死循环) */
+#define INIT_SESSION_MAX_ATTEMPTS 24
+#define INIT_SESSION_MAX_NON_ZSM 3
 
 static void clean_session(void)
 {
@@ -23,7 +28,7 @@ static void clean_session(void)
 
 bool init_session(void)
 {
-    LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRIu8, g_prog_status[tl_thread_idx].cfg.idx, tl_thread_idx);
+    LOG_DEBUG("init_session 函数入口检查, 使用配置: %" PRIu8 ", 下标: %" PRId8, g_prog_status[tl_thread_idx].cfg.idx, tl_thread_idx);
 
     /**
      * 向 ticket_url POST 获取 ZSM.
@@ -37,7 +42,8 @@ bool init_session(void)
         LOG_DEBUG("iOS/macOS 通道首次拉取 ZSM 使用空 POST");
     }
 
-    for (;;)
+    int non_zsm_streak = 0;
+    for (int attempt = 0; attempt < INIT_SESSION_MAX_ATTEMPTS; attempt++)
     {
         if (g_stop_requested != 0 || g_need_exit)
         {
@@ -46,6 +52,17 @@ bool init_session(void)
         }
 
         curl_resp_t resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
+        if ((resp.http_code == 502 || resp.http_code == 503 || resp.http_code == 504) &&
+            resp.error_code[0] == '\0' && g_stop_requested == 0 && !g_need_exit)
+        {
+            LOG_WARN("初始化会话遇到瞬态 HTTP %ld, 300 ms 后重试一次", resp.http_code);
+            curl_resp_free(&resp);
+            sleep_ms(300, true);
+            if (g_stop_requested == 0 && !g_need_exit)
+            {
+                resp = post(g_prog_status[tl_thread_idx].auth_cfg.ticket_url, ticket_body);
+            }
+        }
         if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
         {
             LOG_ERROR("初始化会话失败");
@@ -55,6 +72,7 @@ bool init_session(void)
         }
         LOG_DEBUG("会话响应长度: %zu", resp.body_size);
 
+        const bool looks_like_zsm = (resp.body_size >= 4 && memcmp(resp.body_data, "001", 3) == 0);
         const bytes_t zsm = {
             .data = (uint8_t*)resp.body_data,
             .len = resp.body_size
@@ -63,6 +81,20 @@ bool init_session(void)
         LOG_DEBUG("开始初始化会话");
         if (load_cipher(zsm) == false)
         {
+            if (looks_like_zsm == false)
+            {
+                if (++non_zsm_streak >= INIT_SESSION_MAX_NON_ZSM)
+                {
+                    LOG_ERROR("连续 %d 次收到非 ZSM 响应, 放弃当前认证服务器", INIT_SESSION_MAX_NON_ZSM);
+                    curl_resp_free(&resp);
+                    return false;
+                }
+            }
+            else
+            {
+                non_zsm_streak = 0;
+            }
+
             /* 黑名单/未知 Algo-ID: 重置全部 POST 身份字段后立即重取 */
             refresh_states();
             LOG_DEBUG("ZSM 中的 Algo-ID 不可用, 已重置 POST 数据, 立即重新获取");
@@ -75,6 +107,9 @@ bool init_session(void)
         g_prog_status[tl_thread_idx].runtime_status.is_initialized = 1;
         return true;
     }
+
+    LOG_ERROR("初始化会话超过最大重试次数 (%d 次), 放弃当前认证服务器", INIT_SESSION_MAX_ATTEMPTS);
+    return false;
 }
 
 void clean(void)
@@ -96,6 +131,7 @@ void clean(void)
     }
     memset(&g_prog_status[tl_thread_idx].auth_cfg, 0, sizeof(auth_cfg_t)); // 清除 auth_cfg 的内容, 并置零
     memset(&g_prog_status[tl_thread_idx].runtime_status, 0, sizeof(runtime_status_t)); // 清除 runtime_status 的内容, 并置零
+    g_prog_status[tl_thread_idx].last_location_lock = false; // 下轮重新认证前允许按最新网关重抓跳转参数 (防 DHCP 换 IP)
     g_prog_status[tl_thread_idx].runtime_status.is_time_disabled = time_disabled; // 恢复时间控制禁用状态
 }
 

@@ -163,6 +163,11 @@ curl_resp_t post(const char* url, const char* data)
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, g_conn_timeout);
     // 总超时时长
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, g_op_timeout);
+    // 直连认证服务器与校园网关, 忽略环境代理变量, 防止 OpenWrt 多线程信号竞争与 IPv6 卡死
+    curl_easy_setopt(curl, CURLOPT_PROXY, "");
+    curl_easy_setopt(curl, CURLOPT_NOPROXY, "*");
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
 
@@ -296,6 +301,11 @@ curl_resp_t get(const char* url)
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, g_op_timeout);
     // 是否跟随重定向 (当前否)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+    // 直连网关/探测目标, 忽略系统代理并强制 IPv4
+    curl_easy_setopt(curl, CURLOPT_PROXY, "");
+    curl_easy_setopt(curl, CURLOPT_NOPROXY, "*");
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
 

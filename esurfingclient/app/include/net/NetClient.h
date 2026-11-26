@@ -2,8 +2,10 @@
 #define ESURFINGCLIENT_NETCLIENT_H
 
 #include "Definition.h"
+#include "core/States.h"
 
 #include <cJSON/cJSON.h>
+#include <stdint.h>
 
 /**
  * @brief 带默认头的 POST
@@ -62,6 +64,34 @@ bool probe_targets_parse(const cJSON* arr);
  * @return 新建的 cJSON 数组 (调用方负责 cJSON_Delete), 失败返回 NULL
  */
 cJSON* probe_targets_to_json(void);
+
+/**
+ * @brief 填内置的默认认证服务器列表
+ */
+void auth_servers_defaults(void);
+
+/**
+ * @brief 从配置解析认证服务器列表 (host[:port] 或 http://host[:port])
+ * @param arr auth_servers 数组
+ * @return 是否成功覆盖
+ */
+bool auth_servers_parse(const cJSON* arr);
+
+/**
+ * @brief 把当前生效的认证服务器导出成 cJSON 字符串数组 (调用方负责 cJSON_Delete)
+ */
+cJSON* auth_servers_to_json(void);
+
+/**
+ * @brief 检测配置文件是否变化并热更新 auth_servers (不重启进程)
+ * @return true 表示列表发生更新
+ */
+bool auth_servers_reload_if_changed(void);
+
+/**
+ * @brief 导出仅包含 IPv4 的认证服务器探测 URL (http://ip:port, 不触发 DNS)
+ */
+uint8_t auth_servers_copy_probe_urls(char urls[][AUTH_SERVER_LEN + 16], uint8_t max_count);
 
 /**
  * @brief 网络状态变化时提示一次 (相同状态不重复打印)

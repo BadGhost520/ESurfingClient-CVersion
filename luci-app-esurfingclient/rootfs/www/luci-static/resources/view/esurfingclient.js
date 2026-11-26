@@ -37,6 +37,43 @@ var DEFAULT_PROBE_HOSTS = [
     { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
 ];
 
+/** 认证服务器默认值 (与后端内置默认一致) */
+var DEFAULT_AUTH_SERVERS = ['14.146.227.141:7001', '121.8.177.212:7001'];
+
+function normalizeAuthServer(raw) {
+    var text = String(raw == null ? '' : raw).trim();
+    if (!text || /^https:\/\//i.test(text)) return '';
+    text = text.replace(/^http:\/\//i, '').split(/[/?#]/)[0].trim();
+    if (!text || /[\s@\\]/.test(text)) return '';
+    var parts = text.split(':');
+    if (parts.length > 2) return '';
+    var host = parts[0].toLowerCase();
+    var port = 7001;
+    if (parts.length === 2) {
+        if (!/^\d+$/.test(parts[1])) return '';
+        port = parseInt(parts[1], 10);
+        if (isNaN(port) || port < 1 || port > 65535) return '';
+    }
+    if (!host || host.length > 55 || !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(host) || host.indexOf('..') !== -1) {
+        return '';
+    }
+    return host + ':' + port;
+}
+
+function normalizeAuthServers(raw) {
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return DEFAULT_AUTH_SERVERS.slice();
+    }
+    var out = [];
+    raw.forEach(function(item) {
+        var norm = normalizeAuthServer(item);
+        if (norm && out.indexOf(norm) === -1 && out.length < 8) {
+            out.push(norm);
+        }
+    });
+    return out.length > 0 ? out : DEFAULT_AUTH_SERVERS.slice();
+}
+
 /** 规范化 probe_hosts: 丢掉空条/非法 IP, 后端认识的是 { host, ips[] } */
 function normalizeProbeHosts(raw) {
     // 没配就显示内置默认, 别让页面上一片空白 (保存时会把这个默认写进配置文件)
@@ -103,6 +140,7 @@ return view.extend({
             op_timeout: 15,
             web_port: 8888,
             probe_hosts: [],
+            auth_servers: DEFAULT_AUTH_SERVERS.slice(),
             accounts: []
         };
 
@@ -191,7 +229,9 @@ return view.extend({
                 ])
             ]),
             E('h3', { style: 'margin-top: 20px;' }, '联网探测目标'),
-            self.renderProbeHosts()
+            self.renderProbeHosts(),
+            E('h3', { style: 'margin-top: 20px;' }, '认证服务器'),
+            self.renderAuthServers()
         ]);
 
         self.basic_panel = E('div', { id: 'basic_panel', style: 'width: 100%' }, [
@@ -365,6 +405,7 @@ return view.extend({
                 if (!self.config.log_dir) self.config.log_dir = './';
                 // 探测目标: 缺失就显示内置默认 (保存时会写进配置文件)
                 self.config.probe_hosts = normalizeProbeHosts(self.config.probe_hosts);
+                self.config.auth_servers = normalizeAuthServers(self.config.auth_servers);
                 self.showNotification('读取配置文件成功', 'success');
                 return self.config;
             })
@@ -378,6 +419,7 @@ return view.extend({
                     op_timeout: 15,
                     web_port: 8888,
                     probe_hosts: [],
+                    auth_servers: DEFAULT_AUTH_SERVERS.slice(),
                     accounts: [
                         {
                             username: '加载失败',
@@ -409,6 +451,16 @@ return view.extend({
             self.showNotification('探测目标共 ' + total + ' 路, 最多 14 路 (认证服务器已占 2 路)', 'error');
             return Promise.reject(new Error('探测目标超过 14 路'));
         }
+
+        var rawAuth = Array.isArray(self.config.auth_servers) ? self.config.auth_servers : [];
+        for (var a = 0; a < rawAuth.length; a++) {
+            var item = String(rawAuth[a] == null ? '' : rawAuth[a]).trim();
+            if (item && !normalizeAuthServer(item)) {
+                self.showNotification('认证服务器格式无效: ' + item + ' (应为 host:port, 不支持 https)', 'error');
+                return Promise.reject(new Error('认证服务器格式无效'));
+            }
+        }
+        self.config.auth_servers = normalizeAuthServers(rawAuth);
 
         // 配置目录: 校验 + 改了先写回 UCI (保存后自动重启服务)
         var dir = (self.cfg_dir || '').trim();
@@ -571,6 +623,71 @@ return view.extend({
         if (!self.probe_container || !self.probe_container.parentNode) return;
         var fresh = self.renderProbeHosts();
         self.probe_container.parentNode.replaceChild(fresh, self.probe_container);
+    },
+
+    renderAuthServers: function() {
+        var self = this;
+
+        if (!Array.isArray(self.config.auth_servers) || self.config.auth_servers.length === 0) {
+            self.config.auth_servers = DEFAULT_AUTH_SERVERS.slice();
+        }
+        var at_limit = (self.config.auth_servers.length >= 8);
+
+        var rows = self.config.auth_servers.map(function(srv, index) {
+            return E('tr', { class: 'tr', 'data-index': index }, [
+                E('td', { class: 'td' }, E('input', {
+                    type: 'text',
+                    class: 'cbi-input-text',
+                    placeholder: '14.146.227.141:7001',
+                    value: srv || '',
+                    change: function(ev) {
+                        self.config.auth_servers[index] = ev.target.value.trim();
+                    }
+                })),
+                E('td', { class: 'td' }, E('button', {
+                    class: 'cbi-button cbi-button-remove',
+                    click: function() {
+                        self.config.auth_servers.splice(index, 1);
+                        self.refreshAuthServers();
+                    }
+                }, '删除'))
+            ]);
+        });
+
+        var container = E('div', {}, [
+            E('table', { class: 'table cbi-section-table' }, [
+                E('thead', { class: 'thead' }, [
+                    E('tr', { class: 'tr cbi-section-table-titles' }, [
+                        E('th', { class: 'th' }, '服务器地址 (host:port, 仅 HTTP)'),
+                        E('th', { class: 'th', style: 'width: 135px;' }, '')
+                    ])
+                ]),
+                E('tbody', { class: 'tbody' }, rows)
+            ]),
+            E('button', {
+                class: 'cbi-button cbi-button-add',
+                style: 'margin: 10px; margin-left: 15px;',
+                disabled: at_limit ? '' : null,
+                click: function() {
+                    if (self.config.auth_servers.length >= 8) return;
+                    self.config.auth_servers.push('');
+                    self.refreshAuthServers();
+                }
+            }, '添加'),
+            E('div', { class: 'cbi-value-description' },
+                '认证服务器地址 (默认端口 7001, 运行中自动测速与故障切换); 最多 8 台, 全空保存将回退内置默认')
+        ]);
+
+        self.auth_server_container = container;
+        return container;
+    },
+
+    refreshAuthServers: function() {
+        var self = this;
+
+        if (!self.auth_server_container || !self.auth_server_container.parentNode) return;
+        var fresh = self.renderAuthServers();
+        self.auth_server_container.parentNode.replaceChild(fresh, self.auth_server_container);
     },
 
     renderTable: function() {
@@ -1093,6 +1210,7 @@ return view.extend({
                             { host: 'connectivitycheck.platform.hicloud.com', ips: ['183.61.185.93', '125.88.255.53'] },
                             { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
                         ],
+                        auth_servers: DEFAULT_AUTH_SERVERS.slice(),
                         accounts: [
                             {
                                 username: '',
@@ -1105,6 +1223,8 @@ return view.extend({
                     };
 
                     self.refreshAccounts();
+                    self.refreshProbeHosts();
+                    self.refreshAuthServers();
                     
                     return self.saveConfig()
                         .then(function() {

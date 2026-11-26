@@ -45,6 +45,38 @@ static char* dialer_encrypt_payload(const XmlChoose kind)
     return encrypt;
 }
 
+/** Ticket 动态算法重试上限, 防止异常服务端无限循环 */
+#define TICKET_ZSM_MAX_ATTEMPTS 12
+
+/** @brief 网关/反代瞬态 502/503/504 且无 Error-Code 头时允许短退避重试一次 */
+static bool is_transient_gateway_http(const curl_resp_t* resp)
+{
+    if (resp == NULL || resp->error_code[0] != '\0') return false;
+    return resp->http_code == 502 || resp->http_code == 503 || resp->http_code == 504;
+}
+
+/** @brief 登录响应里的 keep-url / term-url 仅作为集群节点吸收进候选池 */
+static void absorb_login_cluster_tag(const char* xml, const char* tag)
+{
+    char* raw = xml_parser(xml, tag);
+    if (raw == NULL) return;
+
+    if (strstr(raw, "<![CDATA[") != NULL)
+    {
+        char* clean = clean_cdata(raw);
+        if (clean != NULL)
+        {
+            auth_server_add_dynamic(clean);
+            free(clean);
+        }
+    }
+    else
+    {
+        auth_server_add_dynamic(raw);
+    }
+    free(raw);
+}
+
 /**
  * @brief 走一遍"构造报文 → 加密 → POST → 解密"
  *
@@ -68,6 +100,16 @@ char* dialer_request_plain(const XmlChoose kind, const char* url, const char* wh
     }
 
     curl_resp_t resp = post(url, encrypt);
+    if (is_transient_gateway_http(&resp) && g_stop_requested == 0 && !g_need_exit)
+    {
+        LOG_WARN("%s遇到瞬态 HTTP %ld, 300 ms 后重试一次", safe_str(what), resp.http_code);
+        curl_resp_free(&resp);
+        sleep_ms(300, true);
+        if (g_stop_requested == 0 && !g_need_exit)
+        {
+            resp = post(url, encrypt);
+        }
+    }
     free(encrypt);
 
     if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
@@ -126,7 +168,7 @@ char* dialer_request_ticket(const XmlChoose kind, const char* url, const char* w
 {
     unsigned updates = 0;
 
-    for (;;)
+    for (unsigned attempt = 0; attempt < TICKET_ZSM_MAX_ATTEMPTS; attempt++)
     {
         if (g_stop_requested != 0 || g_need_exit)
         {
@@ -138,6 +180,16 @@ char* dialer_request_ticket(const XmlChoose kind, const char* url, const char* w
         if (encrypt == NULL) return NULL;
 
         curl_resp_t resp = post(url, encrypt);
+        if (is_transient_gateway_http(&resp) && g_stop_requested == 0 && !g_need_exit)
+        {
+            LOG_WARN("%s遇到瞬态 HTTP %ld, 300 ms 后重试一次", safe_str(what), resp.http_code);
+            curl_resp_free(&resp);
+            sleep_ms(300, true);
+            if (g_stop_requested == 0 && !g_need_exit)
+            {
+                resp = post(url, encrypt);
+            }
+        }
         free(encrypt);
 
         if (resp.http_code != HTTP_OK || resp.body_size == 0 || resp.body_data == NULL)
@@ -190,6 +242,9 @@ char* dialer_request_ticket(const XmlChoose kind, const char* url, const char* w
         }
         return plain;
     }
+
+    LOG_ERROR("%s超过最大尝试次数 (%d 次), 放弃当前认证服务器", safe_str(what), TICKET_ZSM_MAX_ATTEMPTS);
+    return NULL;
 }
 
 bool term(void)
@@ -201,14 +256,21 @@ bool term(void)
     uint8_t retry = 1;
     while (resp.status != STATUS_OK && resp.status != STATUS_NEED_AUTH && resp.http_code != HTTP_OK)
     {
-        if (retry > 5)
+        /* 部分 BRAS/认证网关收到 term.cgi POST 后立即断链 (GOT_NOTHING/RECV_ERROR), 请求实际已发出 */
+        if (resp.curl_code == CURLE_GOT_NOTHING || resp.curl_code == CURLE_RECV_ERROR)
         {
-            LOG_ERROR("超过最多重试次数, 返回");
+            LOG_DEBUG("登出请求已发送, 对端立即断开连接 (CURLcode %d), 视为登出成功", (int)resp.curl_code);
+            break;
+        }
+        if (g_console_closed || g_stop_requested != 0 || retry > 2)
+        {
+            LOG_ERROR("登出失败 (%d), 不再阻断退出流程", resp.status);
             free(encrypt);
             curl_resp_free(&resp);
             return false;
         }
-        LOG_WARN("配置 %" PRIu8 " 登出失败, 下标 %" PRIu8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", g_prog_status[tl_thread_idx].cfg.idx, tl_thread_idx, resp.status, retry);
+        LOG_WARN("配置 %" PRIu8 " 登出失败, 下标 %" PRId8 ", 错误代码: %d, 重试: 第 %" PRIu8 " 次, 最多 2 次",
+                 g_prog_status[tl_thread_idx].cfg.idx, tl_thread_idx, resp.status, retry);
         retry++;
         sleep_ms(1000, true);
         curl_resp_free(&resp); // 丢掉上一次的响应体, 否则重试会把它漏掉
@@ -264,10 +326,11 @@ bool login(void)
     if (decrypted_data == NULL) return false;
 
     /**
-     * keep-url / term-url 不再从登录响应里取: 认证服务器是程序自己选的那台,
-     * 这两个地址在 auth() 里已经按同一台服务器拼好了 (keep.cgi / term.cgi)。
-     * 登录响应这里只需要 keep-retry (心跳间隔)。
+     * keep-url / term-url 仅作为集群同伙节点吸收进动态候选池供后续故障转移使用;
+     * 当前会话的心跳与登出仍锁定在本次成功认证的那台健康节点上 (keep.cgi / term.cgi)。
      */
+    absorb_login_cluster_tag(decrypted_data, "keep-url");
+    absorb_login_cluster_tag(decrypted_data, "term-url");
 
     char* parsed_keep_retry = xml_parser(decrypted_data, "keep-retry"); // 获取重试时间长度
     free(decrypted_data);

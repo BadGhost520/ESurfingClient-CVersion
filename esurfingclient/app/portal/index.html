@@ -425,6 +425,45 @@
           <span class="label text-warning">全部删掉保存会回退到内置默认 (hicloud / miui 各两个 IP)</span>
         </div>
       </div>
+      <div class="card bg-base-300 shadow-md" x-show="showAdvanced" x-cloak>
+        <div class="card-body">
+          <h2 class="card-title">
+            <span class="icon h-6 w-6" aria-hidden="true" style="--icon: url(assets/svg/probe.svg)"></span>
+            认证服务器</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+              <tr class="bg-base-200">
+                <th class="text-center">服务器地址 (host:port, 仅 HTTP)</th>
+                <th></th>
+              </tr>
+              </thead>
+              <tbody>
+              <template x-for="(srv, index) in $store.main.configs.auth_servers" :key="index">
+                <tr>
+                  <td>
+                    <input type="text" class="input w-full"
+                           x-model="$store.main.configs.auth_servers[index]"
+                           placeholder="14.146.227.141:7001" />
+                  </td>
+                  <td class="text-center">
+                    <button class="btn btn-error btn-sm"
+                            @click="$store.main.configs.auth_servers.splice(index, 1)">删除</button>
+                  </td>
+                </tr>
+              </template>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-primary btn-sm"
+                    :disabled="($store.main.configs.auth_servers || []).length >= 8"
+                    @click="$store.main.configs.auth_servers.push('')">添加认证服务器</button>
+          </div>
+          <span class="label">配置用于拨号和连通性检测的认证服务器 (默认端口 7001, 运行中自动测速与故障切换); 保存后支持热更新生效</span>
+          <span class="label text-warning">最多 8 台; 全部删掉保存会回退到内置默认 (14.146.227.141:7001 / 121.8.177.212:7001)</span>
+        </div>
+      </div>
       <div class="card bg-base-300 shadow-md">
         <div class="card-body">
           <h2 class="card-title">

@@ -75,11 +75,52 @@ int work_auth(void);
 /* DialerLocation.c */
 bool get_last_location(void);
 
+/**
+ * @brief 主动重新探测一次网关并跟随跳转刷新 last_location (重认证防陈旧)
+ */
+bool refresh_last_location(void);
+
 /* DialerServer.c */
+#define AUTH_CANDIDATE_MAX 16
 
 /**
- * @brief 测两台认证服务器的连接延迟, 选快的那台
- * @param out 输出 "http://ip:7001"
+ * @brief 将输入归一化为 "host:port" (默认端口 7001, 拒绝 https/非法字符)
+ */
+bool auth_server_normalize(const char* raw, char* out, size_t out_len);
+
+/**
+ * @brief 把运行期发现的集群节点加入动态候选池 (自动去重)
+ */
+void auth_server_add_dynamic(const char* raw);
+
+/**
+ * @brief 从门户 EConfig 与重定向 URL 提取集群/认证节点加入候选池
+ */
+void auth_server_extract_econfig(const char* portal_config, const char* last_location);
+
+/**
+ * @brief 标记某台服务器本次失败 (进入冷却窗, 优先尝试其它健康节点)
+ */
+void auth_server_mark_failed(const char* server_url_or_hostport);
+
+/**
+ * @brief 标记某台服务器成功, 清除其失败冷却状态
+ */
+void auth_server_mark_ok(const char* server_url_or_hostport);
+
+/**
+ * @brief 清除所有认证服务器的失败冷却记录
+ */
+void auth_server_clear_failures(void);
+
+/**
+ * @brief 并发测速并按健康度与延迟排序候选认证服务器 ("http://host:port")
+ */
+size_t select_auth_servers(char out[][AUTH_SERVER_LEN + 16], size_t max_count);
+
+/**
+ * @brief 测可用认证服务器的连接延迟, 选最健康且最快的那台
+ * @param out 输出 "http://host:port"
  * @param out_len 缓冲长度
  * @return 是否至少测通一台
  */
