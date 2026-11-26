@@ -98,6 +98,7 @@ static const char s_default_cfg[] = "{\n"
                                     "           \"ips\": [\"202.69.4.32\", \"220.181.104.183\"]\n"
                                     "       }\n"
                                     "   ],\n"
+                                    "   \"auth_servers\": [\"14.146.227.141:7001\", \"121.8.177.212:7001\"],\n"
                                     "   \"accounts\": [\n"
                                     "       {\n"
                                     "           \"username\": \"\",\n"
@@ -252,6 +253,12 @@ static bool save_cfg_from_cfg(const cJSON* cfg_json)
             cJSON_AddItemToArray(ips, cJSON_CreateString(global->probe_hosts[i].ips[k]));
         }
         cJSON_AddItemToArray(probes, item);
+    }
+
+    cJSON* auth_servers = cJSON_AddArrayToObject(root, "auth_servers");
+    for (uint8_t i = 0; auth_servers != NULL && i < global->auth_server_count; i++)
+    {
+        cJSON_AddItemToArray(auth_servers, cJSON_CreateString(global->auth_servers[i]));
     }
 
     cJSON* accounts = cJSON_AddArrayToObject(root, "accounts");
@@ -678,15 +685,17 @@ bool load_cfg(void)
         LOG_DEBUG("OpenWRT 环境, 会尝试加载所有有效配置");
     }
 
-    prog_status_t* new_prog_status = realloc(g_prog_status, sizeof(prog_status_t) * cnt);
+    const size_t alloc_cnt = cnt > 0 ? (size_t)cnt : 1;
+    prog_status_t* new_prog_status = realloc(g_prog_status, sizeof(prog_status_t) * alloc_cnt);
     if (new_prog_status)
     {
         g_prog_status = new_prog_status;
-        memset(g_prog_status, 0, sizeof(prog_status_t) * cnt);
+        memset(g_prog_status, 0, sizeof(prog_status_t) * alloc_cnt);
     }
     else
     {
         LOG_FATAL("重分配内存失败");
+        cJSON_Delete(cfg_json);
         return false;
     }
 
@@ -895,6 +904,15 @@ bool load_cfg(void)
         if (probe_targets_parse(cJSON_GetObjectItem(cfg_json, "probe_hosts")) == false)
         {
             LOG_WARN("probe_hosts 格式不对, 使用内置默认探测目标");
+        }
+
+        /**
+         * 认证服务器列表 (auth_servers)
+         */
+        auth_servers_defaults();
+        if (auth_servers_parse(cJSON_GetObjectItem(cfg_json, "auth_servers")) == false)
+        {
+            LOG_WARN("auth_servers 格式不对, 使用内置默认认证服务器");
         }
     }
 

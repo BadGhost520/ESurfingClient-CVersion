@@ -155,6 +155,25 @@ uint8_t complete_cfg(cJSON* cfg_json)
         }
     }
 
+    if (cJSON_GetObjectItem(cfg_json, "auth_servers") == NULL)
+    {
+        auth_servers_defaults();
+
+        cJSON* defaults = auth_servers_to_json();
+        if (defaults != NULL)
+        {
+            if (cJSON_AddItemToObject(cfg_json, "auth_servers", defaults) != false)
+            {
+                LOG_INFO("配置里缺少 auth_servers 参数, 已补上默认认证服务器");
+                added++;
+            }
+            else
+            {
+                cJSON_Delete(defaults);
+            }
+        }
+    }
+
     const cJSON* accounts = cJSON_GetObjectItem(cfg_json, "accounts");
     if (accounts != NULL && cJSON_IsArray(accounts))
     {

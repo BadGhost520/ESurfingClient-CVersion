@@ -96,6 +96,50 @@ const DEFAULT_PROBE_HOSTS = [
     { host: 'connect.rom.miui.com', ips: ['202.69.4.32', '220.181.104.183'] }
 ];
 
+/** 认证服务器默认值 (与后端内置默认一致) */
+const DEFAULT_AUTH_SERVERS = ['14.146.227.141:7001', '121.8.177.212:7001'];
+
+function normalizeAuthServer(raw) {
+    let text = String(raw == null ? '' : raw).trim();
+    if (!text) return '';
+    if (/^https:\/\//i.test(text)) return '';
+    text = text.replace(/^http:\/\//i, '');
+    text = text.split(/[/?#]/)[0].trim();
+    if (!text || /[\s@\\]/.test(text)) return '';
+    const parts = text.split(':');
+    if (parts.length > 2) return '';
+    const host = parts[0].toLowerCase();
+    let port = 7001;
+    if (parts.length === 2) {
+        if (!/^\d+$/.test(parts[1])) return '';
+        port = Number(parts[1]);
+        if (port < 1 || port > 65535) return '';
+    }
+    if (!host || host.length > 55 || !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(host) || host.includes('..')) {
+        return '';
+    }
+    return `${host}:${port}`;
+}
+
+function normalizeAuthServers(raw) {
+    const src = Array.isArray(raw) ? raw : DEFAULT_AUTH_SERVERS;
+    const out = [];
+    src.forEach(item => {
+        const norm = normalizeAuthServer(item);
+        if (norm && !out.includes(norm) && out.length < 8) out.push(norm);
+    });
+    return out.length > 0 ? out : DEFAULT_AUTH_SERVERS.slice();
+}
+
+function authServersOut(list) {
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach(item => {
+        const norm = normalizeAuthServer(item);
+        if (norm && !out.includes(norm) && out.length < 8) out.push(norm);
+    });
+    return out;
+}
+
 /** IPv4 字面量校验 (和后端 probe_is_ipv4 一个要求: a.b.c.d 四段 0~255) */
 function isValidIPv4(value) {
     const text = String(value == null ? '' : value).trim();
@@ -161,6 +205,27 @@ const CONFIG_FIELDS = [
 
             const total = list.reduce((sum, item) => sum + item.ips.length, 0);
             if (total > 14) return `探测目标共 ${total} 路, 最多 14 路 (认证服务器已占 2 路)`;
+            return null;
+        }
+    },
+    {
+        key: 'auth_servers', def: DEFAULT_AUTH_SERVERS.slice(),
+        norm: normalizeAuthServers,
+        out: value => {
+            const list = authServersOut(value);
+            return list.length > 0 ? list : DEFAULT_AUTH_SERVERS.slice();
+        },
+        check: value => {
+            const raw = Array.isArray(value) ? value : [];
+            for (const item of raw) {
+                const s = String(item == null ? '' : item).trim();
+                if (s.length > 0 && !normalizeAuthServer(s)) {
+                    return `认证服务器格式无效: ${s} (应为 host:port, 默认端口 7001, 不支持 https)`;
+                }
+            }
+            if (raw.filter(item => String(item == null ? '' : item).trim().length > 0).length > 8) {
+                return '认证服务器最多支持 8 台';
+            }
             return null;
         }
     }

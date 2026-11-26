@@ -332,6 +332,12 @@ bool handle_api_get(struct mg_connection* c, struct mg_http_message* hm)
             cJSON_AddItemToObject(configs, "probe_hosts", probe_hosts);
         }
 
+        cJSON* auth_servers = auth_servers_to_json();
+        if (auth_servers != NULL)
+        {
+            cJSON_AddItemToObject(configs, "auth_servers", auth_servers);
+        }
+
         cJSON* accounts = cJSON_CreateArray();
         cJSON* account = cJSON_CreateObject();
 

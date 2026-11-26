@@ -13,6 +13,7 @@
 			"host":	"connect.rom.miui.com",
 			"ips":	["202.69.4.32", "220.181.104.183"]
 		}],
+	"auth_servers":	["14.146.227.141:7001", "121.8.177.212:7001"],
 	"accounts":	[{
 			"username":	"",
 			"password":	"",

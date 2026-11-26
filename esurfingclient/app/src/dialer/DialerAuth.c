@@ -22,11 +22,27 @@
 #include "utils/sim/SimThread.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifndef __OPENWRT__
 #include "control/Control.h"
 #endif
+
+/** @brief 从 XML 标签提取内容 (支持有/无 CDATA) */
+static char* extract_portal_tag(const char* xml, const char* tag)
+{
+    char* raw = xml_parser(xml, tag);
+    if (raw == NULL) return NULL;
+
+    if (strstr(raw, "<![CDATA[") != NULL)
+    {
+        char* clean = clean_cdata(raw);
+        free(raw);
+        return clean;
+    }
+    return raw;
+}
 
 AuthStatus auth(void)
 {
@@ -38,30 +54,22 @@ AuthStatus auth(void)
     auth_cfg_t* cfg = &g_prog_status[tl_thread_idx].auth_cfg;
 
     /**
-     * 1. 选认证服务器
-     *
-     * 认证服务器只有两台 (14.146.227.141 / 121.8.177.212, 端口 7001), 由程序并发
-     * 测 TCP 连接延迟后选快的那台。门户页面里的 auth-url / ticket-url 不再使用 ——
-     * 那两个地址只是 302 那一跳顺带带出来的, 不保证最快, 也不保证一直可用。
+     * 若上次会话已被清理或尚无重定向地址, 主动刷新一次 last_location
+     * (防止路由拨号 DHCP 重分配 IP 后仍拿着旧 wlanuserip)
      */
-    char server[64] = "";
-    if (select_auth_server(server, sizeof(server)) == false)
+    if (g_prog_status[tl_thread_idx].last_location_lock == false ||
+        g_prog_status[tl_thread_idx].last_location[0] == '\0')
     {
-        LOG_WARN("两台认证服务器都测不通, 继续按默认那台试");
+        (void)refresh_last_location();
     }
 
-    snprintf(cfg->auth_url, AUTH_URL_LEN, "%s/auth.cgi", server);
-    snprintf(cfg->keep_url, KEEP_URL_LEN, "%s/keep.cgi", server);
-    snprintf(cfg->term_url, TERM_URL_LEN, "%s/term.cgi", server);
-    LOG_DEBUG("Auth URL: %s", cfg->auth_url);
-    LOG_DEBUG("Keep-Url: %s", cfg->keep_url);
-    LOG_DEBUG("Term-Url: %s", cfg->term_url);
-
     /**
-     * 2. 请求门户页面
+     * 1. 先请求门户页面
      *
-     * 两个作用: 拿响应头里的 School Id / Domain / Area; 以及从配置块的 ticket-url
-     * 里取 wlanuserip / wlanacip (last_location 里没有这两个参数时的兜底)。
+     * 两个作用:
+     * - 拿响应头里的 School Id / Domain / Area, 以及 EConfig 里的集群节点
+     *   (<server-clusters> / <auth-url> / <ticket-url>), 纳入后续测速与故障转移池;
+     * - 从门户配置块的 ticket-url 里兜底取 wlanuserip / wlanacip。
      */
     curl_resp_t resp = get(g_prog_status[tl_thread_idx].last_location);
     char* portal_ticket_url = NULL;
@@ -74,23 +82,24 @@ AuthStatus auth(void)
         char* portal_config = extract_between_tags(resp.body_data, portal_start_tag, portal_end_tag);
         if (portal_config != NULL)
         {
-            char* raw_ticket_url = xml_parser(portal_config, "ticket-url");
-            if (raw_ticket_url != NULL)
-            {
-                portal_ticket_url = clean_cdata(raw_ticket_url);
-                free(raw_ticket_url);
-            }
+            auth_server_extract_econfig(portal_config, g_prog_status[tl_thread_idx].last_location);
+            portal_ticket_url = extract_portal_tag(portal_config, "ticket-url");
             free(portal_config);
+        }
+        else
+        {
+            auth_server_extract_econfig(NULL, g_prog_status[tl_thread_idx].last_location);
         }
     }
     else
     {
-        LOG_WARN("门户页面没拿到 (状态码 %d), 只用 last_location 里的参数", resp.http_code);
+        auth_server_extract_econfig(NULL, g_prog_status[tl_thread_idx].last_location);
+        LOG_WARN("门户页面没拿到 (状态码 %ld), 只用 last_location 里的参数", resp.http_code);
     }
     curl_resp_free(&resp);
 
     /**
-     * 3. client_ip / ac_ip: ticket 请求必需
+     * 2. client_ip / ac_ip: ticket 请求必需
      *
      * last_location 的查询串优先 (302 那一跳通常就带着), 取不到再从门户给的
      * ticket-url 里取。
@@ -128,14 +137,7 @@ AuthStatus auth(void)
     free(portal_ticket_url);
 
     /**
-     * 4. ticket_url: 带 wlanuserip / wlanacip, 不带 portal_node
-     */
-    snprintf(cfg->ticket_url, TICKET_URL_LEN, "%s/ticket.cgi?wlanuserip=%s&wlanacip=%s",
-             server, cfg->client_ip, cfg->ac_ip);
-    LOG_DEBUG("Ticket URL: %s", cfg->ticket_url);
-
-    /**
-     * 5. gwip: 报文里要填默认网关地址 (不是 AC 地址), 取不到就留空
+     * 3. gwip: 报文里要填默认网关地址 (不是 AC 地址), 取不到就留空
      */
     if (get_default_gateway_ip(cfg->gwip, sizeof(cfg->gwip)) == false)
     {
@@ -147,35 +149,99 @@ AuthStatus auth(void)
     }
 
     /**
-     * 初始化会话
-     * 如果失败, 清除会话并返回 INIT_SESSION_FAILED
+     * 4. 热检查配置文件并按健康度 + TCP 延迟排序候选认证服务器, 逐台自动故障转移
      */
-    if (init_session() == false)
-    {
-        LOG_ERROR("初始化会话失败");
-        return INIT_SESSION_FAILED;
-    }
-    LOG_DEBUG("初始化会话完成");
+    (void)auth_servers_reload_if_changed();
 
-    /**
-     * 获取 ticket
-     * 如果失败, 清除会话并返回 GET_TICKET_FAILED
-     */
-    if (get_ticket() == false)
+    char candidates[AUTH_CANDIDATE_MAX][AUTH_SERVER_LEN + 16];
+    const size_t cand_count = select_auth_servers(candidates, AUTH_CANDIDATE_MAX);
+    if (cand_count == 0)
     {
-        LOG_ERROR("获取 Ticket 失败");
-        return GET_TICKET_FAILED;
+        LOG_ERROR("没有可用的认证服务器");
+        return AUTH_FAILED;
     }
-    LOG_DEBUG("完成获取 Ticket");
 
-    /**
-     * 登录认证
-     * 如果失败, 清除会话并返回 LOGIN_FAILED
-     */
-    if (login() == false)
+    AuthStatus last_status = AUTH_FAILED;
+    bool logged_in = false;
+
+    for (size_t i = 0; i < cand_count; i++)
     {
-        LOG_ERROR("登录失败");
-        return LOGIN_FAILED;
+        if (g_stop_requested != 0 || g_need_exit)
+        {
+            return AUTH_FAILED;
+        }
+
+        const char* server = candidates[i];
+        if (i > 0)
+        {
+            LOG_WARN("认证服务器 %s 失败, 自动切换至备用服务器 %s (%zu/%zu)",
+                     candidates[i - 1], server, i + 1, cand_count);
+            destroy_cipher_factory();
+            g_prog_status[tl_thread_idx].runtime_status.is_initialized = false;
+            refresh_states();
+            error_code_record(NULL);
+        }
+
+        snprintf(cfg->auth_url, AUTH_URL_LEN, "%.*s/auth.cgi", (int)(sizeof(candidates[0]) - 1), server);
+        snprintf(cfg->keep_url, KEEP_URL_LEN, "%.*s/keep.cgi", (int)(sizeof(candidates[0]) - 1), server);
+        snprintf(cfg->term_url, TERM_URL_LEN, "%.*s/term.cgi", (int)(sizeof(candidates[0]) - 1), server);
+        snprintf(cfg->ticket_url, TICKET_URL_LEN, "%.*s/ticket.cgi?wlanuserip=%.*s&wlanacip=%.*s",
+                 (int)(sizeof(candidates[0]) - 1), server,
+                 IP_LEN - 1, cfg->client_ip,
+                 IP_LEN - 1, cfg->ac_ip);
+
+        LOG_DEBUG("Auth URL: %s", cfg->auth_url);
+        LOG_DEBUG("Keep-Url: %s", cfg->keep_url);
+        LOG_DEBUG("Term-Url: %s", cfg->term_url);
+        LOG_DEBUG("Ticket URL: %s", cfg->ticket_url);
+
+        if (init_session() == false)
+        {
+            LOG_ERROR("初始化会话失败 (%s)", server);
+            const auth_error_kind_t kind = (auth_error_kind_t)g_prog_status[tl_thread_idx].runtime_status.last_error_kind;
+            if (kind == AUTH_ERROR_FATAL || kind == AUTH_ERROR_SLOW) return INIT_SESSION_FAILED;
+            auth_server_mark_failed(server);
+            last_status = INIT_SESSION_FAILED;
+            continue;
+        }
+        LOG_DEBUG("初始化会话完成");
+
+        if (get_ticket() == false)
+        {
+            LOG_ERROR("获取 Ticket 失败 (%s)", server);
+            const auth_error_kind_t kind = (auth_error_kind_t)g_prog_status[tl_thread_idx].runtime_status.last_error_kind;
+            if (kind == AUTH_ERROR_FATAL || kind == AUTH_ERROR_SLOW) return GET_TICKET_FAILED;
+            auth_server_mark_failed(server);
+            last_status = GET_TICKET_FAILED;
+            continue;
+        }
+        LOG_DEBUG("完成获取 Ticket");
+
+        if (login() == false)
+        {
+            LOG_ERROR("登录失败 (%s)", server);
+            /**
+             * 密码错 / 账号受限 / 终端超限等帐号级错误绝不切换备用节点重试,
+             * 避免多台节点连续叠加失败直接触发服务端 30 分钟锁定
+             */
+            const auth_error_kind_t kind = (auth_error_kind_t)g_prog_status[tl_thread_idx].runtime_status.last_error_kind;
+            if (kind == AUTH_ERROR_FATAL || kind == AUTH_ERROR_SLOW)
+            {
+                return LOGIN_FAILED;
+            }
+            auth_server_mark_failed(server);
+            last_status = LOGIN_FAILED;
+            continue;
+        }
+
+        auth_server_mark_ok(server);
+        logged_in = true;
+        break;
+    }
+
+    if (logged_in == false)
+    {
+        return last_status;
     }
     LOG_DEBUG("完成登录");
 

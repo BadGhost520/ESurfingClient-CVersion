@@ -16,8 +16,7 @@
 
 #define GENERATE_URL "http://connectivitycheck.platform.hicloud.com/generate_204"
 #define GENERATE_BAK_URL "http://connect.rom.miui.com/generate_204"
-#define AUTH_URL "http://14.146.227.141:7001"
-#define AUTH_BAK_URL "http://14.146.227.141:7001"
+#define AUTH_DEFAULT_FALLBACK_URL "http://14.146.227.141:7001"
 
 /** 一次并发探测的 handle 上限 (每个目标可能同时开多路固定 IP) */
 #define PROBE_MAX 16
@@ -302,6 +301,8 @@ static bool probe_add(CURLM* multi, const char* url, const char* host, const cha
     curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, PROBE_TOTAL_TIMEOUT_MS);
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, probe_sink);
+    curl_easy_setopt(handle, CURLOPT_PROXY, "");
+    curl_easy_setopt(handle, CURLOPT_NOPROXY, "*");
     curl_easy_setopt(handle, CURLOPT_NOSIGNAL, 1L);
     /**
      * 只要 IPv4
@@ -514,20 +515,35 @@ network_status_t check_network_status(const bool connect_only)
         internet_count++;
     }
 
-    static const probe_target_t auth_targets[] = {
-        {AUTH_URL, "auth1"},
-        {AUTH_BAK_URL, "auth2"},
-    };
-
     const network_status_t status =
         (internet_count > 0) ? probe_group(internet_targets, internet_count) : STATUS_ERROR;
     if (status != STATUS_ERROR) return status;
 
     /**
-     * 外网都不通: 再并发试认证服务器 —— 能连上 (返回 302 或其它状态码) 说明
-     * 人还在校园网里, 只是没过认证。
+     * 外网都不通: 热检查认证服务器配置后并发试认证服务器 (仅 IPv4, 不查 DNS) ——
+     * 能连上 (返回 302 或其它状态码) 说明人还在校园网里, 只是没过认证。
      */
-    return probe_group(auth_targets, sizeof(auth_targets) / sizeof(auth_targets[0]));
+    (void)auth_servers_reload_if_changed();
+
+    char auth_urls[AUTH_SERVER_MAX][AUTH_SERVER_LEN + 16];
+    char auth_labels[AUTH_SERVER_MAX][16];
+    probe_target_t auth_targets[AUTH_SERVER_MAX];
+    uint8_t auth_count = auth_servers_copy_probe_urls(auth_urls, AUTH_SERVER_MAX);
+
+    if (auth_count == 0)
+    {
+        snprintf(auth_urls[0], sizeof(auth_urls[0]), "%s", AUTH_DEFAULT_FALLBACK_URL);
+        auth_count = 1;
+    }
+
+    for (uint8_t i = 0; i < auth_count; i++)
+    {
+        snprintf(auth_labels[i], sizeof(auth_labels[0]), "auth%" PRIu8, (uint8_t)(i + 1));
+        auth_targets[i].url = auth_urls[i];
+        auth_targets[i].label = auth_labels[i];
+    }
+
+    return probe_group(auth_targets, auth_count);
 }
 
 /**

@@ -132,8 +132,8 @@ static bool wait_auth_retry(const uint64_t wait_minutes)
 
 static RunStatus run(void)
 {
-    static uint8_t retry_timeout = 1;
-    static uint8_t retry_auth = 1;
+    static _Thread_local uint8_t retry_timeout = 1;
+    static _Thread_local uint8_t retry_auth = 1;
 
     /** 连续 302 的确认计数: 要连续两次才认定需要重新认证 */
     static _Thread_local uint8_t s_need_auth_hits = 0;
